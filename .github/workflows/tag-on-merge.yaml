@@ -14,14 +14,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Bump repo version tag
-        id: tag
-        uses: anothrNick/github-tag-action@1.71.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEFAULT_BUMP: patch
-          INITIAL_VERSION: 0.1.0
-          WITH_V: true
-
-      - name: Print new tag
-        run: echo "Tagged ${{ steps.tag.outputs.new_tag }}"
+      - name: Create timestamp tag
+        run: |
+          tag=$(date -u +%Y%m%d-%H%M)
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git config user.name github-actions[bot]
+          git tag "$tag"
+          git push origin "$tag"
+          echo "Tagged $tag"
