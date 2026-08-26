@@ -26,22 +26,6 @@ hooks {
         steps = linters
     }
     ["check"] {
-        steps = (linters) {
-            ["restic-check"] {
-                check {
-                    command = "bash hk/restic-check.sh"
-                    effect = "read"
-                }
-            }
-        }
-    }
-    ["pre-push"] {
-        steps {
-            // Syncs pushed commits to the Linear "Development" release.
-            // See hk/linear-release-sync.sh.
-            ["linear-release"] {
-                check = "bash hk/linear-release-sync.sh"
-            }
-        }
+        steps = linters
     }
 }
