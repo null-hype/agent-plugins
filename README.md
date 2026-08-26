@@ -156,6 +156,17 @@ If you'd like your Features to appear in our [public index](https://containers.d
 
 This index is from where [supporting tools](https://containers.dev/supporting) like [VS Code Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) and [GitHub Codespaces](https://github.com/features/codespaces) surface Features for their dev container creation UI.
 
+## Linear Releases
+
+Each Feature (`color`, `hello`) gets its own Linear release pipeline, created via `linear/linear-release-action@v0` in `.github/workflows/release.yaml`. The `linear-release` job runs after the `deploy` job (i.e. after Features actually publish to GHCR), one matrix entry per Feature, each scoped to its own directory via `include_paths` and using its own pipeline access key. Runs on `main` create a real release; runs on any other ref use the action's `dry_run` input.
+
+**Repository secrets to create** (one Linear pipeline access key per Feature):
+
+- `LINEAR_KEY_COLOR`
+- `LINEAR_KEY_HELLO`
+
+**Manual setup required in Linear:** each Feature needs its own release pipeline created by hand in Linear under **Settings → Releases** before its secret will work. Linear's Business plan caps pipelines at **15** — with 2 Features today we're well under that limit, but worth tracking if more Features get added.
+
 #### Using private Features in Codespaces
 
 For any Features hosted in GHCR that are kept private, the `GITHUB_TOKEN` access token in your environment will need to have `package:read` and `contents:read` for the associated repository.
