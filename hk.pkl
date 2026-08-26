@@ -1,0 +1,31 @@
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+// Using a coding agent? See https://hk.jdx.dev/agents
+
+local linters = new Mapping<String, Step> {
+    // Add linters here. Examples:
+    // ["prettier"] = Builtins.prettier
+    // ["eslint"] = Builtins.eslint
+    // ["ruff"] = Builtins.ruff
+
+    // Or define custom steps:
+    // ["custom"] {
+    //     glob = "**/*.py"
+    //     check = "mypy {{ files }}"
+    // }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = linters
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}
