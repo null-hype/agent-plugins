@@ -58,6 +58,12 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
 
     check "claude answers a prompt" bash -c "claude -p 'What is your favorite color?'"
 
+    # Prove the installed skill is actually being picked up, rather than
+    # just checking the file landed on disk: ask claude to name the skill
+    # and confirm the response mentions pass-cli.
+    check "claude reports having the pass-cli skill" bash -c \
+        "claude -p 'List the names of any skills you currently have available, one per line.' | tee /tmp/claude-skills.txt | grep -qi 'pass-cli'"
+
     pass-cli logout || true
 else
     echo -e "\nSkipping 'ask claude its favorite color' check: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
