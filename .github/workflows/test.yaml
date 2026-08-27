@@ -16,9 +16,7 @@ jobs:
           - color
           - hello
         baseImage:
-          - debian:latest
-          - ubuntu:latest
-          - mcr.microsoft.com/devcontainers/base:ubuntu
+          - ghcr.io/null-hype/devenv-agent:sha-7ff1019c7882c9bfcf0948ab96ef0a4efad528c7
     steps:
       - uses: actions/checkout@v4
 

@@ -1,6 +1,6 @@
 {
     "my_favorite_color_is_green": {
-        "image": "mcr.microsoft.com/devcontainers/base:focal",
+        "image": "ghcr.io/null-hype/devenv-agent:sha-7ff1019c7882c9bfcf0948ab96ef0a4efad528c7",
         "features": {
             "ghcr.io/devcontainers/features/common-utils:1": {
                 "installZsh": false,
@@ -15,7 +15,7 @@
         "remoteUser": "octocat"
     },
     "gold": {
-        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "image": "ghcr.io/null-hype/devenv-agent:sha-7ff1019c7882c9bfcf0948ab96ef0a4efad528c7",
         "features": {
             "color": {
                 "favorite": "gold"
@@ -23,7 +23,7 @@
         }
     },
     "green": {
-        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "image": "ghcr.io/null-hype/devenv-agent:sha-7ff1019c7882c9bfcf0948ab96ef0a4efad528c7",
         "features": {
             "color": {
                 "favorite": "green"
