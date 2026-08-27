@@ -32,6 +32,13 @@ EOF
 # PATH. The color feature is tested exclusively against images that
 # bundle pass-cli (see the devenv-agent-based images in test.yaml and
 # test/color/scenarios.json) precisely so this can run unconditionally.
+#
+# pass-cli's default key storage backend relies on the OS keyring
+# (Secret Service over D-Bus), which isn't available in this headless
+# container and makes even unauthenticated commands fail with
+# NoStorageAccess(PermissionDenied). Fall back to filesystem-based key
+# storage, which works in CI/containers.
+export PROTON_PASS_KEY_PROVIDER="fs"
 mkdir -p ~/.claude/skills/pass-cli
 pass-cli agent instructions > ~/.claude/skills/pass-cli/SKILL.md
 
