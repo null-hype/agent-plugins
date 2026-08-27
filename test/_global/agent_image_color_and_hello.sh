@@ -4,7 +4,7 @@
 #
 # This test file is executed against a running container constructed
 # from the value of 'agent_image_color_and_hello' in the tests/_global/scenarios.json file,
-# which builds on top of the ghcr.io/null-hype/devenv-linear-agent image
+# which builds on top of the ghcr.io/null-hype/devenv-agent image
 # (via test/_global/agent_image_color_and_hello/Dockerfile) instead of a
 # stock devcontainers base image.
 #
@@ -27,7 +27,7 @@ echo -e "\n"
 check "check green is my favorite color" bash -c "color | grep 'my favorite color is green'"
 check "check I am greeting with 'Greetings'" bash -c "hello | grep 'Greetings, $(whoami)'"
 
-# Ask the 'claude' CLI (bundled in the devenv-linear-agent image) its
+# Ask the 'claude' CLI (bundled in the devenv-agent image) its
 # favorite color, authenticating with a Claude Code OAuth token that
 # pass-cli resolves at run time from the pass:// URI in this scenario's
 # .env file. PROTON_PASS_PERSONAL_ACCESS_TOKEN is propagated into this
