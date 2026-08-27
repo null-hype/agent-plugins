@@ -16,6 +16,22 @@ jobs:
       - name: "Install latest devcontainer CLI"
         run: npm install -g @devcontainers/cli
 
+      - name: "Refresh pass-cli skill instructions"
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          if ! command -v pass-cli >/dev/null 2>&1; then
+            curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          fi
+          export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-ci"
+          # See test/_global/agent_image_color_and_hello.sh for why this is needed.
+          export PROTON_PASS_KEY_PROVIDER="fs"
+          pass-cli login
+          # -B: the checked-in file already exists, so make would otherwise
+          # consider it up to date and skip regenerating it.
+          make -B src/color/.claude/skills/pass-cli/SKILL.md
+          pass-cli logout || true
+
       - name: "Testing global scenarios"
         env:
           PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
