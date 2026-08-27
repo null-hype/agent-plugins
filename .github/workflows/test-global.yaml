@@ -1,0 +1,23 @@
+name: "CI - Test Global Scenarios"
+
+# Manual-only: the 'agent_image_color_and_hello' global scenario fetches a
+# live Claude Code OAuth token from Proton Pass and uses it to call the
+# Anthropic API. It intentionally does NOT run on push/pull_request so that
+# token never materializes during routine CI, only when explicitly triggered.
+on:
+  workflow_dispatch:
+
+jobs:
+  test-global:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Install latest devcontainer CLI"
+        run: npm install -g @devcontainers/cli
+
+      - name: "Testing global scenarios"
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        run: devcontainer features test --global-scenarios-only .
