@@ -38,6 +38,11 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     fi
 
     export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-scenario"
+    # pass-cli's default key storage backend relies on the OS keyring
+    # (Secret Service over D-Bus), which isn't available in this headless
+    # container and makes login fail with NoStorageAccess(PermissionDenied).
+    # Fall back to filesystem-based key storage, which works in CI/containers.
+    export PROTON_PASS_KEY_PROVIDER="fs"
     pass-cli login
     pass-cli info
 
