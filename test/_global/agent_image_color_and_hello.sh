@@ -4,7 +4,7 @@
 #
 # This test file is executed against a running container constructed
 # from the value of 'agent_image_color_and_hello' in the tests/_global/scenarios.json file,
-# which builds on top of the ghcr.io/null-hype/devenv-agent image
+# which builds on top of the ghcr.io/null-hype/devenv-linear-agent image
 # (via test/_global/agent_image_color_and_hello/Dockerfile) instead of a
 # stock devcontainers base image.
 #
@@ -27,7 +27,7 @@ echo -e "\n"
 check "check green is my favorite color" bash -c "color | grep 'my favorite color is green'"
 check "check I am greeting with 'Greetings'" bash -c "hello | grep 'Greetings, $(whoami)'"
 
-# Ask the 'claude' CLI (bundled in the devenv-agent image) its
+# Ask the 'claude' CLI (bundled in the devenv-linear-agent image) its
 # favorite color, authenticating with a Claude Code OAuth token that
 # pass-cli resolves at run time from the pass:// URI in this scenario's
 # .env file. PROTON_PASS_PERSONAL_ACCESS_TOKEN is propagated into this
@@ -53,14 +53,25 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     # test/_global/agent_image_color_and_hello/.env and Dockerfile).
     PASS_CLI_ENV_FILE="/opt/pass-cli/agent_image_color_and_hello.env"
 
-    check "claude answers a prompt" bash -c \
-        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p 'What is your favorite color?'"
+    # One live claude call doing double duty: it answering at all proves
+    # auth worked, and asking it to name its skills (rather than just
+    # checking SKILL.md landed on disk) proves the pass-cli skill is
+    # actually being picked up.
+    check "claude answers and reports having the pass-cli skill" bash -c \
+        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p 'What is your favorite color? Also list the names of any skills you currently have available, one per line.' | tee /tmp/claude-output.txt | grep -qi 'pass-cli'"
 
-    # Prove the installed skill is actually being picked up, rather than
-    # just checking the file landed on disk: ask claude to name the skill
-    # and confirm the response mentions pass-cli.
-    check "claude reports having the pass-cli skill" bash -c \
-        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p 'List the names of any skills you currently have available, one per line.' | tee /tmp/claude-skills.txt | grep -qi 'pass-cli'"
+    # Snapshot the claude session transcript (~/.claude) to restic, so later
+    # sessions can find this run's transcript via `restic snapshots --tag jin-81`.
+    # restic's GCS backend wants GOOGLE_APPLICATION_CREDENTIALS pointing at a
+    # key *file*, not the inline JSON pass-cli resolves into
+    # GCP_SERVICE_ACCOUNT_KEY, so materialize that first.
+    check "restic snapshot of ~/.claude" bash -c \
+        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- sh -c '
+            set -e
+            export GOOGLE_APPLICATION_CREDENTIALS=\"/tmp/gcp-service-account.json\"
+            printf %s \"\$GCP_SERVICE_ACCOUNT_KEY\" > \"\$GOOGLE_APPLICATION_CREDENTIALS\"
+            restic backup ~/.claude --tag jin-81
+        '"
 
     pass-cli logout || true
 else
