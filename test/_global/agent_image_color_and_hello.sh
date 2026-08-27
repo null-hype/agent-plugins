@@ -46,11 +46,6 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     pass-cli login
     pass-cli info
 
-    # Install the pass-cli skill so claude knows how to use pass-cli itself
-    # for any future task, rather than us documenting usage by hand.
-    mkdir -p ~/.claude/skills/pass-cli
-    pass-cli agent instructions > ~/.claude/skills/pass-cli/SKILL.md
-
     export PROTON_PASS_AGENT_REASON="devcontainer scenario test: ask claude its favorite color"
     CLAUDE_CODE_OAUTH_TOKEN="$(pass-cli item view "pass://JIN-76/claude/CLAUDE_CODE_OAUTH_TOKEN")"
     export CLAUDE_CODE_OAUTH_TOKEN
