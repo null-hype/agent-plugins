@@ -58,7 +58,7 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     # checking SKILL.md landed on disk) proves the pass-cli skill is
     # actually being picked up.
     check "claude answers and reports having the pass-cli skill" bash -c \
-        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p 'What is your favorite color? Also list the names of any skills you currently have available, one per line.' | tee /tmp/claude-output.txt | grep -qi 'pass-cli'"
+        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p --model haiku --effort low 'What is your favorite color? Also list the names of any skills you currently have available, one per line.' | tee /tmp/claude-output.txt | grep -qi 'pass-cli'"
 
     # Snapshot the claude session transcript (~/.claude) to restic, so later
     # sessions can find this run's transcript via `restic snapshots --tag jin-81`.
