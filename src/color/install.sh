@@ -27,20 +27,14 @@ EOF
 # Install the pass-cli skill so claude knows how to use pass-cli itself
 # for any future task, rather than us documenting usage by hand.
 #
-# `pass-cli agent instructions` doesn't require authentication, so this
-# works at image build time as long as pass-cli itself is already on
-# PATH. The color feature is tested exclusively against images that
-# bundle pass-cli (see the devenv-agent-based images in test.yaml and
-# test/color/scenarios.json) precisely so this can run unconditionally.
-#
-# pass-cli's default key storage backend relies on the OS keyring
-# (Secret Service over D-Bus), which isn't available in this headless
-# container and makes even unauthenticated commands fail with
-# NoStorageAccess(PermissionDenied). Fall back to filesystem-based key
-# storage, which works in CI/containers.
-export PROTON_PASS_KEY_PROVIDER="fs"
+# `pass-cli agent instructions` needs an authenticated session, which
+# isn't available (and shouldn't be baked into the image) at build
+# time. So instead of calling pass-cli live, ship its output as a
+# static file (regenerated with `make` on a machine with a real
+# session) and just install that.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p ~/.claude/skills/pass-cli
-pass-cli agent instructions > ~/.claude/skills/pass-cli/SKILL.md
+cp "$SCRIPT_DIR/.claude/skills/pass-cli/SKILL.md" ~/.claude/skills/pass-cli/SKILL.md
 
 
 chmod +x /usr/local/bin/color
