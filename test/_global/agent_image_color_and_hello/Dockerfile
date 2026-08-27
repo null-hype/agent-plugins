@@ -1,4 +1,4 @@
-FROM ghcr.io/null-hype/devenv-linear-agent:sha-7ff1019c7882c9bfcf0948ab96ef0a4efad528c7
+FROM ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac
 
 # Baked in at a known, absolute path so agent_image_color_and_hello.sh
 # doesn't have to guess where the devcontainer CLI lands scenario files
