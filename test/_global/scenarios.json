@@ -11,7 +11,9 @@
         }
     },
     "agent_image_color_and_hello": {
-        "image": "ghcr.io/null-hype/devenv-agent:sha-7ff1019c7882c9bfcf0948ab96ef0a4efad528c7",
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
         "features": {
             "color": {
                 "favorite": "green"

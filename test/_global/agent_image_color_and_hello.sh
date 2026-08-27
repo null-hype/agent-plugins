@@ -4,8 +4,9 @@
 #
 # This test file is executed against a running container constructed
 # from the value of 'agent_image_color_and_hello' in the tests/_global/scenarios.json file,
-# which builds on top of the ghcr.io/null-hype/devenv-agent image instead of a stock
-# devcontainers base image.
+# which builds on top of the ghcr.io/null-hype/devenv-linear-agent image
+# (via test/_global/agent_image_color_and_hello/Dockerfile) instead of a
+# stock devcontainers base image.
 #
 # This test can be run with the following command (from the root of this repo)
 #    devcontainer features test --global-scenarios-only .
@@ -26,10 +27,11 @@ echo -e "\n"
 check "check green is my favorite color" bash -c "color | grep 'my favorite color is green'"
 check "check I am greeting with 'Greetings'" bash -c "hello | grep 'Greetings, $(whoami)'"
 
-# Ask the 'claude' CLI (bundled in the devenv-agent image) its favorite
-# color, authenticating with a Claude Code OAuth token fetched from Proton
-# Pass via pass-cli. PROTON_PASS_PERSONAL_ACCESS_TOKEN is propagated into
-# this container via the scenario's containerEnv.
+# Ask the 'claude' CLI (bundled in the devenv-linear-agent image) its
+# favorite color, authenticating with a Claude Code OAuth token that
+# pass-cli resolves at run time from the pass:// URI in this scenario's
+# .env file. PROTON_PASS_PERSONAL_ACCESS_TOKEN is propagated into this
+# container via the scenario's containerEnv.
 if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo -e "\nAsking claude its favorite color:\n"
 
@@ -47,16 +49,18 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     pass-cli info
 
     export PROTON_PASS_AGENT_REASON="devcontainer scenario test: ask claude its favorite color"
-    CLAUDE_CODE_OAUTH_TOKEN="$(pass-cli item view "pass://JIN-76/claude/CLAUDE_CODE_OAUTH_TOKEN")"
-    export CLAUDE_CODE_OAUTH_TOKEN
+    # Baked into the image by this scenario's Dockerfile (see
+    # test/_global/agent_image_color_and_hello/.env and Dockerfile).
+    PASS_CLI_ENV_FILE="/opt/pass-cli/agent_image_color_and_hello.env"
 
-    check "claude answers a prompt" bash -c "claude -p 'What is your favorite color?'"
+    check "claude answers a prompt" bash -c \
+        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p 'What is your favorite color?'"
 
     # Prove the installed skill is actually being picked up, rather than
     # just checking the file landed on disk: ask claude to name the skill
     # and confirm the response mentions pass-cli.
     check "claude reports having the pass-cli skill" bash -c \
-        "claude -p 'List the names of any skills you currently have available, one per line.' | tee /tmp/claude-skills.txt | grep -qi 'pass-cli'"
+        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p 'List the names of any skills you currently have available, one per line.' | tee /tmp/claude-skills.txt | grep -qi 'pass-cli'"
 
     pass-cli logout || true
 else
