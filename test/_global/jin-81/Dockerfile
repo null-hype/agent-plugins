@@ -9,7 +9,7 @@ ENV PROTON_PASS_KEY_PROVIDER="fs"
 
 # SCENARIO_NAME: single source for this scenario's name, instead of
 # hardcoding "jin-81" separately in the .env path below and (previously)
-# in a RESTIC_TAG env var - the restic tag now comes from the 'color'
+# in a RESTIC_TAG env var - the restic tag now comes from the 'pass-cli'
 # feature's own "tag" option in scenarios.json instead, matching this
 # same name by convention.
 ARG SCENARIO_NAME=jin-81
@@ -19,7 +19,7 @@ ARG SCENARIO_NAME=jin-81
 # container.
 COPY .env /opt/pass-cli/${SCENARIO_NAME}.env
 
-# Picked up by the 'color' feature bin's own pass-cli/claude/restic
-# block (see src/color/install.sh) so invoking `color` in this scenario
+# Picked up by the 'pass-cli' feature bin's own pass-cli/claude/restic
+# block (see src/pass-cli/install.sh) so invoking `color` in this scenario
 # exercises the pass-cli skill and restic snapshot automatically.
 ENV PASS_CLI_ENV_FILE="/opt/pass-cli/${SCENARIO_NAME}.env"

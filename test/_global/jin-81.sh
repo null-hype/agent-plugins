@@ -8,7 +8,7 @@
 # (via test/_global/jin-81/Dockerfile) instead of a stock devcontainers
 # base image.
 #
-# This scenario passes "tag": "jin-81" as a 'color' feature option in
+# This scenario passes "tag": "jin-81" as a 'pass-cli' feature option in
 # scenarios.json (matching this scenario's name), which is what the
 # 'color' bin uses as its restic snapshot tag for this run's claude
 # session transcript. Any future scenario copied from this one for a
@@ -35,9 +35,9 @@ check "check green is my favorite color" bash -c "color | grep 'my favorite colo
 check "check I am greeting with 'Greetings'" bash -c "hello | grep 'Greetings, $(whoami)'"
 
 # Log in so the 'color' bin's own pass-cli/claude/restic block (see
-# src/color/install.sh) has an active session to use - PASS_CLI_ENV_FILE
+# src/pass-cli/install.sh) has an active session to use - PASS_CLI_ENV_FILE
 # is baked into this scenario's Dockerfile and the restic tag comes
-# from the 'color' feature's own "tag" option (see scenarios.json), so
+# from the 'pass-cli' feature's own "tag" option (see scenarios.json), so
 # invoking `color` after login exercises the pass-cli skill and restic
 # snapshot end to end, the same way any real consumer of the feature would.
 if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then

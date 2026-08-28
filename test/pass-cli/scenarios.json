@@ -8,7 +8,7 @@
                 "upgradePackages": false,
                 "username": "octocat"
             },
-            "color": {
+            "pass-cli": {
                 "favorite": "green"
             }
         },
@@ -17,7 +17,7 @@
     "gold": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
-            "color": {
+            "pass-cli": {
                 "favorite": "gold"
             }
         }
@@ -25,7 +25,7 @@
     "green": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
-            "color": {
+            "pass-cli": {
                 "favorite": "green"
             }
         }

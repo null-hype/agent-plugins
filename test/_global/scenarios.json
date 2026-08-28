@@ -2,7 +2,7 @@
     "color_and_hello": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
-            "color": {
+            "pass-cli": {
                 "favorite": "purple"
             },
             "hello": {
@@ -15,7 +15,7 @@
             "dockerfile": "Dockerfile"
         },
         "features": {
-            "color": {
+            "pass-cli": {
                 "favorite": "green",
                 "tag": "jin-81"
             },

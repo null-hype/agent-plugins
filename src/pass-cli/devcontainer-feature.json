@@ -1,6 +1,6 @@
 {
     "name": "My Favorite Color",
-    "id": "color",
+    "id": "pass-cli",
     "version": "1.0.3",
     "description": "A feature to remind you of your favorite color",
     "options": {
@@ -17,7 +17,7 @@
         "model": {
             "type": "string",
             "default": "haiku",
-            "description": "Model the 'color' bin uses for its pass-cli-authenticated claude call (see src/color/install.sh)."
+            "description": "Model the 'color' bin uses for its pass-cli-authenticated claude call (see src/pass-cli/install.sh)."
         },
         "effort": {
             "type": "string",
