@@ -62,8 +62,15 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     # failure inside color itself (e.g. the restic backup failing)
     # wouldn't fail this check as long as "pass-cli" appeared somewhere
     # in whatever partial output it produced before failing.
+    #
+    # grep -i without -q (not >/dev/null via -q's early exit): -q exits
+    # as soon as it finds a match, closing the pipe while color is still
+    # running its restic backup afterward - pass-cli's Rust binary then
+    # panics on the resulting broken pipe (SIGPIPE) instead of exiting
+    # cleanly, which pipefail then reports as a failure. Redirecting to
+    # /dev/null instead lets grep drain the rest of the output first.
     check "color asks claude, reports the pass-cli skill, and snapshots to restic" bash -o pipefail -c \
-        "color | tee /tmp/color-output.txt | grep -qi 'pass-cli'"
+        "color | tee /tmp/color-output.txt | grep -i 'pass-cli' >/dev/null"
 
     pass-cli logout || true
 else
