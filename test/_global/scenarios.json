@@ -16,7 +16,8 @@
         },
         "features": {
             "color": {
-                "favorite": "green"
+                "favorite": "green",
+                "tag": "jin-81"
             },
             "hello": {
                 "greeting": "Greetings"

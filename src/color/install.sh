@@ -29,7 +29,7 @@ echo "my favorite color is ${FAVORITE}"
 # a caller who hasn't logged in (or doesn't have pass-cli at all) just
 # gets the plain favorite-color line, same as before.
 if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pass-cli info >/dev/null 2>&1; then
-    pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low "What is your favorite color? Also list the names of any skills you currently have available, one per line."
+    pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p --model ${MODEL} --effort ${EFFORT} "What is your favorite color? Also list the names of any skills you currently have available, one per line."
 
     # The GCS backend restic uses wants GOOGLE_APPLICATION_CREDENTIALS
     # pointing at a key *file*, not the inline JSON pass-cli resolves
@@ -38,7 +38,7 @@ if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pa
         set -e
         export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-service-account.json"
         printf %s "\$GCP_SERVICE_ACCOUNT_KEY" > "\$GOOGLE_APPLICATION_CREDENTIALS"
-        restic backup ~/.claude --tag "\${RESTIC_TAG:-color}"
+        restic backup ~/.claude --tag ${TAG}
     '
 fi
 EOF

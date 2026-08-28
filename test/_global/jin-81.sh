@@ -8,11 +8,12 @@
 # (via test/_global/jin-81/Dockerfile) instead of a stock devcontainers
 # base image.
 #
-# RESTIC_TAG (baked into this scenario's Dockerfile, matching the
-# scenario name) is the snapshot tag the 'color' bin uses for this
-# run's claude session transcript, so any future scenario copied from
-# this one for a different task should set RESTIC_TAG to that task's
-# name the same way this one is named after, and tagged, jin-81.
+# This scenario passes "tag": "jin-81" as a 'color' feature option in
+# scenarios.json (matching this scenario's name), which is what the
+# 'color' bin uses as its restic snapshot tag for this run's claude
+# session transcript. Any future scenario copied from this one for a
+# different task should set that option to that task's name the same
+# way this one is named after, and tagged, jin-81.
 #
 # This test can be run with the following command (from the root of this repo)
 #    devcontainer features test --global-scenarios-only .
@@ -35,9 +36,10 @@ check "check I am greeting with 'Greetings'" bash -c "hello | grep 'Greetings, $
 
 # Log in so the 'color' bin's own pass-cli/claude/restic block (see
 # src/color/install.sh) has an active session to use - PASS_CLI_ENV_FILE
-# and RESTIC_TAG are baked into this scenario's Dockerfile, so invoking
-# `color` after login exercises the pass-cli skill and restic snapshot
-# end to end, the same way any real consumer of the feature would.
+# is baked into this scenario's Dockerfile and the restic tag comes
+# from the 'color' feature's own "tag" option (see scenarios.json), so
+# invoking `color` after login exercises the pass-cli skill and restic
+# snapshot end to end, the same way any real consumer of the feature would.
 if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo -e "\nAsking claude its favorite color:\n"
 
