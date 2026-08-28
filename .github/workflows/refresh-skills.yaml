@@ -1,11 +1,16 @@
-name: "Refresh pass-cli skill content"
+name: "Refresh skill content"
 
 # Manual-only, and separate from CI: this regenerates the *content* of
-# src/color/.claude/skills/pass-cli/SKILL.md from a live, authenticated
-# `pass-cli agent instructions` call (e.g. after a pass-cli version
-# bump) and opens a PR with the change. Tests (test-global.yaml) just
-# verify the checked-in skill is installed and picked up - they don't
-# refresh its content themselves.
+# every skill's SKILL.md (via `make skills` - see the Makefile) and
+# opens a PR with whatever changed. Tests (test-global.yaml) just
+# verify the checked-in skills are installed and picked up - they
+# don't refresh their content themselves.
+#
+# Credential setup here is currently pass-cli-specific, since that's
+# the only skill that exists today. A future skill needing different
+# credentials to regenerate will need its own login step added
+# alongside this one; only the Makefile's `skills` target needs to
+# know about every skill's own build rule.
 on:
   workflow_dispatch:
 
@@ -29,9 +34,9 @@ jobs:
           # See test/_global/jin-81/Dockerfile for why this is needed.
           export PROTON_PASS_KEY_PROVIDER="fs"
           pass-cli login
-          # -B: the checked-in file already exists, so make would otherwise
-          # consider it up to date and skip regenerating it.
-          make -B src/color/.claude/skills/pass-cli/SKILL.md
+          # -B: checked-in skill files already exist, so make would
+          # otherwise consider them up to date and skip regenerating them.
+          make -B skills
           pass-cli logout || true
 
       - name: "Open PR if content changed"
@@ -39,13 +44,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
+          shopt -s globstar
           git config --global user.email github-actions[bot]@users.noreply.github.com
           git config --global user.name github-actions[bot]
-          git add src/color/.claude/skills/pass-cli/SKILL.md
+          git add -A -- **/.claude/skills/**/SKILL.md
           git diff --cached --quiet && echo "No changes." && exit 0
-          branch="refresh-pass-cli-skill-$GITHUB_RUN_ID"
+          branch="refresh-skills-$GITHUB_RUN_ID"
           git checkout -b "$branch"
-          git commit -m "Refresh pass-cli skill content"
+          git commit -m "Refresh skill content"
           git push origin "$branch"
-          gh pr create --title "Refresh pass-cli skill content" \
-            --body "Automated refresh of src/color/.claude/skills/pass-cli/SKILL.md from a live \`pass-cli agent instructions\` call."
+          gh pr create --title "Refresh skill content" \
+            --body "Automated refresh of skill content via \`make skills\`."
