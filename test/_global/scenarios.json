@@ -10,7 +10,7 @@
             }
         }
     },
-    "agent_image_color_and_hello": {
+    "jin-81": {
         "build": {
             "dockerfile": "Dockerfile"
         },
