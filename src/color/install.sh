@@ -52,9 +52,23 @@ EOF
 # time. So instead of calling pass-cli live, ship its output as a
 # static file (regenerated with `make` on a machine with a real
 # session) and just install that.
+#
+# install.sh always runs as root, so plain `~` here would resolve to
+# /root - a different home than whichever user actually invokes
+# `color` later (and whose `~/.claude` the generated bin's restic
+# backup targets at runtime). Use _REMOTE_USER_HOME so both agree on
+# the same home directory, and chown the result so that user can
+# actually read it when it isn't root.
+TARGET_HOME="${_REMOTE_USER_HOME:-$HOME}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-mkdir -p ~/.claude/skills/pass-cli
-cp "$SCRIPT_DIR/.claude/skills/pass-cli/SKILL.md" ~/.claude/skills/pass-cli/SKILL.md
+mkdir -p "$TARGET_HOME/.claude/skills/pass-cli"
+cp "$SCRIPT_DIR/.claude/skills/pass-cli/SKILL.md" "$TARGET_HOME/.claude/skills/pass-cli/SKILL.md"
+if [ -n "${_REMOTE_USER:-}" ]; then
+    # Best-effort: ownership is a permissions nicety, not something that
+    # should fail the whole feature install if _REMOTE_USER somehow
+    # isn't a real system user yet at this point.
+    chown -R "$_REMOTE_USER" "$TARGET_HOME/.claude" || true
+fi
 
 
 chmod +x /usr/local/bin/color
