@@ -6,7 +6,7 @@
 
 ## Example Contents
 
-This repository contains a _collection_ of two Features - `hello` and `color`. These Features serve as simple feature implementations.  Each sub-section below shows a sample `devcontainer.json` alongside example usage of the Feature.
+This repository contains a _collection_ of two Features - `hello` and `pass-cli`. These Features serve as simple feature implementations.  Each sub-section below shows a sample `devcontainer.json` alongside example usage of the Feature.
 
 ### `hello`
 
@@ -29,7 +29,7 @@ $ hello
 Hello, user.
 ```
 
-### `color`
+### `pass-cli`
 
 Running `color` inside the built container will print your favorite color to standard out.
 
@@ -37,7 +37,7 @@ Running `color` inside the built container will print your favorite color to sta
 {
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
-        "ghcr.io/devcontainers/feature-starter/color:1": {
+        "ghcr.io/devcontainers/feature-starter/pass-cli:1": {
             "favorite": "green"
         }
     }
@@ -59,7 +59,7 @@ Similar to the [`devcontainers/features`](https://github.com/devcontainers/featu
 │   ├── hello
 │   │   ├── devcontainer-feature.json
 │   │   └── install.sh
-│   ├── color
+│   ├── pass-cli
 │   │   ├── devcontainer-feature.json
 │   │   └── install.sh
 |   ├── ...
@@ -126,7 +126,7 @@ This repo contains a **GitHub Action** [workflow](.github/workflows/release.yaml
 By default, each Feature will be prefixed with the `<owner/<repo>` namespace.  For example, the two Features in this repository can be referenced in a `devcontainer.json` with:
 
 ```
-ghcr.io/devcontainers/feature-starter/color:1
+ghcr.io/devcontainers/feature-starter/pass-cli:1
 ghcr.io/devcontainers/feature-starter/hello:1
 ```
 
@@ -158,7 +158,7 @@ This index is from where [supporting tools](https://containers.dev/supporting) l
 
 ## Linear Releases
 
-Each Feature (`color`, `hello`) gets its own Linear release pipeline, created via `linear/linear-release-action@v0` in `.github/workflows/release.yaml`. The `linear-release` job runs after the `deploy` job (i.e. after Features actually publish to GHCR), one matrix entry per Feature, each scoped to its own directory via `include_paths` and using its own pipeline access key. Runs on `main` create a real release; runs on any other ref use the action's `dry_run` input.
+Each Feature (`pass-cli`, `hello`) gets its own Linear release pipeline, created via `linear/linear-release-action@v0` in `.github/workflows/release.yaml`. The `linear-release` job runs after the `deploy` job (i.e. after Features actually publish to GHCR), one matrix entry per Feature, each scoped to its own directory via `include_paths` and using its own pipeline access key. Runs on `main` create a real release; runs on any other ref use the action's `dry_run` input.
 
 **Repository secrets to create** (one Linear pipeline access key per Feature):
 

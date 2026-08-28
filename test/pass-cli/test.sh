@@ -9,7 +9,7 @@
 # {
 #    "image": "<..some-base-image...>",
 #    "features": {
-#      "color": {}
+#      "pass-cli": {}
 #    },
 #    "remoteUser": "root"
 # }
@@ -24,7 +24,7 @@
 # This test can be run with the following command:
 #
 #    devcontainer features test    \ 
-#               --features color   \
+#               --features pass-cli   \
 #               --remote-user root \
 #               --skip-scenarios   \
 #               --base-image mcr.microsoft.com/devcontainers/base:ubuntu \
