@@ -12,7 +12,11 @@
     },
     "jin-81": {
         "build": {
-            "dockerfile": "Dockerfile"
+            "dockerfile": "Dockerfile",
+            "args": {
+                "SCENARIO_NAME": "jin-81",
+                "VAULT_NAME": "JIN-81"
+            }
         },
         "features": {
             "color": {

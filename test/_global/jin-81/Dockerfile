@@ -7,17 +7,28 @@ FROM ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472f
 # not only jin-81.sh.
 ENV PROTON_PASS_KEY_PROVIDER="fs"
 
-# SCENARIO_NAME: single source for this scenario's name, instead of
-# hardcoding "jin-81" separately in the .env path below and (previously)
-# in a RESTIC_TAG env var - the restic tag now comes from the 'color'
-# feature's own "tag" option in scenarios.json instead, matching this
-# same name by convention.
+# SCENARIO_NAME and VAULT_NAME: single source for values otherwise
+# repeated across this file and .env. Docker build ARGs and
+# devcontainer feature options are separate mechanisms with no way to
+# reference each other, so SCENARIO_NAME here still has to be kept in
+# sync by hand with the 'color' feature's "tag" option in
+# scenarios.json - but VAULT_NAME (the part expected to change, e.g.
+# if the vault gets renamed) now only needs updating in one place
+# (scenarios.json's build.args), instead of by hand in a static .env
+# file.
 ARG SCENARIO_NAME=jin-81
+ARG VAULT_NAME=JIN-81
 
-# Baked in at a known, absolute path so jin-81.sh doesn't have to guess
-# where the devcontainer CLI lands scenario files inside the running
-# container.
-COPY .env /opt/pass-cli/${SCENARIO_NAME}.env
+# Generated (not a static checked-in .env) so renaming the vault is a
+# one-line change to VAULT_NAME rather than editing every pass:// URI.
+RUN mkdir -p /opt/pass-cli && \
+    { \
+        echo "CLAUDE_CODE_OAUTH_TOKEN=pass://${VAULT_NAME}/claude/CLAUDE_CODE_OAUTH_TOKEN"; \
+        echo "GCP_SERVICE_ACCOUNT_KEY=pass://${VAULT_NAME}/restic/GCP_SERVICE_ACCOUNT_KEY"; \
+        echo "GOOGLE_PROJECT_ID=pass://${VAULT_NAME}/restic/GOOGLE_PROJECT_ID"; \
+        echo "RESTIC_REPOSITORY=pass://${VAULT_NAME}/restic/RESTIC_REPOSITORY"; \
+        echo "RESTIC_PASSWORD=pass://${VAULT_NAME}/restic/RESTIC_PASSWORD"; \
+    } > "/opt/pass-cli/${SCENARIO_NAME}.env"
 
 # Picked up by the 'color' feature bin's own pass-cli/claude/restic
 # block (see src/color/install.sh) so invoking `color` in this scenario
