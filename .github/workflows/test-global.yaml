@@ -1,6 +1,6 @@
 name: "CI - Test Global Scenarios"
 
-# Manual-only: the 'agent_image_color_and_hello' global scenario fetches a
+# Manual-only: the 'jin-81' global scenario fetches a
 # live Claude Code OAuth token from Proton Pass and uses it to call the
 # Anthropic API. It intentionally does NOT run on push/pull_request so that
 # token never materializes during routine CI, only when explicitly triggered.
@@ -24,7 +24,7 @@ jobs:
             curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
           fi
           export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-ci"
-          # See test/_global/agent_image_color_and_hello.sh for why this is needed.
+          # See test/_global/jin-81.sh for why this is needed.
           export PROTON_PASS_KEY_PROVIDER="fs"
           pass-cli login
           # -B: the checked-in file already exists, so make would otherwise
