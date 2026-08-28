@@ -31,7 +31,7 @@ jobs:
             curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
           fi
           export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-ci"
-          # See test/_global/jin-81/Dockerfile for why this is needed.
+          # See test/_global/jin-81-pass-cli/Dockerfile for why this is needed.
           export PROTON_PASS_KEY_PROVIDER="fs"
           pass-cli login
           # -B: checked-in skill files already exist, so make would

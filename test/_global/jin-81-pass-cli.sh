@@ -3,17 +3,17 @@
 # The 'test/_global' folder is a special test folder that is not tied to a single feature.
 #
 # This test file is executed against a running container constructed
-# from the value of 'jin-81' in the tests/_global/scenarios.json file,
-# which builds on top of the ghcr.io/null-hype/devenv-linear-agent image
-# (via test/_global/jin-81/Dockerfile) instead of a stock devcontainers
-# base image.
+# from the value of 'jin-81-pass-cli' in the tests/_global/scenarios.json
+# file, which builds on top of the ghcr.io/null-hype/devenv-linear-agent
+# image (via test/_global/jin-81-pass-cli/Dockerfile) instead of a stock
+# devcontainers base image.
 #
-# This scenario passes "tag": "jin-81" as a 'pass-cli' feature option in
-# scenarios.json (matching this scenario's name), which is what the
-# 'color' bin uses as its restic snapshot tag for this run's claude
-# session transcript. Any future scenario copied from this one for a
-# different task should set that option to that task's name the same
-# way this one is named after, and tagged, jin-81.
+# This scenario passes "tag": "jin-81-pass-cli" as a 'pass-cli' feature
+# option in scenarios.json (matching this scenario's name), which is
+# what the 'color' bin uses as its restic snapshot tag for this run's
+# claude session transcript. Any future scenario copied from this one
+# for a different task should set that option to that task's name the
+# same way this one is named after, and tagged, jin-81-pass-cli.
 #
 # This test can be run with the following command (from the root of this repo)
 #    devcontainer features test --global-scenarios-only .

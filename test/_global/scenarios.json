@@ -10,14 +10,14 @@
             }
         }
     },
-    "jin-81": {
+    "jin-81-pass-cli": {
         "build": {
             "dockerfile": "Dockerfile"
         },
         "features": {
             "pass-cli": {
                 "favorite": "green",
-                "tag": "jin-81"
+                "tag": "jin-81-pass-cli"
             },
             "hello": {
                 "greeting": "Greetings"

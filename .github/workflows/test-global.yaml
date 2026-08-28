@@ -1,6 +1,6 @@
 name: "CI - Test Global Scenarios"
 
-# Manual-only: the 'jin-81' global scenario fetches a
+# Manual-only: the 'jin-81-pass-cli' global scenario fetches a
 # live Claude Code OAuth token from Proton Pass and uses it to call the
 # Anthropic API. It intentionally does NOT run on push/pull_request so that
 # token never materializes during routine CI, only when explicitly triggered.
