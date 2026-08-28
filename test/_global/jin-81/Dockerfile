@@ -11,3 +11,9 @@ ENV PROTON_PASS_KEY_PROVIDER="fs"
 # where the devcontainer CLI lands scenario files inside the running
 # container.
 COPY .env /opt/pass-cli/jin-81.env
+
+# Picked up by the 'color' feature bin's own pass-cli/claude/restic
+# block (see src/color/install.sh) so invoking `color` in this scenario
+# exercises the pass-cli skill and restic snapshot automatically.
+ENV PASS_CLI_ENV_FILE="/opt/pass-cli/jin-81.env"
+ENV RESTIC_TAG="jin-81"

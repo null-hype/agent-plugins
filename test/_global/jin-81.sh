@@ -8,10 +8,11 @@
 # (via test/_global/jin-81/Dockerfile) instead of a stock devcontainers
 # base image.
 #
-# The scenario name doubles as the restic snapshot tag for this run's
-# claude session transcript (see the "restic snapshot" check below), so
-# any future scenario copied from this one for a different task should
-# be named after that task the same way this one is named after jin-81.
+# RESTIC_TAG (baked into this scenario's Dockerfile, matching the
+# scenario name) is the snapshot tag the 'color' bin uses for this
+# run's claude session transcript, so any future scenario copied from
+# this one for a different task should set RESTIC_TAG to that task's
+# name the same way this one is named after, and tagged, jin-81.
 #
 # This test can be run with the following command (from the root of this repo)
 #    devcontainer features test --global-scenarios-only .
@@ -32,11 +33,11 @@ echo -e "\n"
 check "check green is my favorite color" bash -c "color | grep 'my favorite color is green'"
 check "check I am greeting with 'Greetings'" bash -c "hello | grep 'Greetings, $(whoami)'"
 
-# Ask the 'claude' CLI (bundled in the devenv-linear-agent image) its
-# favorite color, authenticating with a Claude Code OAuth token that
-# pass-cli resolves at run time from the pass:// URI in this scenario's
-# .env file. PROTON_PASS_PERSONAL_ACCESS_TOKEN is propagated into this
-# container via the scenario's containerEnv.
+# Log in so the 'color' bin's own pass-cli/claude/restic block (see
+# src/color/install.sh) has an active session to use - PASS_CLI_ENV_FILE
+# and RESTIC_TAG are baked into this scenario's Dockerfile, so invoking
+# `color` after login exercises the pass-cli skill and restic snapshot
+# end to end, the same way any real consumer of the feature would.
 if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo -e "\nAsking claude its favorite color:\n"
 
@@ -52,34 +53,17 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     pass-cli info
 
     export PROTON_PASS_AGENT_REASON="devcontainer scenario test: ask claude its favorite color"
-    # Baked into the image by this scenario's Dockerfile (see
-    # test/_global/jin-81/.env and Dockerfile).
-    PASS_CLI_ENV_FILE="/opt/pass-cli/jin-81.env"
-    # The scenario name (this script's own basename) doubles as the
-    # restic snapshot tag, so each scenario's transcripts land under
-    # their own tag automatically.
-    SCENARIO_NAME="$(basename "$0" .sh)"
 
-    # One live claude call doing double duty: it answering at all proves
-    # auth worked, and asking it to name its skills (rather than just
-    # checking SKILL.md landed on disk) proves the pass-cli skill is
-    # actually being picked up.
-    check "claude answers and reports having the pass-cli skill" bash -c \
-        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- claude -p --model haiku --effort low 'What is your favorite color? Also list the names of any skills you currently have available, one per line.' | tee /tmp/claude-output.txt | grep -qi 'pass-cli'"
-
-    # Snapshot the claude session transcript (~/.claude) to restic, tagged
-    # with the scenario name, so later sessions can find this run's
-    # transcript via `restic snapshots --tag '$SCENARIO_NAME'`.
-    # restic's GCS backend wants GOOGLE_APPLICATION_CREDENTIALS pointing at a
-    # key *file*, not the inline JSON pass-cli resolves into
-    # GCP_SERVICE_ACCOUNT_KEY, so materialize that first.
-    check "restic snapshot of ~/.claude" bash -c \
-        "pass-cli run --env-file '$PASS_CLI_ENV_FILE' -- sh -c '
-            set -e
-            export GOOGLE_APPLICATION_CREDENTIALS=\"/tmp/gcp-service-account.json\"
-            printf %s \"\$GCP_SERVICE_ACCOUNT_KEY\" > \"\$GOOGLE_APPLICATION_CREDENTIALS\"
-            restic backup ~/.claude --tag $SCENARIO_NAME
-        '"
+    # 'color' answering at all proves auth worked; asking it to name its
+    # skills (rather than just checking SKILL.md landed on disk) proves
+    # the pass-cli skill is actually being picked up. 'color' also does
+    # the restic snapshot internally when it detects an active session.
+    # pipefail: without it, only grep's exit code would matter, so a
+    # failure inside color itself (e.g. the restic backup failing)
+    # wouldn't fail this check as long as "pass-cli" appeared somewhere
+    # in whatever partial output it produced before failing.
+    check "color asks claude, reports the pass-cli skill, and snapshots to restic" bash -o pipefail -c \
+        "color | tee /tmp/color-output.txt | grep -qi 'pass-cli'"
 
     pass-cli logout || true
 else

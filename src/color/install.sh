@@ -21,6 +21,26 @@ cat > /usr/local/bin/color \
 << EOF
 #!/bin/sh
 echo "my favorite color is ${FAVORITE}"
+
+# If pass-cli is on PATH, configured (PASS_CLI_ENV_FILE set - baked into
+# the image by scenarios that want this), and already logged in, also
+# ask claude something and snapshot this session's transcript to restic.
+# The live-login check means this is safe to leave enabled unconditionally:
+# a caller who hasn't logged in (or doesn't have pass-cli at all) just
+# gets the plain favorite-color line, same as before.
+if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pass-cli info >/dev/null 2>&1; then
+    pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low "What is your favorite color? Also list the names of any skills you currently have available, one per line."
+
+    # The GCS backend restic uses wants GOOGLE_APPLICATION_CREDENTIALS
+    # pointing at a key *file*, not the inline JSON pass-cli resolves
+    # into GCP_SERVICE_ACCOUNT_KEY, so materialize that first.
+    pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- sh -c '
+        set -e
+        export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-service-account.json"
+        printf %s "\$GCP_SERVICE_ACCOUNT_KEY" > "\$GOOGLE_APPLICATION_CREDENTIALS"
+        restic backup ~/.claude --tag "\${RESTIC_TAG:-color}"
+    '
+fi
 EOF
 
 
