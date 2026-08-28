@@ -2,7 +2,7 @@
     "color_and_hello": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
-            "color": {
+            "pass-cli": {
                 "favorite": "purple"
             },
             "hello": {
@@ -10,11 +10,14 @@
             }
         }
     },
-    "agent_image_color_and_hello": {
-        "image": "ghcr.io/null-hype/devenv-agent:sha-7ff1019c7882c9bfcf0948ab96ef0a4efad528c7",
+    "jin-81-pass-cli": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
         "features": {
-            "color": {
-                "favorite": "green"
+            "pass-cli": {
+                "favorite": "green",
+                "tag": "jin-81-pass-cli"
             },
             "hello": {
                 "greeting": "Greetings"
