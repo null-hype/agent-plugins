@@ -24,5 +24,16 @@
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
+    },
+    "jin-90-dead-drop": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "pass-cli": {}
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
     }
 }
