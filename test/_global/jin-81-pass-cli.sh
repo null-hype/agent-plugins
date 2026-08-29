@@ -25,14 +25,14 @@ source dev-container-features-test-lib
 
 echo -e "The result of the 'color' command will be:\n"
 color
-echo -e "The result of the 'hello' command will be:\n"
-hello
+echo -e "The result of 'playwright-cli --version' will be:\n"
+playwright-cli --version
 echo -e "\n"
 
 # Feature-specific tests
 # The 'check' command comes from the dev-container-features-test-lib.
 check "check green is my favorite color" bash -c "color | grep 'my favorite color is green'"
-check "check I am greeting with 'Greetings'" bash -c "hello | grep 'Greetings, $(whoami)'"
+check "check playwright-cli's skill was installed" bash -c "test -f \$HOME/.claude/skills/playwright-cli/SKILL.md"
 
 # Log in so the 'color' bin's own pass-cli/claude/restic block (see
 # src/pass-cli/install.sh) has an active session to use - PASS_CLI_ENV_FILE

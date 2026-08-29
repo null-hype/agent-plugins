@@ -1,12 +1,12 @@
 {
-    "color_and_hello": {
+    "color_and_playwright_cli": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
             "pass-cli": {
                 "favorite": "purple"
             },
-            "hello": {
-                "greeting": "Greetings"
+            "playwright-cli": {
+                "browser": "firefox"
             }
         }
     },
@@ -19,9 +19,7 @@
                 "favorite": "green",
                 "tag": "jin-81-pass-cli"
             },
-            "hello": {
-                "greeting": "Greetings"
-            }
+            "playwright-cli": {}
         },
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"

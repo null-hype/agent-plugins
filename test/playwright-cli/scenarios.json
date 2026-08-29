@@ -1,9 +1,9 @@
 {
-    "hello": {
+    "playwright-cli": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
-            "hello": {
-                "greeting": "hello"
+            "playwright-cli": {
+                "browser": "firefox"
             }
         }
     }
