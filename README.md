@@ -6,27 +6,27 @@
 
 ## Example Contents
 
-This repository contains a _collection_ of two Features - `hello` and `pass-cli`. These Features serve as simple feature implementations.  Each sub-section below shows a sample `devcontainer.json` alongside example usage of the Feature.
+This repository contains a _collection_ of two Features - `playwright-cli` and `pass-cli`. These Features serve as simple feature implementations.  Each sub-section below shows a sample `devcontainer.json` alongside example usage of the Feature.
 
-### `hello`
+### `playwright-cli`
 
-Running `hello` inside the built container will print the greeting provided to it via its `greeting` option.
+Installs the `@playwright/cli` npm package (the `playwright-cli` agent tool for driving a browser from the terminal), a browser for it to drive, and its Claude Code skill.
 
 ```jsonc
 {
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
-        "ghcr.io/devcontainers/feature-starter/hello:1": {
-            "greeting": "Hello"
+        "ghcr.io/devcontainers/feature-starter/playwright-cli:1": {
+            "browser": "firefox"
         }
     }
 }
 ```
 
 ```bash
-$ hello
+$ playwright-cli --version
 
-Hello, user.
+0.1.18
 ```
 
 ### `pass-cli`
@@ -56,7 +56,7 @@ Similar to the [`devcontainers/features`](https://github.com/devcontainers/featu
 
 ```
 ├── src
-│   ├── hello
+│   ├── playwright-cli
 │   │   ├── devcontainer-feature.json
 │   │   └── install.sh
 │   ├── pass-cli
@@ -127,7 +127,7 @@ By default, each Feature will be prefixed with the `<owner/<repo>` namespace.  F
 
 ```
 ghcr.io/devcontainers/feature-starter/pass-cli:1
-ghcr.io/devcontainers/feature-starter/hello:1
+ghcr.io/devcontainers/feature-starter/playwright-cli:1
 ```
 
 The provided GitHub Action will also publish a third "metadata" package with just the namespace, eg: `ghcr.io/devcontainers/feature-starter`.  This contains information useful for tools aiding in Feature discovery.
@@ -158,12 +158,12 @@ This index is from where [supporting tools](https://containers.dev/supporting) l
 
 ## Linear Releases
 
-Each Feature (`pass-cli`, `hello`) gets its own Linear release pipeline, created via `linear/linear-release-action@v0` in `.github/workflows/release.yaml`. The `linear-release` job runs after the `deploy` job (i.e. after Features actually publish to GHCR), one matrix entry per Feature, each scoped to its own directory via `include_paths` and using its own pipeline access key. Runs on `main` create a real release; runs on any other ref use the action's `dry_run` input.
+Each Feature (`pass-cli`, `playwright-cli`) gets its own Linear release pipeline, created via `linear/linear-release-action@v0` in `.github/workflows/release.yaml`. The `linear-release` job runs after the `deploy` job (i.e. after Features actually publish to GHCR), one matrix entry per Feature, each scoped to its own directory via `include_paths` and using its own pipeline access key. Runs on `main` create a real release; runs on any other ref use the action's `dry_run` input.
 
 **Repository secrets to create** (one Linear pipeline access key per Feature):
 
 - `LINEAR_KEY_COLOR`
-- `LINEAR_KEY_HELLO`
+- `LINEAR_KEY_PLAYWRIGHT_CLI`
 
 **Manual setup required in Linear:** each Feature needs its own release pipeline created by hand in Linear under **Settings → Releases** before its secret will work. Linear's Business plan caps pipelines at **15** — with 2 Features today we're well under that limit, but worth tracking if more Features get added.
 
@@ -179,8 +179,8 @@ An example `devcontainer.json` can be found below.
 {
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
-     "ghcr.io/my-org/private-features/hello:1": {
-            "greeting": "Hello"
+     "ghcr.io/my-org/private-features/playwright-cli:1": {
+            "browser": "firefox"
         }
     },
     "customizations": {

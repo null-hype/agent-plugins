@@ -1,0 +1,29 @@
+{
+    "name": "Playwright CLI",
+    "id": "playwright-cli",
+    "version": "1.0.0",
+    "description": "Installs the @playwright/cli npm package (the 'playwright-cli' agent tool for driving a browser from the terminal) and its Claude Code skill.",
+    "options": {
+        "version": {
+            "type": "string",
+            "default": "latest",
+            "description": "Version of the @playwright/cli npm package to install."
+        },
+        "browser": {
+            "type": "string",
+            "enum": [
+                "chromium",
+                "firefox",
+                "webkit"
+            ],
+            "default": "chromium",
+            "description": "Browser 'playwright-cli install-browser' downloads."
+        }
+    },
+    "dependsOn": {
+        "ghcr.io/devcontainers/features/node:1": {}
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
