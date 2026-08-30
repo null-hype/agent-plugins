@@ -35,5 +35,16 @@
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
+    },
+    "jin-91-resume-session": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "pass-cli": {}
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
     }
 }
