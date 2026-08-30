@@ -23,6 +23,14 @@
 # this scenario's .env) rather than provisioning a second copy under a
 # new vault item.
 #
+# JIN-92 split: the restic backup/restore steps below are scaffolding
+# only, not independently asserted here - "does restic back up/restore
+# correctly" is a deterministic, feature-internal property, covered by
+# test/pass-cli/restic-backup.sh instead. This scenario keeps only the
+# leaf that requires a live model call to resolve: does a real
+# `claude --resume` invocation faithfully reconstruct conversational
+# state from a transcript it didn't generate this run.
+#
 # This test can be run with the following command (from the root of this repo)
 #    devcontainer features test --global-scenarios-only .
 
@@ -84,13 +92,6 @@ pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- sh -c "
     printf %s \"\$GCP_SERVICE_ACCOUNT_KEY\" > \"\$GOOGLE_APPLICATION_CREDENTIALS\"
     restic restore latest --tag $RESTIC_TAG --target /
 "
-
-# Discriminates a restic/path problem from a `--resume` semantics
-# problem: if this fails, the snapshot didn't come back where expected;
-# if it passes and the codeword check below still fails, the problem is
-# in --resume itself.
-check "restored snapshot contains the session transcript" \
-    bash -c "ls \"\$HOME\"/.claude/projects/*/$SESSION_ID.jsonl"
 
 export PROTON_PASS_AGENT_REASON="jin-91-resume-session scenario: resuming restored session to read back the codeword"
 response="$(pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- claude -p \
