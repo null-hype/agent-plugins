@@ -8,7 +8,13 @@ FROM ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472f
 ENV PROTON_PASS_KEY_PROVIDER="fs"
 
 # SCENARIO_NAME: single source for this scenario's name, matching the
-# jin-81-pass-cli/jin-90-dead-drop Dockerfiles' convention.
+# jin-81-pass-cli/jin-90-dead-drop Dockerfiles' convention. Also kept
+# equal, by convention rather than any automatic derivation devcontainer
+# features support, to the "tag" option this scenario passes the
+# pass-cli feature in scenarios.json - that value becomes both the
+# restic tag AND the AGENT_ASSIGNMENT the 'color' bin uses internally
+# (see src/pass-cli/install.sh), so all three - SCENARIO_NAME,
+# RESTIC_TAG, AGENT_ASSIGNMENT - read the same string.
 ARG SCENARIO_NAME=jin-91-resume-session
 
 # Baked in at a known, absolute path so jin-91-resume-session.sh doesn't

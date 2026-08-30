@@ -41,7 +41,9 @@
             "dockerfile": "Dockerfile"
         },
         "features": {
-            "pass-cli": {}
+            "pass-cli": {
+                "tag": "jin-91-resume-session"
+            }
         },
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
