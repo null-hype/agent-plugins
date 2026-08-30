@@ -64,7 +64,12 @@ export PROTON_PASS_AGENT_REASON="jin-90-dead-drop scenario: planting dead-drop n
 pass-cli item create note --vault-name Test --title "$DROP_ID" --note "$NOTE_BODY"
 
 export PROTON_PASS_AGENT_REASON="jin-90-dead-drop scenario: running scoped agent turn to read the dead-drop"
-response="$(pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low --permission-mode dontAsk --allowedTools Bash "Use the pass-cli skill to view the note item titled '$DROP_ID' in the 'Test' vault. Reply with exactly one line: \"passphrase: <value>\", where <value> is the passphrase the note contains. Do not reproduce any other line from the note.")"
+# --allowedTools=Bash (equals form, not a space): --allowedTools takes a
+# variadic list of tool names, so `--allowedTools Bash "<prompt>"` swallows
+# the prompt itself as a second "tool name", leaving claude -p with no
+# prompt at all ("Input must be provided either through stdin or as a
+# prompt argument when using --print"). Confirmed live in CI.
+response="$(pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low --permission-mode dontAsk --allowedTools=Bash "Use the pass-cli skill to view the note item titled '$DROP_ID' in the 'Test' vault. Reply with exactly one line: \"passphrase: <value>\", where <value> is the passphrase the note contains. Do not reproduce any other line from the note.")"
 
 echo "$response" > /tmp/dead-drop-response.txt
 echo -e "\nAgent response:\n$response\n"
