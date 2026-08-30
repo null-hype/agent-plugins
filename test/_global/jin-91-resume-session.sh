@@ -10,18 +10,21 @@
 # is actually restorable, and that `claude --resume` on the restored
 # transcript picks up where the original session left off.
 #
-# Mechanism: plant a fresh, single-use codeword in a brand-new session
-# (fixed --session-id so it can be resumed later), restic-backup
-# ~/.claude/projects, move that directory aside locally to prove what
-# follows isn't just reading the untouched original, restic-restore the
-# snapshot, then --resume that same session id and ask for the codeword
-# back. Only ~/.claude/projects moves - not all of ~/.claude - since the
-# OAuth credential cache and installed pass-cli skill also live there
-# and both later claude invocations still need them intact.
+# Unlike the first version of this scenario, the plant/backup/move
+# aside/restore/resume/verify mechanism itself is NOT defined here: it's
+# baked into the 'color' bin's own "resume" subcommand (see
+# src/pass-cli/install.sh, `color resume`), matching the pattern the
+# 'color' bin already uses for its default backup behaviour (exercised
+# by jin-81-pass-cli.sh). This script's job is only to log in and then
+# exercise that bin like any real consumer of the feature would, not to
+# reimplement the behaviour under test.
 #
 # Reuses jin-81-pass-cli's restic/GCP secrets (shared backup infra, see
 # this scenario's .env) rather than provisioning a second copy under a
-# new vault item.
+# new vault item. The restic tag 'color resume' backs up to/restores
+# from comes from the pass-cli feature's own "tag" option, set in
+# scenarios.json to "jin-91-resume-session" to match this scenario's
+# name and Dockerfile SCENARIO_NAME (see that Dockerfile's comment).
 #
 # This test can be run with the following command (from the root of this repo)
 #    devcontainer features test --global-scenarios-only .
@@ -45,65 +48,25 @@ export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-scenario"
 pass-cli login
 pass-cli info
 
-# A fixed session id (rather than parsing one out of --output-format
-# json) is what makes step 2 below able to name the exact session to
-# resume without any string-scraping.
-SESSION_ID="$(cat /proc/sys/kernel/random/uuid)"
-CODEWORD="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-RESTIC_TAG="jin-91-resume-session"
-
 cleanup() {
     pass-cli logout || true
 }
 trap cleanup EXIT
 
-export PROTON_PASS_AGENT_REASON="jin-91-resume-session scenario: planting codeword in a fresh session"
-pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- claude -p \
-    --session-id "$SESSION_ID" --model haiku --effort low \
-    --permission-mode dontAsk --allowedTools=Bash \
-    "Remember that the codeword is $CODEWORD. Reply with exactly one line: ok"
-
-echo -e "\nBacking up ~/.claude/projects (tag: $RESTIC_TAG) and moving the local copy aside...\n"
-pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- sh -c "
-    set -e
-    export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-service-account.json
-    printf %s \"\$GCP_SERVICE_ACCOUNT_KEY\" > \"\$GOOGLE_APPLICATION_CREDENTIALS\"
-    restic backup \$HOME/.claude/projects --tag $RESTIC_TAG
-"
-# Move only the transcript directory aside, not the whole ~/.claude tree:
-# that tree also holds the OAuth credential cache and the installed
-# pass-cli skill, neither of which this scenario is testing the
-# restorability of, and both of which the next two claude invocations
-# still need to behave like the first one.
-mv "$HOME/.claude/projects" "$HOME/.claude-projects-preresume"
-
-echo -e "\nRestoring the snapshot...\n"
-pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- sh -c "
-    set -e
-    export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-service-account.json
-    printf %s \"\$GCP_SERVICE_ACCOUNT_KEY\" > \"\$GOOGLE_APPLICATION_CREDENTIALS\"
-    restic restore latest --tag $RESTIC_TAG --target /
-"
-
-# Discriminates a restic/path problem from a `--resume` semantics
-# problem: if this fails, the snapshot didn't come back where expected;
-# if it passes and the codeword check below still fails, the problem is
-# in --resume itself.
-check "restored snapshot contains the session transcript" \
-    bash -c "ls \"\$HOME\"/.claude/projects/*/$SESSION_ID.jsonl"
-
-export PROTON_PASS_AGENT_REASON="jin-91-resume-session scenario: resuming restored session to read back the codeword"
-response="$(pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- claude -p \
-    --resume "$SESSION_ID" --model haiku --effort low \
-    --permission-mode dontAsk --allowedTools=Bash \
-    "What was the codeword? Reply with exactly one line: \"codeword: <value>\".")"
-
-echo "$response" > /tmp/resume-response.txt
-echo -e "\nAgent response:\n$response\n"
+echo -e "\nRunning 'color resume'...\n"
+# Capture 'color resume's own exit status via PIPESTATUS rather than
+# the pipeline's (which would just be tee's, always 0): a failure in
+# 'color resume' (e.g. the restored snapshot missing the transcript, or
+# the resumed session not recalling the codeword) needs to fail this
+# scenario, not just print a message and carry on.
+color resume | tee /tmp/resume-response.txt
+resume_status="${PIPESTATUS[0]}"
+echo -e "\nAgent response:\n$(cat /tmp/resume-response.txt)\n"
 
 # Feature-specific tests
 # The 'check' command comes from the dev-container-features-test-lib.
-check "restored session recalls the codeword planted before backup" bash -c "grep -q '$CODEWORD' /tmp/resume-response.txt"
+check "'color resume' exits successfully" bash -c "exit $resume_status"
+check "restored session recalls the codeword planted before backup" bash -c "grep -q 'codeword:' /tmp/resume-response.txt"
 
 # Report result
 # If any of the checks above exited with a non-zero exit code, the test will fail.
