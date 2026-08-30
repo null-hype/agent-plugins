@@ -16,7 +16,8 @@ ARG SCENARIO_NAME=jin-91-resume-session
 # the running container.
 COPY .env /opt/pass-cli/${SCENARIO_NAME}.env
 
-# Restic/GCP secrets here are jin-81-pass-cli's, not a new JIN-91 vault
-# item: restic repo/password/GCP creds are shared backup infra, not
-# something this scenario needs its own copy of.
+# This scenario's .env has no vault item of its own: the claude token
+# comes from the shared 'anthropic.ai' vault (one token, many scenarios)
+# and the restic/GCP secrets come from JIN-81's restic vault (shared
+# backup infra) - both referenced, not duplicated.
 ENV PASS_CLI_ENV_FILE="/opt/pass-cli/${SCENARIO_NAME}.env"
