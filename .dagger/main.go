@@ -155,3 +155,31 @@ func (m *AgentPlugins) CheckKeepalive(ctx context.Context) error {
 		Stdout(ctx)
 	return err
 }
+
+// TriggerRenderCron POSTs Render's "trigger cron job run" endpoint
+// (https://api-docs.render.com/reference/run-cron-job) to manually kick a
+// run of a Render Cron Job, instead of waiting for its schedule -- e.g.
+// from a GitHub Actions workflow_dispatch right after publishing a new
+// image. Ported from devenv-base's TriggerRenderCron (JIN-108): ID/API key
+// resolution now lives entirely with the caller (a plain string and a
+// Dagger secret) rather than being hardcoded to one project's Proton Pass
+// layout, so this function is reusable for any Render Cron Job.
+func (m *AgentPlugins) TriggerRenderCron(
+	ctx context.Context,
+	cronJobID string,
+	renderAPIKey *dagger.Secret,
+) (string, error) {
+	return dag.Container().
+		From("alpine:latest").
+		WithExec([]string{"apk", "add", "--no-cache", "bash", "curl"}).
+		WithFile(
+			"/app/trigger-render-cron.sh",
+			dag.CurrentModule().Source().File("scripts/trigger-render-cron.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755},
+		).
+		WithWorkdir("/app").
+		WithEnvVariable("RENDER_CRON_JOB_ID", cronJobID).
+		WithSecretVariable("RENDER_API_KEY", renderAPIKey).
+		WithExec([]string{"bash", "trigger-render-cron.sh"}).
+		Stdout(ctx)
+}
