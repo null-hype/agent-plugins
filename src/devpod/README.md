@@ -36,5 +36,17 @@ never ran.
 
 ## Dependencies
 
-This feature depends on `pass-cli` (`dependsOn`), since the installed
-`.env` file is only useful when resolved through `pass-cli run`.
+This feature only writes a static `pass://`-reference file; it doesn't
+itself install a `pass-cli` binary, and needs one on `PATH` at runtime to
+be useful. Declared via `installsAfter: ["pass-cli"]` so ordering is
+correct when both are present in the same devcontainer.json.
+
+Not `dependsOn`: the devcontainer CLI's local-feature test harness
+(`devcontainer features test -f devpod`) resolves a relative `dependsOn`
+path against the generated test `devcontainer.json`'s own `.devcontainer/`
+directory and refuses to resolve anything outside it ("Local file path
+parse error. Resolved path must be a child of the .devcontainer/
+folder."), so a same-repo `src/pass-cli` reference can't be expressed as a
+hard dependency here without publishing `pass-cli` to a registry first.
+`installsAfter` doesn't hit that resolution path, since it's soft ordering
+rather than a fetch.
