@@ -42,8 +42,17 @@ GIT_REF=${DEVPOD_GCE_GIT_REF:-main}
 # retry -- observed live against JIN-40. 90m comfortably covers the gap
 # between keepalive runs.
 INACTIVITY_TIMEOUT=${DEVPOD_GCE_INACTIVITY_TIMEOUT:-90m}
-ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/gcloud.env"
+# Fixed path, not an option: the 'devpod' devcontainer feature
+# (src/devpod) installs this file (pass:// references only) as part of
+# its install.sh. Absent means the feature install didn't run -- error
+# out rather than silently skipping credential resolution.
+ENV_FILE=".agent/skills/devpod/.env"
 LIB_FILE="$(dirname "${BASH_SOURCE[0]}")/lib/gce-common.sh"
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "devpod-gce.sh: $ENV_FILE not found -- the 'devpod' feature must be installed before this script runs" >&2
+  exit 1
+fi
 
 source "$LIB_FILE"
 gce_common_reserve_sa_key_file

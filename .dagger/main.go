@@ -324,7 +324,10 @@ func (m *AgentPlugins) RecreateDevpod(
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
 		WithFile(
-			"/app/.devcontainer/gcloud.env",
+			// Fixed path the 'devpod' devcontainer feature (src/devpod)
+			// installs at runtime -- pass:// references only, no vault-path
+			// option. See src/devpod/README.md for the vault item/keys.
+			"/app/.agent/skills/devpod/.env",
 			dag.CurrentModule().Source().File("scripts/devpod/devcontainer/gcloud.env"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
