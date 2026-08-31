@@ -212,6 +212,21 @@ func withContainerUse(c *dagger.Container) *dagger.Container {
 		WithExec([]string{"cp", "/root/.local/bin/container-use", "/usr/local/bin/cu"})
 }
 
+// withGcloud installs the gcloud CLI onto c. Runs its own apt-get update
+// (via withAptPackages) rather than assuming a caller already refreshed the
+// package cache.
+func withGcloud(c *dagger.Container) *dagger.Container {
+	c = withAptPackages(c, "apt-transport-https", "gnupg").
+		WithExec([]string{"sh", "-c", "curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg"}).
+		WithExec([]string{"sh", "-c", `echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list`})
+	return withAptPackages(c, "google-cloud-cli")
+}
+
+// withDevpod installs the DevPod CLI onto c.
+func withDevpod(c *dagger.Container) *dagger.Container {
+	return c.WithExec([]string{"sh", "-c", "curl -fsSL \"https://github.com/loft-sh/devpod/releases/latest/download/devpod-linux-$(dpkg --print-architecture)\" -o /usr/local/bin/devpod && chmod +x /usr/local/bin/devpod"})
+}
+
 // withClaude installs the Claude Code CLI onto c via its native installer.
 func withClaude(c *dagger.Container) *dagger.Container {
 	return c.
@@ -253,6 +268,71 @@ func (m *AgentPlugins) CheckAgent(ctx context.Context) error {
 		return fmt.Errorf("claude: %w", err)
 	}
 	return assertVersionLike(out)
+}
+
+// Gcloud layers the gcloud CLI onto the same container-use chain (git,
+// docker, dagger CLI, container-use) that Agent builds on, minus
+// Tailscale/Claude -- it's a direct dependency of Devpod/RecreateDevpod
+// below, not of Agent.
+func (m *AgentPlugins) Gcloud(
+	// +optional
+	platform dagger.Platform,
+) *dagger.Container {
+	return withGcloud(withContainerUse(withGit(withDocker(withDaggerCli(m.PassCli(platform))))))
+}
+
+// Devpod layers the DevPod CLI onto Gcloud.
+func (m *AgentPlugins) Devpod(
+	// +optional
+	platform dagger.Platform,
+) *dagger.Container {
+	return withDevpod(m.Gcloud(platform))
+}
+
+// RecreateDevpod runs `.devcontainer/devpod-gce.sh --reset` inside the
+// Devpod image, for a GitHub Actions workflow_dispatch to reprovision the
+// devenv-base GCE box on demand without installing devpod/gcloud/restic/
+// pass-cli on the runner itself. Ported from devenv-base (JIN-105);
+// devpod-gce.sh, gce-common.sh and gcloud.env are unchanged from that repo
+// -- this still reprovisions devenv-base's own GCE workspace (see
+// devpod-gce.sh's DEVPOD_GCE_GIT_URL default), just invoked from this
+// module instead. PROTON_PASS_KEY_PROVIDER is set explicitly here (fs)
+// because, unlike a devcontainer session, nothing else in this container
+// sets it -- devpod-gce.sh itself doesn't, since it normally inherits that
+// from devcontainer.json's remoteEnv. protonPassToken is a *dagger.Secret,
+// not a plain string, so it never lands in Dagger's cache/plan output or
+// GitHub Actions logs.
+//
+// --reset, not --recreate: `devpod up --recreate` only rebuilds the
+// container from whatever devcontainer.json is already checked out on the
+// box -- it does NOT re-fetch the git source. --reset re-clones from
+// origin so a new commit actually lands (see devpod-gce.sh for the full
+// history behind this).
+func (m *AgentPlugins) RecreateDevpod(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+) (string, error) {
+	return m.Devpod("linux/amd64").
+		WithFile(
+			"/app/.devcontainer/devpod-gce.sh",
+			dag.CurrentModule().Source().File("scripts/devpod/devpod-gce.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755},
+		).
+		WithFile(
+			"/app/.devcontainer/lib/gce-common.sh",
+			dag.CurrentModule().Source().File("scripts/devpod/devcontainer/lib/gce-common.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		WithFile(
+			"/app/.devcontainer/gcloud.env",
+			dag.CurrentModule().Source().File("scripts/devpod/devcontainer/gcloud.env"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		WithWorkdir("/app").
+		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", ".devcontainer/devpod-gce.sh", "--reset"}).
+		Stdout(ctx)
 }
 
 // withNode installs Node 22.x onto c via nodesource -- bookworm-slim ships
