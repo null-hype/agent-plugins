@@ -5,7 +5,7 @@
     "description": "Installs '.agent/skills/devpod/.env' (pass:// references only, no secret values) so devpod-gce.sh and other devpod/gcloud callers can resolve GCE/restic/GitHub credentials via 'pass-cli run --env-file .agent/skills/devpod/.env --'. No vault-path option: the vault item is fixed (see README).",
     "options": {},
     "dependsOn": {
-        "./pass-cli": {}
+        "../src/pass-cli": {}
     },
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"
