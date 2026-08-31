@@ -1,0 +1,32 @@
+name: "CI - devpod Dagger checks"
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".dagger/devpod/**"
+      - "dagger.json"
+  pull_request:
+    paths:
+      - ".dagger/devpod/**"
+      - "dagger.json"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        check:
+          - check-manifest-absent
+          - check-manifest-vars
+          - check-composed-commands
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "dagger call devpod ${{ matrix.check }}"
+        uses: dagger/dagger-for-github@v8
+        with:
+          verb: call
+          module: .
+          args: devpod ${{ matrix.check }}

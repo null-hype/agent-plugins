@@ -4,5 +4,11 @@
   "sdk": {
     "source": "go"
   },
-  "source": ".dagger"
+  "source": ".dagger",
+  "dependencies": [
+    {
+      "name": "devpod",
+      "source": "github.com/null-hype/agent-plugins/.dagger/devpod@jin-105"
+    }
+  ]
 }
