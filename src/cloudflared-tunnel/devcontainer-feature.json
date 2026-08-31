@@ -1,0 +1,31 @@
+{
+    "name": "Cloudflared Tunnel",
+    "id": "cloudflared-tunnel",
+    "version": "1.0.0",
+    "description": "Installs cloudflared and a 'start-cloudflared-tunnel' bin that idempotently starts a Cloudflare Tunnel connector (pass-cli-resolved token) in the background, fronting a local port with a public hostname.",
+    "options": {
+        "hostname": {
+            "type": "string",
+            "default": "agent.tidelands.dev",
+            "description": "Public hostname the tunnel routes to this container (informational: the actual routing is configured server-side on the tunnel itself; this is used only in the installed bin's log output and comments)."
+        },
+        "localPort": {
+            "type": "string",
+            "default": "8080",
+            "description": "Local port the tunnel fronts (informational, same caveat as 'hostname' - the tunnel's ingress config, provisioned separately via the Cloudflare API, is what actually routes to it)."
+        },
+        "tunnelId": {
+            "type": "string",
+            "default": "",
+            "description": "Cloudflare Tunnel id, e.g. the '<tunnel-id>' in '<tunnel-id>.cfargotunnel.com' (informational only - the running connector's identity actually comes from the resolved CLOUDFLARE_TUNNEL_TOKEN, not this value). Leave blank if unknown."
+        },
+        "tokenSecretPath": {
+            "type": "string",
+            "default": "development/cloudflare/CLOUDFLARE_TUNNEL_TOKEN",
+            "description": "pass-cli path resolving to the Cloudflare Tunnel connector token (CLOUDFLARE_TUNNEL_TOKEN)."
+        }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}

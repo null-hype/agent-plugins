@@ -1,0 +1,13 @@
+{
+    "cloudflared-tunnel": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "cloudflared-tunnel": {
+                "hostname": "example.test",
+                "localPort": "9090",
+                "tunnelId": "test-tunnel-id",
+                "tokenSecretPath": "development/example/CLOUDFLARE_TUNNEL_TOKEN"
+            }
+        }
+    }
+}
