@@ -1,0 +1,22 @@
+{
+    "name": "Tailscale",
+    "id": "tailscale",
+    "version": "1.0.0",
+    "description": "Join a Tailscale tailnet at container start, using a Pass-sourced (Proton Pass via pass-cli) auth key. Installs a 'tailscale-up' bin intended to be run via postStartCommand.",
+    "options": {
+        "hostname": {
+            "type": "string",
+            "default": "devcontainer",
+            "description": "Hostname to advertise on the tailnet (tailscale up --hostname)."
+        },
+        "authkeySecretPath": {
+            "type": "string",
+            "default": "development/rant.local/TS_AUTHKEY",
+            "description": "pass-cli secret path (pass://<path>) that resolves to the Tailscale auth key."
+        }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils",
+        "ghcr.io/null-hype/agent-plugins/pass-cli"
+    ]
+}
