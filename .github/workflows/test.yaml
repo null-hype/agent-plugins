@@ -15,6 +15,7 @@ jobs:
         features:
           - pass-cli
           - playwright-cli
+          - devpod
         baseImage:
           - debian:latest
           - ubuntu:latest
