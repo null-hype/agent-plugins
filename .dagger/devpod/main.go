@@ -250,14 +250,21 @@ func declaredManifestVars(manifest string) []string {
 	return vars
 }
 
-// referencedVars finds every $VAR / ${VAR} reference across the given shell
-// source, restricted to names declaredManifestVars found in the manifest --
-// i.e. "of the vars the manifest declares, which ones do the scripts
-// actually use". Also derived by reading, not hardcoded.
+// referencedVars finds every mention of each candidate var name across the
+// given shell source, restricted to names declaredManifestVars found in the
+// manifest -- i.e. "of the vars the manifest declares, which ones do the
+// scripts actually use". Also derived by reading, not hardcoded.
+//
+// A plain word-boundary match, not just $VAR/${VAR}: gce-common.sh's restic
+// helpers never interpolate RESTIC_REPOSITORY/RESTIC_PASSWORD in shell --
+// the restic CLI itself reads those two natively from its environment, so
+// the script only ever *mentions* them, in a comment explaining exactly
+// that ("read natively by the restic CLI"). Requiring literal $VAR syntax
+// would make this check reject a real, correctly-used credential.
 func referencedVars(shellSource string, candidates []string) []string {
 	set := map[string]bool{}
 	for _, v := range candidates {
-		re := regexp.MustCompile(`\$\{?` + regexp.QuoteMeta(v) + `\b`)
+		re := regexp.MustCompile(`\b` + regexp.QuoteMeta(v) + `\b`)
 		if re.MatchString(shellSource) {
 			set[v] = true
 		}
