@@ -212,7 +212,7 @@ func hasIDEFlag(args []string) bool {
 // with no credentials.
 // +check
 func (m *Devpod) CheckManifestAbsent(ctx context.Context) error {
-	out, err := m.Image("linux/amd64").
+	ctr := m.Image("linux/amd64").
 		WithFile(
 			"/app/.devcontainer/devpod-gce.sh",
 			dag.CurrentModule().Source().File("scripts/devpod-gce.sh"),
@@ -225,11 +225,19 @@ func (m *Devpod) CheckManifestAbsent(ctx context.Context) error {
 		).
 		WithWorkdir("/app").
 		WithEnvVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", "fake-token-for-check-only").
-		WithExec([]string{"bash", ".devcontainer/devpod-gce.sh"}, dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny}).
-		Stdout(ctx)
+		WithExec([]string{"bash", ".devcontainer/devpod-gce.sh"}, dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
+
+	// devpod-gce.sh writes its "manifest not found" message to stderr
+	// (>&2), not stdout -- Stdout(ctx) alone came back empty here.
+	stdout, err := ctr.Stdout(ctx)
 	if err != nil {
-		return fmt.Errorf("running devpod-gce.sh without a manifest: %w", err)
+		return fmt.Errorf("running devpod-gce.sh without a manifest (stdout): %w", err)
 	}
+	stderr, err := ctr.Stderr(ctx)
+	if err != nil {
+		return fmt.Errorf("running devpod-gce.sh without a manifest (stderr): %w", err)
+	}
+	out := stdout + stderr
 	const want = "not found -- the 'devpod' feature must be installed"
 	if !strings.Contains(out, want) {
 		return fmt.Errorf("devpod-gce.sh without a manifest: expected output to contain %q, got:\n%s", want, out)
