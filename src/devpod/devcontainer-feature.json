@@ -6,6 +6,6 @@
     "options": {},
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils",
-        "pass-cli"
+        "./pass-cli"
     ]
 }
