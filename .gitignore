@@ -1,0 +1,8 @@
+/dagger.gen.go
+/internal/dagger
+/internal/telemetry
+/.env
+/claude-home.tar.gz
+linear-agent/dist/
+linear-agent/.bin/
+linear-agent/node_modules/
