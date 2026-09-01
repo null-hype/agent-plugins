@@ -26,6 +26,27 @@ hooks {
         steps = linters
     }
     ["check"] {
-        steps = linters
+        steps = (linters) {
+            ["restic-check"] {
+                check {
+                    command = "bash .dagger/internal/devenv-base/hk/restic-check.sh"
+                    effect = "read"
+                }
+            }
+        }
+    }
+    ["pre-push"] {
+        steps {
+            // Syncs pushed commits to the Linear "Development" release.
+            // See .dagger/internal/devenv-base/hk/linear-release-sync.sh.
+            ["linear-release"] {
+                check = "bash .dagger/internal/devenv-base/hk/linear-release-sync.sh"
+            }
+            // Backs up ~/.claude to the shared restic repo (disaster
+            // recovery only). See .dagger/internal/devenv-base/hk/claude-session-backup.sh.
+            ["claude-session-backup"] {
+                check = "bash .dagger/internal/devenv-base/hk/claude-session-backup.sh"
+            }
+        }
     }
 }
