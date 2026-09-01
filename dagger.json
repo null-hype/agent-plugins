@@ -4,5 +4,11 @@
   "sdk": {
     "source": "go"
   },
+  "dependencies": [
+    {
+      "name": "devenv-base",
+      "source": ".dagger/internal/devenv-base"
+    }
+  ],
   "source": ".dagger"
 }
