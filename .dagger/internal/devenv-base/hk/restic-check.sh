@@ -9,5 +9,7 @@ gce_common_reserve_sa_key_file
 export SA_KEY_FILE
 export -f gce_common_write_sa_key
 
+export PROTON_PASS_AGENT_REASON="restic-check hook: fetch GCP SA key + restic repo credentials to verify repo integrity"
+
 pass-cli run --env-file "$DIR/../.devcontainer/gcloud.env" -- \
   bash -c 'gce_common_write_sa_key && restic check'
