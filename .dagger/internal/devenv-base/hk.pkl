@@ -33,6 +33,17 @@ hooks {
                     effect = "read"
                 }
             }
+            // Vault existence contract (JIN-116): every `pass://` ref in
+            // this repo's env files must resolve to a vault/item declared
+            // in pkl/Vaults.pkl, and every declared vault/item must
+            // actually exist in Proton Pass. Read-only (vault/item
+            // listings only, no field values).
+            ["vault-inventory"] {
+                check {
+                    command = "bash hk/capture-vault-inventory.sh && mise exec -- pkl test pkl/Vaults.test.pkl"
+                    effect = "read"
+                }
+            }
             // Syncs pushed commits to the Linear "Development" release.
             // Runs here (not pre-push) since it's a post-push sync, not a
             // push gate -- a stale pass-cli session or a renamed vault
