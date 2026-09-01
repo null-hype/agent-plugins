@@ -21,6 +21,12 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 mise install --cd "$REPO_ROOT"
 
+# mise install only puts binaries on PATH; it doesn't wire git hooks, and
+# .git/hooks isn't tracked by git, so this needs to run on every fresh
+# clone/container (a rebuild counts as fresh -- past manual `hk install`
+# runs don't survive it).
+(cd "$REPO_ROOT" && hk install)
+
 if ! command -v make >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1 || ! command -v restic >/dev/null 2>&1; then
   sudo apt-get update
   sudo apt-get install -y make tmux restic
