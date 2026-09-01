@@ -13,7 +13,7 @@
     "--cap-add=NET_RAW",
     "--device=/dev/net/tun"
   ],
-  "postAttachCommand": "bash .devcontainer/verify-tools.sh",
+  "postAttachCommand": "bash .dagger/internal/devenv-base/.devcontainer/verify-tools.sh",
   "remoteEnv": {
     "PROTON_PASS_KEY_PROVIDER": "fs",
     "GOOGLE_APPLICATION_CREDENTIALS": "/home/vscode/.config/gcloud/devpod-sa.json"
