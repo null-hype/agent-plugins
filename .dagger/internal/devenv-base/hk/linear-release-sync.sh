@@ -7,5 +7,6 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+export PROTON_PASS_AGENT_REASON="placeholder"
 pass-cli run --env-file "$DIR/../linear-release.env" -- \
   linear-release sync --name "Development"

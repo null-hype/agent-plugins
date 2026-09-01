@@ -9,6 +9,7 @@ source "$DIR/../.devcontainer/lib/gce-common.sh"
 
 gce_common_reserve_sa_key_file
 export SA_KEY_FILE
+export PROTON_PASS_AGENT_REASON="placeholder"
 export -f gce_common_write_sa_key gce_common_restic_push_claude_session
 
 # Best-effort: this is disaster recovery only (see comment above), so a
