@@ -33,15 +33,20 @@ hooks {
                     effect = "read"
                 }
             }
+            // Syncs pushed commits to the Linear "Development" release.
+            // Runs here (not pre-push) since it's a post-push sync, not a
+            // push gate -- a stale pass-cli session or a renamed vault
+            // should never block `git push`. See hk/linear-release-sync.sh.
+            ["linear-release"] {
+                check {
+                    command = "bash hk/linear-release-sync.sh"
+                    effect = "read"
+                }
+            }
         }
     }
     ["pre-push"] {
         steps {
-            // Syncs pushed commits to the Linear "Development" release.
-            // See hk/linear-release-sync.sh.
-            ["linear-release"] {
-                check = "bash hk/linear-release-sync.sh"
-            }
             // Backs up ~/.claude to the shared restic repo (disaster
             // recovery only). See hk/claude-session-backup.sh.
             ["claude-session-backup"] {
