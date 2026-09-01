@@ -5,6 +5,22 @@ if ! command -v claude >/dev/null 2>&1; then
   curl -fsSL https://claude.ai/install.sh | bash
 fi
 
+if ! command -v mise >/dev/null 2>&1; then
+  curl -fsSL https://mise.run | sh
+fi
+export PATH="$HOME/.local/bin:$PATH"
+
+# Activate mise (adds its shims to PATH) for this script's own use, and
+# persist activation for future interactive shells (mise install alone
+# doesn't put installed tools like hk on PATH).
+eval "$(mise activate bash)"
+if ! grep -q 'mise activate bash' "$HOME/.bashrc" 2>/dev/null; then
+  echo 'eval "$(mise activate bash)"' >> "$HOME/.bashrc"
+fi
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+mise install --cd "$REPO_ROOT"
+
 if ! command -v make >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1 || ! command -v restic >/dev/null 2>&1; then
   sudo apt-get update
   sudo apt-get install -y make tmux restic

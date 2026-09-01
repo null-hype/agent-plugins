@@ -12,6 +12,7 @@
     "--cap-add=NET_RAW",
     "--device=/dev/net/tun"
   ],
+  "postCreateCommand": "bash .dagger/internal/devenv-base/.devcontainer/install-tools.sh",
   "postAttachCommand": "bash .dagger/internal/devenv-base/.devcontainer/verify-tools.sh",
   "remoteEnv": {
     "PROTON_PASS_KEY_PROVIDER": "fs",
