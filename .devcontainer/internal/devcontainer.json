@@ -1,0 +1,22 @@
+{
+  "name": "tidelands.dev",
+  "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": { "username": "vscode" },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
+  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW",
+    "--device=/dev/net/tun"
+  ],
+  "postCreateCommand": "bash .dagger/internal/devenv-base/.devcontainer/install-tools.sh",
+  "postAttachCommand": "bash .dagger/internal/devenv-base/.devcontainer/verify-tools.sh",
+  "remoteEnv": {
+    "PROTON_PASS_KEY_PROVIDER": "fs",
+    "GOOGLE_APPLICATION_CREDENTIALS": "/home/vscode/.config/gcloud/devpod-sa.json"
+  },
+  "remoteUser": "vscode"
+}

@@ -29,29 +29,28 @@ hooks {
         steps = (linters) {
             ["restic-check"] {
                 check {
-                    command = "bash .dagger/internal/devenv-base/hk/restic-check.sh"
+                    command = "bash hk/restic-check.sh"
                     effect = "read"
                 }
             }
             // Vault existence contract (JIN-116): every `pass://` ref in
             // this repo's env files must resolve to a vault/item declared
-            // in .dagger/internal/devenv-base/pkl/Vaults.pkl, and every
-            // declared vault/item must actually exist in Proton Pass.
-            // Read-only (vault/item listings only, no field values).
+            // in pkl/Vaults.pkl, and every declared vault/item must
+            // actually exist in Proton Pass. Read-only (vault/item
+            // listings only, no field values).
             ["vault-inventory"] {
                 check {
-                    command = "bash .dagger/internal/devenv-base/hk/capture-vault-inventory.sh && mise exec -- pkl test .dagger/internal/devenv-base/pkl/Vaults.test.pkl"
+                    command = "bash hk/capture-vault-inventory.sh && mise exec -- pkl test pkl/Vaults.test.pkl"
                     effect = "read"
                 }
             }
             // Syncs pushed commits to the Linear "Development" release.
             // Runs here (not pre-push) since it's a post-push sync, not a
             // push gate -- a stale pass-cli session or a renamed vault
-            // should never block `git push`. See
-            // .dagger/internal/devenv-base/hk/linear-release-sync.sh.
+            // should never block `git push`. See hk/linear-release-sync.sh.
             ["linear-release"] {
                 check {
-                    command = "bash .dagger/internal/devenv-base/hk/linear-release-sync.sh"
+                    command = "bash hk/linear-release-sync.sh"
                     effect = "read"
                 }
             }
@@ -60,9 +59,9 @@ hooks {
     ["pre-push"] {
         steps {
             // Backs up ~/.claude to the shared restic repo (disaster
-            // recovery only). See .dagger/internal/devenv-base/hk/claude-session-backup.sh.
+            // recovery only). See hk/claude-session-backup.sh.
             ["claude-session-backup"] {
-                check = "bash .dagger/internal/devenv-base/hk/claude-session-backup.sh"
+                check = "bash hk/claude-session-backup.sh"
             }
         }
     }

@@ -1,0 +1,85 @@
+name: devenv-base-publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.dagger/internal/devenv-base/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.set.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # main.go/checks.go/dagger.json/go.{mod,sum} feed every image (they
+      # hold the shared Base/PassCli/.../Devpod chain everything else layers
+      # onto), so a change there re-publishes all five. keepalive/** and
+      # linear-agent/** only feed their own image on top of that chain.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          filters: |
+            common:
+              - '.dagger/internal/devenv-base/main.go'
+              - '.dagger/internal/devenv-base/checks.go'
+              - '.dagger/internal/devenv-base/dagger.json'
+              - '.dagger/internal/devenv-base/go.mod'
+              - '.dagger/internal/devenv-base/go.sum'
+            keepalive:
+              - '.dagger/internal/devenv-base/keepalive/**'
+            linear_agent:
+              - '.dagger/internal/devenv-base/linear-agent/**'
+
+      # workflow_dispatch is an explicit manual request with no "before"
+      # commit to diff against, so it always publishes everything.
+      - id: set
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ steps.filter.outputs.common }}" = "true" ]; then
+            targets='["publish","publish-playwright","publish-agent","publish-keepalive","publish-linear-agent"]'
+          else
+            targets=$(jq -nc \
+              --argjson keepalive '${{ steps.filter.outputs.keepalive == 'true' }}' \
+              --argjson linear_agent '${{ steps.filter.outputs.linear_agent == 'true' }}' \
+              '[if $keepalive then "publish-keepalive" else empty end,
+                if $linear_agent then "publish-linear-agent" else empty end]')
+          fi
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: changes
+    if: needs.changes.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      # These images share no build dependency (Playwright and Agent both
+      # branch off Base/PassCli independently of Devpod's chain, and
+      # Keepalive and LinearAgent each just add a bit on top of the
+      # already-built Devpod chain), so each target gets its own runner
+      # instead of running as sequential steps in one job - that was
+      # serializing the slow Playwright (Chromium/FFmpeg download) build in
+      # front of the others for no reason.
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.changes.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Runs on GitHub's amd64 runners, building multi-platform
+      # (amd64 + arm64) images via Container.PlatformVariants — publishing
+      # from a local machine risks shipping a single-arch image matching
+      # only that machine's architecture.
+      - uses: dagger/dagger-for-github@v8.4.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          verb: call
+          workdir: .dagger/internal/devenv-base
+          args: ${{ matrix.target }} --tag=sha-${{ github.sha }} --github-user=${{ github.actor }} --github-token=env:GITHUB_TOKEN

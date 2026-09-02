@@ -1,0 +1,25 @@
+name: devenv-base-checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.dagger/internal/devenv-base/**'
+  pull_request:
+    paths:
+      - '.dagger/internal/devenv-base/**'
+
+jobs:
+  dagger-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          verb: check
+          workdir: .dagger/internal/devenv-base
+        env:
+          # Enables cross-run distributed build caching via Dagger Cloud.
+          # Source of truth: pass://development/devenv-base/DAGGER_CLOUD_TOKEN
+          # (mirrored into this repo's Actions secrets; rotate there first).
+          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}

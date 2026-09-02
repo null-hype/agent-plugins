@@ -1,0 +1,95 @@
+/// Vault existence contract: every `pass://` ref used in this repo must
+/// resolve to a vault/item declared in Vaults.pkl, and everything declared
+/// must actually exist in Proton Pass. This is the check that would have
+/// caught JIN-116 -- a stale/renamed vault fails here, at `hk check` time,
+/// with a specific "declared item not present" fact instead of a stack of
+/// pass-cli causes at push time.
+///
+/// Run `hk/capture-vault-inventory.sh` before this (it writes
+/// ../build/vaults-observed.json) -- see the "vault-inventory" step in
+/// hk.pkl. This module does no network I/O itself.
+amends "pkl:test"
+
+import "pkl:json"
+import "Vaults.pkl" as spec
+
+/// env files in this repo that may contain `pass://` refs.
+local envFiles: Listing<String> = new {
+  "../linear-release.env"
+  "../.devcontainer/gcloud.env"
+}
+
+local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)
+
+local function refsIn(path: String): Listing<Dynamic> = new Listing {
+  for (line in read(path).text.split("\n")) {
+    for (m in refPattern.findMatchesIn(line)) {
+      new Dynamic {
+        vaultName = m.groups[1]!!.value
+        itemName = m.groups[2]!!.value
+        field = m.groups[3]!!.value
+        source = path
+      }
+    }
+  }
+}
+
+local allRefs: Listing<Dynamic> = new Listing {
+  for (f in envFiles) {
+    ...refsIn(f)
+  }
+}
+
+local function isDeclared(vaultName: String, itemName: String): Boolean =
+  spec.declared.toList().any((v) -> v.name == vaultName && v.items.toList().contains(itemName))
+
+local observed: Dynamic = new json.Parser {}.parse(read("../build/vaults-observed.json").text)
+
+local function observedVault(name: String): Dynamic? =
+  observed.vaults.toList().findOrNull((v) -> v.name == name)
+
+local function observedItems(vaultName: String): List<String> =
+  (observedVault(vaultName)?.items ?? List()).toList()
+
+facts {
+  ["every declared vault name follows the observed JIN-<number> convention"] {
+    for (v in spec.declared) {
+      v.name.matches(spec.namingConvention)
+    }
+  }
+
+  ["every pass:// ref in this repo's env files resolves to a declared vault/item"] {
+    for (r in allRefs) {
+      isDeclared(r.vaultName, r.itemName)
+    }
+  }
+
+  ["every declared vault actually exists in Proton Pass"] {
+    for (v in spec.declared) {
+      observedVault(v.name) != null
+    }
+  }
+
+  ["every declared item actually exists in its declared vault"] {
+    for (v in spec.declared) {
+      for (i in v.items) {
+        observedItems(v.name).contains(i)
+      }
+    }
+  }
+}
+
+examples {
+  // Golden snapshot: any vault added/renamed/removed in the account shows
+  // up as a reviewable diff in the committed `.pkl-expected.pcf` the next
+  // time someone runs `pkl test --overwrite`, rather than as a broken hook.
+  ["observed vault names"] {
+    observed.vaults.toList().map((v) -> v.name).toList().sort()
+  }
+
+  ["observed items in each declared vault"] {
+    for (v in spec.declared) {
+      new Mapping { [v.name] = observedItems(v.name).sort() }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+/// Declared inventory of Proton Pass vaults/items this repo depends on.
+///
+/// This is a decision, not a transcription of `pass-cli vault list` output
+/// -- see the JIN-116 discussion. Only vaults/items actually referenced by
+/// a `pass://` URI somewhere in this repo belong here.
+///
+/// `namingConvention` matches every vault presently in the account (JIN-63,
+/// JIN-80, JIN-83, JIN-76, JIN-81, JIN-90), but that's an observation, not
+/// yet a written team decision -- in particular it doesn't say what should
+/// happen to a vault's name when the Linear entity it's named after changes
+/// type (JIN-63: issue -> project, mid-lifecycle). Revisit before leaning
+/// on it further.
+module vaults
+
+class VaultSpec {
+  name: String
+  items: Listing<String>
+}
+
+namingConvention: Regex = Regex(#"^JIN-\d+$"#)
+
+declared: Listing<VaultSpec> = new {
+  new VaultSpec {
+    name = "JIN-63"
+    items {
+      "linear-release"
+      "restic"
+      "gh"
+    }
+  }
+}
