@@ -8,9 +8,10 @@
 # see loft-sh/devpod#1907), so both callers instead run bootstrap steps
 # explicitly over `devpod ssh --command`, a plain exec devpod doesn't
 # special-case, right after `devpod up`/`devpod ssh` brings the machine up.
-# Each step (tailscale-up.sh, install-tools.sh, start-linear-agent.sh,
-# start-cloudflared.sh) runs as its own separate `devpod ssh` invocation
-# rather than one &&-chained command: a single combined session was observed
+# Each step (generate-env-files.sh, tailscale-up.sh, install-tools.sh,
+# start-linear-agent.sh, start-cloudflared.sh) runs as its own separate
+# `devpod ssh` invocation rather than one &&-chained command: a single
+# combined session was observed
 # (repeatedly, on live hourly runs) truncating right after install-tools.sh
 # finishes -- devpod reporting "remote command exited without exit status or
 # exit signal" -- with no output at all from the steps after it, yet the run
@@ -40,13 +41,14 @@ gce_common_ssh_step() {
   return "$rc"
 }
 
-# The four-step bootstrap sequence, in order, shared so it's defined once.
+# The bootstrap sequence, in order, shared so it's defined once.
 # Callers that just want to run all four under one failure policy can loop
 # over this; keepalive/devpod-keepalive.sh instead calls gce_common_ssh_step
 # per step directly, since it has to interleave its own tailscale-up retry
 # and per-step tolerate/fail policy between them.
 gce_common_bootstrap_steps() {
   printf '%s\n' \
+    "generate-env-files.sh" \
     "tailscale-up.sh" \
     "install-tools.sh" \
     "start-linear-agent.sh" \

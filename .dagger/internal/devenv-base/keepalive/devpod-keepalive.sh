@@ -43,15 +43,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# JIN-63: development/restic is retired -- migrated to the restic item
-# shared directly to this PAT (item-level share, not a named vault; see
-# hk/rotate-jin63-secrets.sh for how to resolve share-id/item-id if these
-# ever need to change).
+# JIN-63: development/restic is retired -- migrated to the "restic" item,
+# now consolidated into the infra vault. Addressed here by vault-name/
+# item-title rather than share-id/item-id: the share ID is minted per-share
+# and goes stale whenever the share is recreated (see the JIN-63
+# stale-share-id fix), while the vault name is the stable, human-assigned
+# identifier Vaults.pkl's existence contract already declares this item
+# under.
 cat > "$PASS_ENV_FILE" <<'EOF'
-GCP_SERVICE_ACCOUNT_KEY=pass://T2mBDcHRWC4-SBZcXLk-ns50-96agW-BaVxf96TBbva38yh9m3rvG7rVMSyqD_UrEbnuq49HNRt-_BBSNtaNXQ==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/GCP_SERVICE_ACCOUNT_KEY
-GOOGLE_PROJECT_ID=pass://T2mBDcHRWC4-SBZcXLk-ns50-96agW-BaVxf96TBbva38yh9m3rvG7rVMSyqD_UrEbnuq49HNRt-_BBSNtaNXQ==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/GOOGLE_PROJECT_ID
-RESTIC_REPOSITORY=pass://T2mBDcHRWC4-SBZcXLk-ns50-96agW-BaVxf96TBbva38yh9m3rvG7rVMSyqD_UrEbnuq49HNRt-_BBSNtaNXQ==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/RESTIC_REPOSITORY
-RESTIC_PASSWORD=pass://T2mBDcHRWC4-SBZcXLk-ns50-96agW-BaVxf96TBbva38yh9m3rvG7rVMSyqD_UrEbnuq49HNRt-_BBSNtaNXQ==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/RESTIC_PASSWORD
+GCP_SERVICE_ACCOUNT_KEY=pass://infra/restic/GCP_SERVICE_ACCOUNT_KEY
+GOOGLE_PROJECT_ID=pass://infra/restic/GOOGLE_PROJECT_ID
+RESTIC_REPOSITORY=pass://infra/restic/RESTIC_REPOSITORY
+RESTIC_PASSWORD=pass://infra/restic/RESTIC_PASSWORD
 EOF
 
 export SA_KEY_FILE WORKSPACE_ID PROTON_PASS_PERSONAL_ACCESS_TOKEN LIB_FILE
@@ -90,6 +93,20 @@ timeout --signal=TERM --kill-after=60s 30m \
       --set-env "PROTON_PASS_PERSONAL_ACCESS_TOKEN=$PROTON_PASS_PERSONAL_ACCESS_TOKEN"
   }
 
+  # A fresh container (first boot, or the "devpod up" restart below) is a
+  # fresh `git:...` clone with none of the gitignored .env files
+  # tailscale-up.sh/install-tools.sh need -- see generate-env-files.sh.
+  # Tolerated like the other steps below: on an already-warm container this
+  # is a harmless no-op re-generation.
+  set +e
+  GEN_OUT=$(gce_common_ssh_step "$WORKSPACE_ID" "generate-env-files.sh")
+  GEN_RC=$?
+  set -e
+  echo "$GEN_OUT"
+  if [ "$GEN_RC" -ne 0 ]; then
+    echo "devpod ssh exited $GEN_RC on generate-env-files.sh (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
+  fi
+
   set +e
   TS_OUT=$(ssh_tailscale_up)
   TS_RC=$?
@@ -100,6 +117,9 @@ timeout --signal=TERM --kill-after=60s 30m \
     if printf "%s" "$TS_OUT" | grep -qi "workspace is stopped\|doesnt exist\|does not exist"; then
       echo "workspace was stopped -- restarting with devpod up"
       devpod up "$WORKSPACE_ID"
+
+      gce_common_ssh_step "$WORKSPACE_ID" "generate-env-files.sh" || \
+        echo "devpod ssh exited $? on generate-env-files.sh after restart (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
 
       # `devpod up` brings the workspace back in a *fresh* container, so the
       # pass-cli session that the pre-stop container held is gone -- and
