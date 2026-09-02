@@ -1,10 +1,13 @@
 examples {
   ["observed vault names"] {
-    List("JIN-63", "JIN-76", "JIN-80", "JIN-81", "JIN-83", "JIN-90", "development", "infra", "linear.app")
+    List("infra", "tidelands.dev")
   }
   ["observed items in each declared vault"] {
     new {
-      ["JIN-63"] = List("claude", "gh", "linear-release", "render", "restic", "tailscale")
+      ["infra"] = List("dagger.cloud", "github.com", "render.com", "restic", "tailscale")
+    }
+    new {
+      ["tidelands.dev"] = List("claude", "linear-release", "pass-cli")
     }
   }
 }

@@ -18,6 +18,7 @@ local envFiles: Listing<String> = new {
   "../linear-release.env"
   "../.devcontainer/gcloud.env"
   "../keepalive/devpod-keepalive.sh"
+  "../.devcontainer/tailscale.env"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)
@@ -69,12 +70,6 @@ local function observedItems(vaultName: String): List<String> =
   (observedVault(vaultName)?.items ?? List()).toList()
 
 facts {
-  ["every declared vault name follows the observed JIN-<number> convention"] {
-    for (v in spec.declared) {
-      v.name.matches(spec.namingConvention)
-    }
-  }
-
   ["every pass:// ref in this repo's env files resolves to a declared vault/item"] {
     for (r in allRefs) {
       isDeclared(r.vaultName, r.itemName)

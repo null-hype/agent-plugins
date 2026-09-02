@@ -4,12 +4,14 @@
 /// -- see the JIN-116 discussion. Only vaults/items actually referenced by
 /// a `pass://` URI somewhere in this repo belong here.
 ///
-/// `namingConvention` matches every vault presently in the account (JIN-63,
-/// JIN-80, JIN-83, JIN-76, JIN-81, JIN-90), but that's an observation, not
-/// yet a written team decision -- in particular it doesn't say what should
-/// happen to a vault's name when the Linear entity it's named after changes
-/// type (JIN-63: issue -> project, mid-lifecycle). Revisit before leaning
-/// on it further.
+/// The per-issue vaults (JIN-63, JIN-80, JIN-83, JIN-76, JIN-81, JIN-90)
+/// have been consolidated: JIN-63 is retired, its infra-facing items
+/// (restic, gh -> github.com) moved into a single shared "infra" vault
+/// alongside tailscale, and its Linear-facing item (linear-release) moved
+/// into "tidelands.dev" (formerly the vault named "linear.app", renamed --
+/// see the JIN-63 vault-reorg fix). Vault names are no longer expected to
+/// follow a JIN-<number> convention now that they're consolidated by
+/// purpose rather than per-issue.
 module vaults
 
 class VaultSpec {
@@ -17,15 +19,19 @@ class VaultSpec {
   items: Listing<String>
 }
 
-namingConvention: Regex = Regex(#"^JIN-\d+$"#)
-
 declared: Listing<VaultSpec> = new {
   new VaultSpec {
-    name = "JIN-63"
+    name = "infra"
+    items {
+      "restic"
+      "github.com"
+      "tailscale"
+    }
+  }
+  new VaultSpec {
+    name = "tidelands.dev"
     items {
       "linear-release"
-      "restic"
-      "gh"
     }
   }
 }

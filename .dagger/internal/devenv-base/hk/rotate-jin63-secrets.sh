@@ -25,8 +25,9 @@ set -euo pipefail
 # share ID is re-minted whenever the share is recreated (see the JIN-63
 # stale-share-id fix), while the vault name is the stable, human-assigned
 # identifier Vaults.pkl's existence contract already declares this item
-# under.
-VAULT_NAME="${JIN63_VAULT_NAME:-JIN-63}"
+# under. JIN-63 has since been retired -- restic now lives in the infra
+# vault (see the vault-reorg fix).
+VAULT_NAME="${JIN63_VAULT_NAME:-infra}"
 ITEM_TITLE="${JIN63_ITEM_TITLE:-restic}"
 PROJECT="caldav-444421"
 LEAK_TAGS=(--tag claude-code-session --tag jin-63)
