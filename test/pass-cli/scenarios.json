@@ -29,5 +29,18 @@
                 "favorite": "green"
             }
         }
+    },
+    "restic-backup": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "pass-cli": {
+                "tag": "restic-backup"
+            }
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
     }
 }

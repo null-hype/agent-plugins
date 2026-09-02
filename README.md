@@ -156,13 +156,21 @@ If you'd like your Features to appear in our [public index](https://containers.d
 
 This index is from where [supporting tools](https://containers.dev/supporting) like [VS Code Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) and [GitHub Codespaces](https://github.com/features/codespaces) surface Features for their dev container creation UI.
 
+## Dagger module
+
+`.dagger/main.go` (Go SDK, see `dagger.json`) is a test harness for this repo, not a build/publish pipeline. Today it only defines `HkCheck` — builds a container from the devcontainer's own base image, installs `mise`+`hk` the way a real dev environment would (`mise install && hk install`), and runs `hk check --all` against it — plus two small utility functions (`ContainerEcho`, `GrepDir`) used for exercising the module itself.
+
+This repo's actual publish path is `.github/workflows/release.yaml`, which uses `devcontainers/action` to publish each Feature under `src/` straight to GHCR (see [Publishing](#publishing) above) — Dagger is not in that path yet.
+
+**Direction:** the separate `devenv-base` repo (GCE-provisioned dev environment, Cloudflare-tunneled `linear-agent` webhook, Render keepalive cron) is being sunset in favor of building images from this repo's `.dagger` module and publishing them to GHCR instead. That migration hasn't landed — `main.go` doesn't build or publish images yet — so treat this as the intended direction, not current behavior.
+
 ## Linear Releases
 
 Each Feature (`pass-cli`, `playwright-cli`) gets its own Linear release pipeline, created via `linear/linear-release-action@v0` in `.github/workflows/release.yaml`. The `linear-release` job runs after the `deploy` job (i.e. after Features actually publish to GHCR), one matrix entry per Feature, each scoped to its own directory via `include_paths` and using its own pipeline access key. Runs on `main` create a real release; runs on any other ref use the action's `dry_run` input.
 
 **Repository secrets to create** (one Linear pipeline access key per Feature):
 
-- `LINEAR_KEY_COLOR`
+- `LINEAR_KEY_COLOR` (kept from before the `color` → `pass-cli` rename — renaming a Feature doesn't rename its GitHub secret, see the `feature` matrix comment in `release.yaml`)
 - `LINEAR_KEY_PLAYWRIGHT_CLI`
 
 **Manual setup required in Linear:** each Feature needs its own release pipeline created by hand in Linear under **Settings → Releases** before its secret will work. Linear's Business plan caps pipelines at **15** — with 2 Features today we're well under that limit, but worth tracking if more Features get added.
