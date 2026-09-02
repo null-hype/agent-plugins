@@ -8,6 +8,16 @@ TS_HOSTNAME=${TS_HOSTNAME:-tidelands}
 STATE_DIR=/var/lib/tailscale
 SOCK=/var/run/tailscale/tailscaled.sock
 
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+  if command -v sudo > /dev/null 2>&1; then
+    SUDO="sudo"
+  else
+    echo "sudo is required to run as a non-root user but was not found" >&2
+    exit 1
+  fi
+fi
+
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON=${PROTON_PASS_AGENT_REASON:-"tailscale-up: fetch Tailscale auth key"}
 
@@ -21,8 +31,8 @@ if ! pass-cli info > /dev/null 2>&1; then
 fi
 
 if ! pgrep -x tailscaled > /dev/null 2>&1; then
-  sudo mkdir -p "$STATE_DIR" "$(dirname "$SOCK")"
-  sudo nohup tailscaled --state="$STATE_DIR/tailscaled.state" --socket="$SOCK" \
+  $SUDO mkdir -p "$STATE_DIR" "$(dirname "$SOCK")"
+  $SUDO nohup tailscaled --state="$STATE_DIR/tailscaled.state" --socket="$SOCK" \
     > /tmp/tailscaled.log 2>&1 &
   for _ in $(seq 1 20); do
     [ -S "$SOCK" ] && break
@@ -30,12 +40,12 @@ if ! pgrep -x tailscaled > /dev/null 2>&1; then
   done
 fi
 
-if sudo tailscale --socket="$SOCK" status > /dev/null 2>&1; then
+if $SUDO tailscale --socket="$SOCK" status > /dev/null 2>&1; then
   echo "tailscale: already connected"
 else
   TS_ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/tailscale.env"
-  export SOCK TS_HOSTNAME
+  export SOCK TS_HOSTNAME SUDO
   pass-cli run --env-file "$TS_ENV_FILE" -- \
-    sh -c 'exec sudo tailscale --socket="$SOCK" up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME" --accept-routes --ssh'
+    sh -c 'exec $SUDO tailscale --socket="$SOCK" up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME" --accept-routes --ssh'
   echo "tailscale: joined tailnet as $TS_HOSTNAME"
 fi
