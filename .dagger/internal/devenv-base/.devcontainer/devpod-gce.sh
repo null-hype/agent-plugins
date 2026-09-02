@@ -27,13 +27,16 @@
 # special-cases), so --set-env reliably delivers the token to it.
 set -euo pipefail
 
+export PROTON_PASS_AGENT_REASON="devpod-gce: fetch GCP service account key to provision/start the devpod workspace"
+
 : "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:?PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set in this shell so it can be forwarded into the workspace}"
 
 PROVIDER_NAME=${DEVPOD_GCE_PROVIDER:-gcloud-gce}
 WORKSPACE_ID=${DEVPOD_GCE_WORKSPACE:-devenv-base-gce}
 ZONE=${DEVPOD_GCE_ZONE:-us-central1-a}
-GIT_URL=${DEVPOD_GCE_GIT_URL:-https://github.com/null-hype/devenv-base.git}
+GIT_URL=${DEVPOD_GCE_GIT_URL:-https://github.com/null-hype/agent-plugins.git}
 GIT_REF=${DEVPOD_GCE_GIT_REF:-main}
+DEVCONTAINER_PATH=${DEVPOD_GCE_DEVCONTAINER_PATH:-.devcontainer/devcontainer.json}
 # devpod's own watchdog stops the VM after this much idle time, independent
 # of anything the hourly Render keepalive cron does. The provider default
 # (5m) turned out far shorter than the keepalive interval (hourly), so the
@@ -47,7 +50,7 @@ LIB_FILE="$(dirname "${BASH_SOURCE[0]}")/lib/gce-common.sh"
 
 source "$LIB_FILE"
 gce_common_reserve_sa_key_file
-export SA_KEY_FILE PROVIDER_NAME ZONE GIT_URL GIT_REF WORKSPACE_ID PROTON_PASS_PERSONAL_ACCESS_TOKEN LIB_FILE INACTIVITY_TIMEOUT
+export SA_KEY_FILE PROVIDER_NAME ZONE GIT_URL GIT_REF WORKSPACE_ID PROTON_PASS_PERSONAL_ACCESS_TOKEN LIB_FILE INACTIVITY_TIMEOUT DEVCONTAINER_PATH
 
 if ! pass-cli info > /dev/null 2>&1; then
   pass-cli logout --force > /dev/null 2>&1 || true
@@ -60,13 +63,13 @@ pass-cli run --env-file "$ENV_FILE" -- bash -c '
   gce_common_write_sa_key
   gce_common_restic_pull_devpod_state
 
-  # devenv-base is private, so devpod'"'"'s own anonymous HTTPS clone of
+  # agent-plugins is private, so devpod'"'"'s own anonymous HTTPS clone of
   # GIT_SOURCE on the freshly-provisioned GCE machine 404s/403s with no
   # credentials -- confirmed live as `clone repository: exit status 128`.
   # GITHUB_TOKEN comes from gcloud.env (pass://JIN-63/gh/GITHUB_TOKEN), same
   # env-file this whole block already runs under, so it'"'"'s never written to
   # disk or logged -- only interpolated into GIT_SOURCE in memory here.
-  : "${GITHUB_TOKEN:?GITHUB_TOKEN must be set (see gcloud.env) to clone the private devenv-base repo}"
+  : "${GITHUB_TOKEN:?GITHUB_TOKEN must be set (see gcloud.env) to clone the private agent-plugins repo}"
   GIT_SOURCE="git:https://${GITHUB_TOKEN}@${GIT_URL#https://}@${GIT_REF}"
 
   if ! devpod provider options "$PROVIDER_NAME" > /dev/null 2>&1; then
@@ -91,7 +94,40 @@ pass-cli run --env-file "$ENV_FILE" -- bash -c '
     *" --ide "*|*" --ide="*) ;;
     *) IDE_ARGS=(--ide none) ;;
   esac
-  devpod up "$WORKSPACE_ID" --source "$GIT_SOURCE" --provider "$PROVIDER_NAME" --id "$WORKSPACE_ID" "${IDE_ARGS[@]}" "$@"
+  # ONE-OFF: migrating this workspace off the retired standalone devenv-base
+  # repo onto the agent-plugins subtree. devpod ignores --source/
+  # --devcontainer-path for an existing workspace record even under --reset,
+  # so the stale record has to be deleted before `up` recreates it fresh.
+  # A prior attempt at this migration deleted the record but failed later
+  # (once at the bootstrap-step stage, once on a GCE instance-creation race),
+  # before gce_common_restic_push_devpod_state ran -- so the fix was never
+  # persisted to the shared restic repo, and the next call to
+  # gce_common_restic_pull_devpod_state silently restored the stale
+  # devenv-base.git-sourced record. Keep this delete in place until a full
+  # run (including the final restic push) succeeds end-to-end.
+  # TODO(JIN-118): remove this line after the migration run succeeds fully.
+  devpod delete "$WORKSPACE_ID" --force 2>/dev/null || true
+
+  # Retried: observed live during this migration that a GCE regional CPU
+  # quota exhausted by leftover instances (from repeated delete+recreate
+  # cycles while debugging) makes instances.insert fail with 403
+  # QUOTA_EXCEEDED, which devpod surfaces only as a generic "instance ...
+  # doesnt exist" connection timeout with no indication of the real cause.
+  # Retrying doesn'"'"'t fix a quota problem by itself, but does absorb
+  # ordinary transient provisioning delays without a human back at the
+  # keyboard -- if it fails 3x in a row, check `gcloud compute operations
+  # list`/`instances list` for a stuck quota or orphaned instance first.
+  up_ok=0
+  for attempt in 1 2 3; do
+    if devpod up "$WORKSPACE_ID" --source "$GIT_SOURCE" --provider "$PROVIDER_NAME" --id "$WORKSPACE_ID" \
+      --devcontainer-path "$DEVCONTAINER_PATH" "${IDE_ARGS[@]}" "$@"; then
+      up_ok=1
+      break
+    fi
+    echo "devpod up attempt $attempt failed, retrying in 15s..." >&2
+    sleep 15
+  done
+  [ "$up_ok" = 1 ] || { echo "devpod up failed after 3 attempts" >&2; exit 1; }
 
   # One `devpod ssh` call per bootstrap step via gce_common_ssh_step (see
   # gce-common.sh for why these aren'"'"'t &&-chained into one remote command).

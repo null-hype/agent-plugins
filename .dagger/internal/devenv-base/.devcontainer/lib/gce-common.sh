@@ -21,17 +21,21 @@
 # decide their own per-step failure policy (see devpod-gce.sh and
 # keepalive/devpod-keepalive.sh for how each uses it).
 
-# One `devpod ssh --command "bash .devcontainer/<script>"` invocation for a
-# single bootstrap step. Prints the step's combined stdout/stderr (callers
-# that want to inspect it should capture this function's output) and returns
-# the real exit code of that one `devpod ssh` call -- never masked by `local`
-# or a `set +e`/`set -e` toggle. Extra args (e.g. `--set-env FOO=bar`) go
-# before $2 to land ahead of `--command` on the devpod ssh invocation.
+# One `devpod ssh --command "bash <scripts-dir>/<script>"` invocation for a
+# single bootstrap step, where <scripts-dir> is DEVENV_BASE_DEVCONTAINER_DIR
+# (default: .dagger/internal/devenv-base/.devcontainer, matching where the
+# agent-plugins clone puts these scripts on the remote box). Prints the
+# step's combined stdout/stderr (callers that want to inspect it should
+# capture this function's output) and returns the real exit code of that one
+# `devpod ssh` call -- never masked by `local` or a `set +e`/`set -e` toggle.
+# Extra args (e.g. `--set-env FOO=bar`) go before $2 to land ahead of
+# `--command` on the devpod ssh invocation.
 gce_common_ssh_step() {
   local workspace="$1" script="$2"
   shift 2
+  local scripts_dir="${DEVENV_BASE_DEVCONTAINER_DIR:-.dagger/internal/devenv-base/.devcontainer}"
   local out rc=0
-  out=$(devpod ssh "$workspace" "$@" --command "bash .devcontainer/$script" 2>&1) || rc=$?
+  out=$(devpod ssh "$workspace" "$@" --command "bash $scripts_dir/$script" 2>&1) || rc=$?
   printf '%s\n' "$out"
   return "$rc"
 }

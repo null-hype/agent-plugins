@@ -1,4 +1,4 @@
-name: trigger-render-cron
+name: devenv-base-trigger-render-cron
 
 on:
   workflow_dispatch:
@@ -12,11 +12,13 @@ jobs:
       # POSTs Render's trigger-cron-job-run endpoint for the
       # devpod-keepalive cron (render.yaml) via the TriggerRenderCron dagger
       # function. RENDER_API_KEY/RENDER_SERVICE_ID come from Proton Pass at
-      # run time (see .devcontainer/render.env), not from GitHub secrets --
-      # only the Proton Pass token itself needs to live here.
+      # run time (see .dagger/internal/devenv-base/.devcontainer/render.env),
+      # not from GitHub secrets -- only the Proton Pass token itself needs
+      # to live here.
       - uses: dagger/dagger-for-github@v8.4.1
         env:
           PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
         with:
           verb: call
+          workdir: .dagger/internal/devenv-base
           args: trigger-render-cron --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN

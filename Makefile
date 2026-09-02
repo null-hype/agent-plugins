@@ -14,3 +14,12 @@ skills: src/pass-cli/.claude/skills/pass-cli/SKILL.md
 src/pass-cli/.claude/skills/pass-cli/SKILL.md:
 	mkdir -p $$(dirname $@)
 	pass-cli agent instructions > $@
+
+recreate-devpod: DAGGER_CALL_DEVENV_BASE = dagger call -m .dagger/internal/devenv-base
+recreate-devpod: PASS_CLI_RUN = PROTON_PASS_AGENT_REASON=$@ pass-cli run --env-file .env
+recreate-devpod:
+	$(PASS_CLI_RUN) -- $(DAGGER_CALL_DEVENV_BASE) $@ --proton-pass-token=env://PROTON_PASS_PERSONAL_ACCESS_TOKEN
+
+view-trace: PASS_CLI_RUN = PROTON_PASS_AGENT_REASON=$@ pass-cli run --env-file .env
+view-trace:
+	$(PASS_CLI_RUN) -- dagger trace $(TRACE)
