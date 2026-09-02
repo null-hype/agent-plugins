@@ -17,6 +17,7 @@ import "Vaults.pkl" as spec
 local envFiles: Listing<String> = new {
   "../linear-release.env"
   "../.devcontainer/gcloud.env"
+  "../keepalive/devpod-keepalive.sh"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)
@@ -40,6 +41,22 @@ local allRefs: Listing<Dynamic> = new Listing {
   }
 }
 
+/// Scripts that address pass-cli items via `--share-id`/`--item-id` flags
+/// rather than a `pass://` URI (so `refPattern` above never sees them).
+/// These should resolve by stable vault-name/item-title instead of a
+/// hardcoded share/item ID literal -- a share ID is re-minted whenever the
+/// share is recreated (see the JIN-63 stale-share-id fix), silently
+/// breaking any script still defaulting to the old value.
+local idFlagFiles: Listing<String> = new {
+  "../hk/rotate-jin63-secrets.sh"
+}
+
+/// Matches a hardcoded Proton Pass ID literal used as a bash default, e.g.
+/// `${JIN63_ITEM_SHARE_ID:-JOCl2s...==}`. Real IDs are long base64url
+/// strings; this is deliberately loose about the variable name so it also
+/// catches any similarly-named default introduced later.
+local hardcodedIdDefault = Regex(#":-[A-Za-z0-9_\-]{40,}={0,2}\}"#)
+
 local function isDeclared(vaultName: String, itemName: String): Boolean =
   spec.declared.toList().any((v) -> v.name == vaultName && v.items.toList().contains(itemName))
 
@@ -61,6 +78,12 @@ facts {
   ["every pass:// ref in this repo's env files resolves to a declared vault/item"] {
     for (r in allRefs) {
       isDeclared(r.vaultName, r.itemName)
+    }
+  }
+
+  ["no script hardcodes a Proton Pass share/item ID default -- addresses by vault-name/item-title instead"] {
+    for (f in idFlagFiles) {
+      hardcodedIdDefault.findMatchesIn(read(f).text).isEmpty
     }
   }
 

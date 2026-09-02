@@ -16,6 +16,11 @@ ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/render.env"
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON="trigger-render-cron: fetch Render API key to trigger devpod-keepalive run"
 
+if ! pass-cli info > /dev/null 2>&1; then
+  pass-cli logout --force > /dev/null 2>&1 || true
+  pass-cli login
+fi
+
 pass-cli run --env-file "$ENV_FILE" -- bash -c '
   set -euo pipefail
   : "${RENDER_API_KEY:?RENDER_API_KEY not resolved from Pass}"

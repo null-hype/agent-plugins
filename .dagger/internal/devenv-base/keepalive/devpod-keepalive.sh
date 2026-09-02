@@ -43,15 +43,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# JIN-63: development/restic is retired -- migrated to the restic item
-# shared directly to this PAT (item-level share, not a named vault; see
-# hk/rotate-jin63-secrets.sh for how to resolve share-id/item-id if these
-# ever need to change).
+# JIN-63: development/restic is retired -- migrated to the "restic" item in
+# the JIN-63 vault. Addressed here by vault-name/item-title rather than
+# share-id/item-id: the share ID is minted per-share and goes stale whenever
+# the share is recreated (see the JIN-63 stale-share-id fix), while the vault
+# name is the stable, human-assigned identifier Vaults.pkl's existence
+# contract already declares this item under.
 cat > "$PASS_ENV_FILE" <<'EOF'
-GCP_SERVICE_ACCOUNT_KEY=pass://JOCl2srAELGIFt4eps9bbiX1xFv66XgU_hEAJMTvFR0i-PQbyrVCAXhAXJNSVgravMjosFXZmfqkuGtfpqLMEw==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/GCP_SERVICE_ACCOUNT_KEY
-GOOGLE_PROJECT_ID=pass://JOCl2srAELGIFt4eps9bbiX1xFv66XgU_hEAJMTvFR0i-PQbyrVCAXhAXJNSVgravMjosFXZmfqkuGtfpqLMEw==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/GOOGLE_PROJECT_ID
-RESTIC_REPOSITORY=pass://JOCl2srAELGIFt4eps9bbiX1xFv66XgU_hEAJMTvFR0i-PQbyrVCAXhAXJNSVgravMjosFXZmfqkuGtfpqLMEw==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/RESTIC_REPOSITORY
-RESTIC_PASSWORD=pass://JOCl2srAELGIFt4eps9bbiX1xFv66XgU_hEAJMTvFR0i-PQbyrVCAXhAXJNSVgravMjosFXZmfqkuGtfpqLMEw==/LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==/RESTIC_PASSWORD
+GCP_SERVICE_ACCOUNT_KEY=pass://JIN-63/restic/GCP_SERVICE_ACCOUNT_KEY
+GOOGLE_PROJECT_ID=pass://JIN-63/restic/GOOGLE_PROJECT_ID
+RESTIC_REPOSITORY=pass://JIN-63/restic/RESTIC_REPOSITORY
+RESTIC_PASSWORD=pass://JIN-63/restic/RESTIC_PASSWORD
 EOF
 
 export SA_KEY_FILE WORKSPACE_ID PROTON_PASS_PERSONAL_ACCESS_TOKEN LIB_FILE

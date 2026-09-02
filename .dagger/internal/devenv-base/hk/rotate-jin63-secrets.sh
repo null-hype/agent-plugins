@@ -21,13 +21,13 @@
 
 set -euo pipefail
 
-# The restic item is shared directly to this PAT (item-level share, not
-# vault membership) -- so it must be addressed by share-id/item-id rather
-# than --vault-name/--item-title. Resolve with:
-#   pass-cli share list --output json | jq '.shares[] | select(.name=="restic")'
-#   pass-cli item list --share-id <that share id> --output json
-ITEM_SHARE_ID="${JIN63_ITEM_SHARE_ID:-JOCl2srAELGIFt4eps9bbiX1xFv66XgU_hEAJMTvFR0i-PQbyrVCAXhAXJNSVgravMjosFXZmfqkuGtfpqLMEw==}"
-ITEM_ID="${JIN63_ITEM_ID:-LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==}"
+# Addressed by vault-name/item-title rather than share-id/item-id: the
+# share ID is re-minted whenever the share is recreated (see the JIN-63
+# stale-share-id fix), while the vault name is the stable, human-assigned
+# identifier Vaults.pkl's existence contract already declares this item
+# under.
+VAULT_NAME="${JIN63_VAULT_NAME:-JIN-63}"
+ITEM_TITLE="${JIN63_ITEM_TITLE:-restic}"
 PROJECT="caldav-444421"
 LEAK_TAGS=(--tag claude-code-session --tag jin-63)
 LEAK_SNAPSHOT="488398a1"
@@ -53,7 +53,7 @@ confirm() {
 get_field() {
   local name="$1"
   PROTON_PASS_AGENT_REASON="JIN-63: read $name from restic vault item to rotate leaked GCP key / restic password" \
-    pass-cli item view --share-id "$ITEM_SHARE_ID" --item-id "$ITEM_ID" --field "$name"
+    pass-cli item view --vault-name "$VAULT_NAME" --item-title "$ITEM_TITLE" --field "$name"
 }
 
 cmd_inspect_fields() {
@@ -84,7 +84,7 @@ cmd_rotate_gcp_key() {
   gcloud iam service-accounts keys create "$TMP_KEY_FILE" --iam-account="$sa_email" --project="$PROJECT"
 
   PROTON_PASS_AGENT_REASON="JIN-63: store newly rotated GCP SA key" \
-    pass-cli item update --share-id "$ITEM_SHARE_ID" --item-id "$ITEM_ID" \
+    pass-cli item update --vault-name "$VAULT_NAME" --item-title "$ITEM_TITLE" \
     --field "GCP_SERVICE_ACCOUNT_KEY=$(cat "$TMP_KEY_FILE")"
 
   echo "new key stored. Verify devpod-keepalive.sh / devpod-gce.sh succeed against it before running revoke-old-key."
@@ -108,7 +108,7 @@ cmd_rotate_restic_password() {
   RESTIC_REPOSITORY="$repo" RESTIC_PASSWORD="$pass" restic key add
   read -r -s -p "New restic password (to store in vault): " new_pass; echo
   PROTON_PASS_AGENT_REASON="JIN-63: store newly rotated restic repository password" \
-    pass-cli item update --share-id "$ITEM_SHARE_ID" --item-id "$ITEM_ID" \
+    pass-cli item update --vault-name "$VAULT_NAME" --item-title "$ITEM_TITLE" \
     --field "RESTIC_PASSWORD=$new_pass"
   echo "new password stored. Once devpod-keepalive/devpod-gce/continue-claude-session have picked it up, run remove-old-restic-key <old-key-id>."
 }
