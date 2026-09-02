@@ -1,0 +1,15 @@
+services:
+  - type: cron
+    name: devpod-keepalive
+    runtime: image
+    image:
+      url: ghcr.io/null-hype/devenv-keepalive:sha-ae5783a19f506e2c355bba851153675e47c16221
+      creds:
+        fromRegistryCreds:
+          name: ghcr-null-hype
+    schedule: "15 * * * *"
+    envVars:
+      - key: PROTON_PASS_PERSONAL_ACCESS_TOKEN
+        sync: false
+      - key: WORKSPACE_ID
+        value: devenv-base-gce

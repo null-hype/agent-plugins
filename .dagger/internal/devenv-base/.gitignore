@@ -1,0 +1,13 @@
+/dagger.gen.go
+/internal/dagger
+/internal/telemetry
+/.env
+/claude-home.tar.gz
+linear-agent/dist/
+linear-agent/.bin/
+linear-agent/node_modules/
+
+# Regenerated at check time by hk/capture-vault-inventory.sh -- see
+# pkl/Vaults.test.pkl. The committed pkl/*.pkl-expected.pcf golden file is
+# the reviewable snapshot; this raw capture is not.
+/build/

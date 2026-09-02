@@ -4,5 +4,10 @@
         "ghcr.io/devcontainers/features/docker-in-docker:2": {},
         "ghcr.io/devcontainers/features/sshd:1": {}
     },
+    "runArgs": [
+        "--cap-add=NET_ADMIN",
+        "--cap-add=NET_RAW",
+        "--device=/dev/net/tun"
+    ],
     "updateContentCommand": "npm install -g @devcontainers/cli"
 }
