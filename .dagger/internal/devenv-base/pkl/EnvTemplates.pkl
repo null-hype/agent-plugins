@@ -1,0 +1,35 @@
+/// Source of truth for generated `.env` files. Each entry is an ordered list
+/// of env-var refs, each naming a vault/item/field declared in Vaults.pkl.
+/// The checked-in `.env` file for a given template is a "cp env.example
+/// .env"-style bootstrap output of `render()` -- regenerate it by hand with
+/// `pkl eval EnvTemplates.pkl -x 'render("<name>")' -f text` (or similar)
+/// whenever a template here changes.
+module envTemplates
+
+class EnvVarRef {
+  /// The env var name written to the left of `=`.
+  name: String
+  vaultName: String
+  itemName: String
+  /// The pass-cli field name; defaults to `name` since they're usually the same.
+  field: String = name
+}
+
+templates: Mapping<String, Listing<EnvVarRef>> = new {
+  ["tailscale"] {
+    new EnvVarRef { name = "TS_AUTHKEY"; vaultName = "infra"; itemName = "tailscale" }
+  }
+  ["gcloud"] {
+    new EnvVarRef { name = "GCP_SERVICE_ACCOUNT_KEY"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "GOOGLE_PROJECT_ID"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "RESTIC_REPOSITORY"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "RESTIC_PASSWORD"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "GITHUB_TOKEN"; vaultName = "infra"; itemName = "github.com" }
+  }
+  ["linear-release"] {
+    new EnvVarRef { name = "LINEAR_ACCESS_KEY"; vaultName = "tidelands.dev"; itemName = "linear-release" }
+  }
+}
+
+function render(name: String): String =
+  templates[name].toList().map((r) -> "\(r.name)=pass://\(r.vaultName)/\(r.itemName)/\(r.field)\n").join("")
