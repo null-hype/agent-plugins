@@ -1,0 +1,34 @@
+/// TDD pilot: env files should be derived from a pkl template, not hand-edited
+/// checked-in files. This starts with the smallest surface (tailscale.env)
+/// and asserts the rendered output matches what a "cp env.example .env"
+/// style bootstrap step would produce. `EnvTemplates.pkl` doesn't exist yet
+/// -- this is the RED step.
+amends "pkl:test"
+
+import "EnvTemplates.pkl" as templates
+import "Vaults.pkl" as spec
+
+local function isDeclared(vaultName: String, itemName: String): Boolean =
+  spec.declared.toList().any((v) -> v.name == vaultName && v.items.toList().contains(itemName))
+
+facts {
+  ["rendering the \"tailscale\" template produces tailscale.env's current content"] {
+    templates.render("tailscale") == read("../.devcontainer/tailscale.env").text
+  }
+
+  ["every EnvTemplates.pkl entry references a vault/item declared in Vaults.pkl"] {
+    for (name, refs in templates.templates) {
+      for (r in refs) {
+        isDeclared(r.vaultName, r.itemName)
+      }
+    }
+  }
+
+  ["rendering the \"gcloud\" template produces gcloud.env's current content"] {
+    templates.render("gcloud") == read("../.devcontainer/gcloud.env").text
+  }
+
+  ["rendering the \"linear-release\" template produces linear-release.env's current content"] {
+    templates.render("linear-release") == read("../linear-release.env").text
+  }
+}

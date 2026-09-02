@@ -17,6 +17,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # RecreateDevpod (main.go) reads .devcontainer/gcloud.env straight out
+      # of this checkout via dag.CurrentModule().Source().File(...) -- but
+      # that file is gitignored (see .gitignore), generated from
+      # pkl/EnvTemplates.pkl, not committed. Regenerate it here before the
+      # dagger call runs so a clean checkout has it. No Proton Pass secrets
+      # are resolved by this step -- it only writes out the `pass://...`
+      # refs gcloud.env is made of; pass-cli resolves those later, inside
+      # the dagger call itself.
+      - name: Generate required env files
+        run: |
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          eval "$(mise activate bash)"
+          mise install --cd .dagger/internal/devenv-base
+          bash .dagger/internal/devenv-base/hk/generate-env-files.sh
+
       # Runs `.devcontainer/devpod-gce.sh --recreate` inside the Devpod
       # image via the RecreateDevpod dagger function -- see
       # .dagger/internal/devenv-base/main.go for why this goes through

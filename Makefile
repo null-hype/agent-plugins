@@ -20,6 +20,11 @@ recreate-devpod: PASS_CLI_RUN = PROTON_PASS_AGENT_REASON=$@ pass-cli run --env-f
 recreate-devpod:
 	$(PASS_CLI_RUN) -- $(DAGGER_CALL_DEVENV_BASE) $@ --proton-pass-token=env://PROTON_PASS_PERSONAL_ACCESS_TOKEN
 
+trigger-render-cron: DAGGER_CALL_DEVENV_BASE = dagger call -m .dagger/internal/devenv-base
+trigger-render-cron: PASS_CLI_RUN = PROTON_PASS_AGENT_REASON=$@ pass-cli run --env-file .env
+trigger-render-cron:
+	$(PASS_CLI_RUN) -- $(DAGGER_CALL_DEVENV_BASE) $@ --proton-pass-token=env://PROTON_PASS_PERSONAL_ACCESS_TOKEN
+
 view-trace: PASS_CLI_RUN = PROTON_PASS_AGENT_REASON=$@ pass-cli run --env-file .env
 view-trace:
 	$(PASS_CLI_RUN) -- dagger trace $(TRACE)

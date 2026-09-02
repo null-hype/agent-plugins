@@ -11,3 +11,11 @@ linear-agent/node_modules/
 # pkl/Vaults.test.pkl. The committed pkl/*.pkl-expected.pcf golden file is
 # the reviewable snapshot; this raw capture is not.
 /build/
+
+# Generated from pkl/EnvTemplates.pkl via hk/generate-env-files.sh -- the
+# pkl templates are the source of truth, these are "cp env.example .env"
+# style bootstrap output. Regenerate after cloning or after a template
+# changes; see pkl/EnvTemplates.test.pkl for the contract these must satisfy.
+/.devcontainer/tailscale.env
+/.devcontainer/gcloud.env
+/linear-release.env
