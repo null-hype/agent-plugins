@@ -3,7 +3,7 @@ services:
     name: devpod-keepalive
     runtime: image
     image:
-      url: ghcr.io/null-hype/devenv-keepalive:sha-350e89ba11b5a8f3ccec4d28522d03eacba62817
+      url: ghcr.io/null-hype/devenv-keepalive:sha-e7cfc7e4655a8d037dbc7f35b11511afcd565ee2
       creds:
         fromRegistryCreds:
           name: ghcr-null-hype
