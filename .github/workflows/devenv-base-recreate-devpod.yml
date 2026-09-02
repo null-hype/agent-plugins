@@ -2,6 +2,14 @@ name: devenv-base-recreate-devpod
 
 on:
   workflow_dispatch:
+    inputs:
+      git_ref:
+        description: >-
+          Branch/ref devpod-gce.sh clones the devpod's content from.
+          Defaults to main; override to validate a fix against an unmerged
+          PR branch before it lands.
+        required: false
+        default: main
 
 jobs:
   recreate:
@@ -20,4 +28,4 @@ jobs:
         with:
           verb: call
           workdir: .dagger/internal/devenv-base
-          args: recreate-devpod --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN
+          args: recreate-devpod --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN --git-ref=${{ inputs.git_ref }}

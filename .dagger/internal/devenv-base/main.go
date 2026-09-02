@@ -649,6 +649,13 @@ func (m *DevenvBase) PublishLinearAgent(
 func (m *DevenvBase) RecreateDevpod(
 	ctx context.Context,
 	protonPassToken *dagger.Secret,
+	// Branch/ref devpod-gce.sh clones the devpod's content from. Defaults to
+	// main; override to validate a fix against an unmerged PR branch before
+	// it lands, since --reset always re-clones from this ref regardless of
+	// what ref this dagger call itself is running from.
+	// +optional
+	// +default="main"
+	gitRef string,
 ) (string, error) {
 	return m.Devpod("linux/amd64").
 		WithFile(
@@ -668,6 +675,7 @@ func (m *DevenvBase) RecreateDevpod(
 		).
 		WithWorkdir("/app").
 		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
+		WithEnvVariable("DEVPOD_GCE_GIT_REF", gitRef).
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
 		WithExec([]string{"bash", ".devcontainer/devpod-gce.sh", "--reset"}).
 		Stdout(ctx)
