@@ -26,6 +26,7 @@ declared: Listing<VaultSpec> = new {
       "restic"
       "github.com"
       "tailscale"
+      "render.com"
     }
   }
   new VaultSpec {

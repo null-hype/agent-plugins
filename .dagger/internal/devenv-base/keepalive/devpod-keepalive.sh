@@ -93,6 +93,20 @@ timeout --signal=TERM --kill-after=60s 30m \
       --set-env "PROTON_PASS_PERSONAL_ACCESS_TOKEN=$PROTON_PASS_PERSONAL_ACCESS_TOKEN"
   }
 
+  # A fresh container (first boot, or the "devpod up" restart below) is a
+  # fresh `git:...` clone with none of the gitignored .env files
+  # tailscale-up.sh/install-tools.sh need -- see generate-env-files.sh.
+  # Tolerated like the other steps below: on an already-warm container this
+  # is a harmless no-op re-generation.
+  set +e
+  GEN_OUT=$(gce_common_ssh_step "$WORKSPACE_ID" "generate-env-files.sh")
+  GEN_RC=$?
+  set -e
+  echo "$GEN_OUT"
+  if [ "$GEN_RC" -ne 0 ]; then
+    echo "devpod ssh exited $GEN_RC on generate-env-files.sh (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
+  fi
+
   set +e
   TS_OUT=$(ssh_tailscale_up)
   TS_RC=$?
@@ -103,6 +117,9 @@ timeout --signal=TERM --kill-after=60s 30m \
     if printf "%s" "$TS_OUT" | grep -qi "workspace is stopped\|doesnt exist\|does not exist"; then
       echo "workspace was stopped -- restarting with devpod up"
       devpod up "$WORKSPACE_ID"
+
+      gce_common_ssh_step "$WORKSPACE_ID" "generate-env-files.sh" || \
+        echo "devpod ssh exited $? on generate-env-files.sh after restart (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
 
       # `devpod up` brings the workspace back in a *fresh* container, so the
       # pass-cli session that the pre-stop container held is gone -- and

@@ -19,6 +19,7 @@ local envFiles: Listing<String> = new {
   "../.devcontainer/gcloud.env"
   "../keepalive/devpod-keepalive.sh"
   "../.devcontainer/tailscale.env"
+  "../.devcontainer/render.env"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)
