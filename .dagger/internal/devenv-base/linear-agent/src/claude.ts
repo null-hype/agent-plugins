@@ -33,11 +33,20 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
  * Claude is told or what environment_source it sends -- the server's own
  * cwd was never actually consulted by environment_create, so that fix did
  * nothing for this failure. Kept anyway (harmless) as a fallback for calls
- * that omit environment_source or pass ".". /workspaces/devenv-base-gce is
- * the real devpod-cloned checkout (matches devcontainer.json's
- * workspaceFolder), hardcoded here since it's fixed for this deployment.
+ * that omit environment_source or pass ".". WORKSPACE_DIR below reads
+ * DEVENV_BASE_WORKSPACE_DIR, which start-linear-agent.sh exports as its own
+ * $PWD (the real devpod-cloned checkout) before cd'ing to /app -- rather
+ * than a literal path, since JIN-95 found that assuming path identity
+ * between the devpod-mounted checkout and this process breaks quietly the
+ * moment the two disagree (e.g. GCE vs docker provider mounting the
+ * workspace at a different path). Falls back to the previous hardcoded
+ * path only if the env var is somehow unset, so a misconfigured deployment
+ * degrades to the old (still-correct-today) behavior instead of silently
+ * resolving to /app.
  * Diagnosed live in the JIN-40 and JIN-57/58 agent sessions.
  */
+const WORKSPACE_DIR =
+  process.env.DEVENV_BASE_WORKSPACE_DIR ?? "/workspaces/devenv-base-gce";
 export type ActivityContent = { type: string; body: string };
 
 const MAX_ACTIVITY_BODY = 2000;
@@ -74,7 +83,7 @@ export async function runClaude(
   const result = query({
     prompt,
     options: {
-      cwd: "/workspaces/devenv-base-gce",
+      cwd: WORKSPACE_DIR,
       permissionMode: "dontAsk",
       allowedTools: ["mcp__container-use__*"],
       env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: oauthToken },
@@ -84,7 +93,7 @@ export async function runClaude(
           command: "sh",
           args: [
             "-c",
-            `cd "/workspaces/devenv-base-gce" && exec container-use stdio`,
+            `cd "${WORKSPACE_DIR}" && exec container-use stdio`,
           ],
           // Without this, tools are deferred behind tool search by default
           // and aren't guaranteed present in the turn-1 prompt -- observed

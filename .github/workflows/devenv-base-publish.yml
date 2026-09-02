@@ -1,8 +1,10 @@
-name: publish
+name: devenv-base-publish
 
 on:
   push:
     branches: [main]
+    paths:
+      - '.dagger/internal/devenv-base/**'
   workflow_dispatch:
 
 permissions:
@@ -27,15 +29,15 @@ jobs:
         with:
           filters: |
             common:
-              - 'main.go'
-              - 'checks.go'
-              - 'dagger.json'
-              - 'go.mod'
-              - 'go.sum'
+              - '.dagger/internal/devenv-base/main.go'
+              - '.dagger/internal/devenv-base/checks.go'
+              - '.dagger/internal/devenv-base/dagger.json'
+              - '.dagger/internal/devenv-base/go.mod'
+              - '.dagger/internal/devenv-base/go.sum'
             keepalive:
-              - 'keepalive/**'
+              - '.dagger/internal/devenv-base/keepalive/**'
             linear_agent:
-              - 'linear-agent/**'
+              - '.dagger/internal/devenv-base/linear-agent/**'
 
       # workflow_dispatch is an explicit manual request with no "before"
       # commit to diff against, so it always publishes everything.
@@ -79,4 +81,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           verb: call
+          workdir: .dagger/internal/devenv-base
           args: ${{ matrix.target }} --tag=sha-${{ github.sha }} --github-user=${{ github.actor }} --github-token=env:GITHUB_TOKEN
