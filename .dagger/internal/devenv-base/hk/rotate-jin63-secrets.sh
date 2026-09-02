@@ -26,7 +26,7 @@ set -euo pipefail
 # than --vault-name/--item-title. Resolve with:
 #   pass-cli share list --output json | jq '.shares[] | select(.name=="restic")'
 #   pass-cli item list --share-id <that share id> --output json
-ITEM_SHARE_ID="${JIN63_ITEM_SHARE_ID:-T2mBDcHRWC4-SBZcXLk-ns50-96agW-BaVxf96TBbva38yh9m3rvG7rVMSyqD_UrEbnuq49HNRt-_BBSNtaNXQ==}"
+ITEM_SHARE_ID="${JIN63_ITEM_SHARE_ID:-JOCl2srAELGIFt4eps9bbiX1xFv66XgU_hEAJMTvFR0i-PQbyrVCAXhAXJNSVgravMjosFXZmfqkuGtfpqLMEw==}"
 ITEM_ID="${JIN63_ITEM_ID:-LUAeiUgx_fX0aTZ3ECo8l-CVZlnKcuuoPbY9QrpaymZzUq6xEiFE-Lg_uUQAK_0RR25xRVgtGzFMu38wRCqTLw==}"
 PROJECT="caldav-444421"
 LEAK_TAGS=(--tag claude-code-session --tag jin-63)
