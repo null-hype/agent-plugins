@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"dagger/devenv-base/internal/dagger"
 )
@@ -332,6 +333,36 @@ func (m *DevenvBase) CheckDevpod(ctx context.Context) error {
 	return assertVersionLike(out)
 }
 
+// keepaliveCoreGoVersion pins the builder image for keepalivecore (JIN-133)
+// to the toolchain version go.mod itself requires, so the compiled binary
+// is built the same way `go test ./keepalive/...` builds it locally.
+const keepaliveCoreGoVersion = "1.26-bookworm"
+
+// buildKeepaliveCore compiles the keepalivecore binary (JIN-128's
+// tunnel/timing/retry core -- keepalive/core, keepalive/devpodtunnel,
+// keepalive/retry -- see keepalive/cmd/keepalivecore) for platform. Built
+// in its own golang container rather than layered onto Devpod: it needs
+// nothing Devpod provides (no gcloud/devpod/tailscale at build time), and
+// keeping the Go toolchain out of the shipped image matches Keepalive()'s
+// existing shape of copying in already-built artifacts.
+func buildKeepaliveCore(platform dagger.Platform) *dagger.File {
+	goos, goarch := "linux", "amd64"
+	if platform != "" {
+		if parts := strings.SplitN(string(platform), "/", 2); len(parts) == 2 {
+			goos, goarch = parts[0], parts[1]
+		}
+	}
+	return dag.Container().
+		From("golang:"+keepaliveCoreGoVersion).
+		WithEnvVariable("GOOS", goos).
+		WithEnvVariable("GOARCH", goarch).
+		WithEnvVariable("CGO_ENABLED", "0").
+		WithMountedDirectory("/src", dag.CurrentModule().Source()).
+		WithWorkdir("/src").
+		WithExec([]string{"go", "build", "-o", "/keepalivecore", "./keepalive/cmd/keepalivecore"}).
+		File("/keepalivecore")
+}
+
 // Keepalive layers the devpod-keepalive.sh entrypoint onto Devpod. Runs as a
 // standalone Render Cron Job: syncs devpod's local client state (the only
 // thing that lets `devpod ssh` find an existing GCE machine instead of
@@ -353,10 +384,20 @@ func (m *DevenvBase) Keepalive(
 	// tailscale-up.sh and start-linear-agent.sh, it runs over `devpod ssh`
 	// -- i.e. on the devpod's own repo checkout, not inside this image --
 	// so it only needs to exist in the repo, not in /app.
+	//
+	// keepalivecore (JIN-133) is compiled separately (buildKeepaliveCore)
+	// and copied in next to devpod-keepalive.sh, which invokes it by
+	// relative path -- same entrypoint pattern as before, so the Render
+	// Cron Job / PublishKeepalive pipeline is unaffected.
 	return m.Devpod(platform).
 		WithFile(
 			"/app/keepalive/devpod-keepalive.sh",
 			dag.CurrentModule().Source().File("keepalive/devpod-keepalive.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755},
+		).
+		WithFile(
+			"/app/keepalive/keepalivecore",
+			buildKeepaliveCore(platform),
 			dagger.ContainerWithFileOpts{Permissions: 0o755},
 		).
 		WithFile(
@@ -392,12 +433,21 @@ func (m *DevenvBase) PublishKeepalive(
 }
 
 // CheckKeepalive asserts the keepalive script is present, executable and
-// syntactically valid. It can't exercise a real run in CI -- that needs live
-// GCP and Proton Pass secrets plus an existing workspace -- so this only
-// catches shell syntax errors and packaging mistakes.
+// syntactically valid, and (JIN-133) that the compiled keepalivecore binary
+// actually starts correctly inside this image -- right architecture, not
+// corrupt, reaches its own application logic -- rather than failing on
+// "exec format error" or a similar packaging mistake. It still can't
+// exercise a real keepalive run: that needs live GCP/Proton Pass secrets
+// and an existing devpod workspace, which is exactly what running
+// keepalivecore with no env set deliberately avoids reaching -- it fails
+// fast on its own env validation before ever touching devpod ssh, so this
+// check proves the binary boots, not that a real tunnel/retry sequence
+// works end-to-end.
 // +check
 func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
-	out, err := m.Keepalive("").
+	base := m.Keepalive("")
+
+	out, err := base.
 		WithExec([]string{"bash", "-n", "/app/keepalive/devpod-keepalive.sh"}).
 		WithExec([]string{"bash", "-n", "/app/.devcontainer/lib/gce-common.sh"}).
 		WithExec([]string{"sh", "-c", "test -x /app/keepalive/devpod-keepalive.sh && echo executable"}).
@@ -405,7 +455,30 @@ func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return assertContains(out, "executable")
+	if err := assertContains(out, "executable"); err != nil {
+		return err
+	}
+
+	coreOut, err := base.
+		WithExec([]string{"sh", "-c", "test -x /app/keepalive/keepalivecore && echo keepalivecore-executable"}).
+		Stdout(ctx)
+	if err != nil {
+		return err
+	}
+	if err := assertContains(coreOut, "keepalivecore-executable"); err != nil {
+		return err
+	}
+
+	startOut, err := base.
+		WithExec([]string{"sh", "-c", "/app/keepalive/keepalivecore 2>&1; echo \"KEEPALIVECORE_EXIT:$?\""}).
+		Stdout(ctx)
+	if err != nil {
+		return err
+	}
+	if err := assertContains(startOut, "WORKSPACE_ID must be set"); err != nil {
+		return err
+	}
+	return assertContains(startOut, "KEEPALIVECORE_EXIT:1")
 }
 
 // withClaude installs the Claude Code CLI onto c via its native installer

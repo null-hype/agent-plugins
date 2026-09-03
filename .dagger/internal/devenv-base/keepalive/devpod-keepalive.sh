@@ -26,6 +26,9 @@ set -euo pipefail
 WORKSPACE_ID=${WORKSPACE_ID:-devenv-base-gce}
 LIB_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.devcontainer/lib/gce-common.sh"
 source "$LIB_FILE"
+# Computed here, not inside the `bash -c` block below -- BASH_SOURCE[0]
+# there would refer to that -c string, not this script.
+KEEPALIVECORE_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/keepalivecore"
 
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON="devpod-keepalive: fetch GCP service account key"
@@ -57,7 +60,7 @@ RESTIC_REPOSITORY=pass://infra/restic/RESTIC_REPOSITORY
 RESTIC_PASSWORD=pass://infra/restic/RESTIC_PASSWORD
 EOF
 
-export SA_KEY_FILE WORKSPACE_ID PROTON_PASS_PERSONAL_ACCESS_TOKEN LIB_FILE
+export SA_KEY_FILE WORKSPACE_ID PROTON_PASS_PERSONAL_ACCESS_TOKEN LIB_FILE KEEPALIVECORE_BIN
 
 # Hard wall-clock cap. Precautionary -- no run has actually hung yet. Render
 # starts no new run while the previous one is still in flight, so a hung
@@ -75,106 +78,21 @@ timeout --signal=TERM --kill-after=60s 30m \
 
   gce_common_restic_pull_devpod_state
 
-  # Each bootstrap step runs as its own gce_common_ssh_step call (one
-  # `devpod ssh` invocation each -- see gce-common.sh for why these
-  # aren'"'"'t &&-chained into one remote command) rather than inline `devpod
-  # ssh` calls, so a failure in one step can'"'"'t silently swallow the next,
-  # and gives start-linear-agent.sh -- the step that actually matters for
-  # the app being reachable -- its own real exit code to check. Per-step
-  # tolerate/fail policy below is unchanged from before this refactor.
-  # tailscale-up.sh is the only step handed a PROTON_PASS_PERSONAL_ACCESS_TOKEN
-  # (via --set-env) and so the only one that can run `pass-cli login`; every
-  # later step just calls `pass-cli run` against the session it leaves behind
-  # in the container. Kept as a function purely so the retry below can'"'"'t drift
-  # from this call and drop --set-env -- without the token tailscale-up.sh
-  # bails at "cannot join tailnet" instead of logging in.
-  ssh_tailscale_up() {
-    gce_common_ssh_step "$WORKSPACE_ID" "tailscale-up.sh" \
-      --set-env "PROTON_PASS_PERSONAL_ACCESS_TOKEN=$PROTON_PASS_PERSONAL_ACCESS_TOKEN"
-  }
-
-  # A fresh container (first boot, or the "devpod up" restart below) is a
-  # fresh `git:...` clone with none of the gitignored .env files
-  # tailscale-up.sh/install-tools.sh need -- see generate-env-files.sh.
-  # Tolerated like the other steps below: on an already-warm container this
-  # is a harmless no-op re-generation.
+  # JIN-133: the tunnel/timing/retry core (one long-lived devpod ssh
+  # session covering all five bootstrap steps, held open past devpod'"'"'s 30s
+  # watchdog-reset tick regardless of how fast the steps themselves run,
+  # and the tailscale-down/devpod-up/retry state machine) has moved to a
+  # compiled Go binary -- see keepalive/core, keepalive/devpodtunnel and
+  # keepalive/retry. This script still owns everything around it: secrets,
+  # pass-cli, and the restic pull/push state dance above/below. WORKSPACE_ID
+  # and PROTON_PASS_PERSONAL_ACCESS_TOKEN, and KEEPALIVECORE_BIN itself, are
+  # already exported into this subshell'"'"'s environment (see the `export`
+  # line above the `timeout` invocation); keepalivecore reads the first two
+  # directly.
   set +e
-  GEN_OUT=$(gce_common_ssh_step "$WORKSPACE_ID" "generate-env-files.sh")
-  GEN_RC=$?
+  "$KEEPALIVECORE_BIN"
+  CORE_RC=$?
   set -e
-  echo "$GEN_OUT"
-  if [ "$GEN_RC" -ne 0 ]; then
-    echo "devpod ssh exited $GEN_RC on generate-env-files.sh (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
-  fi
-
-  set +e
-  TS_OUT=$(ssh_tailscale_up)
-  TS_RC=$?
-  set -e
-  echo "$TS_OUT"
-
-  if [ "$TS_RC" -ne 0 ]; then
-    if printf "%s" "$TS_OUT" | grep -qi "workspace is stopped\|doesnt exist\|does not exist"; then
-      echo "workspace was stopped -- restarting with devpod up"
-      devpod up "$WORKSPACE_ID"
-
-      gce_common_ssh_step "$WORKSPACE_ID" "generate-env-files.sh" || \
-        echo "devpod ssh exited $? on generate-env-files.sh after restart (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
-
-      # `devpod up` brings the workspace back in a *fresh* container, so the
-      # pass-cli session that the pre-stop container held is gone -- and
-      # nothing in that new container has run tailscale-up.sh, since
-      # devcontainer.json'"'"'s postStart hooks can'"'"'t receive the token at all
-      # (loft-sh/devpod#1907, see gce-common.sh'"'"'s header). Re-running it here
-      # is what re-establishes the session. Without this the run reaches
-      # start-linear-agent.sh/start-cloudflared.sh with no session and both
-      # die on pass-cli "No active session" -- exactly how the 2026-08-19
-      # 23:15 run failed.
-      set +e
-      TS_OUT=$(ssh_tailscale_up)
-      TS_RC=$?
-      set -e
-      echo "$TS_OUT"
-
-      # Deliberately checked on output rather than exit code: `devpod ssh`
-      # routinely exits non-zero on the cosmetic tunnel-teardown error even
-      # when the remote command succeeded, so TS_RC alone can'"'"'t distinguish
-      # "logged in fine" from "PAT rejected". These two strings are
-      # tailscale-up.sh'"'"'s own success lines.
-      if ! printf "%s" "$TS_OUT" | grep -q "tailscale: already connected\|tailscale: joined tailnet"; then
-        echo "tailscale-up.sh did not complete after devpod up (exit $TS_RC) -- the new container has no pass-cli session, so every later step would fail on '"'"'No active session'"'"'; failing this run" >&2
-        exit 1
-      fi
-    else
-      echo "devpod ssh exited $TS_RC on tailscale-up.sh (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
-    fi
-  fi
-
-  set +e
-  TOOLS_OUT=$(gce_common_ssh_step "$WORKSPACE_ID" "install-tools.sh")
-  TOOLS_RC=$?
-  set -e
-  echo "$TOOLS_OUT"
-  if [ "$TOOLS_RC" -ne 0 ]; then
-    echo "devpod ssh exited $TOOLS_RC on install-tools.sh (likely the known cosmetic tunnel-teardown error on exit) -- continuing"
-  fi
-
-  set +e
-  AGENT_OUT=$(gce_common_ssh_step "$WORKSPACE_ID" "start-linear-agent.sh")
-  AGENT_RC=$?
-  set -e
-  echo "$AGENT_OUT"
-
-  # agent.tidelands.dev is fronted by a Cloudflare Tunnel now, not tailscale
-  # funnel directly (funnel'"'"'s cert only covers the raw ts.net hostname, and
-  # Cloudflare Origin Rules'"'"' SNI override -- the alternative fix -- turned out
-  # to be plan-gated). cloudflared has to be running for the app to actually
-  # be publicly reachable, same as start-linear-agent.sh.
-  set +e
-  CF_OUT=$(gce_common_ssh_step "$WORKSPACE_ID" "start-cloudflared.sh")
-  CF_RC=$?
-  set -e
-  echo "$CF_OUT"
 
   # JIN-63: continue-claude-session.sh step disabled per request -- was
   # erroring on every run (ssh tunnel/permission failures) without ever
@@ -182,12 +100,8 @@ timeout --signal=TERM --kill-after=60s 30m \
 
   gce_common_restic_push_devpod_state
 
-  if [ "$AGENT_RC" -ne 0 ]; then
-    echo "start-linear-agent.sh failed (devpod ssh exit $AGENT_RC) -- this is the step that actually keeps the app reachable, failing this run" >&2
-    exit 1
-  fi
-  if [ "$CF_RC" -ne 0 ]; then
-    echo "start-cloudflared.sh failed (devpod ssh exit $CF_RC) -- agent.tidelands.dev is not publicly reachable without it, failing this run" >&2
+  if [ "$CORE_RC" -ne 0 ]; then
+    echo "keepalivecore exited $CORE_RC -- tunnel/bootstrap sequence did not complete (see its own output above for which step); failing this run" >&2
     exit 1
   fi
 '

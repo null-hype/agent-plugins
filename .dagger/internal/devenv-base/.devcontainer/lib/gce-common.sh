@@ -43,9 +43,10 @@ gce_common_ssh_step() {
 
 # The bootstrap sequence, in order, shared so it's defined once.
 # Callers that just want to run all four under one failure policy can loop
-# over this; keepalive/devpod-keepalive.sh instead calls gce_common_ssh_step
-# per step directly, since it has to interleave its own tailscale-up retry
-# and per-step tolerate/fail policy between them.
+# over this; keepalive/devpod-keepalive.sh instead delegates the sequence
+# (and its tailscale-up retry/tolerate policy) to the compiled keepalivecore
+# binary (JIN-133), which runs the same five steps over one long-lived
+# devpod ssh session rather than gce_common_ssh_step's one-session-per-step.
 gce_common_bootstrap_steps() {
   printf '%s\n' \
     "generate-env-files.sh" \
