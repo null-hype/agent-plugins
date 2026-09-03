@@ -4,10 +4,10 @@ examples {
   }
   ["observed items in each declared vault"] {
     new {
-      ["infra"] = List("dagger.cloud", "github.com", "render.com", "restic", "tailscale")
+      ["infra"] = List("cloudflare", "dagger.cloud", "github.com", "render.com", "restic", "tailscale")
     }
     new {
-      ["tidelands.dev"] = List("claude", "linear-release", "pass-cli")
+      ["tidelands.dev"] = List("agent.tidelands.dev", "claude", "linear-release", "pass-cli")
     }
   }
 }

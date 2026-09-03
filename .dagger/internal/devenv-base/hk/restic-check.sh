@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verifies the integrity of the restic repo defined in pass://development/restic.
+# Verifies the integrity of the restic repo defined in pass://infra/restic.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
