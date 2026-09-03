@@ -94,29 +94,16 @@ pass-cli run --env-file "$ENV_FILE" -- bash -c '
     *" --ide "*|*" --ide="*) ;;
     *) IDE_ARGS=(--ide none) ;;
   esac
-  # ONE-OFF: migrating this workspace off the retired standalone devenv-base
-  # repo onto the agent-plugins subtree. devpod ignores --source/
-  # --devcontainer-path for an existing workspace record even under --reset,
-  # so the stale record has to be deleted before `up` recreates it fresh.
-  # A prior attempt at this migration deleted the record but failed later
-  # (once at the bootstrap-step stage, once on a GCE instance-creation race),
-  # before gce_common_restic_push_devpod_state ran -- so the fix was never
-  # persisted to the shared restic repo, and the next call to
-  # gce_common_restic_pull_devpod_state silently restored the stale
-  # devenv-base.git-sourced record. Keep this delete in place until a full
-  # run (including the final restic push) succeeds end-to-end.
-  # TODO(JIN-118): remove this line after the migration run succeeds fully.
-  devpod delete "$WORKSPACE_ID" --force 2>/dev/null || true
-
-  # Retried: observed live during this migration that a GCE regional CPU
-  # quota exhausted by leftover instances (from repeated delete+recreate
-  # cycles while debugging) makes instances.insert fail with 403
-  # QUOTA_EXCEEDED, which devpod surfaces only as a generic "instance ...
-  # doesnt exist" connection timeout with no indication of the real cause.
-  # Retrying doesn'"'"'t fix a quota problem by itself, but does absorb
-  # ordinary transient provisioning delays without a human back at the
-  # keyboard -- if it fails 3x in a row, check `gcloud compute operations
-  # list`/`instances list` for a stuck quota or orphaned instance first.
+  # Retried: observed live during the devenv-base->agent-plugins migration
+  # that a GCE regional CPU quota exhausted by leftover instances (from
+  # repeated delete+recreate cycles while debugging) makes instances.insert
+  # fail with 403 QUOTA_EXCEEDED, which devpod surfaces only as a generic
+  # "instance ... doesnt exist" connection timeout with no indication of the
+  # real cause. Retrying doesn'"'"'t fix a quota problem by itself, but does
+  # absorb ordinary transient provisioning delays without a human back at
+  # the keyboard -- if it fails 3x in a row, check `gcloud compute
+  # operations list`/`instances list` for a stuck quota or orphaned
+  # instance first.
   up_ok=0
   for attempt in 1 2 3; do
     if devpod up "$WORKSPACE_ID" --source "$GIT_SOURCE" --provider "$PROVIDER_NAME" --id "$WORKSPACE_ID" \
