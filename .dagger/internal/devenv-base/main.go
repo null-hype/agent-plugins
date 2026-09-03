@@ -280,6 +280,51 @@ func (m *DevenvBase) CheckContainerUse(ctx context.Context) error {
 	})
 }
 
+// withGitButler installs GitButler's CLI (but) onto c (JIN-117). Assumes
+// withGit has already run: but setup's commit/HEAD flows need a git identity
+// present beforehand, same as container-use's environment_create, and
+// withGit's fix is a --system (process-wide, HOME-independent) git config,
+// not --global -- confirmed that scope covers but too, not just cu, since
+// both just shell out to git and inherit whatever identity the process's git
+// config resolves to.
+func withGitButler(c *dagger.Container) *dagger.Container {
+	// but fails at runtime with a missing libdbus-1.so.3 error without this --
+	// not pulled in automatically by the bookworm-slim base image.
+	c = withAptPackages(c, "libdbus-1-3")
+	return c.
+		WithExec([]string{"sh", "-c", "curl -fsSL https://gitbutler.com/install.sh | sh"}).
+		// cp, not ln -sf: same root-only-install-dir trap withContainerUse
+		// handles above -- the installer (root) drops the binary under
+		// /root/.local/bin, and /root is 700, unreachable for a non-root user
+		// via a symlink even though /usr/local/bin itself is world-executable.
+		WithExec([]string{"cp", "/root/.local/bin/but", "/usr/local/bin/but"})
+}
+
+// GitButler layers GitButler's CLI (but) onto ContainerUse, alongside cu --
+// the composition JIN-95's scenario needs (a but workspace one layer up
+// applying cu env branches as lanes).
+func (m *DevenvBase) GitButler(
+	// +optional
+	platform dagger.Platform,
+) *dagger.Container {
+	return withGitButler(m.ContainerUse(platform))
+}
+
+// CheckGitButler asserts but is installed and runnable — as a non-root
+// user, the same reachability trap CheckContainerUse guards against.
+// +check
+func (m *DevenvBase) CheckGitButler(ctx context.Context) error {
+	out, err := m.GitButler("").
+		WithExec([]string{"useradd", "-m", "checkuser"}).
+		WithUser("checkuser").
+		WithExec([]string{"but", "--version"}).
+		Stdout(ctx)
+	if err != nil {
+		return err
+	}
+	return assertVersionLike(out)
+}
+
 // withGcloud installs the gcloud CLI onto c. Runs its own apt-get update
 // (via withAptPackages) rather than assuming a caller already refreshed the
 // package cache -- flattening the graph means Gcloud can no longer count on
@@ -421,19 +466,21 @@ func withClaude(c *dagger.Container) *dagger.Container {
 }
 
 // Agent is the slim third image: container-use (with its dagger/docker/git
-// prerequisites), pass-cli, tailscale and the Claude Code CLI — the
-// always-on GCE agent box. Branches off Tailscale directly, skipping Restic
-// and Gcloud/Devpod: this box doesn't snapshot its own disk or talk to GCP
-// APIs itself, so it has no use for either.
+// prerequisites), GitButler's but (JIN-117 -- the layer above cu that
+// applies its env branches as lanes, per JIN-95), pass-cli, tailscale and
+// the Claude Code CLI — the always-on GCE agent box. Branches off Tailscale
+// directly, skipping Restic and Gcloud/Devpod: this box doesn't snapshot its
+// own disk or talk to GCP APIs itself, so it has no use for either.
 func (m *DevenvBase) Agent(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withClaude(withContainerUse(withGit(withDocker(withDaggerCli(m.Tailscale(platform))))))
+	return withClaude(withGitButler(withContainerUse(withGit(withDocker(withDaggerCli(m.Tailscale(platform)))))))
 }
 
-// CheckAgent asserts pass-cli, tailscale, container-use and claude are all
-// installed and runnable, as a non-root user (see CheckContainerUse for why).
+// CheckAgent asserts pass-cli, tailscale, container-use, but and claude are
+// all installed and runnable, as a non-root user (see CheckContainerUse for
+// why).
 // +check
 func (m *DevenvBase) CheckAgent(ctx context.Context) error {
 	base := m.Agent("").
@@ -446,6 +493,14 @@ func (m *DevenvBase) CheckAgent(ctx context.Context) error {
 		{"container-use", "version", "container-use version"},
 	}); err != nil {
 		return err
+	}
+
+	butOut, err := base.WithExec([]string{"but", "--version"}).Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("but: %w", err)
+	}
+	if err := assertVersionLike(butOut); err != nil {
+		return fmt.Errorf("but: %w", err)
 	}
 
 	out, err := base.WithExec([]string{"claude", "--version"}).Stdout(ctx)
