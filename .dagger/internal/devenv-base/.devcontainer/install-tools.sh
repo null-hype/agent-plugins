@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v claude >/dev/null 2>&1; then
-  curl -fsSL https://claude.ai/install.sh | bash
-fi
-
-if ! command -v mise >/dev/null 2>&1; then
-  curl -fsSL https://mise.run | sh
-fi
-export PATH="$HOME/.local/bin:$PATH"
+# claude, mise (the binary), make, tmux, restic and linear-release are baked
+# into the image at build time now (LinearAgent in main.go -- JIN-129).
+# What's left here is environment-dependent and can't be resolved at
+# image-build time: activating mise for this shell/future ones, installing
+# this repo's pinned tool versions against the live checkout, wiring git
+# hooks (.git/hooks isn't tracked by git, so this needs to run on every
+# fresh clone/container), and the docker-socket-GID dance below.
 
 # Activate mise (adds its shims to PATH) for this script's own use, and
 # persist activation for future interactive shells (mise install alone
@@ -40,23 +39,6 @@ for hook in "$REPO_ROOT"/.git/hooks/pre-commit "$REPO_ROOT"/.git/hooks/pre-push;
   [ -f "$hook" ] || continue
   sed -i "s#exec hk #exec \"$HK_BIN\" #" "$hook"
 done
-
-if ! command -v make >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1 || ! command -v restic >/dev/null 2>&1; then
-  sudo apt-get update
-  sudo apt-get install -y make tmux restic
-fi
-
-if ! command -v linear-release >/dev/null 2>&1; then
-  case "$(uname -s)-$(uname -m)" in
-    Linux-x86_64) LINEAR_RELEASE_ASSET=linear-release-linux-x64 ;;
-    Darwin-arm64) LINEAR_RELEASE_ASSET=linear-release-darwin-arm64 ;;
-    Darwin-x86_64) LINEAR_RELEASE_ASSET=linear-release-darwin-x64 ;;
-    *) echo "install-tools.sh: no linear-release build for $(uname -s)-$(uname -m)" >&2; exit 1 ;;
-  esac
-  curl -fsSL "https://github.com/linear/linear-release/releases/latest/download/${LINEAR_RELEASE_ASSET}" -o /tmp/linear-release
-  chmod +x /tmp/linear-release
-  sudo mv /tmp/linear-release /usr/local/bin/linear-release
-fi
 
 #
 # docker-outside-of-docker's feature install normally syncs the container's
