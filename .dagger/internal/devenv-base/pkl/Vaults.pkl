@@ -27,12 +27,16 @@ declared: Listing<VaultSpec> = new {
       "github.com"
       "tailscale"
       "render.com"
+      "cloudflare"
     }
   }
   new VaultSpec {
     name = "tidelands.dev"
     items {
       "linear-release"
+      "agent.tidelands.dev"
+      "claude"
+      "pass-cli"
     }
   }
 }

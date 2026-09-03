@@ -20,6 +20,10 @@ local envFiles: Listing<String> = new {
   "../keepalive/devpod-keepalive.sh"
   "../.devcontainer/tailscale.env"
   "../.devcontainer/render.env"
+  "../.devcontainer/linear-agent.env"
+  "../.devcontainer/linear-triage-agent.env"
+  "../.devcontainer/continue-claude-session.env"
+  "../.devcontainer/cloudflared.env"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)
