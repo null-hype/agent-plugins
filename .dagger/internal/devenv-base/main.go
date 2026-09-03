@@ -564,14 +564,48 @@ func (m *DevenvBase) CheckPlaywrightAgent(ctx context.Context) error {
 // tailscale-up.sh), not a separate tunnel tool. Doesn't set an entrypoint or
 // start command -- start-linear-agent.sh runs the server and opens the
 // funnel, invoked over `devpod ssh` by devpod-gce.sh/devpod-keepalive.sh.
+//
+// mise, make, tmux and linear-release are baked in the same way (JIN-129):
+// install-tools.sh used to re-check-and-install all of these live, over
+// `devpod ssh`, on every bootstrap run, even on an already-warm container.
+// restic isn't listed here separately -- it already comes in via Devpod's
+// own chain (Devpod -> ... -> Restic), so install-tools.sh's restic check
+// was already a no-op. Only mise's *binary* moves here: `mise install --cd
+// $REPO_ROOT` (installing this repo's pinned tool versions) and `hk
+// install` (git hooks) stay live in install-tools.sh, since both depend on
+// the actual repo checkout on the remote box at run time, not anything
+// resolvable at image-build time.
 func (m *DevenvBase) LinearAgent(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withClaude(withNode(m.Devpod(platform))).
+	base := withLinearRelease(withMise(withAptPackages(withClaude(withNode(m.Devpod(platform))), "make", "tmux")))
+	return base.
 		WithDirectory("/app", dag.CurrentModule().Source().Directory("linear-agent")).
 		WithWorkdir("/app").
 		WithExec([]string{"npm", "ci"})
+}
+
+// withMise installs the mise binary onto c -- not `mise install` itself,
+// which installs this repo's pinned tool versions and so depends on the
+// live repo checkout; that stays a run-time step in install-tools.sh (see
+// LinearAgent's comment, JIN-129). Same reachability trap as
+// withClaude/withContainerUse: the installer (root) drops the binary under
+// /root/.local/bin, unreachable for non-root users via a symlink because
+// /root is 700.
+func withMise(c *dagger.Container) *dagger.Container {
+	return c.
+		WithExec([]string{"sh", "-c", "curl -fsSL https://mise.run | sh"}).
+		WithExec([]string{"cp", "/root/.local/bin/mise", "/usr/local/bin/mise"})
+}
+
+// withLinearRelease installs the linear-release CLI onto c. Hardcodes the
+// linux-x64 release asset: amd64 Linux only, matching LinearAgent (the only
+// caller) -- see PublishLinearAgent's own "amd64 only, matching Devpod" note.
+func withLinearRelease(c *dagger.Container) *dagger.Container {
+	return c.WithExec([]string{"sh", "-c",
+		"curl -fsSL https://github.com/linear/linear-release/releases/latest/download/linear-release-linux-x64 -o /usr/local/bin/linear-release && chmod +x /usr/local/bin/linear-release",
+	})
 }
 
 // LinearAgentSlim builds the same linear-agent app directly on node:22-slim
@@ -591,13 +625,37 @@ func (m *DevenvBase) LinearAgentSlim(
 		WithExec([]string{"npm", "ci"})
 }
 
-// CheckLinearAgent runs the real test suite (src/webhook.test.ts), which
-// exercises actual HMAC signature verification through the real
+// CheckLinearAgent asserts the tools JIN-129 moved into this image build
+// (mise, linear-release, make, tmux -- claude was already baked in) are
+// present and runnable, then runs the real test suite (src/webhook.test.ts),
+// which exercises actual HMAC signature verification through the real
 // @linear/sdk LinearWebhookClient against a live HTTP server -- not a
 // reimplementation of Linear's verification logic.
 // +check
 func (m *DevenvBase) CheckLinearAgent(ctx context.Context) error {
-	out, err := m.LinearAgent("").
+	base := m.LinearAgent("")
+
+	if err := runToolChecks(ctx, base, []toolCheck{
+		{"make", "--version", "GNU Make"},
+		{"tmux", "-V", "tmux"},
+	}); err != nil {
+		return err
+	}
+	// mise's and linear-release's own --version/--help output formats
+	// aren't a known quantity here (unlike make/tmux) -- just confirm the
+	// binaries JIN-129 baked in are present and executable, matching the
+	// bar install-tools.sh itself used to verify them by (`command -v`).
+	presentOut, err := base.
+		WithExec([]string{"sh", "-c", "command -v mise && command -v linear-release && echo tools-present"}).
+		Stdout(ctx)
+	if err != nil {
+		return err
+	}
+	if err := assertContains(presentOut, "tools-present"); err != nil {
+		return err
+	}
+
+	out, err := base.
 		WithExec([]string{"npm", "test"}).
 		Stdout(ctx)
 	if err != nil {
