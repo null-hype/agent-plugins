@@ -139,3 +139,26 @@ gce_common_restic_pull_claude_session() {
 gce_common_restic_push_claude_session() {
   (cd ~ && restic backup .claude --tag claude-session-state)
 }
+
+# Guard for JIN-117's key finding: `but setup` auto-selects whatever push
+# remote already exists as its target. If a `cu` environment is created
+# before any other remote exists, `but setup` targets container-use/* --
+# exactly the mutation JIN-95's policy prohibits ("GitButler never mutates
+# container-use/* refs"). A bare `git remote add origin ...` isn't enough
+# either: without a completed fetch/clone, `but setup` fails deep in
+# provisioning with a confusing "No HEAD reference found for remote origin".
+#
+# Call this from whatever bootstrap step first runs `but setup`, in the repo
+# checkout `but setup` will run against, immediately before that call --
+# nothing currently invokes `but setup` (wiring it into the live bootstrap
+# sequence is JIN-118, out of scope here), so this has no caller yet.
+gce_common_assert_origin_before_but_setup() {
+  if ! git remote get-url origin > /dev/null 2>&1; then
+    echo "origin remote not found -- but setup must not run before a non-container-use remote exists (JIN-117)" >&2
+    return 1
+  fi
+  if ! git symbolic-ref refs/remotes/origin/HEAD > /dev/null 2>&1; then
+    echo "refs/remotes/origin/HEAD not resolved -- origin is registered but hasn't been fetched; but setup needs a real fetched HEAD, not just a registered remote (JIN-117)" >&2
+    return 1
+  fi
+}
