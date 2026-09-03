@@ -16,6 +16,16 @@
 # this, matching tailscale-up.sh/start-linear-agent.sh.
 set -euo pipefail
 
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+  if command -v sudo > /dev/null 2>&1; then
+    SUDO="sudo"
+  else
+    echo "sudo is required to run as a non-root user but was not found" >&2
+    exit 1
+  fi
+fi
+
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON="start-cloudflared: fetch tunnel token"
 
@@ -24,7 +34,7 @@ ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/cloudflared.env"
 if ! command -v cloudflared >/dev/null 2>&1; then
   curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$(dpkg --print-architecture)" -o /tmp/cloudflared
   chmod +x /tmp/cloudflared
-  sudo mv /tmp/cloudflared /usr/local/bin/cloudflared
+  $SUDO mv /tmp/cloudflared /usr/local/bin/cloudflared
 fi
 
 if pgrep -f "cloudflared tunnel run" > /dev/null 2>&1; then
