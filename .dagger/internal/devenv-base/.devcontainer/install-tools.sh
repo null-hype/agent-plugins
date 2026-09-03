@@ -27,6 +27,20 @@ mise install --cd "$REPO_ROOT"
 # runs don't survive it).
 (cd "$REPO_ROOT" && hk install)
 
+# hk install generates hooks that invoke the bare `hk` command, resolved via
+# PATH at hook-run time. mise only puts hk on PATH for interactive shells
+# that source ~/.bashrc (see the activation block above) -- so any process
+# that pushes to this repo with a different/minimal PATH (e.g. container-use
+# mirroring the repo into its internal store before starting an environment)
+# fails hook execution with "exec: hk: not found" and the push never
+# completes. Rewrite the generated hook scripts to call hk by absolute path
+# so they work regardless of the invoking process's PATH. (JIN-125)
+HK_BIN="$(command -v hk)"
+for hook in "$REPO_ROOT"/.git/hooks/pre-commit "$REPO_ROOT"/.git/hooks/pre-push; do
+  [ -f "$hook" ] || continue
+  sed -i "s#exec hk #exec \"$HK_BIN\" #" "$hook"
+done
+
 if ! command -v make >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1 || ! command -v restic >/dev/null 2>&1; then
   sudo apt-get update
   sudo apt-get install -y make tmux restic
