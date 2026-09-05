@@ -13,6 +13,10 @@ declare -A OUT=(
   [tailscale]=".devcontainer/tailscale.env"
   [gcloud]=".devcontainer/gcloud.env"
   [linear-release]="linear-release.env"
+  [cit-16-create-subagent]="../../../test/_global/cit-16-create-subagent/.env"
+  [linear-agent]=".devcontainer/linear-agent.env"
+  [linear-triage-agent]=".devcontainer/linear-triage-agent.env"
+  [continue-claude-session]=".devcontainer/continue-claude-session.env"
 )
 
 for name in "${!OUT[@]}"; do
