@@ -48,5 +48,16 @@
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
+    },
+    "cit-16-create-subagent": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "pass-cli": {}
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
     }
 }
