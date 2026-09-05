@@ -24,6 +24,7 @@ local envFiles: Listing<String> = new {
   "../.devcontainer/linear-triage-agent.env"
   "../.devcontainer/continue-claude-session.env"
   "../.devcontainer/cloudflared.env"
+  "../../../../test/_global/cit-16-create-subagent/.env"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)

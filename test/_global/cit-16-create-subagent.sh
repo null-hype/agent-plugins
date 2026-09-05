@@ -84,7 +84,7 @@ TRANSCRIPT="$(ls "$HOME"/.claude/projects/*/"$SESSION_ID".jsonl 2>/dev/null | he
 # by copying them out of the prompt.
 check "session transcript was recorded" bash -c "[ -n '$TRANSCRIPT' ] && [ -f '$TRANSCRIPT' ]"
 check "agent actually invoked the Agent tool to spawn a subagent" bash -c "grep -qi '\"name\":\"Agent\"' '$TRANSCRIPT'"
-check "subagent actually invoked the loop skill" bash -c "grep -qi '\"name\":\"Skill\"' '$TRANSCRIPT' && grep -qi 'loop' '$TRANSCRIPT'"
+check "subagent actually invoked the loop skill" bash -c "grep -qi '\"name\":\"Skill\"' '$TRANSCRIPT' && grep -qi '\"skill\":\"loop\"' '$TRANSCRIPT'"
 check "agent confirms it created a subagent" bash -c "grep -qi 'subagent: created' /tmp/create-subagent-response.txt"
 check "agent confirms it started a loop" bash -c "grep -qi 'loop: started' /tmp/create-subagent-response.txt"
 
