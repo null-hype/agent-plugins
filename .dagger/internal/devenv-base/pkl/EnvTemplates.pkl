@@ -9,8 +9,11 @@ module envTemplates
 class EnvVarRef {
   /// The env var name written to the left of `=`.
   name: String
-  vaultName: String
-  itemName: String
+  /// A literal value written as-is (for non-secret vars like redirect URLs);
+  /// mutually exclusive with vaultName/itemName.
+  value: String?
+  vaultName: String?
+  itemName: String?
   /// The pass-cli field name; defaults to `name` since they're usually the same.
   field: String = name
 }
@@ -27,9 +30,36 @@ templates: Mapping<String, Listing<EnvVarRef>> = new {
     new EnvVarRef { name = "GITHUB_TOKEN"; vaultName = "infra"; itemName = "github.com" }
   }
   ["linear-release"] {
-    new EnvVarRef { name = "LINEAR_ACCESS_KEY"; vaultName = "tidelands.dev"; itemName = "linear-release" }
+    new EnvVarRef { name = "LINEAR_ACCESS_KEY"; vaultName = "jingling057"; itemName = "linear-release" }
+  }
+  ["cit-16-create-subagent"] {
+    new EnvVarRef { name = "CLAUDE_CODE_OAUTH_TOKEN"; vaultName = "anthropic.ai"; itemName = "claude" }
+  }
+  ["linear-agent"] {
+    new EnvVarRef { name = "LINEAR_CLIENT_ID"; vaultName = "jingling057"; itemName = "agent.tidelands.dev"; field = "CLIENT_ID" }
+    new EnvVarRef { name = "LINEAR_CLIENT_SECRET"; vaultName = "jingling057"; itemName = "agent.tidelands.dev"; field = "CLIENT_SECRET" }
+    new EnvVarRef { name = "LINEAR_WEBHOOK_SECRET"; vaultName = "jingling057"; itemName = "agent.tidelands.dev"; field = "SIGNING_SECRET" }
+    new EnvVarRef { name = "LINEAR_OAUTH_REDIRECT_URL"; value = "https://agent.tidelands.dev/oauth/callback" }
+    new EnvVarRef { name = "LINEAR_INSTALL_TOKEN"; vaultName = "jingling057"; itemName = "agent.tidelands.dev"; field = "DEVELOPER_TOKEN" }
+    new EnvVarRef { name = "CLAUDE_CODE_OAUTH_TOKEN"; vaultName = "jingling057"; itemName = "agent.tidelands.dev" }
+    new EnvVarRef { name = "PROTON_PASS_PERSONAL_ACCESS_TOKEN"; vaultName = "tidelands.dev"; itemName = "pass-cli" }
+  }
+  ["linear-triage-agent"] {
+    new EnvVarRef { name = "CLAUDE_CODE_OAUTH_TOKEN"; vaultName = "jingling057"; itemName = "agent.tidelands.dev" }
+    new EnvVarRef { name = "CLAUDE_MAX_BUDGET_USD"; vaultName = "anthropic.ai"; itemName = "claude" }
+    new EnvVarRef { name = "LINEAR_API_KEY"; vaultName = "anthropic.ai"; itemName = "claude" }
+  }
+  ["continue-claude-session"] {
+    new EnvVarRef { name = "CLAUDE_CODE_OAUTH_TOKEN"; vaultName = "jingling057"; itemName = "agent.tidelands.dev" }
+    new EnvVarRef { name = "GCP_SERVICE_ACCOUNT_KEY"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "RESTIC_REPOSITORY"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "RESTIC_PASSWORD"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "CLAUDE_SESSION_ID"; vaultName = "anthropic.ai"; itemName = "claude" }
+    new EnvVarRef { name = "CLAUDE_MAX_BUDGET_USD"; vaultName = "anthropic.ai"; itemName = "claude" }
   }
 }
 
 function render(name: String): String =
-  templates[name].toList().map((r) -> "\(r.name)=pass://\(r.vaultName)/\(r.itemName)/\(r.field)\n").join("")
+  templates[name].toList()
+    .map((r) -> "\(r.name)=\(r.value ?? "pass://\(r.vaultName)/\(r.itemName)/\(r.field)")\n")
+    .join("")

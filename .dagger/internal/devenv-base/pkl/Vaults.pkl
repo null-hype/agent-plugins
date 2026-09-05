@@ -12,6 +12,13 @@
 /// see the JIN-63 vault-reorg fix). Vault names are no longer expected to
 /// follow a JIN-<number> convention now that they're consolidated by
 /// purpose rather than per-issue.
+///
+/// The linear-release item has since moved again, out of "tidelands.dev"
+/// and into the "jingling057" share (the old tidelands.dev/linear-release
+/// item no longer exists). agent.tidelands.dev has since moved into
+/// "jingling057" too (the old tidelands.dev/agent.tidelands.dev item no
+/// longer exists). claude has moved into "anthropic.ai" (the old
+/// tidelands.dev/claude item no longer exists).
 module vaults
 
 class VaultSpec {
@@ -33,10 +40,20 @@ declared: Listing<VaultSpec> = new {
   new VaultSpec {
     name = "tidelands.dev"
     items {
-      "linear-release"
-      "agent.tidelands.dev"
-      "claude"
       "pass-cli"
+    }
+  }
+  new VaultSpec {
+    name = "jingling057"
+    items {
+      "agent.tidelands.dev"
+      "linear-release"
+    }
+  }
+  new VaultSpec {
+    name = "anthropic.ai"
+    items {
+      "claude"
     }
   }
 }
