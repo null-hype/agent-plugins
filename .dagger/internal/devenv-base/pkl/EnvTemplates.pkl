@@ -29,6 +29,9 @@ templates: Mapping<String, Listing<EnvVarRef>> = new {
   ["linear-release"] {
     new EnvVarRef { name = "LINEAR_ACCESS_KEY"; vaultName = "tidelands.dev"; itemName = "linear-release" }
   }
+  ["cit-16-create-subagent"] {
+    new EnvVarRef { name = "CLAUDE_CODE_OAUTH_TOKEN"; vaultName = "tidelands.dev"; itemName = "claude" }
+  }
 }
 
 function render(name: String): String =
