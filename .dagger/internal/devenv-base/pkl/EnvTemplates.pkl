@@ -27,7 +27,7 @@ templates: Mapping<String, Listing<EnvVarRef>> = new {
     new EnvVarRef { name = "GITHUB_TOKEN"; vaultName = "infra"; itemName = "github.com" }
   }
   ["linear-release"] {
-    new EnvVarRef { name = "LINEAR_ACCESS_KEY"; vaultName = "tidelands.dev"; itemName = "linear-release" }
+    new EnvVarRef { name = "LINEAR_ACCESS_KEY"; vaultName = "jingling057"; itemName = "linear-release" }
   }
   ["cit-16-create-subagent"] {
     new EnvVarRef { name = "CLAUDE_CODE_OAUTH_TOKEN"; vaultName = "tidelands.dev"; itemName = "claude" }
