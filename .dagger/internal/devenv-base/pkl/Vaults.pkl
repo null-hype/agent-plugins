@@ -15,7 +15,10 @@
 ///
 /// The linear-release item has since moved again, out of "tidelands.dev"
 /// and into the "jingling057" share (the old tidelands.dev/linear-release
-/// item no longer exists).
+/// item no longer exists). agent.tidelands.dev has since moved into
+/// "jingling057" too (the old tidelands.dev/agent.tidelands.dev item no
+/// longer exists). claude has moved into "anthropic.ai" (the old
+/// tidelands.dev/claude item no longer exists).
 module vaults
 
 class VaultSpec {
@@ -37,15 +40,20 @@ declared: Listing<VaultSpec> = new {
   new VaultSpec {
     name = "tidelands.dev"
     items {
-      "agent.tidelands.dev"
-      "claude"
       "pass-cli"
     }
   }
   new VaultSpec {
     name = "jingling057"
     items {
+      "agent.tidelands.dev"
       "linear-release"
+    }
+  }
+  new VaultSpec {
+    name = "anthropic.ai"
+    items {
+      "claude"
     }
   }
 }
