@@ -12,7 +12,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"dagger/bountybench-dagger-agentscope/internal/dagger"
 )
