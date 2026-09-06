@@ -8,6 +8,10 @@ linear-agent/.bin/
 linear-agent/node_modules/
 bountybench-loop/dist/
 bountybench-loop/node_modules/
+# Host-local handoff state between the top-level interactive session and the
+# supervisor pass (CLAUDE.md's "Delegated-agent lanes") -- not shared work
+# product, never committed.
+bountybench-loop/pending-agent-prs.json
 
 # Regenerated at check time by hk/capture-vault-inventory.sh -- see
 # pkl/Vaults.test.pkl. The committed pkl/*.pkl-expected.pcf golden file is

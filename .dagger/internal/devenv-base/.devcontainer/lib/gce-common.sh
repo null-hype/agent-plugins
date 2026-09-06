@@ -138,6 +138,7 @@ gce_common_restic_pull_claude_session() {
 
 gce_common_restic_push_claude_session() {
   (cd ~ && restic backup .claude --tag claude-session-state)
+  gce_common_restic_prune claude-session-state
 }
 
 # container-use keeps its real git state on the host (bare repo +
@@ -152,4 +153,20 @@ gce_common_restic_push_container_use_state() {
     return 0
   fi
   (cd ~ && restic backup .config/container-use --tag container-use-state)
+  gce_common_restic_prune container-use-state
+}
+
+# Both push functions above now fire far more often than "once per git push"
+# (the Claude Code PreCompact hook -- see hk/claude-session-backup.sh, wired
+# up via ~/.claude/settings.json's hooks.PreCompact -- calls
+# gce_common_restic_push_claude_session on every compaction, which can be
+# many times an hour once autoCompactWindow is lowered), and neither ever
+# forgot old snapshots. Without this, the repo grows unbounded. keep-last is
+# deliberately generous (this is disaster recovery, not point-in-time
+# browsing -- we're trading a bit of repo bloat for never regretting a
+# pruned snapshot) and --prune reclaims space immediately rather than
+# leaving it for a separate gc pass that nothing currently schedules.
+gce_common_restic_prune() {
+  local tag="$1"
+  restic forget --tag "$tag" --keep-last 50 --prune
 }
