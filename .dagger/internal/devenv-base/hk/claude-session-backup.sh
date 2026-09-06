@@ -17,7 +17,7 @@ export SA_KEY_FILE
 REPO="$(basename "$(git -C "$DIR" rev-parse --show-toplevel)")"
 BRANCH="$(git -C "$DIR" rev-parse --abbrev-ref HEAD)"
 export PROTON_PASS_AGENT_REASON="claude-session-backup hook: repo=$REPO branch=$BRANCH"
-export -f gce_common_write_sa_key gce_common_restic_push_claude_session gce_common_restic_push_container_use_state
+export -f gce_common_write_sa_key gce_common_restic_push_claude_session gce_common_restic_push_container_use_state gce_common_restic_prune
 
 # Best-effort: this is disaster recovery only (see comment above), so a
 # backup failure must never block the push it's piggybacking on.
