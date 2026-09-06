@@ -51,13 +51,20 @@ const result = await runAgent({
   // Main run: judgment calls (did the GitButler apply actually stay clean,
   // did bootstrap actually pass) warrant more than Haiku, but don't need
   // Opus by default -- that's reserved for the advisor consult below.
-  model: "sonnet",
+  //
+  // TEMPORARY: model/effort both pinned down (haiku/low, and the advisor
+  // below to haiku too) per explicit instruction, until a run confirms the
+  // new auto-remediating dagger-preflight fix (checkDaggerEngineVersion)
+  // works correctly end-to-end. Revert both once that's confirmed.
+  model: "haiku",
+  effort: "low",
   agents: {
     advisor: {
       description:
         "Consult before merging when the GitButler integration check or the independent `dagger call bootstrap` re-run is ambiguous -- e.g. a conflict that might be a false positive, or a bootstrap failure that might be flaky/environmental rather than a real regression. Not for routine passes: only call when the merge/no-merge call genuinely isn't clear-cut.",
       tools: ["Bash", "Read"],
-      model: "opus",
+      model: "haiku",
+      effort: "low",
       prompt:
         "You are a second opinion on a bountybench-dagger-modules merge decision. You'll be given what the supervisor pass found (GitButler apply result, dagger call bootstrap output/exit status, and its own read of ambiguity). Investigate with Bash/Read as needed, then give a clear merge/don't-merge recommendation with your reasoning. You do not merge or push anything yourself -- report back only.",
     },
