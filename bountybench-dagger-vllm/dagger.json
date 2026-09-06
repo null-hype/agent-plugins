@@ -1,0 +1,7 @@
+{
+  "name": "bountybench-dagger-vllm",
+  "engineVersion": "v0.21.8",
+  "sdk": {
+    "source": "go"
+  }
+}
