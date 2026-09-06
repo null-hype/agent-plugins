@@ -177,10 +177,21 @@ func (m *DevenvBase) Restic(
 	return withRestic(m.Tailscale(platform))
 }
 
+// daggerCliVersion pins the Dagger CLI version this image ships, matching
+// every bountybench-dagger-* module's dagger.json engineVersion. Confirmed
+// live (2026-09-06): an unpinned install grabs whatever is currently
+// latest, which drifts from the pinned engine version and produces a
+// GraphQL schema error ("Cannot query field 'name' on type 'TypeDef'")
+// indistinguishable from a real bug in whatever module happens to be
+// running -- it broke every bountybench-dagger-* module, including ones
+// that had previously worked. Bump this and every module's engineVersion
+// together, never one without the other.
+const daggerCliVersion = "v0.21.8"
+
 // withDaggerCli installs the Dagger CLI onto c.
 func withDaggerCli(c *dagger.Container) *dagger.Container {
 	return c.
-		WithExec([]string{"sh", "-c", "curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh"})
+		WithExec([]string{"sh", "-c", "curl -fsSL https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=" + daggerCliVersion + " BIN_DIR=/usr/local/bin sh"})
 }
 
 // DaggerCli layers the Dagger CLI onto Restic. It's a prerequisite for
