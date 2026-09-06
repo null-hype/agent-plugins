@@ -1,6 +1,6 @@
 module dagger/bountybench-dagger-agentscope
 
-go 1.26.5
+go 1.21
 
 require (
 	github.com/Khan/genqlient v0.8.1
