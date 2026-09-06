@@ -10,7 +10,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"dagger/bountybench-dagger-parse-url/internal/dagger"
 )
