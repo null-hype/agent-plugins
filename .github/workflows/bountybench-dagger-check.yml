@@ -1,0 +1,84 @@
+name: bountybench-dagger-check
+
+# Manually dispatched (never on push/pull_request) -- the top-level session
+# in CLAUDE.md's "Delegated-agent lanes" (Codex subsection) triggers this
+# against a Codex PR's branch after pulling it, to get a real `dagger call
+# bootstrap` run. GitHub-hosted runners have Docker, unlike Codex Cloud's
+# sandbox (Codex can only self-check with `go build`/`go vet`, it has no
+# engine to actually run the module). This gives Codex a fast, native
+# feedback loop on its own PR (a commit status on its head SHA) instead of
+# waiting on a Linear round-trip through the top-level session every time.
+#
+# Also usable against a Jules-produced branch (same `-f module=<app>`
+# invocation) even though the Jules subsection of "Delegated-agent lanes"
+# doesn't rely on it -- Jules has no commit-status feedback mechanism, so
+# feedback to Jules goes through `session.send(...)` instead; this workflow
+# is just an optional early sanity check in that lane, not its primary
+# feedback path.
+#
+# This does NOT replace the supervisor pass's own independent re-run at
+# merge time (prompts/supervisor.md's Lane 2) -- that stays the actual merge
+# gate. This workflow is early feedback for Codex to iterate against, nothing
+# here merges or pushes anything.
+on:
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'App suffix, e.g. "undici" for bountybench-dagger-undici'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record checked-out commit
+        id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: dagger call bootstrap
+        id: dagger
+        continue-on-error: true
+        uses: dagger/dagger-for-github@v8.4.1
+        with:
+          module: ./bountybench-dagger-${{ inputs.module }}
+          verb: call
+          call: bootstrap
+          # Keep in sync with every module's dagger.json engineVersion and
+          # devenv-base's daggerCliVersion (CLAUDE.md's "Process for
+          # bootstrapping a new app", step 2) -- a drifted pin here would
+          # reproduce the exact GraphQL-schema-mismatch class of bug
+          # dagger-preflight.ts guards against elsewhere in this project.
+          version: v0.21.8
+          workdir: .
+        env:
+          # Source of truth: pass://development/devenv-base/DAGGER_CLOUD_TOKEN
+          # (mirrored into this repo's Actions secrets; rotate there first) --
+          # same secret devenv-base-checks.yml already uses.
+          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+      - name: Post commit status for Codex's PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.dagger.outcome }}
+          SHA: ${{ steps.head.outputs.sha }}
+          MODULE: ${{ inputs.module }}
+        run: |
+          state="failure"
+          if [ "$OUTCOME" = "success" ]; then state="success"; fi
+          gh api "repos/${{ github.repository }}/statuses/${SHA}" \
+            -f "state=${state}" \
+            -f "context=bountybench-dagger-check/${MODULE}" \
+            -f "description=dagger call bootstrap: ${OUTCOME}" \
+            -f "target_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Fail the job if bootstrap failed
+        if: steps.dagger.outcome != 'success'
+        run: exit 1
