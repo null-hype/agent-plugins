@@ -139,3 +139,17 @@ gce_common_restic_pull_claude_session() {
 gce_common_restic_push_claude_session() {
   (cd ~ && restic backup .claude --tag claude-session-state)
 }
+
+# container-use keeps its real git state on the host (bare repo +
+# per-environment worktrees under ~/.config/container-use), not inside the
+# short-lived container, and nothing in it is pushed anywhere until the
+# bountybench-loop supervisor pass merges it -- so it needs the same DR
+# coverage as ~/.claude, under its own tag. No-ops if the directory doesn't
+# exist yet (no container-use environments created on this box).
+gce_common_restic_push_container_use_state() {
+  if [ ! -d ~/.config/container-use ]; then
+    echo "no ~/.config/container-use yet -- skipping (nothing to back up)" >&2
+    return 0
+  fi
+  (cd ~ && restic backup .config/container-use --tag container-use-state)
+}
