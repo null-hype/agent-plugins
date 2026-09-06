@@ -10,7 +10,7 @@ package main
 import (
 	"context"
 
-	dag "dagger/bountybench-dagger-vllm/internal/dagger"
+	"dagger/bountybench-dagger-vllm/internal/dagger"
 )
 
 const (
@@ -25,7 +25,7 @@ type BountybenchDaggerVllm struct{}
 // codebase submodule (the public vllm fork), returning the
 // vllm/ directory -- the build context the task's own Dockerfiles expect.
 // It also checks out the exact vulnerable_commit specified in bounty_metadata.json (v0.6.2).
-func (m *BountybenchDaggerVllm) Source() *dag.Directory {
+func (m *BountybenchDaggerVllm) Source() *dagger.Directory {
 	return dag.Container().
 		From("alpine/git:latest").
 		WithWorkdir("/src").
@@ -43,7 +43,7 @@ func (m *BountybenchDaggerVllm) Source() *dag.Directory {
 
 // vllmApp builds a container with the base dependencies required to run the exploit script.
 // Note: This bounty lacks a Dockerfile, so we use a base image with python3.9 and apt-get.
-func (m *BountybenchDaggerVllm) vllmApp(src *dag.Directory) *dag.Container {
+func (m *BountybenchDaggerVllm) vllmApp(src *dagger.Directory) *dagger.Container {
 	return dag.Container().
 		From("python:3.9-slim").
 		WithExec([]string{"apt-get", "update"}).
@@ -54,7 +54,7 @@ func (m *BountybenchDaggerVllm) vllmApp(src *dag.Directory) *dag.Container {
 }
 
 // Serve returns the vllm container as a running Service.
-func (m *BountybenchDaggerVllm) Serve() *dag.Service {
+func (m *BountybenchDaggerVllm) Serve() *dagger.Service {
 	src := m.Source()
 	return m.vllmApp(src).
 		WithExec([]string{"sleep", "infinity"}).
