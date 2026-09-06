@@ -54,6 +54,11 @@ const result = await runAgent({
   // sufficient for following that script; it's not making the judgment calls
   // (those are the supervisor's job).
   model: "haiku",
+  // TEMPORARY: pinned to low effort per explicit instruction, until a
+  // supervisor run confirms the new auto-remediating dagger-preflight
+  // fix (checkDaggerEngineVersion) works correctly end-to-end. Revert
+  // (drop this line) once that's confirmed.
+  effort: "low",
   mcpServers: {
     "container-use": {
       type: "stdio",

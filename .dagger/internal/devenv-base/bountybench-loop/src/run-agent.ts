@@ -47,6 +47,11 @@ export interface RunAgentOptions {
    */
   model?: string;
   /**
+   * Reasoning effort level ('low' | 'medium' | 'high' | 'xhigh' | 'max').
+   * Left undefined falls back to the CLI default.
+   */
+  effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  /**
    * Named subagents the main run can invoke via the Agent tool. Used for the
    * supervisor's Opus advisor -- consulted on ambiguous merge/conflict calls,
    * not run as the primary model (see prompts/supervisor.md).
@@ -105,6 +110,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<string> {
       tools: opts.allowedTools,
       maxTurns: opts.maxTurns,
       ...(opts.model ? { model: opts.model } : {}),
+      ...(opts.effort ? { effort: opts.effort } : {}),
       ...(opts.agents ? { agents: opts.agents } : {}),
       settings: {
         autoCompactEnabled: true,
