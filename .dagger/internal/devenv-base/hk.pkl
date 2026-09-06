@@ -58,8 +58,9 @@ hooks {
     }
     ["pre-push"] {
         steps {
-            // Backs up ~/.claude to the shared restic repo (disaster
-            // recovery only). See hk/claude-session-backup.sh.
+            // Backs up ~/.claude and ~/.config/container-use to the shared
+            // restic repo (disaster recovery only). See
+            // hk/claude-session-backup.sh.
             ["claude-session-backup"] {
                 check = "bash hk/claude-session-backup.sh"
             }
