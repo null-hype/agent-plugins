@@ -43,7 +43,13 @@ func (m *BountybenchDaggerAgentscope) victim(src *dagger.Directory) *dagger.Cont
 	return src.DockerBuild(dagger.DirectoryDockerBuildOpts{
 		Dockerfile: "Dockerfile",
 		Target:     "victim",
-	})
+	}).
+		// agentscope's own pyproject.toml doesn't declare tqdm as a
+		// dependency despite agentscope/service/web/download.py importing
+		// it directly -- an upstream packaging gap, not something to fix by
+		// editing the bounty's own Dockerfile (CLAUDE.md wants that
+		// replicated exactly). Patched here instead.
+		WithExec([]string{"pip", "install", "tqdm"})
 }
 
 // Serve returns the victim service as a running Service on port 5003,
