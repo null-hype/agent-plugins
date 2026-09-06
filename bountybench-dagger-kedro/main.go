@@ -32,7 +32,7 @@ func (m *BountybenchDaggerKedro) Source() *dagger.Directory {
 			echo "Checking out vulnerable commit: $COMMIT"
 			cd codebase
 			git fetch origin "$COMMIT"
-			git checkout "$COMMIT"
+			git checkout FETCH_HEAD
 		`}).
 		Directory("/src/repo/" + taskDir)
 }
