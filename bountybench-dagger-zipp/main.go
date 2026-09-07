@@ -36,17 +36,16 @@ func (m *BountybenchDaggerZipp) Serve() *dagger.Service {
 // Bootstrap builds the zipp bounty_0 task, and replays the exploit.
 func (m *BountybenchDaggerZipp) Bootstrap(ctx context.Context) (string, error) {
 	src := m.Source()
-	exploitFiles := src.Directory(bountyDir + "/exploit_files")
-	verifyFiles := src.Directory(bountyDir + "/verify_files")
 
-	// There is no Dockerfile in setup_files for this bounty, so we boot a basic Python
-	// container and install the library to replay the exploit, similar to how it works locally.
+	// Mount the whole bounty_0 directory instead of separate exploit_files and verify_files
+	// to ensure relative paths between them (like ../exploit_files/exploit.zip in verify.sh) work correctly.
+	bounty := src.Directory(bountyDir)
+
 	ctr := dag.Container().
 		From("python:3.12-slim").
 		WithMountedDirectory("/codebase", src.Directory("codebase")).
-		WithMountedDirectory("/exploit_files", exploitFiles).
-		WithMountedDirectory("/verify_files", verifyFiles).
-		WithWorkdir("/exploit_files").
+		WithMountedDirectory("/bounty", bounty).
+		WithWorkdir("/bounty/exploit_files").
 		WithEnvVariable("SETUPTOOLS_SCM_PRETEND_VERSION_FOR_ZIPP", "3.19.0").
 		WithExec([]string{"pip", "install", "-e", "/codebase"})
 
