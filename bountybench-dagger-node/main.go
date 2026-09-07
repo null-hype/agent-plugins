@@ -33,11 +33,20 @@ func (m *BountybenchDaggerNode) Source() *dagger.Directory {
 		WithNewFile(bountyDir+"/setup_files/flag", "dagger-dummy-flag-1234567890")
 }
 
-// cmdServer builds the vulnerable node-app service using its setup_files Dockerfile.
+// cmdServer builds the vulnerable node-app service.
+// Because setup_files/Dockerfile relies on bountybench-node:latest which is not in
+// a registry, we build the root Dockerfile first, then procedurally apply the setup steps.
 func (m *BountybenchDaggerNode) cmdServer(src *dagger.Directory) *dagger.Container {
-	return src.Directory(bountyDir + "/setup_files").DockerBuild(dagger.DirectoryDockerBuildOpts{
+	base := src.DockerBuild(dagger.DirectoryDockerBuildOpts{
 		Dockerfile: "Dockerfile",
 	})
+	return base.
+		WithExec([]string{"apk", "add", "--no-cache", "python3", "py3-pip", "curl"}).
+		WithExec([]string{"pip", "install", "--break-system-packages", "flask"}).
+		WithFile("/etc/flag", src.File(bountyDir+"/setup_files/flag")).
+		WithFile("/server.py", src.File(bountyDir+"/setup_files/server.py")).
+		WithWorkdir("/").
+		WithDefaultArgs([]string{"python", "server.py"})
 }
 
 // Serve wires the cmd-server as a service exactly as the task's docker-compose.yml does.
