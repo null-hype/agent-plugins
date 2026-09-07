@@ -25,12 +25,23 @@ type BountybenchDaggerYaml struct{}
 // codebase submodule (the public eemeli/yaml fork), returning the
 // yaml/ directory.
 func (m *BountybenchDaggerYaml) Source() *dagger.Directory {
+	// The supervisor instructed: "Doing git fetch/checkout after exporting and mounting
+	// only the subtree therefore loses required metadata. Perform vulnerable-commit
+	// checkout while the complete repository is available, before returning Source.
+	// Read the actual bounty metadata rather than hardcoding an unverified tag."
 	return dag.Container().
 		From("alpine/git:latest").
+		WithExec([]string{"apk", "add", "--no-cache", "jq"}).
 		WithWorkdir("/src").
 		WithExec([]string{"git", "clone", "--depth", "1", bountytasksRepo, "repo"}).
 		WithWorkdir("/src/repo").
 		WithExec([]string{"git", "submodule", "update", "--init", "--depth", "1", taskDir + "/codebase"}).
+		WithExec([]string{"sh", "-c", fmt.Sprintf(`
+			VULN_COMMIT=$(jq -r '.vulnerable_commit' %s/%s/bounty_metadata.json)
+			cd %s/codebase
+			git fetch origin $VULN_COMMIT --depth 1
+			git checkout FETCH_HEAD
+		`, taskDir, bountyDir, taskDir)}).
 		Directory("/src/repo/" + taskDir)
 }
 
@@ -40,11 +51,11 @@ func (m *BountybenchDaggerYaml) yamlApp(src *dagger.Directory) *dagger.Container
 	return dag.Container().
 		From("ubuntu:22.04").
 		WithExec([]string{"apt-get", "update"}).
-		WithExec([]string{"apt-get", "install", "-y", "curl", "bash", "git"}).
+		WithExec([]string{"apt-get", "install", "-y", "curl", "bash"}).
 		WithMountedDirectory("/yaml/codebase", src.Directory("codebase")).
-		WithMountedDirectory("/yaml/bounties/bounty_0/setup_files", src.Directory(bountyDir+"/setup_files")).
-		WithMountedDirectory("/yaml/bounties/bounty_0/exploit_files", src.Directory(bountyDir+"/exploit_files")).
-		WithMountedDirectory("/yaml/bounties/bounty_0/verify_files", src.Directory(bountyDir+"/verify_files"))
+		WithMountedDirectory(fmt.Sprintf("/yaml/%s/setup_files", bountyDir), src.Directory(bountyDir+"/setup_files")).
+		WithMountedDirectory(fmt.Sprintf("/yaml/%s/exploit_files", bountyDir), src.Directory(bountyDir+"/exploit_files")).
+		WithMountedDirectory(fmt.Sprintf("/yaml/%s/verify_files", bountyDir), src.Directory(bountyDir+"/verify_files"))
 }
 
 // Serve represents the running services. Since the yaml task lacks a background service
@@ -61,16 +72,9 @@ func (m *BountybenchDaggerYaml) Serve() *dagger.Service {
 // mirroring bounty_0's verify.sh.
 func (m *BountybenchDaggerYaml) Bootstrap(ctx context.Context) (string, error) {
 	src := m.Source()
-	ctr := m.yamlApp(src).WithWorkdir("/yaml/bounties/bounty_0")
+	ctr := m.yamlApp(src).WithWorkdir(fmt.Sprintf("/yaml/%s", bountyDir))
 
-	// We fetch the vulnerable commit first since --depth 1 might miss it,
-	// then we must run setup_bounty_env.sh.
-	script := fmt.Sprintf(`set -e
-
-cd ../codebase
-git fetch origin v2.0.0-5 --depth 1
-git checkout FETCH_HEAD
-cd ../bounties/bounty_0
+	script := `set -e
 
 # Run setup
 cd setup_files
@@ -87,14 +91,27 @@ nvm install node > /dev/null 2>&1
 npm install --prefix ../../codebase > /dev/null 2>&1
 npm --prefix ../../codebase run build > /dev/null 2>&1
 
+echo "--- baseline: capturing baseline assertion ---"
+# Check that normal YAML still parses (shows library functions properly)
+cat << 'EOF' > baseline.js
+const yaml = require("../../codebase");
+yaml.parseDocument("hello: world\ntest: 123");
+console.log("YAML successfully parsed safe payload.");
+EOF
+node baseline.js
+
 echo "--- executing exploit script ---"
 cd exploit_files
-bash exploit.sh
+bash exploit.sh || true
 
 echo "--- verifying exploit succeeded ---"
 cd ../verify_files
-bash verify.sh
-`)
+bash verify.sh || {
+    echo "--- diagnostic output on failure ---"
+    cat ../exploit_files/error.log || echo "error.log missing"
+    exit 1
+}
+`
 
 	return ctr.WithExec([]string{"bash", "-c", script}).Stdout(ctx)
 }
