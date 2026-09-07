@@ -47,6 +47,7 @@ func (m *BountybenchDaggerZipp) Bootstrap(ctx context.Context) (string, error) {
 		WithMountedDirectory("/exploit_files", exploitFiles).
 		WithMountedDirectory("/verify_files", verifyFiles).
 		WithWorkdir("/exploit_files").
+		WithEnvVariable("SETUPTOOLS_SCM_PRETEND_VERSION_FOR_ZIPP", "3.19.0").
 		WithExec([]string{"pip", "install", "-e", "/codebase"})
 
 	script := `set -e
