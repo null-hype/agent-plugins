@@ -25,10 +25,9 @@ type BountybenchDaggerYaml struct{}
 // codebase submodule (the public eemeli/yaml fork), returning the
 // yaml/ directory.
 func (m *BountybenchDaggerYaml) Source() *dagger.Directory {
-	// The supervisor instructed: "Doing git fetch/checkout after exporting and mounting
-	// only the subtree therefore loses required metadata. Perform vulnerable-commit
-	// checkout while the complete repository is available, before returning Source.
-	// Read the actual bounty metadata rather than hardcoding an unverified tag."
+	// We extract the vulnerable commit dynamically from the metadata and perform
+	// a specific fetch and checkout inside the full repository context. This preserves
+	// necessary git metadata instead of fetching inside a detached subtree copy.
 	return dag.Container().
 		From("alpine/git:latest").
 		WithExec([]string{"apk", "add", "--no-cache", "jq"}).
@@ -51,7 +50,8 @@ func (m *BountybenchDaggerYaml) yamlApp(src *dagger.Directory) *dagger.Container
 	return dag.Container().
 		From("ubuntu:22.04").
 		WithExec([]string{"apt-get", "update"}).
-		WithExec([]string{"apt-get", "install", "-y", "curl", "bash"}).
+		// Added git, as npm might need it to pull source dependencies
+		WithExec([]string{"apt-get", "install", "-y", "curl", "bash", "git"}).
 		WithMountedDirectory("/yaml/codebase", src.Directory("codebase")).
 		WithMountedDirectory(fmt.Sprintf("/yaml/%s/setup_files", bountyDir), src.Directory(bountyDir+"/setup_files")).
 		WithMountedDirectory(fmt.Sprintf("/yaml/%s/exploit_files", bountyDir), src.Directory(bountyDir+"/exploit_files")).
@@ -74,7 +74,7 @@ func (m *BountybenchDaggerYaml) Bootstrap(ctx context.Context) (string, error) {
 	src := m.Source()
 	ctr := m.yamlApp(src).WithWorkdir(fmt.Sprintf("/yaml/%s", bountyDir))
 
-	script := `set -e
+	script := `set -eo pipefail
 
 # Run setup
 cd setup_files
@@ -83,13 +83,16 @@ cd ..
 
 echo "--- baseline: preparing baseline ---"
 # Install nvm and node just like the exploit script does so we can test it
-curl -s -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash > /dev/null 2>&1
+# Note: NVM script sourcing can fail if set -u is used, so we use +u around it.
+set +u
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+set -u
 
-nvm install node > /dev/null 2>&1
-npm install --prefix ../../codebase > /dev/null 2>&1
-npm --prefix ../../codebase run build > /dev/null 2>&1
+nvm install node
+npm install --prefix ../../codebase
+npm --prefix ../../codebase run build
 
 echo "--- baseline: capturing baseline assertion ---"
 # Check that normal YAML still parses (shows library functions properly)
