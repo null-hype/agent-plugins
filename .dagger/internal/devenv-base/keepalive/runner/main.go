@@ -18,6 +18,7 @@ type workspace interface {
 	Up(context.Context) error
 	Status(context.Context) (client.Status, error)
 	Probe(context.Context) error
+	Bootstrap(context.Context) error
 	RefreshActivity(context.Context) error
 }
 
@@ -37,6 +38,9 @@ func keepAlive(ctx context.Context, w workspace) error {
 	}
 	if err := w.Probe(ctx); err != nil {
 		return fmt.Errorf("execute devcontainer probe: %w", err)
+	}
+	if err := w.Bootstrap(ctx); err != nil {
+		return fmt.Errorf("bootstrap devcontainer: %w", err)
 	}
 	// Use the same agent operation as DevPod's periodic tunnel refresh,
 	// but await its result instead of relying on a background log message.
@@ -72,5 +76,5 @@ func main() {
 		log.Printf("keepalive: FAILED: %v", err)
 		os.Exit(1)
 	}
-	log.Printf("keepalive: OK workspace=%s devcontainer=Running activity=refreshed", *id)
+	log.Printf("keepalive: OK workspace=%s devcontainer=Running activity=refreshed tailnet=online linear-agent=healthy", *id)
 }

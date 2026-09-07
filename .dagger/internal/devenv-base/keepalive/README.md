@@ -11,12 +11,22 @@ packages to:
 2. Require `Status(ContainerStatus: true)` to return `Running`.
 3. Execute a command through `tunnel.NewContainerTunnel` that checks `DEVPOD`,
    the workspace ID, and the workspace UID before acknowledging the probe.
-4. Await `agent workspace update-config`, the same operation used by DevPod's
+4. Run the existing bootstrap scripts through separate container tunnels: generate
+   environment files, join Tailscale, install tools, and ensure the Linear agent
+   and Cloudflare connector are started. Existing processes are reused. The
+   Proton Pass token is forwarded only to `tailscale-up.sh`.
+5. Require Tailscale to report `Running` and its node online with an assigned IP.
+   Require local and public `/healthz` to report an installed Linear token, and
+   require the signed public webhook smoke test to succeed.
+6. Await `agent workspace update-config`, the same operation used by DevPod's
    periodic tunnel refresh to update the inactivity watchdog's workspace file.
 
 Every failed operation fails the job. Missing saved workspace mappings fail
-instead of being interpreted as a new workspace source. Application bootstrap
-scripts and public webhook health checks are no longer part of keepalive.
+instead of being interpreted as a new workspace source. Every bootstrap command
+must return a successful exit and a completion marker; a tunnel ending early is
+a failure. Bootstrap uses scripts from the workspace checkout under
+`.dagger/internal/devenv-base/.devcontainer` (`DEVENV_BASE_DEVCONTAINER_DIR` can
+override this path). It does not stop or restart existing application processes.
 
 DevPod does not expose the complete `up` operation in `pkg/client`; the adapter
 uses its exported command implementation. Keep the module pin and the build's
