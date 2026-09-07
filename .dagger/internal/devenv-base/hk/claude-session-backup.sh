@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
-# Backs up ~/.claude and ~/.config/container-use to the shared restic repo
-# (claude-session-state / container-use-state tags respectively), as disaster
-# recovery in case this box is lost or rebuilt. See
-# gce_common_restic_push_claude_session and
-# gce_common_restic_push_container_use_state in gce-common.sh. The latter is
-# what makes in-progress container-use environment state (bountybench-dagger
-# worker runs not yet reviewed/merged by the supervisor) durable -- see
-# CLAUDE.md's "Backing up environment state" section.
+# Separate snapshots for Claude, container-use, and Codex in the shared repo.
+# Direct runs report failure. Git hooks opt into --best-effort explicitly.
 set -euo pipefail
+
+BEST_EFFORT=false
+if [ "${1:-}" = --best-effort ]; then BEST_EFFORT=true; shift; fi
+[ "$#" -eq 0 ] || { echo "usage: $0 [--best-effort]" >&2; exit 2; }
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/../.devcontainer/lib/gce-common.sh"
-
 gce_common_reserve_sa_key_file
 export SA_KEY_FILE
-REPO="$(basename "$(git -C "$DIR" rev-parse --show-toplevel)")"
-BRANCH="$(git -C "$DIR" rev-parse --abbrev-ref HEAD)"
-export PROTON_PASS_AGENT_REASON="claude-session-backup hook: repo=$REPO branch=$BRANCH"
-export -f gce_common_write_sa_key gce_common_restic_push_claude_session gce_common_restic_push_container_use_state gce_common_restic_prune
+export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
+export PROTON_PASS_AGENT_REASON="session backup: Claude, container-use, and Codex snapshots"
+export -f gce_common_write_sa_key gce_common_restic_retry gce_common_restic_push_claude_session \
+  gce_common_restic_push_container_use_state gce_common_restic_push_codex_session \
+  gce_common_restic_prune gce_common_restic_push_sessions
 
-# Best-effort: this is disaster recovery only (see comment above), so a
-# backup failure must never block the push it's piggybacking on.
-if ! pass-cli run --env-file "$DIR/../.devcontainer/gcloud.env" -- \
-  bash -c 'set -eo pipefail; gce_common_write_sa_key && gce_common_restic_push_claude_session && gce_common_restic_push_container_use_state'; then
-  echo "warning: ~/.claude / ~/.config/container-use restic backup failed -- continuing anyway (DR-only, not push-blocking)" >&2
+status=0
+pass-cli run --env-file "$DIR/../.devcontainer/gcloud.env" -- \
+  bash -c 'set -euo pipefail; gce_common_write_sa_key; gce_common_restic_push_sessions' || status=$?
+if [ "$status" -ne 0 ] && [ "$BEST_EFFORT" = true ]; then
+  echo "session backup FAILED (exit $status); --best-effort permits this git push" >&2
+  exit 0
 fi
-exit 0
+exit "$status"

@@ -136,37 +136,74 @@ gce_common_restic_pull_claude_session() {
   (cd ~ && restic restore latest --tag claude-session-state --target .)
 }
 
+# restic 0.14 (bookworm) has no --retry-lock flag. Retry only the observed
+# repository-lock error, with a deadline; preserve stdout/stderr and exit codes.
+# Never unlock a repository another process is actively using.
+gce_common_restic_retry() (
+  local retry_dir rc deadline
+  retry_dir=$(mktemp -d)
+  trap 'rm -rf "$retry_dir"' EXIT
+  deadline=$((SECONDS + ${RESTIC_LOCK_RETRY_SECONDS:-60}))
+  while true; do
+    rc=0
+    restic "$@" >"$retry_dir/out" 2>"$retry_dir/err" || rc=$?
+    if [ "$rc" -ne 0 ] && grep -q 'repository is already locked' "$retry_dir/err" && [ "$SECONDS" -lt "$deadline" ]; then
+      echo "restic: repository busy; waiting for its active lock ($1)" >&2
+      sleep 1
+      continue
+    fi
+    cat "$retry_dir/out"
+    cat "$retry_dir/err" >&2
+    return "$rc"
+  done
+)
+
 gce_common_restic_push_claude_session() {
-  (cd ~ && restic backup .claude --tag claude-session-state)
-  gce_common_restic_prune claude-session-state
+  (cd ~ && gce_common_restic_retry backup .claude --tag claude-session-state)
 }
 
-# container-use keeps its real git state on the host (bare repo +
-# per-environment worktrees under ~/.config/container-use), not inside the
-# short-lived container, and nothing in it is pushed anywhere until the
-# bountybench-loop supervisor pass merges it -- so it needs the same DR
-# coverage as ~/.claude, under its own tag. No-ops if the directory doesn't
-# exist yet (no container-use environments created on this box).
 gce_common_restic_push_container_use_state() {
   if [ ! -d ~/.config/container-use ]; then
     echo "no ~/.config/container-use yet -- skipping (nothing to back up)" >&2
     return 0
   fi
-  (cd ~ && restic backup .config/container-use --tag container-use-state)
-  gce_common_restic_prune container-use-state
+  (cd ~ && gce_common_restic_retry backup .config/container-use --tag container-use-state)
 }
 
-# Both push functions above now fire far more often than "once per git push"
-# (the Claude Code PreCompact hook -- see hk/claude-session-backup.sh, wired
-# up via ~/.claude/settings.json's hooks.PreCompact -- calls
-# gce_common_restic_push_claude_session on every compaction, which can be
-# many times an hour once autoCompactWindow is lowered), and neither ever
-# forgot old snapshots. Without this, the repo grows unbounded. keep-last is
-# deliberately generous (this is disaster recovery, not point-in-time
-# browsing -- we're trading a bit of repo bloat for never regretting a
-# pruned snapshot) and --prune reclaims space immediately rather than
-# leaving it for a separate gc pass that nothing currently schedules.
+# Keep Codex separate so it can be listed/restored without Claude or git state.
+# Back up the full directory, including active/archived transcript JSONL files.
+gce_common_restic_push_codex_session() {
+  local codex_dir="${CODEX_HOME:-$HOME/.codex}"
+  if [ ! -d "$codex_dir" ]; then
+    echo "no Codex directory at $codex_dir -- skipping (nothing to back up)" >&2
+    return 0
+  fi
+  gce_common_restic_retry backup "$codex_dir" --tag codex-session-state
+}
+
+# Run retention only after all snapshots have been attempted. An exclusive
+# prune lock must not prevent a later directory from being backed up at all.
 gce_common_restic_prune() {
-  local tag="$1"
-  restic forget --tag "$tag" --keep-last 50 --prune
+  local args=() tag
+  for tag in "$@"; do args+=(--tag "$tag"); done
+  gce_common_restic_retry forget "${args[@]}" --group-by host,paths,tags --keep-last 50 --prune
+}
+
+gce_common_restic_push_sessions() {
+  local status=0 step
+  for step in claude_session container_use_state codex_session; do
+    if "gce_common_restic_push_$step"; then
+      echo "session backup: $step complete"
+    else
+      echo "session backup: $step FAILED" >&2
+      status=1
+    fi
+  done
+  if [ "$status" -eq 0 ]; then
+    if ! gce_common_restic_prune claude-session-state container-use-state codex-session-state; then
+      echo "session backup: snapshots saved, but retention FAILED" >&2
+      status=1
+    fi
+  fi
+  return "$status"
 }
