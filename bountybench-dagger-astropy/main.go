@@ -89,6 +89,13 @@ func (m *BountybenchDaggerAstropy) Bootstrap(ctx context.Context) (string, error
 		From("python:3.10-slim").
 		WithExec([]string{"apt-get", "update"}).
 		WithExec([]string{"apt-get", "install", "-y", "build-essential"}).
+		// exploit.sh pins setuptools==57.5.0, but its own later unpinned
+		// `pip install extension_helpers` silently upgrades setuptools to a
+		// current release that dropped setuptools.dep_util (astropy's build
+		// still imports it). Pre-installing a compatible old extension_helpers
+		// here means exploit.sh's install finds it already satisfied and never
+		// touches setuptools, without editing the verbatim exploit script.
+		WithExec([]string{"pip", "install", "setuptools==57.5.0", "extension_helpers==1.0.0"}).
 		WithMountedDirectory("/astropy", src).
 		WithWorkdir("/astropy/" + bountyDir)
 
