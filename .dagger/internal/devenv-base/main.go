@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"dagger/devenv-base/internal/dagger"
 )
@@ -343,12 +344,27 @@ func (m *DevenvBase) CheckDevpod(ctx context.Context) error {
 	return assertVersionLike(out)
 }
 
+// VmTailscale packages the VM's host-network daemon using this module's
+// Tailscale installation. Its persistent state is separate from the DevPod.
+func (m *DevenvBase) VmTailscale(
+	// +optional
+	platform dagger.Platform,
+) *dagger.Container {
+	tools := m.Tailscale(platform)
+	return withAptPackages(m.Base(platform), "ca-certificates", "iptables").
+		WithFile("/usr/bin/tailscale", tools.File("/usr/bin/tailscale")).
+		WithFile("/usr/sbin/tailscaled", tools.File("/usr/sbin/tailscaled")).
+		WithExec([]string{"mkdir", "-p", "/var/run/tailscale", "/var/lib/tailscale"}).
+		WithEntrypoint([]string{"/usr/sbin/tailscaled", "--state=/var/lib/tailscale/tailscaled.state", "--socket=/var/run/tailscale/tailscaled.sock"})
+}
+
 // Keepalive restores the saved DevPod mapping and runs the Go lifecycle check.
 func (m *DevenvBase) Keepalive(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
 	return m.Devpod(platform).
+		WithFile("/opt/devenv/vm-tailscale.tar", m.VmTailscale(platform).AsTarball()).
 		WithFile("/usr/local/bin/devpod-keepalive", m.KeepaliveTool(platform)).
 		WithFile(
 			"/app/keepalive/devpod-keepalive.sh",
@@ -404,6 +420,7 @@ func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
 		WithExec([]string{"devpod-keepalive", "keepalive", "--help"}).
 		WithExec([]string{"bash", "-n", "/app/keepalive/devpod-keepalive.sh"}).
 		WithExec([]string{"bash", "-n", "/app/.devcontainer/lib/gce-common.sh"}).
+		WithExec([]string{"test", "-s", "/opt/devenv/vm-tailscale.tar"}).
 		WithExec([]string{"sh", "-c", "test -x /app/keepalive/devpod-keepalive.sh && echo executable"}).
 		Stdout(ctx)
 	if err != nil {
@@ -626,8 +643,17 @@ func (m *DevenvBase) PublishLinearAgent(
 	return publish(ctx, "devenv-linear-agent", tag, githubUser, githubToken, []*dagger.Container{built})
 }
 
+// ReconcileDevpod repairs the saved workspace in place using the same image
+// and verified two-node lifecycle as Render. It does not reset the workspace.
+func (m *DevenvBase) ReconcileDevpod(ctx context.Context, protonPassToken *dagger.Secret) (string, error) {
+	return m.Keepalive("linux/amd64").
+		WithEnvVariable("DEVPOD_RECONCILE_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", "/app/keepalive/devpod-keepalive.sh"}).Stdout(ctx)
+}
+
 // RecreateDevpod runs `.devcontainer/devpod-gce.sh --reset` inside the
-// Devpod image, for a GitHub Actions workflow_dispatch to reprovision the
+// packaged keepalive image to reprovision the
 // GCE box on demand (e.g. after PublishLinearAgent, to pick up a rebuilt
 // image) without installing devpod/gcloud/restic/pass-cli on the runner
 // itself -- same reasoning as Keepalive baking devpod-keepalive.sh onto
@@ -661,7 +687,7 @@ func (m *DevenvBase) RecreateDevpod(
 	// +default="main"
 	gitRef string,
 ) (string, error) {
-	return m.Devpod("linux/amd64").
+	return m.Keepalive("linux/amd64").
 		WithFile(
 			"/app/.devcontainer/devpod-gce.sh",
 			dag.CurrentModule().Source().File(".devcontainer/devpod-gce.sh"),
@@ -680,6 +706,7 @@ func (m *DevenvBase) RecreateDevpod(
 		WithWorkdir("/app").
 		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
 		WithEnvVariable("DEVPOD_GCE_GIT_REF", gitRef).
+		WithEnvVariable("DEVPOD_RECONCILE_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
 		WithExec([]string{"bash", ".devcontainer/devpod-gce.sh", "--reset"}).
 		Stdout(ctx)
