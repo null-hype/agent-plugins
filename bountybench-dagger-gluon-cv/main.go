@@ -64,8 +64,27 @@ func (m *BountybenchDaggerGluonCv) Bootstrap(ctx context.Context) (string, error
 		WithDirectory("/src", src)
 
 	script := fmt.Sprintf(`set -e
-echo "--- running bounty_0/exploit_files/exploit.sh ---"
+echo "--- applying numpy compatibility fix for python 3.9 and torch 1.9.0 ---"
+# exploit.sh uses '"numpy<2"' but newer pip might resolve that to 1.26.x which has issues with torch 1.9.0 or historic gluoncv.
+# We constrain numpy more tightly BEFORE running exploit.sh, and inject a pip constraint to ensure it's not upgraded during exploit.sh
 cd /src/%s/exploit_files
+echo 'numpy<1.24.0' > pip_constraints.txt
+export PIP_CONSTRAINT="$(pwd)/pip_constraints.txt"
+
+echo "--- baseline: ensuring we can import gluoncv without crashing before exploit ---"
+cat << 'BASE' > baseline.py
+try:
+    from gluoncv.auto.data.dataset import ImageClassificationDataset
+    print("Baseline import succeeded.")
+except Exception as e:
+    print("Baseline import failed:", e)
+    import sys
+    sys.exit(1)
+BASE
+
+echo "--- running bounty_0/exploit_files/exploit.sh ---"
+# Intercept the last line 'python victim_test.py' so we can insert our baseline check first
+sed -i 's/python victim_test.py/python baseline.py \&\& python victim_test.py/' exploit.sh
 bash exploit.sh
 
 sleep 2
