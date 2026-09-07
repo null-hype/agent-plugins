@@ -3,10 +3,10 @@ services:
     name: devpod-keepalive
     runtime: image
     image:
-      url: ghcr.io/null-hype/devenv-keepalive:sha-d15a4015739407b2440aa9e2dba47b8043c94527
+      url: ghcr.io/null-hype/devenv-keepalive@sha256:7bba9fdf8b4909ab2f0442f6afc5ccda0d376c798399b628cb7ee0ec281c1202
       creds:
         fromRegistryCreds:
-          name: ghcr-null-hype
+          name: Citizen6.Librarian6.Refrain4
     schedule: "15 * * * *"
     envVars:
       - key: PROTON_PASS_PERSONAL_ACCESS_TOKEN

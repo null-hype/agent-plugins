@@ -343,28 +343,13 @@ func (m *DevenvBase) CheckDevpod(ctx context.Context) error {
 	return assertVersionLike(out)
 }
 
-// Keepalive layers the devpod-keepalive.sh entrypoint onto Devpod. Runs as a
-// standalone Render Cron Job: syncs devpod's local client state (the only
-// thing that lets `devpod ssh` find an existing GCE machine instead of
-// provisioning a new one -- confirmed the hard way) to/from a GCS bucket
-// each run, then pings the workspace to reset devpod's own
-// INACTIVITY_TIMEOUT watchdog. Confirmed against devpod's source that only
-// its own tunnel resets that timer, not a raw SSH connection to the VM.
+// Keepalive restores the saved DevPod mapping and runs the Go lifecycle check.
 func (m *DevenvBase) Keepalive(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	// devpod-keepalive.sh sources gce-common.sh (shared with devpod-gce.sh)
-	// and, at the end, runs check-linear-agent-webhook-live.sh (which in
-	// turn opens its own pass-cli session against linear-agent.env) via
-	// paths relative to itself, so all four files are laid down here
-	// preserving the same relative structure they have in the repo.
-	// continue-claude-session.sh/.env are NOT baked in here despite
-	// devpod-keepalive.sh now calling it: like install-tools.sh,
-	// tailscale-up.sh and start-linear-agent.sh, it runs over `devpod ssh`
-	// -- i.e. on the devpod's own repo checkout, not inside this image --
-	// so it only needs to exist in the repo, not in /app.
 	return m.Devpod(platform).
+		WithFile("/usr/local/bin/devpod-keepalive", m.KeepaliveTool(platform)).
 		WithFile(
 			"/app/keepalive/devpod-keepalive.sh",
 			dag.CurrentModule().Source().File("keepalive/devpod-keepalive.sh"),
@@ -375,17 +360,27 @@ func (m *DevenvBase) Keepalive(
 			dag.CurrentModule().Source().File(".devcontainer/lib/gce-common.sh"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
-		WithFile(
-			"/app/.devcontainer/check-linear-agent-webhook-live.sh",
-			dag.CurrentModule().Source().File(".devcontainer/check-linear-agent-webhook-live.sh"),
-			dagger.ContainerWithFileOpts{Permissions: 0o755},
-		).
-		WithFile(
-			"/app/.devcontainer/linear-agent.env",
-			dag.CurrentModule().Source().File(".devcontainer/linear-agent.env"),
-			dagger.ContainerWithFileOpts{Permissions: 0o644},
-		).
 		WithEntrypoint([]string{"/app/keepalive/devpod-keepalive.sh"})
+}
+
+// KeepaliveTool builds and tests the standalone DevPod keepalive executable.
+// Export this file to run with existing DevPod state and provider credentials.
+func (m *DevenvBase) KeepaliveTool(
+	// +optional
+	platform dagger.Platform,
+) *dagger.File {
+	return m.keepaliveBuild(platform).File("/out/devpod-keepalive")
+}
+
+func (m *DevenvBase) keepaliveBuild(platform dagger.Platform) *dagger.Container {
+	return dag.Container(dagger.ContainerOpts{Platform: platform}).From("golang:1.25-bookworm").
+		WithDirectory("/src", dag.CurrentModule().Source().Directory("keepalive/runner")).
+		WithWorkdir("/src").
+		WithEnvVariable("CGO_ENABLED", "0").
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("keepalive-go-mod")).
+		WithMountedCache("/root/.cache/go-build", dag.CacheVolume("keepalive-go-build")).
+		WithExec([]string{"go", "test", "./..."}).
+		WithExec([]string{"go", "build", "-ldflags", "-s -w -X github.com/loft-sh/devpod/pkg/version.version=v0.6.15", "-o", "/out/devpod-keepalive", "."})
 }
 
 // PublishKeepalive pushes the keepalive image to
@@ -402,13 +397,11 @@ func (m *DevenvBase) PublishKeepalive(
 	})
 }
 
-// CheckKeepalive asserts the keepalive script is present, executable and
-// syntactically valid. It can't exercise a real run in CI -- that needs live
-// GCP and Proton Pass secrets plus an existing workspace -- so this only
-// catches shell syntax errors and packaging mistakes.
+// CheckKeepalive runs Go regression tests during the build and verifies packaging.
 // +check
 func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
 	out, err := m.Keepalive("").
+		WithExec([]string{"devpod-keepalive", "keepalive", "--help"}).
 		WithExec([]string{"bash", "-n", "/app/keepalive/devpod-keepalive.sh"}).
 		WithExec([]string{"bash", "-n", "/app/.devcontainer/lib/gce-common.sh"}).
 		WithExec([]string{"sh", "-c", "test -x /app/keepalive/devpod-keepalive.sh && echo executable"}).
