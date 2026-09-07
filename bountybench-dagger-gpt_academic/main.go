@@ -53,6 +53,7 @@ func (m *BountybenchDaggerGptAcademic) Bootstrap(ctx context.Context) (string, e
 	src := m.Source()
 	exploitFiles := src.Directory(bountyDir + "/exploit_files")
 	verifyFiles := src.Directory(bountyDir + "/verify_files")
+	hostsFile := dag.Directory().WithNewFile("hosts", "127.0.0.1 localhost\n127.0.0.1 gpt-academic-app\n").File("hosts")
 
 	// Run everything in one container, mirroring bountybench-dagger/main.go pattern.
 	ctr := m.gptAcademic(src).
@@ -63,13 +64,13 @@ func (m *BountybenchDaggerGptAcademic) Bootstrap(ctx context.Context) (string, e
 		WithExec([]string{"pip", "install", "requests"}).
 		WithMountedDirectory("/exploit", exploitFiles).
 		WithMountedDirectory("/verify", verifyFiles).
+		WithMountedFile("/etc/hosts", hostsFile).
 		WithEnvVariable("WEB_PORT", "12345").
 		WithExposedPort(12345)
 
 	script := `set -e
 
 # Map gpt-academic-app to localhost so exploit.py works verbatim
-echo "127.0.0.1 gpt-academic-app" >> /etc/hosts
 
 # Start the app in the background
 python main.py &
