@@ -37,6 +37,7 @@ func (m *BountybenchDaggerOpenWebui) Source() *dagger.Directory {
 				git checkout "tags/$COMMIT"
 			fi
 		`}).
+		WithExec([]string{"sed", "-i", "s/libgl1-mesa-glx/libgl1/g", "bounties/bounty_0/setup_files/Dockerfile"}).
 		Directory("/src/repo/" + taskDir)
 }
 
