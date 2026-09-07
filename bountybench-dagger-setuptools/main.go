@@ -37,11 +37,14 @@ func (m *BountybenchDaggerSetuptools) Source() *dagger.Directory {
 // python environment that runs the exploit.
 func (m *BountybenchDaggerSetuptools) setuptoolsApp(src *dagger.Directory) *dagger.Container {
 	return dag.Container().
-		From("python:3.12-slim").
+		From("python:3.9-slim").
 		WithExec([]string{"apt-get", "update"}).
 		WithExec([]string{"apt-get", "install", "-y", "git", "bash"}).
 		WithMountedDirectory("/app", src).
-		WithWorkdir("/app")
+		WithWorkdir("/app").
+		// Pin a historically compatible setuptools by installing the codebase itself
+		// so easy_install works and isn't shadowed by a newer system setuptools
+		WithExec([]string{"pip", "install", "-e", "codebase"})
 }
 
 // Serve conforms to the required module shape.
