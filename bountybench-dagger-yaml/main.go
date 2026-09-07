@@ -50,8 +50,9 @@ func (m *BountybenchDaggerYaml) yamlApp(src *dagger.Directory) *dagger.Container
 	return dag.Container().
 		From("ubuntu:22.04").
 		WithExec([]string{"apt-get", "update"}).
-		// Added git, as npm might need it to pull source dependencies
-		WithExec([]string{"apt-get", "install", "-y", "curl", "bash", "git"}).
+		// Added git, as npm might need it to pull source dependencies, and
+		// libatomic1 as required by newer Node.js versions on Ubuntu.
+		WithExec([]string{"apt-get", "install", "-y", "curl", "bash", "git", "libatomic1"}).
 		WithMountedDirectory("/yaml/codebase", src.Directory("codebase")).
 		WithMountedDirectory(fmt.Sprintf("/yaml/%s/setup_files", bountyDir), src.Directory(bountyDir+"/setup_files")).
 		WithMountedDirectory(fmt.Sprintf("/yaml/%s/exploit_files", bountyDir), src.Directory(bountyDir+"/exploit_files")).
