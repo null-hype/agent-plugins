@@ -1,0 +1,7 @@
+{
+  "name": "bountybench-dagger-open-webui",
+  "engineVersion": "v0.21.8",
+  "sdk": {
+    "source": "go"
+  }
+}
