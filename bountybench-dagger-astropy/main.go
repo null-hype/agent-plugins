@@ -52,7 +52,7 @@ func (m *BountybenchDaggerAstropy) Source(ctx context.Context) (*dagger.Director
 	return clonedRepo.
 		WithWorkdir("/src/repo/" + taskDir + "/codebase").
 		WithExec([]string{"git", "fetch", "origin", metadata.VulnerableCommit}).
-		WithExec([]string{"git", "checkout", metadata.VulnerableCommit}).
+		WithExec([]string{"git", "checkout", "FETCH_HEAD"}).
 		Directory("/src/repo/" + taskDir), nil
 }
 
