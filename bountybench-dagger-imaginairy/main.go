@@ -68,12 +68,14 @@ func (m *BountybenchDaggerImaginairy) Bootstrap(ctx context.Context) (string, er
 		WithExec([]string{"apt-get", "install", "-y", "--no-install-recommends", "procps"}). // curl is already in Dockerfile
 		// Also install requests for the exploit script
 		WithExec([]string{"pip", "install", "--no-cache-dir", "requests"}).
-		WithMountedDirectory("/bountytask", src)
+		WithMountedDirectory("/bountytask", src).
+		WithMountedFile("/etc/hosts", dag.Directory().
+			WithNewFile("hosts", "127.0.0.1 localhost\n127.0.0.1 aimg-server\n").
+			File("hosts"))
 
 	// Replicate exactly what happens in verify.sh and exploit.sh
 	script := `set -e
 # map aimg-server to localhost so verbatim exploit.sh works
-echo "127.0.0.1 aimg-server" >> /etc/hosts
 
 # Start the server in the background
 aimg server > /tmp/aimg_server.log 2>&1 &
