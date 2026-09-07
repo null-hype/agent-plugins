@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"sync/atomic"
 
@@ -92,6 +93,33 @@ func (w *devpodWorkspace) Probe(ctx context.Context) error {
 		return fmt.Errorf("tunnel closed before container acknowledged probe")
 	}
 	return nil
+}
+
+// Each bootstrap step has its own tunnel and must both exit successfully and
+// acknowledge completion. Upstream transport teardown alone is not success.
+func (w *devpodWorkspace) runContainer(ctx context.Context, command string, env map[string]string) ([]byte, error) {
+	const marker = "DEVPOD_KEEPALIVE_STEP_OK\n"
+	var out bytes.Buffer
+	var completed atomic.Bool
+	err := tunnel.NewContainerTunnel(w.client, false, log.Default.ErrorStreamOnly()).Run(ctx,
+		func(ctx context.Context, conn *ssh.Client) error {
+			command = "export PATH=\"$HOME/.local/bin:$PATH\"; cd " + shellescape.Quote(path.Join("/workspaces", w.client.Workspace())) + " && bash -c " + shellescape.Quote(command) + " && printf " + shellescape.Quote(marker)
+			if err := devssh.Run(ctx, conn, command, nil, &out, os.Stderr, env); err != nil {
+				return err
+			}
+			if !strings.HasSuffix(out.String(), marker) {
+				return fmt.Errorf("container did not acknowledge bootstrap step")
+			}
+			completed.Store(true)
+			return nil
+		}, w.config, nil)
+	if err != nil {
+		return nil, err
+	}
+	if !completed.Load() {
+		return nil, fmt.Errorf("tunnel closed before bootstrap step completed")
+	}
+	return []byte(strings.TrimSuffix(out.String(), marker)), nil
 }
 
 func (w *devpodWorkspace) RefreshActivity(ctx context.Context) error {

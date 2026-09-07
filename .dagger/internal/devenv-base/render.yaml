@@ -3,7 +3,7 @@ services:
     name: devpod-keepalive
     runtime: image
     image:
-      url: ghcr.io/null-hype/devenv-keepalive@sha256:7bba9fdf8b4909ab2f0442f6afc5ccda0d376c798399b628cb7ee0ec281c1202
+      url: ghcr.io/null-hype/devenv-keepalive@sha256:5bf6ec7860295988e202d4ed9c4a917cf1dff609d396e287445eeb35df40d562
       creds:
         fromRegistryCreds:
           name: Citizen6.Librarian6.Refrain4

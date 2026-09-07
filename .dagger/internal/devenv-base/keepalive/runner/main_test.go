@@ -27,6 +27,7 @@ func (w *fakeWorkspace) Up(context.Context) error { return w.call("up") }
 func (w *fakeWorkspace) Status(context.Context) (client.Status, error) {
 	return w.status, w.call("status")
 }
+func (w *fakeWorkspace) Bootstrap(context.Context) error       { return w.call("bootstrap") }
 func (w *fakeWorkspace) Probe(context.Context) error           { return w.call("probe") }
 func (w *fakeWorkspace) RefreshActivity(context.Context) error { return w.call("refresh") }
 
@@ -37,14 +38,15 @@ func TestKeepAlive(t *testing.T) {
 		fail   string
 		want   []string
 	}{
-		{"running container", client.StatusRunning, "", []string{"up", "status", "probe", "refresh"}},
+		{"running container", client.StatusRunning, "", []string{"up", "status", "probe", "bootstrap", "refresh"}},
 		{"start failed", client.StatusRunning, "up", []string{"up"}},
 		{"status failed", client.StatusRunning, "status", []string{"up", "status"}},
 		{"VM running container stopped", client.StatusStopped, "", []string{"up", "status"}},
 		{"container absent", client.StatusNotFound, "", []string{"up", "status"}},
 		{"container busy", client.StatusBusy, "", []string{"up", "status"}},
 		{"SSH failed", client.StatusRunning, "probe", []string{"up", "status", "probe"}},
-		{"watchdog update failed", client.StatusRunning, "refresh", []string{"up", "status", "probe", "refresh"}},
+		{"bootstrap failed", client.StatusRunning, "bootstrap", []string{"up", "status", "probe", "bootstrap"}},
+		{"watchdog update failed", client.StatusRunning, "refresh", []string{"up", "status", "probe", "bootstrap", "refresh"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cause := errors.New("operation failed")

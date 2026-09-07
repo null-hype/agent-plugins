@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+  SUDO=sudo
+fi
+export PATH="$HOME/.local/bin:$PATH"
+
 if ! command -v claude >/dev/null 2>&1; then
   curl -fsSL https://claude.ai/install.sh | bash
 fi
@@ -42,8 +48,8 @@ for hook in "$REPO_ROOT"/.git/hooks/pre-commit "$REPO_ROOT"/.git/hooks/pre-push;
 done
 
 if ! command -v make >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1 || ! command -v restic >/dev/null 2>&1; then
-  sudo apt-get update
-  sudo apt-get install -y make tmux restic
+  $SUDO apt-get update
+  $SUDO apt-get install -y make tmux restic
 fi
 
 if ! command -v linear-release >/dev/null 2>&1; then
@@ -55,7 +61,7 @@ if ! command -v linear-release >/dev/null 2>&1; then
   esac
   curl -fsSL "https://github.com/linear/linear-release/releases/latest/download/${LINEAR_RELEASE_ASSET}" -o /tmp/linear-release
   chmod +x /tmp/linear-release
-  sudo mv /tmp/linear-release /usr/local/bin/linear-release
+  $SUDO mv /tmp/linear-release /usr/local/bin/linear-release
 fi
 
 #
@@ -78,13 +84,13 @@ fi
 # take effect, which every `devpod ssh --command` invocation already is, so
 # this just needs to run once per boot before start-linear-agent.sh.
 DOCKER_SOCK_GID=$(stat -L -c %g /var/run/docker.sock 2>/dev/null || true)
-if [ -n "$DOCKER_SOCK_GID" ]; then
+if [ "$(id -u)" -ne 0 ] && [ -n "$DOCKER_SOCK_GID" ]; then
   DOCKER_SOCK_GROUP=$(getent group "$DOCKER_SOCK_GID" | cut -d: -f1 || true)
   if [ -z "$DOCKER_SOCK_GROUP" ]; then
     DOCKER_SOCK_GROUP=docker-host
-    sudo groupadd -g "$DOCKER_SOCK_GID" "$DOCKER_SOCK_GROUP"
+    $SUDO groupadd -g "$DOCKER_SOCK_GID" "$DOCKER_SOCK_GROUP"
   fi
-  if ! id -nG vscode | grep -qw "$DOCKER_SOCK_GROUP"; then
-    sudo usermod -aG "$DOCKER_SOCK_GROUP" vscode
+  if ! id -nG | grep -qw "$DOCKER_SOCK_GROUP"; then
+    $SUDO usermod -aG "$DOCKER_SOCK_GROUP" "$(id -un)"
   fi
 fi
