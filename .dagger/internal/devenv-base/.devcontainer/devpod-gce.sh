@@ -27,6 +27,16 @@
 # special-cases), so --set-env reliably delivers the token to it.
 set -euo pipefail
 
+# Check the packaged reconciler before any provisioning/reset action.
+command -v devpod-keepalive >/dev/null || {
+  echo "Run provisioning through the devenv-base Dagger module; devpod-keepalive is missing." >&2
+  exit 1
+}
+test -r "${VM_TAILSCALE_ARCHIVE:-/opt/devenv/vm-tailscale.tar}" || {
+  echo "The Dagger-built VM Tailscale archive is missing." >&2
+  exit 1
+}
+
 export PROTON_PASS_AGENT_REASON="devpod-gce: fetch GCP service account key to provision/start the devpod workspace"
 
 : "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:?PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set in this shell so it can be forwarded into the workspace}"
@@ -116,19 +126,9 @@ pass-cli run --env-file "$ENV_FILE" -- bash -c '
   done
   [ "$up_ok" = 1 ] || { echo "devpod up failed after 3 attempts" >&2; exit 1; }
 
-  # One `devpod ssh` call per bootstrap step via gce_common_ssh_step (see
-  # gce-common.sh for why these aren'"'"'t &&-chained into one remote command).
-  # Runs bare under this block'"'"'s `set -e`, so any step'"'"'s non-zero exit aborts
-  # here -- unlike devpod-keepalive.sh, which applies its own tolerate/fail
-  # policy per step.
-  while IFS= read -r step; do
-    if [ "$step" = "tailscale-up.sh" ]; then
-      gce_common_ssh_step "$WORKSPACE_ID" "$step" \
-        --set-env "PROTON_PASS_PERSONAL_ACCESS_TOKEN=$PROTON_PASS_PERSONAL_ACCESS_TOKEN"
-    else
-      gce_common_ssh_step "$WORKSPACE_ID" "$step"
-    fi
-  done < <(gce_common_bootstrap_steps)
+  # Use the same verified VM/container reconciliation as Render. The Dagger
+  # provisioning image supplies both the runner and its VM Tailscale archive.
+  devpod-keepalive keepalive --workspace "$WORKSPACE_ID"
 
   gce_common_restic_push_devpod_state
 ' bash "$@"

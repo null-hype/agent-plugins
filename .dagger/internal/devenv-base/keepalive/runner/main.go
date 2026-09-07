@@ -76,5 +76,5 @@ func main() {
 		log.Printf("keepalive: FAILED: %v", err)
 		os.Exit(1)
 	}
-	log.Printf("keepalive: OK workspace=%s devcontainer=Running activity=refreshed tailnet=online linear-agent=healthy", *id)
+	log.Printf("keepalive: OK workspace=%s devcontainer=Running activity=refreshed tailnet-nodes=2 linear-agent=healthy", *id)
 }

@@ -11,14 +11,22 @@ packages to:
 2. Require `Status(ContainerStatus: true)` to return `Running`.
 3. Execute a command through `tunnel.NewContainerTunnel` that checks `DEVPOD`,
    the workspace ID, and the workspace UID before acknowledging the probe.
-4. Run the existing bootstrap scripts through separate container tunnels: generate
+4. Reconcile the VM’s Tailscale service from the Dagger-built image archive.
+   It uses host networking, a dedicated persistent Docker volume, and an
+   `always` restart policy. Load the archive only when its content-addressed
+   image is missing. Stream the auth key over stdin; never put it in Docker
+   environment variables or command arguments.
+5. Run the existing bootstrap scripts through separate container tunnels: generate
    environment files, join Tailscale, install tools, and ensure the Linear agent
    and Cloudflare connector are started. Existing processes are reused. The
    Proton Pass token is forwarded only to `tailscale-up.sh`.
-5. Require Tailscale to report `Running` and its node online with an assigned IP.
+6. Require Tailscale to report `Running` and its node online with an assigned IP.
    Require local and public `/healthz` to report an installed Linear token, and
    require the signed public webhook smoke test to succeed.
-6. Await `agent workspace update-config`, the same operation used by DevPod's
+7. Read Tailscale status independently through the machine and container
+   interfaces. Both nodes must be online, have distinct stable node IDs, and
+   have no overlapping Tailscale IPs.
+8. Await `agent workspace update-config`, the same operation used by DevPod's
    periodic tunnel refresh to update the inactivity watchdog's workspace file.
 
 Every failed operation fails the job. Missing saved workspace mappings fail
@@ -58,3 +66,45 @@ still allow idle shutdown. The next successful run starts the workspace again.
 
 Publishing the image does not update Render's pinned image reference in
 `render.yaml`; deployment must select the newly published image.
+
+For routine in-place repair from an authenticated environment:
+
+```sh
+dagger -m .dagger/internal/devenv-base call reconcile-devpod --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN
+```
+
+`RecreateDevpod` remains an explicit destructive reset operation; routine repair
+uses `ReconcileDevpod`. The provisioning shell checks for the packaged runner
+and VM archive before it can reset anything.
+
+## VM and devcontainer topology
+
+The GCE provider creates a Container-Optimized OS VM. The module’s published
+`devenv-linear-agent` image runs **inside** that VM as the DevPod container;
+installing a tool in that image does not install it on the VM.
+
+`VmTailscale` builds a small service image from the module’s Tailscale binaries.
+`Keepalive` bundles its archive at `/opt/devenv/vm-tailscale.tar`. The Go runner
+creates the managed `devenv-vm-tailscale` service on the **outer VM Docker daemon**,
+using `--network=host` and the `devenv-vm-tailscale-state` volume. It never mounts
+the DevPod’s Tailscale state. Docker restarts the service after a VM reboot.
+Managed service image updates preserve the volume; containers without the
+ownership label are rejected rather than replaced.
+
+The VM is named `<workspace>-vm` on the tailnet. It leaves DNS and route
+acceptance unchanged and uses the VM’s normal sshd, authenticated with the
+VM’s existing SSH keys. Tailscale SSH is not enabled in this service container:
+that would enter the service container instead of the VM. The DevPod retains
+its current hostname, identity, and Tailscale SSH configuration.
+
+Both `RecreateDevpod` and the Render entrypoint invoke the same Go reconciliation.
+The provisioning shell still supplies the source and provider configuration;
+it no longer has an independent application-bootstrap loop. A standalone runner
+requires the Dagger image archive (`VM_TAILSCALE_ARCHIVE` overrides its path).
+`TS_AUTHKEY`, resolved from `pass://infra/tailscale/TS_AUTHKEY`, is required when
+the VM needs to authenticate. An expired or non-reusable key fails the job.
+
+For live QA, require two node IDs and two address sets, confirm the VM daemon
+uses host networking, and rerun to confirm stable identities. Check that existing
+Linear agent and Cloudflare PIDs remain unchanged. Listing local DevPod mappings
+or checking the VM’s power state alone does not establish this topology.

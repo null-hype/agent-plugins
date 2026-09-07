@@ -20,6 +20,7 @@ templates: Mapping<String, Listing<EnvVarRef>> = new {
     new EnvVarRef { name = "TS_AUTHKEY"; vaultName = "infra"; itemName = "tailscale" }
   }
   ["gcloud"] {
+    new EnvVarRef { name = "TS_AUTHKEY"; vaultName = "infra"; itemName = "tailscale" }
     new EnvVarRef { name = "GCP_SERVICE_ACCOUNT_KEY"; vaultName = "infra"; itemName = "restic" }
     new EnvVarRef { name = "GOOGLE_PROJECT_ID"; vaultName = "infra"; itemName = "restic" }
     new EnvVarRef { name = "RESTIC_REPOSITORY"; vaultName = "infra"; itemName = "restic" }

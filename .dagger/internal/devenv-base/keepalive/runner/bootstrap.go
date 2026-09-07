@@ -18,7 +18,13 @@ func (w *devpodWorkspace) Bootstrap(ctx context.Context) error {
 	if dir == "" {
 		dir = ".dagger/internal/devenv-base/.devcontainer"
 	}
-	return bootstrap(ctx, w.runContainer, dir, os.Getenv("PROTON_PASS_PERSONAL_ACCESS_TOKEN"))
+	if err := w.ensureVMTailnet(ctx); err != nil {
+		return fmt.Errorf("ensure VM tailnet: %w", err)
+	}
+	if err := bootstrap(ctx, w.runContainer, dir, os.Getenv("PROTON_PASS_PERSONAL_ACCESS_TOKEN")); err != nil {
+		return err
+	}
+	return w.verifyTailnets(ctx)
 }
 
 func bootstrap(ctx context.Context, run containerCommand, dir, token string) error {
