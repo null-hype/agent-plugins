@@ -58,11 +58,11 @@ hooks {
     }
     ["pre-push"] {
         steps {
-            // Backs up ~/.claude and ~/.config/container-use to the shared
+            // Separate Claude, container-use, and Codex snapshots in the shared
             // restic repo (disaster recovery only). See
             // hk/claude-session-backup.sh.
             ["claude-session-backup"] {
-                check = "bash hk/claude-session-backup.sh"
+                check = "bash hk/claude-session-backup.sh --best-effort"
             }
         }
     }

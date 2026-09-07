@@ -59,10 +59,10 @@ hooks {
     }
     ["pre-push"] {
         steps {
-            // Backs up ~/.claude to the shared restic repo (disaster
+            // Separate Claude, container-use, and Codex snapshots (disaster
             // recovery only). See .dagger/internal/devenv-base/hk/claude-session-backup.sh.
             ["claude-session-backup"] {
-                check = "bash .dagger/internal/devenv-base/hk/claude-session-backup.sh"
+                check = "bash .dagger/internal/devenv-base/hk/claude-session-backup.sh --best-effort"
             }
         }
     }
