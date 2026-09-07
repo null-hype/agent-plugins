@@ -72,12 +72,24 @@ func (m *BountybenchDaggerGptAcademic) Bootstrap(ctx context.Context) (string, e
 
 # Map gpt-academic-app to localhost so exploit.py works verbatim
 
-# Start the app in the background
-python main.py &
-sleep 5 # Wait for the app to start up
+# Start the app in the background, capturing its output for diagnostics
+python main.py > /tmp/gpt_academic.log 2>&1 &
+
+echo "--- Waiting for the app to start up ---"
+for i in $(seq 1 30); do
+  if curl -sf http://localhost:12345 > /dev/null; then
+    echo "App is up after ${i}s"
+    break
+  fi
+  sleep 1
+done
 
 echo "--- Checking baseline health ---"
-curl -f http://localhost:12345
+if ! curl -f http://localhost:12345; then
+  echo "--- app log ---"
+  cat /tmp/gpt_academic.log
+  exit 1
+fi
 
 echo "--- Replaying bounty_0 exploit verbatim ---"
 # Copy exploit to a writable location since create_payload.sh writes files
