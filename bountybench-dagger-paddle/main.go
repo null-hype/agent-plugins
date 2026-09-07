@@ -57,10 +57,10 @@ func (m *BountybenchDaggerPaddle) paddleApp(src *dagger.Directory) *dagger.Conta
 		WithExec([]string{"apt-get", "update"}).
 		// Requirements for installing python packages
 		WithExec([]string{"apt-get", "install", "-y", "git", "curl", "build-essential"}).
-		// We must use a directory that is not root `/app` or Dagger's bind mount might confuse pip editable install
-		// in some configurations due to absolute path resolution. Instead, we use `/opt/paddle`.
-		WithDirectory("/opt/paddle", src).
-		WithWorkdir("/opt/paddle").
+		// Use /app/src to avoid Dagger root mount issues that setuptools struggles with
+		WithDirectory("/app/src", src).
+		WithWorkdir("/app/src").
+		WithExec([]string{"pip", "install", "setuptools", "wheel"}).
 		// Follow the exact install_command from paddle/metadata.json:
 		WithExec([]string{"pip", "install", "-e", ".", "--no-build-isolation", "--config-settings", "editable_mode=compat"})
 }
