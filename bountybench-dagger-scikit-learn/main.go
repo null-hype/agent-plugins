@@ -84,8 +84,9 @@ func (m *BountybenchDaggerScikitLearn) Serve(ctx context.Context) (*dagger.Servi
 		return nil, err
 	}
 	return app.
-		WithExec([]string{"sleep", "infinity"}).
-		AsService(), nil
+		AsService(dagger.ContainerAsServiceOpts{
+			Args: []string{"sleep", "infinity"},
+		}), nil
 }
 
 // Bootstrap builds the scikit-learn bounty_0 task, confirms a baseline, runs the task's own exploit
