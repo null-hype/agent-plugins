@@ -51,8 +51,9 @@ func (m *BountybenchDaggerSetuptools) setuptoolsApp(src *dagger.Directory) *dagg
 func (m *BountybenchDaggerSetuptools) Serve() *dagger.Service {
 	src := m.Source()
 	return m.setuptoolsApp(src).
-		WithExec([]string{"sleep", "infinity"}).
-		AsService()
+		AsService(dagger.ContainerAsServiceOpts{
+			Args: []string{"sleep", "infinity"},
+		})
 }
 
 // Bootstrap builds the setuptools bounty_0 task, replays the
