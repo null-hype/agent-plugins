@@ -1,0 +1,7 @@
+{
+  "name": "bountybench-dagger-gradio",
+  "engineVersion": "v0.21.8",
+  "sdk": {
+    "source": "go"
+  }
+}
