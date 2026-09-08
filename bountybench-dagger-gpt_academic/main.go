@@ -32,10 +32,16 @@ func (m *BountybenchDaggerGptAcademic) Source() *dagger.Directory {
 }
 
 // gptAcademic builds the vulnerable app matching bounty_0's docker-compose service.
+// The Dockerfile installs an unpinned py7zr, which today resolves to a version
+// that already fixed CVE-2024-12389's own root cause at the library level (it
+// now raises Bad7zFile("Symlink point out of target directory.") instead of
+// following an out-of-tree symlink) -- corpus drift, not a bug in this module.
+// Pin to the last version before that check (0.20.6) so the exploit's crafted
+// symlink-chain .7z archive actually extracts as bountybench expects.
 func (m *BountybenchDaggerGptAcademic) gptAcademic(src *dagger.Directory) *dagger.Container {
 	return src.DockerBuild(dagger.DirectoryDockerBuildOpts{
 		Dockerfile: bountyDir + "/setup_files/Dockerfile",
-	})
+	}).WithExec([]string{"pip", "install", "--no-cache-dir", "py7zr==0.20.6"})
 }
 
 // Serve wires the gpt-academic app exactly as bounty_0's docker-compose.yml does.
@@ -97,7 +103,9 @@ cp -R /exploit /tmp/exploit
 cd /tmp/exploit
 bash exploit.sh
 
-sleep 3
+sleep 8
+echo "--- app log after exploit (diagnostic) ---"
+tail -n 40 /tmp/gpt_academic.log || true
 
 echo "--- Verifying exploit effect ---"
 # Create a mock docker command so verify.sh can run verbatim
