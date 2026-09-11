@@ -97,7 +97,5 @@ echo "wrote $OUT" >&2
 CLEAN_OUT="$OUT_DIR/taint-trace-clean-observed.json"
 clean_destinations_json="$(echo "$destinations_json" | jq '[.[0]]')"
 jq -n --argjson acquisitions "$acquisitions_json" --argjson destinations "$clean_destinations_json" \
-  '{acquisitions: $acquisitions, destinations: $clean_destinations_json}' > "$CLEAN_OUT" 2>/dev/null || \
-jq -n --argjson acquisitions "$acquisitions_json" --argjson destinations "$clean_destinations_json" \
   '{acquisitions: $acquisitions, destinations: $destinations}' > "$CLEAN_OUT"
 echo "wrote $CLEAN_OUT" >&2
