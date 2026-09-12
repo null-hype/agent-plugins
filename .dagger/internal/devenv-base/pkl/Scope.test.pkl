@@ -1,9 +1,10 @@
 /// Proves the CIT-96 taint-tracking primitive: run
-/// `hk/capture-taint-trace.sh` first (writes
-/// `../build/taint-trace-observed.json` and
-/// `../build/taint-trace-clean-observed.json`) -- see the "taint-trace"
-/// step in hk.pkl. This module does no capture itself, only asserts
-/// facts about what was captured, same division of labor as
+/// `hk/capture-taint-trace.sh` and `hk/check-taint-trace-fail-closed.sh`
+/// first (the former writes `../build/taint-trace-observed.json` and
+/// `../build/taint-trace-clean-observed.json`; the latter
+/// `../build/taint-trace-failclosed-observed.json`) -- see the
+/// "taint-trace" step in hk.pkl. This module does no capture itself, only
+/// asserts facts about what was captured, same division of labor as
 /// Vaults.test.pkl/hk/capture-vault-inventory.sh.
 ///
 /// This is the primitive-level proof, not the packaged skill: CIT-97
@@ -20,6 +21,7 @@ import "Scope.pkl" as scope
 
 local violation: scope.Trace = scope.traceFrom(new json.Parser {}.parse(read("../build/taint-trace-observed.json").text))
 local clean: scope.Trace = scope.traceFrom(new json.Parser {}.parse(read("../build/taint-trace-clean-observed.json").text))
+local failClosed: Dynamic = new json.Parser {}.parse(read("../build/taint-trace-failclosed-observed.json").text)
 
 facts {
   ["the CIT-96 scenario's holder-transcript/other-agent/supervisor/Linear-comment/network-payload leaks are all flagged"] {
@@ -36,13 +38,13 @@ facts {
       .length == 5
   }
 
-  ["an acquisition or destination missing a required field is a hard error, never a silent pass"] {
-    // `scope.acquisitionFrom`/`destinationFrom` read every field directly
-    // off the parsed Dynamic (e.g. `d.grantId`), which throws at eval
-    // time -- not "false"/absent -- when the observed-JSON is missing it.
-    // Structural guarantee, not something this fact can execute without
-    // also failing the module load; recorded here as documentation of
-    // the guarantee `Scope.pkl` provides.
-    true
+  ["an acquisition/destination missing a required field, or an empty trace, is a hard error, never a silent pass"] {
+    // A `facts{}` entry that itself throws fails this whole module's
+    // load rather than failing just this fact (Pkl has no catch() to
+    // trap that here), so the actual malformed-input attempts run as
+    // separate `pkl eval` subprocesses in
+    // hk/check-taint-trace-fail-closed.sh; this fact asserts on their
+    // real recorded outcome rather than a hardcoded literal.
+    failClosed.missingFieldRejected == true && failClosed.emptyTraceRejected == true
   }
 }
