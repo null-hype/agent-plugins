@@ -21,7 +21,7 @@
             },
             "playwright-cli": {}
         },
-        "containerEnv": {
+        "remoteEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     },
@@ -32,7 +32,21 @@
         "features": {
             "pass-cli": {}
         },
-        "containerEnv": {
+        "remoteEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
+    },
+    "cit-96-taint-trace": {
+        "build": {
+            "dockerfile": "cit-96-taint-trace/Dockerfile",
+            "context": "../.."
+        },
+        "features": {
+            "pass-cli": {
+                "tag": "cit-96-taint-trace"
+            }
+        },
+        "remoteEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     },
@@ -45,7 +59,7 @@
                 "tag": "jin-91-resume-session"
             }
         },
-        "containerEnv": {
+        "remoteEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     }
