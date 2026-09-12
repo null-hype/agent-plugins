@@ -49,10 +49,13 @@ hooks {
             // not reach any destination outside its own grant -- an
             // agent's own transcript included. Runs entirely on synthetic
             // data (no live Proton Pass session needed); see
-            // hk/capture-taint-trace.sh and pkl/Scope.pkl.
+            // hk/capture-taint-trace.sh, hk/check-taint-trace-fail-closed.sh
+            // (drives Scope.pkl's fail-closed validation against malformed
+            // fixtures as real `pkl eval` subprocesses, since a facts{}
+            // entry can't itself catch a thrown Pkl error) and pkl/Scope.pkl.
             ["taint-trace"] {
                 check {
-                    command = "bash hk/capture-taint-trace.sh && mise exec -- pkl test pkl/Scope.test.pkl"
+                    command = "bash hk/capture-taint-trace.sh && bash hk/check-taint-trace-fail-closed.sh && mise exec -- pkl test pkl/Scope.test.pkl"
                     effect = "read"
                 }
             }
