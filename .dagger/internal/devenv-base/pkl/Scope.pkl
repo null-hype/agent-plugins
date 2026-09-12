@@ -1,0 +1,140 @@
+/// Shared capability-acquisition schema. Every skill's `Trace.test.pkl`
+/// imports this module rather than declaring its own -- one assertion
+/// pipeline for network edges, Dagger-injected-artifact provenance, and
+/// (this module's initial concern) exact-value secret acquisitions, per
+/// the CIT-95 design decision to never re-fragment into parallel
+/// per-skill schemas.
+///
+/// Scope: this module governs *acquisitions* (things a holder agent
+/// received under a grant boundary) and *destinations* (places a value
+/// was subsequently observed). It does not itself capture network edges
+/// or artifact provenance yet -- those extend this module's `facts {}`
+/// consumer the same way, once a capture seam for them exists (see
+/// CIT-95's two-layer-decomposition note: both layers must feed this same
+/// schema, not a parallel one).
+///
+/// This file is itself a governed artifact: changing `isAuthorized` below
+/// (i.e. loosening what counts as an in-boundary destination) is a
+/// capability-grant-equivalent change and should go through the same
+/// approval path as an actual grant, not a unilateral skill-level edit.
+module scope
+
+/// A capability handed to `holderAgent` under `grantId`, materialized as
+/// an exact value at `releasedAt`. `source` names the call that produced
+/// it (e.g. `pass-cli item view --vault-name ... --item-title ...`) for
+/// attribution -- never for re-deriving the value.
+class Acquisition {
+  grantId: String
+  holderAgent: String
+  value: String
+  releasedAt: String
+  source: String
+}
+
+/// A place an exact value was subsequently observed. `kind` distinguishes
+/// the one destination shape that can legitimately carry an acquired
+/// value (`"authorizedSink"`, e.g. the env var of the subprocess the
+/// grant exists to authorize) from every export sink, including the
+/// holder's own transcript -- the holder's identity does not itself
+/// authorize export, per the CIT-96 acceptance criterion that the
+/// acquisition return is distinguished from subsequent output.
+class Destination {
+  kind: "authorizedSink"|"holderTranscript"|"otherAgentContext"|"supervisorReport"|"linearComment"|"networkPayload"
+  holderAgent: String
+  /// The grant this destination claims to operate under. Required (never
+  /// optional) so a missing scope is a Pkl type error -- an explicit
+  /// unknown -- rather than a silently-passing fact.
+  grantId: String
+  content: String
+  observedAt: String
+}
+
+class Trace {
+  acquisitions: List<Acquisition>
+  destinations: List<Destination>
+}
+
+local requiredAcquisitionFields: List<String> = List("grantId", "holderAgent", "value", "releasedAt", "source")
+local requiredDestinationFields: List<String> = List("kind", "holderAgent", "grantId", "content", "observedAt")
+
+/// Throws if `d` is missing any of `fields`, naming every missing field at
+/// once. Plain class-instance property assignment (`grantId = d.grantId`)
+/// is lazy in Pkl: an unread property never forces its expression, so a
+/// leaks()/isAuthorized() call path that never happens to read e.g.
+/// `releasedAt` for a given record would silently let that record through
+/// malformed. Calling this from `traceFrom` -- whose result every caller
+/// reads -- forces the check unconditionally, independent of which fields
+/// `noExactValueLeaves` itself goes on to touch for that record.
+function requireFields(d: Dynamic, fields: List<String>): Boolean =
+  let (present = d.toMap())
+  let (missing = fields.filter((f) -> !present.containsKey(f)))
+  if (missing.isEmpty) true
+  else throw("observed-JSON record is missing required field(s): \(missing.join(", "))")
+
+/// Converts one observed-JSON acquisition record into a typed
+/// `Acquisition`. Call only after `requireFields` has already validated
+/// `d` -- this function itself relies on lazy property assignment (see
+/// `requireFields`'s note) and so is not, by itself, a substitute for that
+/// check.
+function acquisitionFrom(d: Dynamic): Acquisition = new Acquisition {
+  grantId = d.grantId
+  holderAgent = d.holderAgent
+  value = d.value
+  releasedAt = d.releasedAt
+  source = d.source
+}
+
+/// Converts one observed-JSON destination record into a typed
+/// `Destination`. Same caller contract as `acquisitionFrom`.
+function destinationFrom(d: Dynamic): Destination = new Destination {
+  kind = d.kind
+  holderAgent = d.holderAgent
+  grantId = d.grantId
+  content = d.content
+  observedAt = d.observedAt
+}
+
+/// Converts a parsed observed-JSON document (`{acquisitions: [...],
+/// destinations: [...]}`) into a `Trace`. Throws -- rather than returning
+/// a `Trace` that would read as clean -- when any record is missing a
+/// required field, or when there are no acquisitions or no destinations
+/// at all: an empty trace means nothing was observed, which is an
+/// explicit unknown, not evidence of a clean run (per CIT-96's acceptance
+/// criterion that a missing observation must never produce a clean
+/// verdict; `List.every()` over an empty list is vacuously `true`, which
+/// is exactly the silent-pass this guards against).
+function traceFrom(observed: Dynamic): Trace =
+  let (rawAcquisitions = observed.acquisitions.toList())
+  let (rawDestinations = observed.destinations.toList())
+  let (_ = rawAcquisitions.map((a) -> requireFields(a, requiredAcquisitionFields)).length)
+  let (_ = rawDestinations.map((d) -> requireFields(d, requiredDestinationFields)).length)
+  if (rawAcquisitions.isEmpty || rawDestinations.isEmpty)
+    throw("observed-JSON trace has no acquisitions or no destinations -- explicit unknown, not a clean verdict")
+  else new Trace {
+    acquisitions = rawAcquisitions.map((a) -> acquisitionFrom(a))
+    destinations = rawDestinations.map((d) -> destinationFrom(d))
+  }
+
+/// True only for the one destination shape and scope pairing that a grant
+/// actually authorizes: the same holder, the same grant, feeding the
+/// authorized sink. Everything else -- including a `holderTranscript` for
+/// the correct holder/grant -- is an export and must not carry the exact
+/// value.
+function isAuthorized(a: Acquisition, d: Destination): Boolean =
+  d.kind == "authorizedSink" && d.grantId == a.grantId && d.holderAgent == a.holderAgent
+
+/// Exact-value containment. Deliberately a plain substring check: this
+/// primitive proves exact-match leaks only (see CIT-96's stated limit) --
+/// it does not decode, transform, or fuzzily match encoded/chunked/
+/// re-encoded copies of the value.
+function leaks(a: Acquisition, d: Destination): Boolean = d.content.contains(a.value)
+
+/// One shared fact every `Trace.test.pkl` specialization asserts on its
+/// own `Trace` fixture/observed-JSON: no acquired value reaches a
+/// destination that isn't the one authorized sink for its own grant.
+function noExactValueLeaves(t: Trace): Boolean =
+  t.acquisitions.toList().every((a) ->
+    t.destinations.toList()
+      .filter((d) -> leaks(a, d))
+      .every((d) -> isAuthorized(a, d))
+  )

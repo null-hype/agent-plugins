@@ -44,6 +44,21 @@ hooks {
                     effect = "read"
                 }
             }
+            // Capability-acquisition taint tracking (CIT-96): a pass-cli
+            // `item view`-shaped acquisition of a synthetic secret must
+            // not reach any destination outside its own grant -- an
+            // agent's own transcript included. Runs entirely on synthetic
+            // data (no live Proton Pass session needed); see
+            // hk/capture-taint-trace.sh, hk/check-taint-trace-fail-closed.sh
+            // (drives Scope.pkl's fail-closed validation against malformed
+            // fixtures as real `pkl eval` subprocesses, since a facts{}
+            // entry can't itself catch a thrown Pkl error) and pkl/Scope.pkl.
+            ["taint-trace"] {
+                check {
+                    command = "bash hk/capture-taint-trace.sh && bash hk/check-taint-trace-fail-closed.sh && mise exec -- pkl test pkl/Scope.test.pkl"
+                    effect = "read"
+                }
+            }
             // Syncs pushed commits to the Linear "Development" release.
             // Runs here (not pre-push) since it's a post-push sync, not a
             // push gate -- a stale pass-cli session or a renamed vault

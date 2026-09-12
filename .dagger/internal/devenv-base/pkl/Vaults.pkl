@@ -39,4 +39,15 @@ declared: Listing<VaultSpec> = new {
       "pass-cli"
     }
   }
+  new VaultSpec {
+    // CIT-96's taint-trace devcontainer-feature-test scenario needs a real
+    // `pass-cli item view` to acquire against (see test/_global/
+    // cit-96-taint-trace.sh) -- pass://test/cit-96/synthetic-secret. The
+    // "test" vault is scoped to holding only synthetic, never-real values
+    // for scenarios like this one.
+    name = "test"
+    items {
+      "cit-96"
+    }
+  }
 }
