@@ -1,0 +1,16 @@
+/// Negative fixture: a fact whose grant is never approved by the
+/// supervisor. Always red -- demonstrates CAP_REJECTED staying red
+/// regardless of demo state, unlike flight_booking_area51.pkl which the
+/// demo approves.
+amends "pkl:test"
+
+import "../../pkl/Ledger.pkl"
+
+local factID = "shadow-request:roswell:vault-access"
+local requestedVault = "area51.internal"
+
+facts {
+  ["nothing to see here"] {
+    Ledger.checkAccess(factID, requestedVault)
+  }
+}
