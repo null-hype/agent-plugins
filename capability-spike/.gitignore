@@ -1,0 +1,6 @@
+/build/
+
+# Rewritten by supervisor.Decide/ResetState on every run (go run . / go
+# test ./...) -- committing a snapshot would just go stale and make the
+# tree dirty after any local run.
+/pkl/GrantState.pkl
