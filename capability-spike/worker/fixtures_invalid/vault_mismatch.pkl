@@ -1,0 +1,16 @@
+/// Negative fixture: the fact's fact_id has an approved grant (in the
+/// demo's approval seed) but for a *different* vault than the one this
+/// fact requests. Demonstrates CAP_VAULT_MISMATCH -- approval does not
+/// transitively authorize a different resource under the same factID.
+amends "pkl:test"
+
+import "../../pkl/Ledger.pkl"
+
+local factID = "flight-booking:area51:vault-access"
+local requestedVault = "cia.gov"
+
+facts {
+  ["wrong vault entirely"] {
+    Ledger.checkAccess(factID, requestedVault)
+  }
+}
