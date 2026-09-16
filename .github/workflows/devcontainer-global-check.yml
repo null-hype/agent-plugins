@@ -1,0 +1,29 @@
+name: devcontainer-global-check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - '.dagger/main.go'
+      - 'dagger.json'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - '.dagger/main.go'
+      - 'dagger.json'
+
+jobs:
+  dagger-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          verb: check
+          # Enables cross-run distributed build caching + traces via Dagger
+          # Cloud. See .github/workflows/devenv-base-checks.yml for why this
+          # must be the action's own `cloud-token` input, not a step `env:`.
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}

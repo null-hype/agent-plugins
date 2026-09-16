@@ -51,3 +51,45 @@ func (m *AgentPlugins) HkCheck(ctx context.Context, source *dagger.Directory) (s
 
 	return ctr.Stdout(ctx)
 }
+
+// CheckGlobalScenario runs one test/_global devcontainer-feature scenario
+// (color_and_playwright_cli) hermetically inside the Dagger engine, via a
+// nested Docker-in-Docker service so the devcontainer CLI's own container
+// builds stay sandboxed here rather than reaching the runner's host Docker.
+//
+// color_and_playwright_cli is the only test/_global scenario that needs no
+// live credentials -- the other three (jin-81-pass-cli, jin-90-dead-drop,
+// jin-91-resume-session) require PROTON_PASS_PERSONAL_ACCESS_TOKEN and stay
+// confined to the manual, workflow_dispatch-only test-global.yaml. Once this
+// is proven out, widen -f to cover more scenarios.
+// +check
+func (m *AgentPlugins) CheckGlobalScenario(
+	ctx context.Context,
+	// +defaultPath="/"
+	source *dagger.Directory,
+) (string, error) {
+	dockerd := dag.Container().
+		From("docker:dind").
+		WithMountedCache("/var/lib/docker", dag.CacheVolume("agent-plugins-dind")).
+		WithExposedPort(2375).
+		WithExec(
+			[]string{"dockerd", "--host=tcp://0.0.0.0:2375", "--tls=false"},
+			dagger.ContainerWithExecOpts{InsecureRootCapabilities: true},
+		).
+		AsService()
+
+	return dag.Container().
+		From("node:20-bookworm").
+		WithServiceBinding("docker", dockerd).
+		WithEnvVariable("DOCKER_HOST", "tcp://docker:2375").
+		WithExec([]string{"npm", "install", "-g", "@devcontainers/cli"}).
+		WithMountedDirectory("/workspace", source).
+		WithWorkdir("/workspace").
+		WithExec([]string{
+			"devcontainer", "features", "test",
+			"--global-scenarios-only",
+			"-f", "color_and_playwright_cli",
+			".",
+		}).
+		Stdout(ctx)
+}
