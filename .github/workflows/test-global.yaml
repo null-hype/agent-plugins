@@ -49,11 +49,12 @@ jobs:
       # CIT-147: tk-evidence-exporter's cmd/export shells out to a native
       # `pkl` binary via pkl-go (pkl.NewEvaluator) to validate the assembled
       # package against pkl/Evidence.pkl -- it does not vendor or bundle
-      # Pkl itself. The repo's own root mise.toml already pins the version
-      # every devcontainer/sandbox in this repo uses; installing via
-      # jdx/mise-action here (rather than a separately-pinned curl/download
-      # step) keeps this runner on that same single source of truth instead
-      # of a second, driftable version pin.
+      # Pkl itself. The repo's own root mise.toml already declares `pkl =
+      # "latest"` (not a pinned version); installing via jdx/mise-action
+      # here (rather than a separately-pinned curl/download step) keeps
+      # this runner on that same single source of truth as every
+      # devcontainer/sandbox in this repo, instead of a second, separately
+      # drifting version pin.
       - name: "Install mise-managed tools (pkl) for tk-evidence-exporter"
         if: always()
         uses: jdx/mise-action@v2
@@ -73,37 +74,47 @@ jobs:
           # container (confirmed by inspecting the CLI's own `docker run
           # --mount` invocation) -- so by the time this step runs, its
           # output is sitting somewhere under the CLI's own scratch base on
-          # this same runner. Only the restic-backup scenario writes this
-          # filename, so a search rooted there finds exactly one match.
-          EVIDENCE_SRC="$(find /tmp/devcontainercli/container-features-test -path '*/evidence/restic-snapshots.json' 2>/dev/null | head -1)"
-          if [ -z "$EVIDENCE_SRC" ]; then
-            echo "::warning::tk-evidence-exporter: no restic-snapshots.json found -- the restic-backup scenario likely skipped (missing PROTON_PASS_PERSONAL_ACCESS_TOKEN) or failed before capturing evidence. Nothing to export this run."
+          # this same runner. Only the restic-backup scenario writes any of
+          # these filenames, so a search rooted there finds exactly one
+          # match each.
+          #
+          # CIT-147: discover by scenario-outcome.json, not
+          # restic-snapshots.json. restic-backup.sh's `on_exit` trap writes
+          # scenario-outcome.json on *every* exit path -- including a
+          # skipped run (missing PROTON_PASS_PERSONAL_ACCESS_TOKEN) or a
+          # failure before ever reaching the restic backup step -- so it's
+          # the one file guaranteed to exist whenever the scenario script
+          # ran at all. Discovering by restic-snapshots.json instead would
+          # silently drop exactly those two verdicts: the scenario recorded
+          # a real "skipped"/"failed" outcome, but this step would never
+          # even invoke cmd/export to export it.
+          EVIDENCE_OUTCOME_SRC="$(find /tmp/devcontainercli/container-features-test -path '*/evidence/scenario-outcome.json' 2>/dev/null | head -1)"
+          if [ -z "$EVIDENCE_OUTCOME_SRC" ]; then
+            echo "::warning::tk-evidence-exporter: no scenario-outcome.json found -- the restic-backup scenario's own script never ran (e.g. the devcontainer build itself failed before any test script executed). Nothing to export this run."
             exit 0
           fi
-          EVIDENCE_DIR="$(dirname "$EVIDENCE_SRC")"
+          EVIDENCE_DIR="$(dirname "$EVIDENCE_OUTCOME_SRC")"
+
+          # -snapshots-json is optional: a skipped scenario, or one that
+          # failed before capturing a snapshot, legitimately has none.
+          SNAPSHOTS_ARGS=()
+          if [ -f "$EVIDENCE_DIR/restic-snapshots.json" ]; then
+            SNAPSHOTS_ARGS=(-snapshots-json "$EVIDENCE_DIR/restic-snapshots.json")
+          else
+            echo "::warning::tk-evidence-exporter: no restic-snapshots.json found -- the scenario ended (skipped or failed) before capturing any restic snapshot. Exporting the scenario outcome only."
+          fi
+
           LS_ARGS=()
           if [ -f "$EVIDENCE_DIR/restic-ls.json" ]; then
             LS_ARGS=(-ls-json "$EVIDENCE_DIR/restic-ls.json")
           fi
-          # restic-backup.sh writes its own {"outcome":...} verdict on every
-          # exit path (see that script's `on_exit` trap) -- this run's own
-          # job conclusion is deliberately NOT used for scenario.outcome:
-          # this job runs every scenario in one `devcontainer features test`
-          # invocation, so its conclusion can't identify this scenario
-          # specifically, and this step runs before the job's own
-          # conclusion is even final.
-          OUTCOME_ARGS=()
-          if [ -f "$EVIDENCE_DIR/scenario-outcome.json" ]; then
-            OUTCOME_ARGS=(-scenario-outcome-json "$EVIDENCE_DIR/scenario-outcome.json")
-          else
-            echo "::warning::tk-evidence-exporter: no scenario-outcome.json found -- scenario.outcome will fall back to this run's own (possibly not-yet-final, not scenario-specific) job conclusion."
-          fi
+
           cd tk-evidence-exporter
           go run ./cmd/export \
             -scenario restic-backup \
-            -snapshots-json "$EVIDENCE_SRC" \
+            "${SNAPSHOTS_ARGS[@]}" \
             "${LS_ARGS[@]}" \
-            "${OUTCOME_ARGS[@]}" \
+            -scenario-outcome-json "$EVIDENCE_DIR/scenario-outcome.json" \
             -out "$GITHUB_WORKSPACE/build/tk-evidence"
 
       - name: "Upload evidence package"

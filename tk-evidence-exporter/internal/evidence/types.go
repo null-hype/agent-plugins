@@ -158,6 +158,53 @@ type Package struct {
 	Validation ValidationResult `pkl:"validation" json:"validation"`
 }
 
+// Normalize replaces every nil Listing-backed slice field with a non-nil
+// empty one. Evidence.pkl declares all of these as Listing<T>, which
+// ts/evidence.pkl.ts renders as a non-nullable Array<T> -- but a Go nil
+// slice marshals via encoding/json as `null`, not `[]`, which no Array<T>
+// consumer expects. This matters most for fields a caller assigns directly
+// (e.g. cmd/export's Validation.ValidationErrors, overwritten with a
+// possibly-nil warnings slice after Pkl evaluation), not just ones that
+// round-trip through Evaluate.
+func (p *Package) Normalize() {
+	if p.Execution.StepRefs == nil {
+		p.Execution.StepRefs = []string{}
+	}
+	if p.Scenario.Checks == nil {
+		p.Scenario.Checks = []CheckResult{}
+	}
+	if p.Snapshots == nil {
+		p.Snapshots = []SnapshotRef{}
+	}
+	if p.FileTree == nil {
+		p.FileTree = []FileTreeEntry{}
+	}
+	if p.Diff == nil {
+		p.Diff = []DiffEntry{}
+	}
+	if p.Logs == nil {
+		p.Logs = []LogExcerpt{}
+	}
+	if p.CapabilityFacts == nil {
+		p.CapabilityFacts = []CapabilityFact{}
+	}
+	if p.CapabilityGrants == nil {
+		p.CapabilityGrants = []CapabilityGrant{}
+	}
+	if p.CapabilityObservations == nil {
+		p.CapabilityObservations = []CapabilityObservation{}
+	}
+	if p.ReconciliationFlags == nil {
+		p.ReconciliationFlags = []ReconciliationFlag{}
+	}
+	if p.Validation.ArtifactHashes == nil {
+		p.Validation.ArtifactHashes = []ArtifactHash{}
+	}
+	if p.Validation.ValidationErrors == nil {
+		p.Validation.ValidationErrors = []string{}
+	}
+}
+
 // SchemaVersion is the current Evidence.pkl contract version. Bump it
 // whenever Evidence.pkl's shape changes in a way consumers must react to.
 //

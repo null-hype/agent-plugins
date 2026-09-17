@@ -44,14 +44,19 @@ func artifactHashes(hashes map[string]string) []evidence.ArtifactHash {
 	return result
 }
 
-// resolveScenarioOutcome prefers the scenario script's own structured
-// {"outcome":...} file, when given, over this run's job conclusion: the job
-// may still be in progress (this exporter can run as a later step in the
-// same job) and, since a job can run many scenarios, its eventual
-// conclusion can't identify whether this specific scenario passed anyway.
-func resolveScenarioOutcome(path string, job ghactions.Job) (evidence.Outcome, error) {
+// resolveScenarioOutcome requires the scenario script's own structured
+// {"outcome":...} file. It deliberately does not fall back to this run's
+// own GitHub Actions job conclusion: that job may still be in progress
+// (this exporter can run as a later step in the same job, reading an empty,
+// not-yet-final conclusion) and, since a job can run many scenarios, its
+// eventual conclusion can't identify whether this specific scenario passed
+// anyway. Silently mapping either of those into a "passed"/"failed" verdict
+// would misrepresent an unknown outcome as a known one, so the caller gets
+// an explicit evidence.OutcomeEvalError instead when no outcome file was
+// given -- honest about not knowing, rather than guessing.
+func resolveScenarioOutcome(path string) (evidence.Outcome, error) {
 	if path == "" {
-		return ghactions.Outcome(job.Conclusion), nil
+		return evidence.OutcomeEvalError, nil
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -89,7 +94,7 @@ func run() error {
 	apiURL := flag.String("github-api-url", envOr("GITHUB_API_URL", "https://api.github.com"), "GitHub REST API base URL (default: $GITHUB_API_URL, for GitHub Enterprise or tests)")
 
 	scenario := flag.String("scenario", "", "scenario name, used consistently for the feature/assignment/snapshot-tag/lesson identity (required)")
-	snapshotsJSON := flag.String("snapshots-json", "", "path to `restic snapshots --tag <scenario> --json` output (required)")
+	snapshotsJSON := flag.String("snapshots-json", "", "path to `restic snapshots --tag <scenario> --json` output (optional -- omitted when the scenario ended, e.g. skipped or failed, before ever capturing a snapshot)")
 	lsJSON := flag.String("ls-json", "", "path to `restic ls <snapshotID> --json` output (optional)")
 	diffJSON := flag.String("diff-json", "", "path to `restic diff <id1> <id2> --json` output (optional, only when a snapshot pair exists)")
 	junitDir := flag.String("junit-dir", "", "directory of `pkl test --junit-reports` XML files (optional; only for Pkl-test-backed scenarios)")
@@ -100,9 +105,6 @@ func run() error {
 
 	if *scenario == "" {
 		return fmt.Errorf("-scenario is required")
-	}
-	if *snapshotsJSON == "" {
-		return fmt.Errorf("-snapshots-json is required")
 	}
 	if *repo == "" || *runID == "" {
 		return fmt.Errorf("-repo and -run-id are required (directly or via $GITHUB_REPOSITORY/$GITHUB_RUN_ID)")
@@ -134,16 +136,16 @@ func run() error {
 	}
 
 	var outcomeWarnings []string
-	scenarioOutcome, err := resolveScenarioOutcome(*scenarioOutcomeJSON, job)
+	scenarioOutcome, err := resolveScenarioOutcome(*scenarioOutcomeJSON)
 	if err != nil {
 		return err
 	}
 	if *scenarioOutcomeJSON == "" {
 		outcomeWarnings = append(outcomeWarnings, fmt.Sprintf(
-			"-scenario-outcome-json was not given -- falling back to this run's own job conclusion (%q) for scenario.outcome. "+
-				"That conclusion describes the whole job, not this scenario specifically, and (when this exporter runs as a "+
-				"later step in the same job) may not even be final yet. Prefer having the scenario script itself write a "+
-				"{\"outcome\":...} file -- see README.", job.Conclusion))
+			"-scenario-outcome-json was not given -- scenario.outcome is %q rather than a guess derived from this "+
+				"run's own job conclusion (%q), which describes the whole job (not this scenario specifically) and, "+
+				"when this exporter runs as a later step in the same job, may not even be final yet. Have the "+
+				"scenario script itself write a {\"outcome\":...} file -- see README.", evidence.OutcomeEvalError, job.Conclusion))
 	} else {
 		data, err := os.ReadFile(*scenarioOutcomeJSON)
 		if err != nil {
@@ -157,14 +159,16 @@ func run() error {
 		Outcome:      scenarioOutcome,
 	}
 
-	snapshotsData, err := os.ReadFile(*snapshotsJSON)
-	if err != nil {
-		return fmt.Errorf("reading -snapshots-json: %w", err)
-	}
-	hashes[filepath.Base(*snapshotsJSON)] = export.Hash(snapshotsData)
-	pkg.Snapshots, err = resticparse.ParseSnapshots(snapshotsData)
-	if err != nil {
-		return err
+	if *snapshotsJSON != "" {
+		snapshotsData, err := os.ReadFile(*snapshotsJSON)
+		if err != nil {
+			return fmt.Errorf("reading -snapshots-json: %w", err)
+		}
+		hashes[filepath.Base(*snapshotsJSON)] = export.Hash(snapshotsData)
+		pkg.Snapshots, err = resticparse.ParseSnapshots(snapshotsData)
+		if err != nil {
+			return err
+		}
 	}
 
 	if *lsJSON != "" {
@@ -219,7 +223,13 @@ func run() error {
 		pkg.CapabilityFacts = export.CapabilityFactsFromChecks(pkg.Scenario.Checks)
 	}
 
-	warnings := append(outcomeWarnings, export.Diagnose(pkg)...)
+	// Built via append onto a possibly-nil outcomeWarnings/Diagnose result,
+	// so an explicit non-nil default here is what keeps validationErrors
+	// (assigned straight from this slice below, bypassing Pkl re-evaluation)
+	// serializing as `[]` rather than `null` when there's nothing to report.
+	warnings := make([]string, 0, len(outcomeWarnings))
+	warnings = append(warnings, outcomeWarnings...)
+	warnings = append(warnings, export.Diagnose(pkg)...)
 	for _, w := range warnings {
 		fmt.Fprintln(os.Stderr, "export: diagnostic:", w)
 	}
@@ -237,6 +247,7 @@ func run() error {
 	}
 	validated.Validation.StructurallyValid = true
 	validated.Validation.ValidationErrors = warnings
+	validated.Normalize()
 
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		return fmt.Errorf("creating -out directory: %w", err)
