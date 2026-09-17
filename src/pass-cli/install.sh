@@ -46,11 +46,23 @@ if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pa
     # The GCS backend restic uses wants GOOGLE_APPLICATION_CREDENTIALS
     # pointing at a key *file*, not the inline JSON pass-cli resolves
     # into GCP_SERVICE_ACCOUNT_KEY, so materialize that first.
+    #
+    # CIT-147: --json's trailing {"message_type":"summary",...,
+    # "snapshot_id":...} line is this invocation's own authoritative
+    # report of the exact snapshot it just produced -- written to a fixed
+    # path so a caller (e.g. test/pass-cli/restic-backup.sh) can bind
+    # evidence to precisely this backup. Querying `restic snapshots --tag`
+    # afterward and guessing (by array order, or even by before/after set
+    # difference) can't offer the same guarantee: this restic repo is a
+    # persistent remote shared across CI runs, so a concurrent run's
+    # snapshot landing in that same window is a real possibility a query
+    # against the shared remote can't rule out, but the backup call's own
+    # return value isn't a query at all.
     pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- sh -c '
         set -e
         export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-service-account.json"
         printf %s "\$GCP_SERVICE_ACCOUNT_KEY" > "\$GOOGLE_APPLICATION_CREDENTIALS"
-        restic backup ~/.claude --tag '"\$AGENT_ASSIGNMENT"'
+        restic backup ~/.claude --tag '"\$AGENT_ASSIGNMENT"' --json > /tmp/pass-cli-restic-backup.json
     '
 fi
 

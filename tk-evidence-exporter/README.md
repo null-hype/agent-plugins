@@ -29,24 +29,25 @@ existing fact fixtures in the test suite).
 |---|---|---|
 | `-repo`, `-run-id`, `-run-attempt`, `-job-name`, `-server-url`, `-sha`, `-github-token` | `$GITHUB_REPOSITORY`/`$GITHUB_RUN_ID`/`$GITHUB_RUN_ATTEMPT`/`$GITHUB_JOB`/`$GITHUB_SERVER_URL`/`$GITHUB_SHA`/`$GITHUB_TOKEN` (ambient in Actions) | repo, run-id |
 | `-scenario` | the scenario name (used consistently for the feature/assignment/snapshot-tag/lesson identity) | yes |
-| `-snapshots-json` | `restic snapshots --tag <scenario> --json` output | yes |
+| `-snapshots-json` | `restic snapshots --tag <scenario> --json` output | no (omitted when the scenario ended, e.g. skipped or failed, before capturing any snapshot) |
 | `-ls-json` | `restic ls <snapshotID> --json` output | no |
 | `-diff-json` | `restic diff <id1> <id2> --json` output (only when a snapshot pair exists) | no |
 | `-junit-dir` | a directory of `pkl test --junit-reports` XML files, one per fact module | no |
 | `-scenario-outcome-json` | a `{"outcome":"passed"\|"failed"\|"skipped"}` file the scenario script itself wrote | no, but strongly preferred (see below) |
 | `-out` | output directory (default `build`) | no |
 
-### Scenario outcome: prefer `-scenario-outcome-json` over this run's job conclusion
+### Scenario outcome: `-scenario-outcome-json`, or an explicit `eval-error`
 
 `-scenario-outcome-json` is the scenario's own structured verdict, written
 directly by the scenario script (see `test/pass-cli/restic-backup.sh`'s
 `on_exit` trap, which writes it on every exit path from the script's own
 exit code). When it's given, `scenario.outcome` comes from it, full stop.
 
-When it's *not* given, the exporter falls back to this run's own GitHub
-Actions job conclusion (`internal/ghactions`) -- but that fallback is a
-materially weaker signal, for two reasons that make it wrong for
-`test-global.yaml`'s actual shape specifically:
+When it's *not* given, `scenario.outcome` is `"eval-error"` -- not a guess
+derived from this run's own GitHub Actions job conclusion. An earlier
+version of this exporter did fall back to the job conclusion
+(`internal/ghactions`), but that was a materially weaker signal for two
+reasons that made it actively wrong for `test-global.yaml`'s actual shape:
 
 - **The job may still be in progress.** The exporter step runs later in the
   same job whose conclusion it would be reading -- a job's `conclusion`
@@ -59,10 +60,14 @@ materially weaker signal, for two reasons that make it wrong for
   whether *any* scenario failed, not whether `restic-backup` specifically
   did.
 
-Both problems disappear once the scenario itself reports its own verdict,
-which is why `test-global.yaml` always passes `-scenario-outcome-json` when
-`restic-backup.sh` produced one, and only omits it (with a loud
-`::warning::`) when that file is missing.
+Silently mapping either of those into a real `passed`/`failed` verdict
+misrepresents "we don't actually know" as a known outcome -- `eval-error` is
+the honest signal instead. `test-global.yaml` now discovers evidence by
+`scenario-outcome.json` first (see "Not verified here" below and the
+workflow's own comments) specifically so it can always pass
+`-scenario-outcome-json` whenever `restic-backup.sh` ran at all; the
+`eval-error` fallback in `cmd/export` itself remains for direct/manual
+invocations that omit the flag.
 
 **Deliberately not an input:** this workflow's own `devcontainer features
 test` stdout. `dev-container-features-test-lib` (the bash lib the
@@ -105,9 +110,10 @@ go run ./cmd/export \
 ```
 
 `cmd/export` calls into a native `pkl` binary via `pkl-go` to validate the
-assembled package -- it must be on `PATH` (the root `mise.toml` pins the
-version this repo uses; `test-global.yaml` installs it via
-`jdx/mise-action`).
+assembled package -- it must be on `PATH` (the root `mise.toml` declares
+`pkl = "latest"`, the same configuration every devcontainer/sandbox in this
+repo shares -- not a fixed version pin; `test-global.yaml` installs it via
+`jdx/mise-action` against that same `mise.toml`).
 
 ## TypeScript bindings
 
@@ -162,11 +168,19 @@ Every snapshot-derived value in the package is bound back to the exact
 snapshot it came from, not just to "the scenario's tag":
 
 - `execution.snapshotId` is the exact restic snapshot ID `color` produced
-  *during this run* -- `restic-backup.sh` computes this via a before/after
-  set difference against `restic snapshots --tag <scenario>` (this restic
-  repo is a persistent remote backend shared across CI runs, so "the
-  chronologically-last snapshot with this tag" is not the same guarantee as
-  "the snapshot this run produced").
+  *during this run*. `color`'s own `restic backup ... --json` call (see
+  `src/pass-cli/install.sh` and `src/pass-cli/NOTES.md`) writes its trailing
+  `"summary"` line -- including `snapshot_id` -- to a fixed path;
+  `restic-backup.sh` reads that file directly rather than querying `restic
+  snapshots --tag <scenario>` and guessing which result is "this run's."
+  This restic repo is a persistent remote backend shared across CI runs, so
+  even a before/after set difference against that query (an earlier version
+  of this capture) can't fully rule out a concurrent run's snapshot landing
+  in the same window -- the backup call's own return value isn't a query
+  against the shared remote at all, so it doesn't have that ambiguity.
+  `restic-backup.sh` also restores this exact ID (not `restic restore
+  latest --tag <scenario>`, which has the same concurrency hazard), falling
+  back to `latest` only if the exact ID is unexpectedly unavailable.
 - `fileTree[].snapshotId` comes from `restic ls`'s own "snapshot" header
   line, not from whatever ID the caller happened to ask for.
 - `diff[].fromSnapshotId`/`toSnapshotId` come from `restic diff`'s own
@@ -213,6 +227,19 @@ structured runner exists to provide it.
   `fileTree[].snapshotId`, `diff[].fromSnapshotId`/`toSnapshotId`,
   `validation.artifactHashes` as an array) were inspected directly, not just
   asserted via `go test`.
+- `cmd/export` run three more ways end-to-end against the mocked Jobs API,
+  with the resulting `evidence.json` inspected directly: (1) with neither
+  `-snapshots-json` nor `-scenario-outcome-json` given, confirming
+  `scenario.outcome` is `"eval-error"` (not a fabricated `"failed"`) and
+  `snapshots`/`fileTree`/etc. are `[]`, not `null`; (2) with a real
+  scenario-outcome/snapshots/ls fixture set producing zero `Diagnose`
+  warnings, confirming `validationErrors` is `[]`, not `null` -- the fix for
+  a real bug where that field was assigned directly from a possibly-nil Go
+  slice, bypassing Pkl re-evaluation. The `jq -rs 'map(select(.message_type
+  == "summary")) | .[-1].snapshot_id // empty'` expression `restic-backup.sh`
+  now uses to read `color`'s own backup summary was tested standalone
+  against synthetic `restic backup --json` output shaped like restic's
+  documented summary line, both with and without a matching line present.
 - `npx @pkl-community/pkl-typescript -o ts pkl/Evidence.pkl` regenerated
   after the snapshot-identity/`ArtifactHash` schema changes above --
   `ts/evidence.pkl.ts`'s `artifactHashes: Array<ArtifactHash>` now matches
@@ -239,13 +266,16 @@ structured runner exists to provide it.
   non-nested runner is not.
 - Live GitHub Actions Jobs API behavior against a real run/job (the test
   suite exercises `internal/ghactions` against a mocked server, not the real
-  API) -- though this is now only the fallback path; the primary path
-  (`-scenario-outcome-json`) doesn't depend on it.
-- `restic-backup.sh`'s `on_exit` trap and before/after snapshot-ID set
-  difference, against real `pass-cli`/restic/GCP credentials -- this
-  sandbox has none of those, so this logic was only checked via `bash -n`
-  and the `jq` set-difference expression tested standalone against the
-  captured fixture JSON (see above), not by actually running the scenario.
-- `jdx/mise-action` actually installing this repo's pinned `pkl` version
+  API) -- though this is now only relevant to a direct/manual `cmd/export`
+  invocation that omits `-scenario-outcome-json`; `test-global.yaml` itself
+  always passes that flag when `restic-backup.sh` ran at all.
+- `color`'s `restic backup --json` writing a real, parseable summary line to
+  `/tmp/pass-cli-restic-backup.json`, and `restic-backup.sh`'s `on_exit`
+  trap, against real `pass-cli`/restic/GCP credentials -- this sandbox has
+  none of those, so this logic was only checked via `bash -n` and the `jq`
+  summary-extraction expression tested standalone against synthetic
+  `--json` output shaped like restic's documented summary line (see
+  "Verified so far" below), not by actually running `color`/the scenario.
+- `jdx/mise-action` actually installing `pkl` (per this repo's `mise.toml`)
   onto a real `ubuntu-latest` runner's `PATH` before `cmd/export` runs --
   not exercisable without a live `workflow_dispatch`.

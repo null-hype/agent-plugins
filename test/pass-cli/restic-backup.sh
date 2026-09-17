@@ -94,14 +94,8 @@ restic_with_creds() {
     "
 }
 
-# CIT-147: capture the snapshot IDs already tagged $RESTIC_TAG *before*
-# calling `color`, so the snapshot `color` produces below can be identified
-# by set difference afterward rather than assumed to be "whichever one
-# sorts last." This restic repo is a persistent remote (GCS) backend shared
-# across CI runs, so `restic snapshots --tag restic-backup` can return
-# snapshots from previous runs too -- picking the chronologically-last one
-# is usually right but isn't a real identity guarantee; set difference is.
-BEFORE_SNAPSHOT_IDS="$(restic_with_creds "restic snapshots --tag $RESTIC_TAG --json" | jq -r '.[].id' | sort)"
+COLOR_BACKUP_JSON="/tmp/pass-cli-restic-backup.json"
+rm -f "$COLOR_BACKUP_JSON"
 
 export PROTON_PASS_AGENT_REASON="pass-cli restic-backup feature test: exercising color's backup path"
 # 'color' does the restic backup internally once it sees an active
@@ -110,27 +104,42 @@ export PROTON_PASS_AGENT_REASON="pass-cli restic-backup feature test: exercising
 # asserts on is local file/restic state, not the reply's content.
 color
 
+# CIT-147: color's own restic backup call now writes its `--json` output
+# (including the exact snapshot_id it just produced, from the trailing
+# "summary" line) to COLOR_BACKUP_JSON -- see src/pass-cli/install.sh and
+# src/pass-cli/NOTES.md. This is the authoritative identity of the
+# snapshot this run produced: unlike querying `restic snapshots --tag`
+# afterward (by array order, or even by a before/after set difference),
+# it isn't a query against the shared remote at all, so a concurrent run
+# landing a snapshot in the same window can't be confused with this one's.
+NEW_SNAPSHOT_ID=""
+if [ -f "$COLOR_BACKUP_JSON" ]; then
+    NEW_SNAPSHOT_ID="$(jq -rs 'map(select(.message_type == "summary")) | .[-1].snapshot_id // empty' "$COLOR_BACKUP_JSON" || true)"
+fi
+check "color's restic backup reported the snapshot id it produced" \
+    bash -c "[ -n \"$NEW_SNAPSHOT_ID\" ]"
+
 AFTER_SNAPSHOTS_JSON="$(restic_with_creds "restic snapshots --tag $RESTIC_TAG --json")"
 printf '%s' "$AFTER_SNAPSHOTS_JSON" > "$EVIDENCE_DIR/restic-snapshots.json"
 check "color's restic backup produced a snapshot tagged $RESTIC_TAG" \
     bash -c "[ \"\$(jq 'length' \"$EVIDENCE_DIR/restic-snapshots.json\")\" -gt 0 ]"
 
-# The snapshot `color` produced just now, identified by set difference
-# against BEFORE_SNAPSHOT_IDS (see above) rather than by array order. A
-# plain `jq`/parsing failure here should not fail this test's own domain
-# checks -- evidence capture is additive, not a new assertion.
-NEW_SNAPSHOT_ID="$(printf '%s' "$AFTER_SNAPSHOTS_JSON" | jq -r --arg before "$BEFORE_SNAPSHOT_IDS" '
-    ($before | split("\n")) as $beforeIds |
-    [.[] | select(.id as $id | $beforeIds | index($id) | not)] | .[-1].id // empty
-' || true)"
 if [ -n "$NEW_SNAPSHOT_ID" ]; then
     restic_with_creds "restic ls $NEW_SNAPSHOT_ID --json" > "$EVIDENCE_DIR/restic-ls.json" || true
 fi
 
-# Move the local copy aside to prove the restore below isn't just
-# reading the untouched original, then restore and confirm it's back.
+# Move the local copy aside to prove the restore below isn't just reading
+# the untouched original, then restore the *exact* snapshot color just
+# produced -- not "latest" tagged $RESTIC_TAG, which carries the same
+# concurrency hazard as above (a newer snapshot from a different run could
+# land on the shared remote in between and get restored instead).
 mv "$HOME/.claude" "$HOME/.claude-preresume"
-restic_with_creds "restic restore latest --tag $RESTIC_TAG --target /"
+if [ -n "$NEW_SNAPSHOT_ID" ]; then
+    restic_with_creds "restic restore $NEW_SNAPSHOT_ID --target /"
+else
+    echo "::warning::restic-backup.sh: exact snapshot id unavailable (see $COLOR_BACKUP_JSON) -- falling back to 'latest' for restore" >&2
+    restic_with_creds "restic restore latest --tag $RESTIC_TAG --target /"
+fi
 
 check "restic restore brings ~/.claude back" \
     bash -c "[ -d \"\$HOME/.claude\" ] && [ -n \"\$(ls -A \"\$HOME/.claude\")\" ]"
