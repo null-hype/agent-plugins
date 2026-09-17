@@ -51,7 +51,7 @@ if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pa
     # "snapshot_id":...} line is this invocation's own authoritative
     # report of the exact snapshot it just produced -- written to a fixed
     # path so a caller (e.g. test/pass-cli/restic-backup.sh) can bind
-    # evidence to precisely this backup. Querying `restic snapshots --tag`
+    # evidence to precisely this backup. Querying "restic snapshots --tag"
     # afterward and guessing (by array order, or even by before/after set
     # difference) can't offer the same guarantee: this restic repo is a
     # persistent remote shared across CI runs, so a concurrent run's

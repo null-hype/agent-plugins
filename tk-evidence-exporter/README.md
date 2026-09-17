@@ -179,8 +179,11 @@ snapshot it came from, not just to "the scenario's tag":
   in the same window -- the backup call's own return value isn't a query
   against the shared remote at all, so it doesn't have that ambiguity.
   `restic-backup.sh` also restores this exact ID (not `restic restore
-  latest --tag <scenario>`, which has the same concurrency hazard), falling
-  back to `latest` only if the exact ID is unexpectedly unavailable.
+  latest --tag <scenario>`, which has the same concurrency hazard). If the
+  exact ID is unexpectedly unavailable, it skips the restore entirely
+  rather than falling back to `latest` -- a `latest` fallback could
+  restore a concurrent run's snapshot and pass anyway, masking the
+  already-recorded failure behind a fully green report.
 - `fileTree[].snapshotId` comes from `restic ls`'s own "snapshot" header
   line, not from whatever ID the caller happened to ask for.
 - `diff[].fromSnapshotId`/`toSnapshotId` come from `restic diff`'s own
