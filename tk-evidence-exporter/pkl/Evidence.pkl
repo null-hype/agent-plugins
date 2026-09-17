@@ -45,10 +45,12 @@ class ExecutionIdentity {
   /// identity.
   scenarioName: String
   /// The exact restic snapshot ID `color` produced *during this run*,
-  /// distinguished (via a before/after set difference in restic-backup.sh)
-  /// from any other snapshot that happens to share the scenario's tag from a
-  /// previous run. `null` when this run produced no snapshot (e.g. the
-  /// scenario was skipped or failed before backing up).
+  /// captured directly from that backup invocation's own `--json` summary
+  /// output (see restic-backup.sh) rather than queried afterward by tag --
+  /// a query against this shared/persistent restic repo can't rule out a
+  /// concurrent run's snapshot sharing the same tag. `null` when this run
+  /// produced no snapshot (e.g. the scenario was skipped or failed before
+  /// backing up).
   snapshotId: String?
 }
 
@@ -63,8 +65,10 @@ class CheckResult {
 
 /// A scenario with no deeper structured test runner beneath it (e.g. a plain
 /// bash `check`/`reportResults` scenario like `restic-backup`) legitimately
-/// has an empty `checks` listing -- its `outcome` still reflects the real
-/// GitHub Actions job/step conclusion, just without per-check granularity.
+/// has an empty `checks` listing -- its `outcome` still reflects the
+/// scenario script's own recorded verdict (or an explicit `eval-error` when
+/// that's unavailable; see cmd/export's `resolveScenarioOutcome`), just
+/// without per-check granularity.
 class ScenarioResult {
   scenarioName: String
   outcome: Outcome

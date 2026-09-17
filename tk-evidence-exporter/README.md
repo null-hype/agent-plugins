@@ -73,10 +73,12 @@ invocations that omit the flag.
 test` stdout. `dev-container-features-test-lib` (the bash lib the
 devcontainer CLI injects into every scenario) has no output format contract
 -- only emoji-decorated text. Scenario-level pass/fail instead comes from a
-real structured source: preferably the scenario script's own
-`-scenario-outcome-json` verdict (see above), falling back to the GitHub
-Actions Jobs API (`internal/ghactions`) when that's absent; per-check
-granularity, where it exists at all, comes from an actual structured test
+real structured source: the scenario script's own `-scenario-outcome-json`
+verdict (see above), or an explicit `eval-error` when that's absent --
+never a guess derived from this run's own GitHub Actions job conclusion
+(`internal/ghactions`), which the same section explains is unreliable for
+this workflow's shape. Per-check granularity, where it exists at all,
+comes from an actual structured test
 runner underneath the scenario (`pkl test --junit-reports` for a
 Pkl-test-backed scenario). A scenario with no such runner underneath it
 (like `restic-backup`, plain bash `check`/`reportResults`) legitimately has
