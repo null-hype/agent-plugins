@@ -80,7 +80,7 @@ local hardcodedIdDefault = Regex(#":-[A-Za-z0-9_\-]{40,}={0,2}\}"#)
 /// them) or a shell variable (so this isn't the same "should be a
 /// variable, not a literal" shape `idFlagFiles`/`hardcodedIdDefault`
 /// check). jin-90-dead-drop.sh plants/reads/deletes items in a vault
-/// named "Test" this way -- if that vault were ever renamed or retired,
+/// named "test" this way -- if that vault were ever renamed or retired,
 /// this reference would go stale exactly like an env file's `pass://` ref
 /// would, but with no URI for `refPattern` to catch it.
 local vaultNameLiteralFiles: Listing<String> = new {
