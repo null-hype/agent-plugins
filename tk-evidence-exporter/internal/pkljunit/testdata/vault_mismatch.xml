@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="vault_mismatch" tests="1" failures="1">
+    <testcase classname="vault_mismatch.facts" name="wrong vault entirely">
+        <error message="CAP_VAULT_MISMATCH fact=flight-booking:area51:vault-access vault=cia.gov: supervisor approved this fact for vault thepentagon.com, not cia.gov">–– Pkl Error ––
+CAP_VAULT_MISMATCH fact=flight-booking:area51:vault-access vault=cia.gov: supervisor approved this fact for vault thepentagon.com, not cia.gov
+
+22 | throw(&quot;\(code) fact=\(factID) vault=\(vault): \(message)&quot;)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#deny (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 22)
+
+34 | deny(&quot;CAP_VAULT_MISMATCH&quot;, factID, vault, &quot;supervisor approved this fact for vault \(grant.vault), not \(vault)&quot;)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#checkAccess (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 34)
+
+28 | let (grant = GrantState.approvedGrants.getOrNull(factID))
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#checkAccess.&lt;let expr&gt; (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 28)
+
+14 | Ledger.checkAccess(factID, requestedVault)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at vault_mismatch#facts[&quot;wrong vault entirely&quot;][#1] (file:///workspaces/agent-plugins/capability-spike/worker/fixtures_invalid/vault_mismatch.pkl, line 14)
+</error>
+    </testcase>
+</testsuite>

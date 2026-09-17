@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="flight_booking_area51" tests="1" failures="0">
+    <testcase classname="flight_booking_area51.facts" name="the truth is out there"></testcase>
+</testsuite>

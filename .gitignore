@@ -1,2 +1,6 @@
 digest.txt
 .dagger/internal/devenv-base/build/vaults-observed.json
+
+# CIT-147: test-global.yaml writes tk-evidence-exporter's output here when
+# run at the repo root (see .github/workflows/test-global.yaml).
+/build/

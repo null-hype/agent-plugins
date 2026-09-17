@@ -1,0 +1,219 @@
+package export
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"dagger/tk-evidence-exporter/internal/evidence"
+)
+
+// pklQuote renders s as a Pkl double-quoted string literal. Only the
+// characters that are actually syntactically significant in a Pkl string
+// (backslash, double quote, and the common whitespace escapes) are escaped;
+// everything else -- including non-ASCII text -- passes through literally,
+// since Pkl source files are UTF-8 and Go's %q escape rules for exotic
+// runes don't match Pkl's \u{...} syntax.
+func pklQuote(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '"':
+			b.WriteString(`\"`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\t':
+			b.WriteString(`\t`)
+		case '\r':
+			b.WriteString(`\r`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
+// renderInstance renders pkg as a Pkl module amending Evidence.pkl's
+// EvidencePackage class, so pkl-go's evaluation of it is a real structural
+// validation against the schema -- not just Go-side struct construction.
+func renderInstance(pkg evidence.Package) string {
+	var b strings.Builder
+	b.WriteString("module tkEvidenceRun\n")
+	b.WriteString("import \"Evidence.pkl\"\n\n")
+	b.WriteString("result: Evidence.EvidencePackage = new Evidence.EvidencePackage {\n")
+	fmt.Fprintf(&b, "  schemaVersion = %s\n", pklQuote(pkg.SchemaVersion))
+	renderExecution(&b, pkg.Execution)
+	renderScenario(&b, pkg.Scenario)
+	renderSnapshots(&b, pkg.Snapshots)
+	renderFileTree(&b, pkg.FileTree)
+	renderDiff(&b, pkg.Diff)
+	renderLogs(&b, pkg.Logs)
+	renderCapabilityFacts(&b, pkg.CapabilityFacts)
+	renderCapabilityGrants(&b, pkg.CapabilityGrants)
+	renderCapabilityObservations(&b, pkg.CapabilityObservations)
+	renderReconciliationFlags(&b, pkg.ReconciliationFlags)
+	renderValidation(&b, pkg.Validation)
+	b.WriteString("}\n")
+	return b.String()
+}
+
+func renderExecution(b *strings.Builder, e evidence.ExecutionIdentity) {
+	b.WriteString("  execution {\n")
+	fmt.Fprintf(b, "    sourceRevision = %s\n", pklQuote(e.SourceRevision))
+	fmt.Fprintf(b, "    workflowRunId = %s\n", pklQuote(e.WorkflowRunID))
+	fmt.Fprintf(b, "    workflowRunAttempt = %s\n", pklQuote(e.WorkflowRunAttempt))
+	fmt.Fprintf(b, "    runUrl = %s\n", pklQuote(e.RunURL))
+	fmt.Fprintf(b, "    jobName = %s\n", pklQuote(e.JobName))
+	b.WriteString("    stepRefs {\n")
+	for _, s := range e.StepRefs {
+		fmt.Fprintf(b, "      %s\n", pklQuote(s))
+	}
+	b.WriteString("    }\n")
+	fmt.Fprintf(b, "    scenarioName = %s\n", pklQuote(e.ScenarioName))
+	b.WriteString("  }\n")
+}
+
+func renderScenario(b *strings.Builder, s evidence.ScenarioResult) {
+	b.WriteString("  scenario {\n")
+	fmt.Fprintf(b, "    scenarioName = %s\n", pklQuote(s.ScenarioName))
+	fmt.Fprintf(b, "    outcome = %s\n", pklQuote(string(s.Outcome)))
+	b.WriteString("    checks {\n")
+	for _, c := range s.Checks {
+		b.WriteString("      new {\n")
+		fmt.Fprintf(b, "        label = %s\n", pklQuote(c.Label))
+		fmt.Fprintf(b, "        outcome = %s\n", pklQuote(string(c.Outcome)))
+		if c.Detail != nil {
+			fmt.Fprintf(b, "        detail = %s\n", pklQuote(*c.Detail))
+		}
+		b.WriteString("      }\n")
+	}
+	b.WriteString("    }\n")
+	b.WriteString("  }\n")
+}
+
+func renderSnapshots(b *strings.Builder, snapshots []evidence.SnapshotRef) {
+	b.WriteString("  snapshots {\n")
+	for _, s := range snapshots {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      id = %s\n", pklQuote(s.ID))
+		fmt.Fprintf(b, "      shortId = %s\n", pklQuote(s.ShortID))
+		fmt.Fprintf(b, "      tag = %s\n", pklQuote(s.Tag))
+		fmt.Fprintf(b, "      takenAt = %s\n", pklQuote(s.TakenAt))
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderFileTree(b *strings.Builder, entries []evidence.FileTreeEntry) {
+	b.WriteString("  fileTree {\n")
+	for _, e := range entries {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      path = %s\n", pklQuote(e.Path))
+		fmt.Fprintf(b, "      type = %s\n", pklQuote(e.Type))
+		if e.Size != nil {
+			fmt.Fprintf(b, "      size = %d\n", *e.Size)
+		}
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderDiff(b *strings.Builder, entries []evidence.DiffEntry) {
+	b.WriteString("  diff {\n")
+	for _, e := range entries {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      path = %s\n", pklQuote(e.Path))
+		fmt.Fprintf(b, "      changeType = %s\n", pklQuote(e.ChangeType))
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderLogs(b *strings.Builder, logs []evidence.LogExcerpt) {
+	b.WriteString("  logs {\n")
+	for _, l := range logs {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      source = %s\n", pklQuote(l.Source))
+		fmt.Fprintf(b, "      content = %s\n", pklQuote(l.Content))
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderCapabilityFacts(b *strings.Builder, facts []evidence.CapabilityFact) {
+	b.WriteString("  capabilityFacts {\n")
+	for _, f := range facts {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      factId = %s\n", pklQuote(f.FactID))
+		fmt.Fprintf(b, "      severity = %s\n", pklQuote(f.Severity))
+		fmt.Fprintf(b, "      code = %s\n", pklQuote(f.Code))
+		fmt.Fprintf(b, "      vault = %s\n", pklQuote(f.Vault))
+		fmt.Fprintf(b, "      message = %s\n", pklQuote(f.Message))
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderCapabilityGrants(b *strings.Builder, grants []evidence.CapabilityGrant) {
+	b.WriteString("  capabilityGrants {\n")
+	for _, g := range grants {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      factId = %s\n", pklQuote(g.FactID))
+		fmt.Fprintf(b, "      vault = %s\n", pklQuote(g.Vault))
+		fmt.Fprintf(b, "      approved = %v\n", g.Approved)
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderCapabilityObservations(b *strings.Builder, obs []evidence.CapabilityObservation) {
+	b.WriteString("  capabilityObservations {\n")
+	for _, o := range obs {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      factId = %s\n", pklQuote(o.FactID))
+		fmt.Fprintf(b, "      vault = %s\n", pklQuote(o.Vault))
+		fmt.Fprintf(b, "      reason = %s\n", pklQuote(o.Reason))
+		fmt.Fprintf(b, "      operation = %s\n", pklQuote(o.Operation))
+		fmt.Fprintf(b, "      recordedAt = %s\n", pklQuote(o.RecordedAt))
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderReconciliationFlags(b *strings.Builder, flags []evidence.ReconciliationFlag) {
+	b.WriteString("  reconciliationFlags {\n")
+	for _, f := range flags {
+		b.WriteString("    new {\n")
+		fmt.Fprintf(b, "      kind = %s\n", pklQuote(string(f.Kind)))
+		fmt.Fprintf(b, "      factId = %s\n", pklQuote(f.FactID))
+		fmt.Fprintf(b, "      detail = %s\n", pklQuote(f.Detail))
+		b.WriteString("    }\n")
+	}
+	b.WriteString("  }\n")
+}
+
+func renderValidation(b *strings.Builder, v evidence.ValidationResult) {
+	b.WriteString("  validation {\n")
+	fmt.Fprintf(b, "    schemaVersion = %s\n", pklQuote(v.SchemaVersion))
+	b.WriteString("    artifactHashes {\n")
+	keys := make([]string, 0, len(v.ArtifactHashes))
+	for k := range v.ArtifactHashes {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Fprintf(b, "      [%s] = %s\n", pklQuote(k), pklQuote(v.ArtifactHashes[k]))
+	}
+	b.WriteString("    }\n")
+	fmt.Fprintf(b, "    structurallyValid = %v\n", v.StructurallyValid)
+	b.WriteString("    validationErrors {\n")
+	for _, e := range v.ValidationErrors {
+		fmt.Fprintf(b, "      %s\n", pklQuote(e))
+	}
+	b.WriteString("    }\n")
+	b.WriteString("  }\n")
+}

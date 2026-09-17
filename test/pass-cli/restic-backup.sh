@@ -43,6 +43,17 @@ pass-cli info
 # tag the 'color' bin's restic backup uses for this run's snapshot.
 RESTIC_TAG="restic-backup"
 
+# `devcontainer features test` bind-mounts this script's own directory
+# (SCRIPT_FOLDER, from dev-container-features-test-lib) from a host scratch
+# folder into the container -- confirmed by inspecting the CLI's own `docker
+# run --mount type=bind,source=<host path>,target=/workspaces/<id>`
+# invocation directly. Writing captured evidence here (not /tmp, which is
+# container-only and gone once this container exits) is what lets
+# tk-evidence-exporter pick these files up from the CI host after this
+# scenario's container has already been torn down.
+EVIDENCE_DIR="$SCRIPT_FOLDER/evidence"
+mkdir -p "$EVIDENCE_DIR"
+
 cleanup() {
     pass-cli logout || true
 }
@@ -64,9 +75,17 @@ restic_with_creds() {
     "
 }
 
-restic_with_creds "restic snapshots --tag $RESTIC_TAG --json" > /tmp/restic-snapshots.json
+restic_with_creds "restic snapshots --tag $RESTIC_TAG --json" > "$EVIDENCE_DIR/restic-snapshots.json"
 check "color's restic backup produced a snapshot tagged $RESTIC_TAG" \
-    bash -c "[ \"\$(jq 'length' /tmp/restic-snapshots.json)\" -gt 0 ]"
+    bash -c "[ \"\$(jq 'length' \"$EVIDENCE_DIR/restic-snapshots.json\")\" -gt 0 ]"
+
+# The most recent snapshot's file manifest, for tk-evidence-exporter's file
+# tree (see CIT-147). A plain `jq` failure here should not fail this test's
+# own domain checks -- evidence capture is additive, not a new assertion.
+LATEST_SNAPSHOT_ID="$(jq -r '.[-1].id' "$EVIDENCE_DIR/restic-snapshots.json" || true)"
+if [ -n "$LATEST_SNAPSHOT_ID" ]; then
+    restic_with_creds "restic ls $LATEST_SNAPSHOT_ID --json" > "$EVIDENCE_DIR/restic-ls.json" || true
+fi
 
 # Move the local copy aside to prove the restore below isn't just
 # reading the untouched original, then restore and confirm it's back.
