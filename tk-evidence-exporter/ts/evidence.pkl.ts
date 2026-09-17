@@ -46,10 +46,12 @@ export interface ExecutionIdentity {
   scenarioName: string
 
   // The exact restic snapshot ID `color` produced *during this run*,
-  // distinguished (via a before/after set difference in restic-backup.sh)
-  // from any other snapshot that happens to share the scenario's tag from a
-  // previous run. `null` when this run produced no snapshot (e.g. the
-  // scenario was skipped or failed before backing up).
+  // captured directly from that backup invocation's own `--json` summary
+  // output (see restic-backup.sh) rather than queried afterward by tag --
+  // a query against this shared/persistent restic repo can't rule out a
+  // concurrent run's snapshot sharing the same tag. `null` when this run
+  // produced no snapshot (e.g. the scenario was skipped or failed before
+  // backing up).
   snapshotId: string|null
 }
 
@@ -68,8 +70,10 @@ export interface CheckResult {
 // Ref: Pkl class `evidence.ScenarioResult`.
 // A scenario with no deeper structured test runner beneath it (e.g. a plain
 // bash `check`/`reportResults` scenario like `restic-backup`) legitimately
-// has an empty `checks` listing -- its `outcome` still reflects the real
-// GitHub Actions job/step conclusion, just without per-check granularity.
+// has an empty `checks` listing -- its `outcome` still reflects the
+// scenario script's own recorded verdict (or an explicit `eval-error` when
+// that's unavailable; see cmd/export's `resolveScenarioOutcome`), just
+// without per-check granularity.
 export interface ScenarioResult {
   scenarioName: string
 
@@ -205,6 +209,83 @@ export interface ValidationResult {
   validationErrors: Array<string>
 }
 
+// Ref: Pkl class `evidence.Transition`.
+export interface Transition {
+  index: number
+
+  kind: TransitionKind
+
+  label: string
+
+  factId: FactID|null
+
+  vault: string|null
+
+  // The real diagnostic/flag text governing this transition (e.g.
+  // `Ledger.pkl`'s own thrown message, or a reconciliation flag's detail
+  // string) -- omitted only when this transition carries no such text of
+  // its own (e.g. a plain "approved" grant has none beyond the grant
+  // itself).
+  governingRule: string|null
+
+  fact: CapabilityFact|null
+
+  grant: CapabilityGrant|null
+
+  observation: CapabilityObservation|null
+
+  flag: ReconciliationFlag|null
+}
+
+// Ref: Pkl class `evidence.Check`.
+// A governing rule a supervisor enforces, independent of any single
+// observation of it. `requirement` is a hand-written one-sentence
+// restatement of what `constraint` does -- not decorative prose, a
+// literal description of the same logic. `constraint` is the exact
+// function/rule text copied verbatim from `source` at `sourceRef`, not
+// reworded or summarized -- so a lesson can show the actual axiom a
+// trace's transitions are evaluated against, not just their outcomes.
+export interface Check {
+  id: string
+
+  requirement: string
+
+  constraint: string
+
+  source: string
+
+  sourceRef: string
+}
+
+// Ref: Pkl class `evidence.CapabilityTrace`.
+// A sequence of `Transition`s produced by one execution adapter over the
+// same capability-decision model `EvidencePackage`'s capability* fields
+// use. Deliberately a sibling top-level type, not nested under
+// `EvidencePackage` -- a lesson can consume a trace on its own.
+export interface CapabilityTrace {
+  traceId: string
+
+  scenario: string
+
+  // Identifies which adapter produced this trace (e.g.
+  // "capability-spike-demo" | "webcontainer-mock-test") -- a consumer must
+  // never infer provenance, only read it here.
+  source: string
+
+  // A real commit SHA for a captured execution; a short human description
+  // of what's mocked and why for a non-captured adapter. Never omitted.
+  sourceRef: string
+
+  // The axiom(s) this trace's transitions are evidence for or against.
+  // A trace's `transitions` carry raw recorded state (grants, facts,
+  // diagnostics); `checks` is what a consumer evaluates that state
+  // against to reach a verdict -- kept separate so the verdict is always
+  // computed, never itself replayed as pre-baked data.
+  checks: Array<Check>
+
+  transitions: Array<Transition>
+}
+
 // Ref: Pkl class `evidence.EvidencePackage`.
 export interface EvidencePackage {
   schemaVersion: string
@@ -242,6 +323,9 @@ type FactID = string
 
 // Ref: Pkl type `evidence.FlagKind`.
 type FlagKind = "unapproved-materialization" | "missing-materialization" | "reason-mismatch" | "boundary-bypassed"
+
+// Ref: Pkl type `evidence.TransitionKind`.
+type TransitionKind = "evaluation" | "policy-decision" | "materialization" | "reconciliation"
 
 // LoadFromPath loads the pkl module at the given path and evaluates it into a Evidence
 export const loadFromPath = async (path: string): Promise<Evidence> => {

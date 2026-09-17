@@ -201,6 +201,92 @@ func renderReconciliationFlags(b *strings.Builder, flags []evidence.Reconciliati
 	b.WriteString("  }\n")
 }
 
+// renderCapabilityTraceInstance renders trace as a Pkl module amending
+// Evidence.pkl's CapabilityTrace class -- the same generate-then-evaluate
+// pattern renderInstance uses for EvidencePackage, applied to the sibling
+// CapabilityTrace root type (CIT-147 slice 2).
+func renderCapabilityTraceInstance(trace evidence.CapabilityTrace) string {
+	var b strings.Builder
+	b.WriteString("module tkCapabilityTraceRun\n")
+	b.WriteString("import \"Evidence.pkl\"\n\n")
+	b.WriteString("result: Evidence.CapabilityTrace = new Evidence.CapabilityTrace {\n")
+	fmt.Fprintf(&b, "  traceId = %s\n", pklQuote(trace.TraceID))
+	fmt.Fprintf(&b, "  scenario = %s\n", pklQuote(trace.Scenario))
+	fmt.Fprintf(&b, "  source = %s\n", pklQuote(trace.Source))
+	fmt.Fprintf(&b, "  sourceRef = %s\n", pklQuote(trace.SourceRef))
+	b.WriteString("  checks {\n")
+	for _, c := range trace.Checks {
+		renderCheck(&b, c)
+	}
+	b.WriteString("  }\n")
+	b.WriteString("  transitions {\n")
+	for _, tr := range trace.Transitions {
+		renderTransition(&b, tr)
+	}
+	b.WriteString("  }\n")
+	b.WriteString("}\n")
+	return b.String()
+}
+
+func renderCheck(b *strings.Builder, c evidence.Check) {
+	b.WriteString("    new {\n")
+	fmt.Fprintf(b, "      id = %s\n", pklQuote(c.ID))
+	fmt.Fprintf(b, "      requirement = %s\n", pklQuote(c.Requirement))
+	fmt.Fprintf(b, "      constraint = %s\n", pklQuote(c.Constraint))
+	fmt.Fprintf(b, "      source = %s\n", pklQuote(c.Source))
+	fmt.Fprintf(b, "      sourceRef = %s\n", pklQuote(c.SourceRef))
+	b.WriteString("    }\n")
+}
+
+func renderTransition(b *strings.Builder, tr evidence.Transition) {
+	b.WriteString("    new {\n")
+	fmt.Fprintf(b, "      index = %d\n", tr.Index)
+	fmt.Fprintf(b, "      kind = %s\n", pklQuote(tr.Kind))
+	fmt.Fprintf(b, "      label = %s\n", pklQuote(tr.Label))
+	if tr.FactID != nil {
+		fmt.Fprintf(b, "      factId = %s\n", pklQuote(*tr.FactID))
+	}
+	if tr.Vault != nil {
+		fmt.Fprintf(b, "      vault = %s\n", pklQuote(*tr.Vault))
+	}
+	if tr.GoverningRule != nil {
+		fmt.Fprintf(b, "      governingRule = %s\n", pklQuote(*tr.GoverningRule))
+	}
+	if tr.Fact != nil {
+		b.WriteString("      fact {\n")
+		fmt.Fprintf(b, "        factId = %s\n", pklQuote(tr.Fact.FactID))
+		fmt.Fprintf(b, "        severity = %s\n", pklQuote(tr.Fact.Severity))
+		fmt.Fprintf(b, "        code = %s\n", pklQuote(tr.Fact.Code))
+		fmt.Fprintf(b, "        vault = %s\n", pklQuote(tr.Fact.Vault))
+		fmt.Fprintf(b, "        message = %s\n", pklQuote(tr.Fact.Message))
+		b.WriteString("      }\n")
+	}
+	if tr.Grant != nil {
+		b.WriteString("      grant {\n")
+		fmt.Fprintf(b, "        factId = %s\n", pklQuote(tr.Grant.FactID))
+		fmt.Fprintf(b, "        vault = %s\n", pklQuote(tr.Grant.Vault))
+		fmt.Fprintf(b, "        approved = %v\n", tr.Grant.Approved)
+		b.WriteString("      }\n")
+	}
+	if tr.Observation != nil {
+		b.WriteString("      observation {\n")
+		fmt.Fprintf(b, "        factId = %s\n", pklQuote(tr.Observation.FactID))
+		fmt.Fprintf(b, "        vault = %s\n", pklQuote(tr.Observation.Vault))
+		fmt.Fprintf(b, "        reason = %s\n", pklQuote(tr.Observation.Reason))
+		fmt.Fprintf(b, "        operation = %s\n", pklQuote(tr.Observation.Operation))
+		fmt.Fprintf(b, "        recordedAt = %s\n", pklQuote(tr.Observation.RecordedAt))
+		b.WriteString("      }\n")
+	}
+	if tr.Flag != nil {
+		b.WriteString("      flag {\n")
+		fmt.Fprintf(b, "        kind = %s\n", pklQuote(tr.Flag.Kind))
+		fmt.Fprintf(b, "        factId = %s\n", pklQuote(tr.Flag.FactID))
+		fmt.Fprintf(b, "        detail = %s\n", pklQuote(tr.Flag.Detail))
+		b.WriteString("      }\n")
+	}
+	b.WriteString("    }\n")
+}
+
 func renderValidation(b *strings.Builder, v evidence.ValidationResult) {
 	b.WriteString("  validation {\n")
 	fmt.Fprintf(b, "    schemaVersion = %s\n", pklQuote(v.SchemaVersion))
