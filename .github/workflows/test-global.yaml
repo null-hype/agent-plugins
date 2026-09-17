@@ -46,6 +46,22 @@ jobs:
         with:
           go-version: "1.24"
 
+      # CIT-147: tk-evidence-exporter's cmd/export shells out to a native
+      # `pkl` binary via pkl-go (pkl.NewEvaluator) to validate the assembled
+      # package against pkl/Evidence.pkl -- it does not vendor or bundle
+      # Pkl itself. The repo's own root mise.toml already pins the version
+      # every devcontainer/sandbox in this repo uses; installing via
+      # jdx/mise-action here (rather than a separately-pinned curl/download
+      # step) keeps this runner on that same single source of truth instead
+      # of a second, driftable version pin.
+      - name: "Install mise-managed tools (pkl) for tk-evidence-exporter"
+        if: always()
+        uses: jdx/mise-action@v2
+
+      - name: "Verify pkl is on PATH"
+        if: always()
+        run: pkl --version
+
       - name: "Export restic-backup scenario evidence (CIT-147)"
         if: always()
         env:
@@ -69,11 +85,25 @@ jobs:
           if [ -f "$EVIDENCE_DIR/restic-ls.json" ]; then
             LS_ARGS=(-ls-json "$EVIDENCE_DIR/restic-ls.json")
           fi
+          # restic-backup.sh writes its own {"outcome":...} verdict on every
+          # exit path (see that script's `on_exit` trap) -- this run's own
+          # job conclusion is deliberately NOT used for scenario.outcome:
+          # this job runs every scenario in one `devcontainer features test`
+          # invocation, so its conclusion can't identify this scenario
+          # specifically, and this step runs before the job's own
+          # conclusion is even final.
+          OUTCOME_ARGS=()
+          if [ -f "$EVIDENCE_DIR/scenario-outcome.json" ]; then
+            OUTCOME_ARGS=(-scenario-outcome-json "$EVIDENCE_DIR/scenario-outcome.json")
+          else
+            echo "::warning::tk-evidence-exporter: no scenario-outcome.json found -- scenario.outcome will fall back to this run's own (possibly not-yet-final, not scenario-specific) job conclusion."
+          fi
           cd tk-evidence-exporter
           go run ./cmd/export \
             -scenario restic-backup \
             -snapshots-json "$EVIDENCE_SRC" \
             "${LS_ARGS[@]}" \
+            "${OUTCOME_ARGS[@]}" \
             -out "$GITHUB_WORKSPACE/build/tk-evidence"
 
       - name: "Upload evidence package"

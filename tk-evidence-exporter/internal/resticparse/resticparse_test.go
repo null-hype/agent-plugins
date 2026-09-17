@@ -37,9 +37,12 @@ func TestParseLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries, err := ParseLS(data)
+	snapshotID, entries, err := ParseLS(data)
 	if err != nil {
 		t.Fatalf("ParseLS: %v", err)
+	}
+	if snapshotID != "bcdd5068c04dfd711c5ddce3188664d1839c5efb2aa232f40bc2127a9f62661a" {
+		t.Errorf("unexpected snapshot id from the header line: %q", snapshotID)
 	}
 	// The header "snapshot" line must be excluded; every remaining node
 	// line (dirs + files, including restic's ancestor-directory entries)
@@ -50,6 +53,9 @@ func TestParseLS(t *testing.T) {
 
 	var sawFile, sawDir bool
 	for _, e := range entries {
+		if e.SnapshotID != snapshotID {
+			t.Errorf("%s: expected snapshotId %q stamped from the header line, got %q", e.Path, snapshotID, e.SnapshotID)
+		}
 		if e.Path == "/tmp/restic-fixture-src/.claude/projects/session-b.jsonl" {
 			sawFile = true
 			if e.Type != "file" {
@@ -90,6 +96,12 @@ func TestParseDiff(t *testing.T) {
 	byPath := map[string]string{}
 	for _, e := range entries {
 		byPath[e.Path] = e.ChangeType
+		if e.FromSnapshotID != "d543a8f00a0407c733508a78e2fd571965c77681a0d52259a539eae2ae0c56d0" {
+			t.Errorf("%s: unexpected fromSnapshotId: %q", e.Path, e.FromSnapshotID)
+		}
+		if e.ToSnapshotID != "bcdd5068c04dfd711c5ddce3188664d1839c5efb2aa232f40bc2127a9f62661a" {
+			t.Errorf("%s: unexpected toSnapshotId: %q", e.Path, e.ToSnapshotID)
+		}
 	}
 	if got := byPath["/tmp/restic-fixture-src/.claude/projects/session-b.jsonl"]; got != "added" {
 		t.Errorf("session-b.jsonl: expected added, got %q", got)

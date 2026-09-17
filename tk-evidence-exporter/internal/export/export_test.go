@@ -10,6 +10,7 @@ import (
 func samplePackage() evidence.Package {
 	detail := "CAP_REJECTED fact=area51:site4:black-budget-vault-access vault=site4.internal: supervisor explicitly rejected this request"
 	size := int64(7)
+	snapshotID := "bcdd5068..."
 	return evidence.Package{
 		SchemaVersion: evidence.SchemaVersion,
 		Execution: evidence.ExecutionIdentity{
@@ -20,6 +21,7 @@ func samplePackage() evidence.Package {
 			JobName:            "test-scenarios",
 			StepRefs:           []string{"Set up job (success)", `Testing "quoted" \ scenarios (success)`},
 			ScenarioName:       "restic-backup",
+			SnapshotID:         &snapshotID,
 		},
 		Scenario: evidence.ScenarioResult{
 			ScenarioName: "restic-backup",
@@ -33,18 +35,18 @@ func samplePackage() evidence.Package {
 			{ID: "bcdd5068...", ShortID: "bcdd5068", Tag: "restic-backup", TakenAt: "2026-09-17T00:03:37Z"},
 		},
 		FileTree: []evidence.FileTreeEntry{
-			{Path: "/root/.claude", Type: "dir"},
-			{Path: "/root/.claude/projects/session-b.jsonl", Type: "file", Size: &size},
+			{Path: "/root/.claude", Type: "dir", SnapshotID: snapshotID},
+			{Path: "/root/.claude/projects/session-b.jsonl", Type: "file", Size: &size, SnapshotID: snapshotID},
 		},
 		Diff: []evidence.DiffEntry{
-			{Path: "/root/.claude/projects/session-b.jsonl", ChangeType: "added"},
+			{Path: "/root/.claude/projects/session-b.jsonl", ChangeType: "added", FromSnapshotID: "d543a8f0...", ToSnapshotID: snapshotID},
 		},
 		Logs: []evidence.LogExcerpt{
 			{Source: "pkl test", Content: "line one\nline two with a \"quote\" and a \\ backslash"},
 		},
 		Validation: evidence.ValidationResult{
 			SchemaVersion:     evidence.SchemaVersion,
-			ArtifactHashes:    map[string]string{"restic-snapshots.json": "deadbeef"},
+			ArtifactHashes:    []evidence.ArtifactHash{{Path: "restic-snapshots.json", SHA256: "deadbeef"}},
 			StructurallyValid: true,
 		},
 	}
@@ -82,10 +84,19 @@ func TestEvaluateRoundTrip(t *testing.T) {
 	if len(got.FileTree) != 2 || got.FileTree[1].Size == nil || *got.FileTree[1].Size != 7 {
 		t.Errorf("fileTree did not round-trip: got %+v", got.FileTree)
 	}
+	if got.Execution.SnapshotID == nil || *got.Execution.SnapshotID != *pkg.Execution.SnapshotID {
+		t.Errorf("execution.snapshotId did not round-trip: got %+v", got.Execution.SnapshotID)
+	}
+	if got.FileTree[0].SnapshotID != *pkg.Execution.SnapshotID {
+		t.Errorf("fileTree[0].snapshotId did not round-trip: got %q", got.FileTree[0].SnapshotID)
+	}
+	if len(got.Diff) != 1 || got.Diff[0].FromSnapshotID != pkg.Diff[0].FromSnapshotID || got.Diff[0].ToSnapshotID != pkg.Diff[0].ToSnapshotID {
+		t.Errorf("diff from/to snapshot ids did not round-trip: got %+v", got.Diff)
+	}
 	if len(got.Logs) != 1 || got.Logs[0].Content != pkg.Logs[0].Content {
 		t.Errorf("logs did not round-trip: got %+v", got.Logs)
 	}
-	if got.Validation.ArtifactHashes["restic-snapshots.json"] != "deadbeef" {
+	if len(got.Validation.ArtifactHashes) != 1 || got.Validation.ArtifactHashes[0].Path != "restic-snapshots.json" || got.Validation.ArtifactHashes[0].SHA256 != "deadbeef" {
 		t.Errorf("artifactHashes did not round-trip: got %+v", got.Validation.ArtifactHashes)
 	}
 }

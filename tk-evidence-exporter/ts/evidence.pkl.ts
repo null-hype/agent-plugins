@@ -44,6 +44,13 @@ export interface ExecutionIdentity {
   // `tag` assignment, the restic snapshot tag, and (eventually) TK lesson
   // identity.
   scenarioName: string
+
+  // The exact restic snapshot ID `color` produced *during this run*,
+  // distinguished (via a before/after set difference in restic-backup.sh)
+  // from any other snapshot that happens to share the scenario's tag from a
+  // previous run. `null` when this run produced no snapshot (e.g. the
+  // scenario was skipped or failed before backing up).
+  snapshotId: string|null
 }
 
 // Ref: Pkl class `evidence.CheckResult`.
@@ -89,6 +96,13 @@ export interface FileTreeEntry {
   type: "file" | "dir"
 
   size: number|null
+
+  // The restic snapshot this entry was listed from (`restic ls`'s own
+  // "snapshot" header line carries this) -- required so a future package
+  // combining file trees from more than one snapshot can tell entries
+  // apart, and so a consumer can verify this tree matches
+  // `execution.snapshotId`.
+  snapshotId: string
 }
 
 // Ref: Pkl class `evidence.DiffEntry`.
@@ -96,6 +110,14 @@ export interface DiffEntry {
   path: string
 
   changeType: "added" | "removed" | "modified"
+
+  // The two snapshot IDs `restic diff` compared, from its own trailing
+  // "statistics" line (`source_snapshot`/`target_snapshot`) -- not
+  // re-derived from the top-level `snapshots` listing, which this diff may
+  // not even fully overlap with.
+  fromSnapshotId: string
+
+  toSnapshotId: string
 }
 
 // Ref: Pkl class `evidence.LogExcerpt`.
@@ -156,6 +178,19 @@ export interface ReconciliationFlag {
   detail: string
 }
 
+// Ref: Pkl class `evidence.ArtifactHash`.
+// One input file's content hash, keyed by path rather than held in a Pkl
+// `Mapping` -- the exported JSON transport is a plain array of objects
+// (`json.Marshal` has no way to emit a native `Map`), and modeling that
+// directly here keeps the generated TypeScript binding (`Array<ArtifactHash>`)
+// honest about the shape a consumer actually receives, instead of declaring
+// a `Map<string, string>` that `JSON.parse` can never produce.
+export interface ArtifactHash {
+  path: string
+
+  sha256: string
+}
+
 // Ref: Pkl class `evidence.ValidationResult`.
 // The exporter's own package-validation verdict -- kept distinct from the
 // recorded domain verdict in `ScenarioResult`/`CheckResult` per the issue's
@@ -163,7 +198,7 @@ export interface ReconciliationFlag {
 export interface ValidationResult {
   schemaVersion: string
 
-  artifactHashes: Map<string, string>
+  artifactHashes: Array<ArtifactHash>
 
   structurallyValid: boolean
 

@@ -33,20 +33,51 @@ existing fact fixtures in the test suite).
 | `-ls-json` | `restic ls <snapshotID> --json` output | no |
 | `-diff-json` | `restic diff <id1> <id2> --json` output (only when a snapshot pair exists) | no |
 | `-junit-dir` | a directory of `pkl test --junit-reports` XML files, one per fact module | no |
+| `-scenario-outcome-json` | a `{"outcome":"passed"\|"failed"\|"skipped"}` file the scenario script itself wrote | no, but strongly preferred (see below) |
 | `-out` | output directory (default `build`) | no |
+
+### Scenario outcome: prefer `-scenario-outcome-json` over this run's job conclusion
+
+`-scenario-outcome-json` is the scenario's own structured verdict, written
+directly by the scenario script (see `test/pass-cli/restic-backup.sh`'s
+`on_exit` trap, which writes it on every exit path from the script's own
+exit code). When it's given, `scenario.outcome` comes from it, full stop.
+
+When it's *not* given, the exporter falls back to this run's own GitHub
+Actions job conclusion (`internal/ghactions`) -- but that fallback is a
+materially weaker signal, for two reasons that make it wrong for
+`test-global.yaml`'s actual shape specifically:
+
+- **The job may still be in progress.** The exporter step runs later in the
+  same job whose conclusion it would be reading -- a job's `conclusion`
+  field is only set once the job finishes, so reading it from a step inside
+  that same job reads an empty string, which `ghactions.Outcome` maps to
+  `failed` regardless of whether the scenario actually passed.
+- **The job is not scenario-scoped.** `test-scenarios` runs every scenario
+  (feature-local and global) in one `devcontainer features test`
+  invocation, so even *after* the job finishes, its conclusion tells you
+  whether *any* scenario failed, not whether `restic-backup` specifically
+  did.
+
+Both problems disappear once the scenario itself reports its own verdict,
+which is why `test-global.yaml` always passes `-scenario-outcome-json` when
+`restic-backup.sh` produced one, and only omits it (with a loud
+`::warning::`) when that file is missing.
 
 **Deliberately not an input:** this workflow's own `devcontainer features
 test` stdout. `dev-container-features-test-lib` (the bash lib the
 devcontainer CLI injects into every scenario) has no output format contract
--- only emoji-decorated text. Scenario-level pass/fail instead comes from the
-GitHub Actions Jobs API (`internal/ghactions`), which is a real structured
-enum GitHub itself defines and versions; per-check granularity, where it
-exists at all, comes from an actual structured test runner underneath the
-scenario (`pkl test --junit-reports` for a Pkl-test-backed scenario). A
-scenario with no such runner underneath it (like `restic-backup`, plain
-bash `check`/`reportResults`) legitimately has no per-check breakdown --
-see `ScenarioResult.checks` staying empty in that case, and the warning
-`Diagnose` emits when that happens alongside a failed outcome.
+-- only emoji-decorated text. Scenario-level pass/fail instead comes from a
+real structured source: preferably the scenario script's own
+`-scenario-outcome-json` verdict (see above), falling back to the GitHub
+Actions Jobs API (`internal/ghactions`) when that's absent; per-check
+granularity, where it exists at all, comes from an actual structured test
+runner underneath the scenario (`pkl test --junit-reports` for a
+Pkl-test-backed scenario). A scenario with no such runner underneath it
+(like `restic-backup`, plain bash `check`/`reportResults`) legitimately has
+no per-check breakdown -- see `ScenarioResult.checks` staying empty in that
+case, and the warning `Diagnose` emits when that happens alongside a failed
+outcome.
 
 ## Output
 
@@ -69,8 +100,14 @@ go run ./cmd/export \
   -scenario restic-backup \
   -snapshots-json /path/to/restic-snapshots.json \
   -ls-json /path/to/restic-ls.json \
+  -scenario-outcome-json /path/to/scenario-outcome.json \
   -out build/tk-evidence
 ```
+
+`cmd/export` calls into a native `pkl` binary via `pkl-go` to validate the
+assembled package -- it must be on `PATH` (the root `mise.toml` pins the
+version this repo uses; `test-global.yaml` installs it via
+`jdx/mise-action`).
 
 ## TypeScript bindings
 
@@ -112,7 +149,46 @@ and the exporter's own package-validation verdict distinguishable:
 - **`ArtifactHashes`**: sha256 of every raw input file consumed (the restic
   JSON files, any JUnit XML files) -- for verifying the packaged evidence
   actually corresponds to specific captured artifacts, not just asserting it
-  does.
+  does. This is a `Listing<ArtifactHash>` (`{path, sha256}` records), not a
+  Pkl `Mapping`/Go `map` -- the exported JSON transport is a plain array
+  (`encoding/json` has no way to marshal a Go map as a native JS `Map`), so
+  modeling it as one directly keeps the generated TypeScript binding
+  (`Array<ArtifactHash>`) honest about the shape a consumer actually
+  receives from `evidence.json`.
+
+## Snapshot identity
+
+Every snapshot-derived value in the package is bound back to the exact
+snapshot it came from, not just to "the scenario's tag":
+
+- `execution.snapshotId` is the exact restic snapshot ID `color` produced
+  *during this run* -- `restic-backup.sh` computes this via a before/after
+  set difference against `restic snapshots --tag <scenario>` (this restic
+  repo is a persistent remote backend shared across CI runs, so "the
+  chronologically-last snapshot with this tag" is not the same guarantee as
+  "the snapshot this run produced").
+- `fileTree[].snapshotId` comes from `restic ls`'s own "snapshot" header
+  line, not from whatever ID the caller happened to ask for.
+- `diff[].fromSnapshotId`/`toSnapshotId` come from `restic diff`'s own
+  trailing "statistics" line (`source_snapshot`/`target_snapshot`), not
+  re-derived from the top-level `snapshots` listing, which a given diff may
+  not even fully overlap with.
+
+`internal/export.Diagnose` cross-checks these against each other (e.g.
+`execution.snapshotId` actually appearing in `snapshots`, `fileTree` entries
+matching `execution.snapshotId`) and emits an actionable warning, not a
+silent gap, when they disagree.
+
+## The exported JSON is the real contract, not just the Pkl shape
+
+Every `evidence` struct field carries an explicit `json` tag matching its
+`pkl` tag's camelCase name (see `internal/evidence/types.go`) -- Go's
+default PascalCase field-name marshaling would otherwise produce a JSON
+document (`SchemaVersion`, `Execution`, ...) that doesn't match what
+`ts/evidence.pkl.ts`'s generated interfaces (`schemaVersion`, `execution`,
+...) actually describe. `cmd/export`'s end-to-end test run (see "Verified so
+far" below) asserts the real `evidence.json` output against those exact
+field names, not just against the Go struct shape.
 
 What this package does **not** claim: that the log-scrape captured every
 check a scenario ran (there is no log scrape -- see above), or that a
@@ -132,7 +208,17 @@ structured runner exists to provide it.
   misclassified as a domain "failed"), and `restic snapshots/ls/diff --json`
   run against a real scratch restic repository with two backups.
 - `cmd/export` run end-to-end against those same real fixtures plus a mocked
-  GitHub Actions Jobs API server, producing a validated `evidence.json`.
+  GitHub Actions Jobs API server, producing a validated `evidence.json`
+  whose actual field names (`schemaVersion`, `execution.snapshotId`,
+  `fileTree[].snapshotId`, `diff[].fromSnapshotId`/`toSnapshotId`,
+  `validation.artifactHashes` as an array) were inspected directly, not just
+  asserted via `go test`.
+- `npx @pkl-community/pkl-typescript -o ts pkl/Evidence.pkl` regenerated
+  after the snapshot-identity/`ArtifactHash` schema changes above --
+  `ts/evidence.pkl.ts`'s `artifactHashes: Array<ArtifactHash>` now matches
+  the real JSON shape `cmd/export` produces, rather than the `Map<string,
+  string>` a Pkl `Mapping` used to generate (which no JSON payload could
+  ever actually satisfy).
 - The `test-global.yaml` wiring's key assumption -- that `devcontainer
   features test` bind-mounts a host-writable directory into the scenario
   container at the test script's own working directory -- was confirmed by
@@ -153,4 +239,13 @@ structured runner exists to provide it.
   non-nested runner is not.
 - Live GitHub Actions Jobs API behavior against a real run/job (the test
   suite exercises `internal/ghactions` against a mocked server, not the real
-  API).
+  API) -- though this is now only the fallback path; the primary path
+  (`-scenario-outcome-json`) doesn't depend on it.
+- `restic-backup.sh`'s `on_exit` trap and before/after snapshot-ID set
+  difference, against real `pass-cli`/restic/GCP credentials -- this
+  sandbox has none of those, so this logic was only checked via `bash -n`
+  and the `jq` set-difference expression tested standalone against the
+  captured fixture JSON (see above), not by actually running the scenario.
+- `jdx/mise-action` actually installing this repo's pinned `pkl` version
+  onto a real `ubuntu-latest` runner's `PATH` before `cmd/export` runs --
+  not exercisable without a live `workflow_dispatch`.

@@ -124,6 +124,31 @@ func Diagnose(pkg evidence.Package) []string {
 		warnings = append(warnings, "a diff was captured but fewer than two snapshots are recorded -- diff provenance is unclear")
 	}
 
+	if pkg.Execution.SnapshotID != nil {
+		found := false
+		for _, s := range pkg.Snapshots {
+			if s.ID == *pkg.Execution.SnapshotID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			warnings = append(warnings, fmt.Sprintf(
+				"execution.snapshotId %q (the snapshot this run produced) is not present in the snapshots listing", *pkg.Execution.SnapshotID))
+		}
+	} else if pkg.Scenario.Outcome == evidence.OutcomePassed && len(pkg.Snapshots) > 0 {
+		warnings = append(warnings, "scenario passed and snapshots were captured, but execution.snapshotId is unset -- the file tree below cannot be bound to a specific run's own snapshot")
+	}
+
+	for _, e := range pkg.FileTree {
+		if pkg.Execution.SnapshotID != nil && e.SnapshotID != *pkg.Execution.SnapshotID {
+			warnings = append(warnings, fmt.Sprintf(
+				"fileTree entry %q was listed from snapshot %q, which does not match execution.snapshotId %q",
+				e.Path, e.SnapshotID, *pkg.Execution.SnapshotID))
+			break // one representative warning is enough; every entry shares the same restic ls invocation
+		}
+	}
+
 	if pkg.Scenario.Outcome == evidence.OutcomeFailed && len(pkg.Scenario.Checks) == 0 {
 		warnings = append(warnings, "scenario outcome is failed but no per-check detail was captured -- this scenario has no structured test runner beneath it (see internal/ghactions's doc comment); only the job-level outcome is available")
 	}

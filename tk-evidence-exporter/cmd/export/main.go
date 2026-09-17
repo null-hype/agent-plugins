@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"dagger/tk-evidence-exporter/internal/evidence"
 	"dagger/tk-evidence-exporter/internal/export"
@@ -24,6 +25,50 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// artifactHashes turns the path->sha256 map built up while reading input
+// files into the sorted-by-path slice ValidationResult.ArtifactHashes now
+// expects (see evidence.ArtifactHash's doc comment for why this isn't a
+// Pkl Mapping/Go map).
+func artifactHashes(hashes map[string]string) []evidence.ArtifactHash {
+	paths := make([]string, 0, len(hashes))
+	for p := range hashes {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	result := make([]evidence.ArtifactHash, 0, len(paths))
+	for _, p := range paths {
+		result = append(result, evidence.ArtifactHash{Path: p, SHA256: hashes[p]})
+	}
+	return result
+}
+
+// resolveScenarioOutcome prefers the scenario script's own structured
+// {"outcome":...} file, when given, over this run's job conclusion: the job
+// may still be in progress (this exporter can run as a later step in the
+// same job) and, since a job can run many scenarios, its eventual
+// conclusion can't identify whether this specific scenario passed anyway.
+func resolveScenarioOutcome(path string, job ghactions.Job) (evidence.Outcome, error) {
+	if path == "" {
+		return ghactions.Outcome(job.Conclusion), nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("reading -scenario-outcome-json: %w", err)
+	}
+	var parsed struct {
+		Outcome string `json:"outcome"`
+	}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return "", fmt.Errorf("decoding -scenario-outcome-json: %w", err)
+	}
+	switch parsed.Outcome {
+	case evidence.OutcomePassed, evidence.OutcomeFailed, evidence.OutcomeSkipped, evidence.OutcomeEvalError:
+		return parsed.Outcome, nil
+	default:
+		return "", fmt.Errorf("-scenario-outcome-json: unrecognized outcome %q", parsed.Outcome)
+	}
 }
 
 func main() {
@@ -48,6 +93,7 @@ func run() error {
 	lsJSON := flag.String("ls-json", "", "path to `restic ls <snapshotID> --json` output (optional)")
 	diffJSON := flag.String("diff-json", "", "path to `restic diff <id1> <id2> --json` output (optional, only when a snapshot pair exists)")
 	junitDir := flag.String("junit-dir", "", "directory of `pkl test --junit-reports` XML files (optional; only for Pkl-test-backed scenarios)")
+	scenarioOutcomeJSON := flag.String("scenario-outcome-json", "", "path to a {\"outcome\":\"passed\"|\"failed\"|\"skipped\"} file the scenario script itself wrote (optional but strongly preferred -- see README; falls back to this run's own job conclusion, which is a weaker signal, when omitted)")
 	out := flag.String("out", "build", "output directory for evidence.json")
 
 	flag.Parse()
@@ -87,9 +133,28 @@ func run() error {
 		ScenarioName:       *scenario,
 	}
 
+	var outcomeWarnings []string
+	scenarioOutcome, err := resolveScenarioOutcome(*scenarioOutcomeJSON, job)
+	if err != nil {
+		return err
+	}
+	if *scenarioOutcomeJSON == "" {
+		outcomeWarnings = append(outcomeWarnings, fmt.Sprintf(
+			"-scenario-outcome-json was not given -- falling back to this run's own job conclusion (%q) for scenario.outcome. "+
+				"That conclusion describes the whole job, not this scenario specifically, and (when this exporter runs as a "+
+				"later step in the same job) may not even be final yet. Prefer having the scenario script itself write a "+
+				"{\"outcome\":...} file -- see README.", job.Conclusion))
+	} else {
+		data, err := os.ReadFile(*scenarioOutcomeJSON)
+		if err != nil {
+			return fmt.Errorf("reading -scenario-outcome-json: %w", err)
+		}
+		hashes[filepath.Base(*scenarioOutcomeJSON)] = export.Hash(data)
+	}
+
 	pkg.Scenario = evidence.ScenarioResult{
 		ScenarioName: *scenario,
-		Outcome:      ghactions.Outcome(job.Conclusion),
+		Outcome:      scenarioOutcome,
 	}
 
 	snapshotsData, err := os.ReadFile(*snapshotsJSON)
@@ -108,9 +173,13 @@ func run() error {
 			return fmt.Errorf("reading -ls-json: %w", err)
 		}
 		hashes[filepath.Base(*lsJSON)] = export.Hash(data)
-		pkg.FileTree, err = resticparse.ParseLS(data)
+		var snapshotID string
+		snapshotID, pkg.FileTree, err = resticparse.ParseLS(data)
 		if err != nil {
 			return err
+		}
+		if snapshotID != "" {
+			pkg.Execution.SnapshotID = &snapshotID
 		}
 	}
 
@@ -150,14 +219,14 @@ func run() error {
 		pkg.CapabilityFacts = export.CapabilityFactsFromChecks(pkg.Scenario.Checks)
 	}
 
-	warnings := export.Diagnose(pkg)
+	warnings := append(outcomeWarnings, export.Diagnose(pkg)...)
 	for _, w := range warnings {
 		fmt.Fprintln(os.Stderr, "export: diagnostic:", w)
 	}
 
 	pkg.Validation = evidence.ValidationResult{
 		SchemaVersion:     evidence.SchemaVersion,
-		ArtifactHashes:    hashes,
+		ArtifactHashes:    artifactHashes(hashes),
 		StructurallyValid: false, // set true below only if Pkl evaluation actually succeeds
 		ValidationErrors:  warnings,
 	}
