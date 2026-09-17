@@ -132,13 +132,16 @@ fi
 # the untouched original, then restore the *exact* snapshot color just
 # produced -- not "latest" tagged $RESTIC_TAG, which carries the same
 # concurrency hazard as above (a newer snapshot from a different run could
-# land on the shared remote in between and get restored instead).
+# land on the shared remote in between and get restored instead). If the
+# exact ID is unavailable, the check above already recorded that failure --
+# falling back to "latest" here would let the restore step below succeed
+# anyway and mask it behind a fully green report, so skip restoring at all
+# in that case and let the final check fail too.
 mv "$HOME/.claude" "$HOME/.claude-preresume"
 if [ -n "$NEW_SNAPSHOT_ID" ]; then
     restic_with_creds "restic restore $NEW_SNAPSHOT_ID --target /"
 else
-    echo "::warning::restic-backup.sh: exact snapshot id unavailable (see $COLOR_BACKUP_JSON) -- falling back to 'latest' for restore" >&2
-    restic_with_creds "restic restore latest --tag $RESTIC_TAG --target /"
+    echo "::warning::restic-backup.sh: exact snapshot id unavailable (see $COLOR_BACKUP_JSON) -- skipping restore rather than falling back to 'latest', which would risk restoring a concurrent run's snapshot and silently pass" >&2
 fi
 
 check "restic restore brings ~/.claude back" \
