@@ -24,6 +24,18 @@ local envFiles: Listing<String> = new {
   "../.devcontainer/linear-triage-agent.env"
   "../.devcontainer/continue-claude-session.env"
   "../.devcontainer/cloudflared.env"
+  // Scenario-owned env files (test/**), previously missing from this list
+  // entirely -- a stale/renamed vault reference in one of these (e.g. the
+  // pre-consolidation "JIN-81" vault name, retired per Vaults.pkl's own
+  // header comment) had no check that would ever catch it. These are the
+  // actual credentials `devcontainer features test` materializes into a
+  // scenario container, so they belong in this contract exactly as much as
+  // the devcontainer-level env files above.
+  "../../../../.env"
+  "../../../../test/pass-cli/restic-backup/.env"
+  "../../../../test/_global/jin-81-pass-cli/.env"
+  "../../../../test/_global/jin-90-dead-drop/.env"
+  "../../../../test/_global/jin-91-resume-session/.env"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)
@@ -63,6 +75,36 @@ local idFlagFiles: Listing<String> = new {
 /// catches any similarly-named default introduced later.
 local hardcodedIdDefault = Regex(#":-[A-Za-z0-9_\-]{40,}={0,2}\}"#)
 
+/// Scripts that address a vault by a hardcoded `--vault-name <literal>`
+/// flag rather than a `pass://` URI (so `refPattern` above never sees
+/// them) or a shell variable (so this isn't the same "should be a
+/// variable, not a literal" shape `idFlagFiles`/`hardcodedIdDefault`
+/// check). jin-90-dead-drop.sh plants/reads/deletes items in a vault
+/// named "Test" this way -- if that vault were ever renamed or retired,
+/// this reference would go stale exactly like an env file's `pass://` ref
+/// would, but with no URI for `refPattern` to catch it.
+local vaultNameLiteralFiles: Listing<String> = new {
+  "../../../../test/_global/jin-90-dead-drop.sh"
+}
+
+local vaultNameLiteralPattern = Regex(#"--vault-name ([A-Za-z][A-Za-z0-9_-]*)"#)
+
+local function vaultNameLiteralsIn(path: String): Listing<String> = new Listing {
+  for (line in read(path).text.split("\n")) {
+    for (m in vaultNameLiteralPattern.findMatchesIn(line)) {
+      m.groups[1]!!.value
+    }
+  }
+}
+
+local allVaultNameLiterals: Listing<Dynamic> = new Listing {
+  for (f in vaultNameLiteralFiles) {
+    for (name in vaultNameLiteralsIn(f)) {
+      new Dynamic { vaultName = name; source = f }
+    }
+  }
+}
+
 local function isDeclared(vaultName: String, itemName: String): Boolean =
   spec.declared.toList().any((v) -> v.name == vaultName && v.items.toList().contains(itemName))
 
@@ -84,6 +126,12 @@ facts {
   ["no script hardcodes a Proton Pass share/item ID default -- addresses by vault-name/item-title instead"] {
     for (f in idFlagFiles) {
       hardcodedIdDefault.findMatchesIn(read(f).text).isEmpty
+    }
+  }
+
+  ["every hardcoded --vault-name literal resolves to a declared vault"] {
+    for (r in allVaultNameLiterals) {
+      spec.declared.toList().any((v) -> v.name == r.vaultName)
     }
   }
 

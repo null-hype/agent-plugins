@@ -28,6 +28,7 @@ declared: Listing<VaultSpec> = new {
       "tailscale"
       "render.com"
       "cloudflare"
+      "dagger.cloud"
     }
   }
   new VaultSpec {
@@ -38,5 +39,27 @@ declared: Listing<VaultSpec> = new {
       "claude"
       "pass-cli"
     }
+  }
+  // Not one of the per-issue/consolidated vaults above: every scenario's
+  // own CLAUDE_CODE_OAUTH_TOKEN (test/**/.env) comes from here. Previously
+  // undeclared entirely -- Vaults.test.pkl's envFiles list never scanned
+  // any scenario .env, so a stale/renamed reference here had no check at
+  // all, not even a JIN-<number>-style stale name.
+  new VaultSpec {
+    name = "anthropic.ai"
+    items {
+      "claude"
+    }
+  }
+  // JIN-90's dead-drop scenario (test/_global/jin-90-dead-drop.sh) plants,
+  // reads, and deletes a freshly-titled note here on every run -- there's
+  // no fixed item name to declare, unlike every other vault above, so
+  // `items` stays empty and only the vault's own existence is checked.
+  // Referenced by a hardcoded `--vault-name Test` literal, not a `pass://`
+  // URI, since it's addressed via pass-cli flags directly rather than an
+  // env file.
+  new VaultSpec {
+    name = "Test"
+    items {}
   }
 }

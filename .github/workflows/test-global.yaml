@@ -28,6 +28,55 @@ jobs:
       - name: "Install latest devcontainer CLI"
         run: npm install -g @devcontainers/cli
 
+      # This repo's own root mise.toml declares `pkl = "latest"` (not a
+      # pinned version) and `hk = "latest"`; installing via jdx/mise-action
+      # (rather than a separately-pinned curl/download step) keeps this
+      # runner on that same single source of truth as every
+      # devcontainer/sandbox in this repo, instead of a second, separately
+      # drifting version pin. Installed early (before the scenario tests
+      # below) because the vault-inventory gate that follows needs `pkl`
+      # on PATH, and tk-evidence-exporter's cmd/export needs it again later
+      # -- one install covers both.
+      - name: "Install mise-managed tools (pkl, hk)"
+        uses: jdx/mise-action@v2
+
+      - name: "Verify pkl is on PATH"
+        run: pkl --version
+
+      # JIN-116: catch a stale/renamed Proton Pass vault reference (a
+      # scenario .env's `pass://<vault>/<item>/<field>` URI, or a script's
+      # hardcoded `--vault-name <literal>`) before spending a full
+      # `devcontainer features test` run on scenarios that would only fail
+      # partway through, deep inside a container, once pass-cli itself
+      # can't resolve the reference. Reuses the same declared-vs-observed
+      # contract `hk check`'s "vault-inventory" step runs locally
+      # (.dagger/internal/devenv-base/pkl/Vaults.test.pkl against
+      # .dagger/internal/devenv-base/pkl/Vaults.pkl) -- this is that
+      # contract's first invocation against this CI token's own observed
+      # inventory, not a separate check. Skips (rather than fails) when the
+      # token itself is absent, mirroring every scenario script's own
+      # skip-without-credentials behavior -- this gate gates on stale
+      # *references*, not on whether the token exists at all.
+      - name: "Validate declared Proton Pass vault inventory (JIN-116)"
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          set -e
+          if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+            echo "::warning::vault-inventory: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set -- skipping (same as every scenario script's own skip path)."
+            exit 0
+          fi
+          if ! command -v pass-cli >/dev/null 2>&1; then
+            curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          fi
+          export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-vault-inventory"
+          export PROTON_PASS_AGENT_REASON="test-global.yaml: CI vault-inventory validation gate (JIN-116)"
+          pass-cli login
+          pass-cli info
+          bash .dagger/internal/devenv-base/hk/capture-vault-inventory.sh
+          pkl test .dagger/internal/devenv-base/pkl/Vaults.test.pkl
+          pass-cli logout || true
+
       - name: "Testing all scenarios (feature-local and global)"
         env:
           PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
@@ -45,23 +94,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-
-      # CIT-147: tk-evidence-exporter's cmd/export shells out to a native
-      # `pkl` binary via pkl-go (pkl.NewEvaluator) to validate the assembled
-      # package against pkl/Evidence.pkl -- it does not vendor or bundle
-      # Pkl itself. The repo's own root mise.toml already declares `pkl =
-      # "latest"` (not a pinned version); installing via jdx/mise-action
-      # here (rather than a separately-pinned curl/download step) keeps
-      # this runner on that same single source of truth as every
-      # devcontainer/sandbox in this repo, instead of a second, separately
-      # drifting version pin.
-      - name: "Install mise-managed tools (pkl) for tk-evidence-exporter"
-        if: always()
-        uses: jdx/mise-action@v2
-
-      - name: "Verify pkl is on PATH"
-        if: always()
-        run: pkl --version
 
       - name: "Export restic-backup scenario evidence (CIT-147)"
         if: always()
