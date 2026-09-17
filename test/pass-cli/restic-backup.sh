@@ -25,8 +25,48 @@ set -e
 # Optional: Import test library bundled with the devcontainer CLI
 source dev-container-features-test-lib
 
+# `devcontainer features test` bind-mounts this script's own directory
+# (SCRIPT_FOLDER, from dev-container-features-test-lib) from a host scratch
+# folder into the container -- confirmed by inspecting the CLI's own `docker
+# run --mount type=bind,source=<host path>,target=/workspaces/<id>`
+# invocation directly. Writing captured evidence here (not /tmp, which is
+# container-only and gone once this container exits) is what lets
+# tk-evidence-exporter pick these files up from the CI host after this
+# scenario's container has already been torn down.
+EVIDENCE_DIR="$SCRIPT_FOLDER/evidence"
+
+# CIT-147: this scenario's own pass/fail verdict, written unconditionally on
+# every exit path via the trap below. tk-evidence-exporter deliberately does
+# NOT derive this scenario's outcome from the surrounding GitHub Actions
+# job's conclusion: that job (a) runs every scenario in one
+# `devcontainer features test` invocation, so its conclusion can't identify
+# which scenario failed, and (b) is often still in progress when the
+# exporter step runs later in the same job. Writing the verdict here --
+# straight from this script's own exit code -- is the "another kind of test
+# runner which does provide structured output" the exporter should rely on
+# for this scenario, exactly as it already does for a Pkl-test-backed one
+# via `pkl test --junit-reports`.
+SCENARIO_OUTCOME=""
+
+on_exit() {
+    local exit_code=$?
+    pass-cli logout || true
+
+    mkdir -p "$EVIDENCE_DIR" 2>/dev/null || true
+    if [ -z "$SCENARIO_OUTCOME" ]; then
+        if [ "$exit_code" -eq 0 ]; then
+            SCENARIO_OUTCOME="passed"
+        else
+            SCENARIO_OUTCOME="failed"
+        fi
+    fi
+    printf '{"outcome": "%s"}\n' "$SCENARIO_OUTCOME" > "$EVIDENCE_DIR/scenario-outcome.json" 2>/dev/null || true
+}
+trap on_exit EXIT
+
 if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo -e "\nSkipping restic-backup check: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
+    SCENARIO_OUTCOME="skipped"
     reportResults
     exit 0
 fi
@@ -43,28 +83,7 @@ pass-cli info
 # tag the 'color' bin's restic backup uses for this run's snapshot.
 RESTIC_TAG="restic-backup"
 
-# `devcontainer features test` bind-mounts this script's own directory
-# (SCRIPT_FOLDER, from dev-container-features-test-lib) from a host scratch
-# folder into the container -- confirmed by inspecting the CLI's own `docker
-# run --mount type=bind,source=<host path>,target=/workspaces/<id>`
-# invocation directly. Writing captured evidence here (not /tmp, which is
-# container-only and gone once this container exits) is what lets
-# tk-evidence-exporter pick these files up from the CI host after this
-# scenario's container has already been torn down.
-EVIDENCE_DIR="$SCRIPT_FOLDER/evidence"
 mkdir -p "$EVIDENCE_DIR"
-
-cleanup() {
-    pass-cli logout || true
-}
-trap cleanup EXIT
-
-export PROTON_PASS_AGENT_REASON="pass-cli restic-backup feature test: exercising color's backup path"
-# 'color' does the restic backup internally once it sees an active
-# pass-cli session (see src/pass-cli/install.sh). This is the only step
-# here that talks to a live claude - everything this test actually
-# asserts on is local file/restic state, not the reply's content.
-color
 
 restic_with_creds() {
     pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- sh -c "
@@ -75,16 +94,37 @@ restic_with_creds() {
     "
 }
 
-restic_with_creds "restic snapshots --tag $RESTIC_TAG --json" > "$EVIDENCE_DIR/restic-snapshots.json"
+# CIT-147: capture the snapshot IDs already tagged $RESTIC_TAG *before*
+# calling `color`, so the snapshot `color` produces below can be identified
+# by set difference afterward rather than assumed to be "whichever one
+# sorts last." This restic repo is a persistent remote (GCS) backend shared
+# across CI runs, so `restic snapshots --tag restic-backup` can return
+# snapshots from previous runs too -- picking the chronologically-last one
+# is usually right but isn't a real identity guarantee; set difference is.
+BEFORE_SNAPSHOT_IDS="$(restic_with_creds "restic snapshots --tag $RESTIC_TAG --json" | jq -r '.[].id' | sort)"
+
+export PROTON_PASS_AGENT_REASON="pass-cli restic-backup feature test: exercising color's backup path"
+# 'color' does the restic backup internally once it sees an active
+# pass-cli session (see src/pass-cli/install.sh). This is the only step
+# here that talks to a live claude - everything this test actually
+# asserts on is local file/restic state, not the reply's content.
+color
+
+AFTER_SNAPSHOTS_JSON="$(restic_with_creds "restic snapshots --tag $RESTIC_TAG --json")"
+printf '%s' "$AFTER_SNAPSHOTS_JSON" > "$EVIDENCE_DIR/restic-snapshots.json"
 check "color's restic backup produced a snapshot tagged $RESTIC_TAG" \
     bash -c "[ \"\$(jq 'length' \"$EVIDENCE_DIR/restic-snapshots.json\")\" -gt 0 ]"
 
-# The most recent snapshot's file manifest, for tk-evidence-exporter's file
-# tree (see CIT-147). A plain `jq` failure here should not fail this test's
-# own domain checks -- evidence capture is additive, not a new assertion.
-LATEST_SNAPSHOT_ID="$(jq -r '.[-1].id' "$EVIDENCE_DIR/restic-snapshots.json" || true)"
-if [ -n "$LATEST_SNAPSHOT_ID" ]; then
-    restic_with_creds "restic ls $LATEST_SNAPSHOT_ID --json" > "$EVIDENCE_DIR/restic-ls.json" || true
+# The snapshot `color` produced just now, identified by set difference
+# against BEFORE_SNAPSHOT_IDS (see above) rather than by array order. A
+# plain `jq`/parsing failure here should not fail this test's own domain
+# checks -- evidence capture is additive, not a new assertion.
+NEW_SNAPSHOT_ID="$(printf '%s' "$AFTER_SNAPSHOTS_JSON" | jq -r --arg before "$BEFORE_SNAPSHOT_IDS" '
+    ($before | split("\n")) as $beforeIds |
+    [.[] | select(.id as $id | $beforeIds | index($id) | not)] | .[-1].id // empty
+' || true)"
+if [ -n "$NEW_SNAPSHOT_ID" ]; then
+    restic_with_creds "restic ls $NEW_SNAPSHOT_ID --json" > "$EVIDENCE_DIR/restic-ls.json" || true
 fi
 
 # Move the local copy aside to prove the restore below isn't just

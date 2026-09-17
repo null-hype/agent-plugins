@@ -1,7 +1,7 @@
 import "../pkl/Evidence.pkl"
 
 result: Evidence.EvidencePackage = new Evidence.EvidencePackage {
-  schemaVersion = "1.0.0"
+  schemaVersion = "1.1.0"
   execution {
     sourceRevision = "abc123"
     workflowRunId = "42"
@@ -10,6 +10,7 @@ result: Evidence.EvidencePackage = new Evidence.EvidencePackage {
     jobName = "test-scenarios"
     stepRefs { "Testing all scenarios (feature-local and global)" }
     scenarioName = "restic-backup"
+    snapshotId = "deadbeef"
   }
   scenario {
     scenarioName = "restic-backup"
@@ -28,6 +29,7 @@ result: Evidence.EvidencePackage = new Evidence.EvidencePackage {
     new {
       path = "/root/.claude"
       type = "dir"
+      snapshotId = "deadbeef"
     }
   }
   diff {}
@@ -37,7 +39,7 @@ result: Evidence.EvidencePackage = new Evidence.EvidencePackage {
   capabilityObservations {}
   reconciliationFlags {}
   validation {
-    schemaVersion = "1.0.0"
+    schemaVersion = "1.1.0"
     artifactHashes {}
     structurallyValid = true
     validationErrors {}

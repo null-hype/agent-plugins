@@ -2,7 +2,6 @@ package export
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"dagger/tk-evidence-exporter/internal/evidence"
@@ -74,6 +73,9 @@ func renderExecution(b *strings.Builder, e evidence.ExecutionIdentity) {
 	}
 	b.WriteString("    }\n")
 	fmt.Fprintf(b, "    scenarioName = %s\n", pklQuote(e.ScenarioName))
+	if e.SnapshotID != nil {
+		fmt.Fprintf(b, "    snapshotId = %s\n", pklQuote(*e.SnapshotID))
+	}
 	b.WriteString("  }\n")
 }
 
@@ -117,6 +119,7 @@ func renderFileTree(b *strings.Builder, entries []evidence.FileTreeEntry) {
 		if e.Size != nil {
 			fmt.Fprintf(b, "      size = %d\n", *e.Size)
 		}
+		fmt.Fprintf(b, "      snapshotId = %s\n", pklQuote(e.SnapshotID))
 		b.WriteString("    }\n")
 	}
 	b.WriteString("  }\n")
@@ -128,6 +131,8 @@ func renderDiff(b *strings.Builder, entries []evidence.DiffEntry) {
 		b.WriteString("    new {\n")
 		fmt.Fprintf(b, "      path = %s\n", pklQuote(e.Path))
 		fmt.Fprintf(b, "      changeType = %s\n", pklQuote(e.ChangeType))
+		fmt.Fprintf(b, "      fromSnapshotId = %s\n", pklQuote(e.FromSnapshotID))
+		fmt.Fprintf(b, "      toSnapshotId = %s\n", pklQuote(e.ToSnapshotID))
 		b.WriteString("    }\n")
 	}
 	b.WriteString("  }\n")
@@ -200,13 +205,11 @@ func renderValidation(b *strings.Builder, v evidence.ValidationResult) {
 	b.WriteString("  validation {\n")
 	fmt.Fprintf(b, "    schemaVersion = %s\n", pklQuote(v.SchemaVersion))
 	b.WriteString("    artifactHashes {\n")
-	keys := make([]string, 0, len(v.ArtifactHashes))
-	for k := range v.ArtifactHashes {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		fmt.Fprintf(b, "      [%s] = %s\n", pklQuote(k), pklQuote(v.ArtifactHashes[k]))
+	for _, h := range v.ArtifactHashes {
+		b.WriteString("      new {\n")
+		fmt.Fprintf(b, "        path = %s\n", pklQuote(h.Path))
+		fmt.Fprintf(b, "        sha256 = %s\n", pklQuote(h.SHA256))
+		b.WriteString("      }\n")
 	}
 	b.WriteString("    }\n")
 	fmt.Fprintf(b, "    structurallyValid = %v\n", v.StructurallyValid)
