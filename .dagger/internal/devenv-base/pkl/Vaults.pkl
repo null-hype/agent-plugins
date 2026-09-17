@@ -31,12 +31,23 @@ declared: Listing<VaultSpec> = new {
       "dagger.cloud"
     }
   }
+  // "linear-release" and "claude" used to live here (see the header comment
+  // above) but don't anymore -- confirmed against the real observed
+  // inventory captured by test-global.yaml's vault-inventory gate (run
+  // 35171754006): "claude" now lives in "anthropic.ai" below (its
+  // consumers were already split -- continue-claude-session.env's own
+  // CLAUDE_CODE_OAUTH_TOKEN line already pointed at anthropic.ai/claude,
+  // only CLAUDE_SESSION_ID/CLAUDE_MAX_BUDGET_USD and
+  // linear-triage-agent.env's two refs still pointed at the stale
+  // location), and "linear-release" now lives in "jingling057" below.
+  // Neither move is recorded anywhere else -- no commit in this repo made
+  // it, so it happened directly in Proton Pass -- which is exactly the
+  // kind of drift this fact/example pair exists to catch instead of
+  // silently tolerating.
   new VaultSpec {
     name = "tidelands.dev"
     items {
-      "linear-release"
       "agent.tidelands.dev"
-      "claude"
       "pass-cli"
     }
   }
@@ -49,6 +60,22 @@ declared: Listing<VaultSpec> = new {
     name = "anthropic.ai"
     items {
       "claude"
+    }
+  }
+  // Where "linear-release" (see the "tidelands.dev" comment above) actually
+  // lives now, confirmed against the same real observed inventory. The
+  // vault is genuinely named "jingling057" in Proton Pass, not a typo for
+  // an item name -- confirmed by the same inventory capture showing it as
+  // a top-level vault with its own item list (which also happens to
+  // contain a duplicate "agent.tidelands.dev" item; that duplicate isn't
+  // declared here since every consumer of that item already resolves it
+  // via the "tidelands.dev" vault above, and this file only declares
+  // vault/item pairs actually referenced by a pass:// URI somewhere in
+  // this repo).
+  new VaultSpec {
+    name = "jingling057"
+    items {
+      "linear-release"
     }
   }
   // JIN-90's dead-drop scenario (test/_global/jin-90-dead-drop.sh) plants,
