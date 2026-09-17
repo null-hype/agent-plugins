@@ -1,0 +1,153 @@
+/// CIT-147 package contract: the versioned, externally-consumable shape of
+/// one exported feature-test run + its restic snapshot evidence.
+///
+/// Two roles live in this repo for Pkl (see capability-spike/README.md for
+/// the domain-facts role): this module is the *package contract* --
+/// `internal/export` renders a concrete `EvidencePackage` instance as Pkl
+/// source and evaluates it against this schema (real pkl-go evaluation, not
+/// just Go-side struct construction) so a structurally invalid export fails
+/// loudly during CI/export rather than being silently packaged.
+///
+/// `CapabilityFact`/`CapabilityGrant`/`CapabilityObservation`/
+/// `ReconciliationFlag` mirror capability-spike's Go types field-for-field
+/// (diagnostic.Diagnostic, supervisor.Grant, runtime.Observation,
+/// reconcile.Flag) so CIT-146's devcontainer scenario becomes an additional
+/// input later without renaming anything here.
+module evidence
+
+/// The domain verdict for one check/fact, independent of whether the
+/// *package itself* validated structurally (see `ValidationResult`).
+typealias Outcome = "passed"|"failed"|"skipped"|"eval-error"
+
+/// Mirrors reconcile.FlagKind exactly (capability-spike/reconcile/reconcile.go).
+typealias FlagKind =
+  "unapproved-materialization"|"missing-materialization"|"reason-mismatch"|"boundary-bypassed"
+
+/// A stable fact ID, per capability-spike's convention: a free-form string
+/// threaded unchanged across the Pkl fact, the thrown diagnostic, the grant
+/// state map key, and the Proton observation's FactID/Reason. Aliased here
+/// (rather than left as bare String) so a future stricter check can tighten
+/// this without changing every call site.
+typealias FactID = String
+
+/// Binds one export to its repository revision, GitHub Actions run/attempt,
+/// and job/step references -- sourced from the Actions Jobs API
+/// (`internal/ghactions`), not scraped from this workflow's own log output.
+class ExecutionIdentity {
+  sourceRevision: String
+  workflowRunId: String
+  workflowRunAttempt: String
+  runUrl: String
+  jobName: String
+  stepRefs: Listing<String>
+  /// The single name used consistently across the feature test, the pass-cli
+  /// `tag` assignment, the restic snapshot tag, and (eventually) TK lesson
+  /// identity.
+  scenarioName: String
+}
+
+/// One check/fact's recorded outcome. `detail` carries the structured
+/// diagnostic/failure text when available (e.g. a JUnit `<failure message>`
+/// for a Pkl-test-backed fact) -- never a scraped log line.
+class CheckResult {
+  label: String
+  outcome: Outcome
+  detail: String?
+}
+
+/// A scenario with no deeper structured test runner beneath it (e.g. a plain
+/// bash `check`/`reportResults` scenario like `restic-backup`) legitimately
+/// has an empty `checks` listing -- its `outcome` still reflects the real
+/// GitHub Actions job/step conclusion, just without per-check granularity.
+class ScenarioResult {
+  scenarioName: String
+  outcome: Outcome
+  checks: Listing<CheckResult>
+}
+
+class SnapshotRef {
+  id: String
+  shortId: String
+  tag: String
+  takenAt: String
+}
+
+class FileTreeEntry {
+  path: String
+  type: "file"|"dir"
+  size: Int?
+}
+
+class DiffEntry {
+  path: String
+  changeType: "added"|"removed"|"modified"
+}
+
+/// A packaged log excerpt -- sourced from the GitHub Actions job-logs API or
+/// a structured test runner's own captured output (e.g. JUnit
+/// `<system-out>`), never a raw tee of this workflow's combined stdout.
+class LogExcerpt {
+  source: String
+  content: String
+}
+
+/// Mirrors diagnostic.Diagnostic (capability-spike/diagnostic/diagnostic.go).
+class CapabilityFact {
+  factId: FactID
+  severity: String
+  code: String
+  vault: String
+  message: String
+}
+
+/// Mirrors supervisor.Grant (capability-spike/supervisor/state.go).
+class CapabilityGrant {
+  factId: FactID
+  vault: String
+  approved: Boolean
+}
+
+/// Mirrors runtime.Observation (capability-spike/runtime/proton.go).
+class CapabilityObservation {
+  factId: FactID
+  vault: String
+  reason: String
+  operation: String
+  recordedAt: String
+}
+
+/// Mirrors reconcile.Flag (capability-spike/reconcile/reconcile.go).
+class ReconciliationFlag {
+  kind: FlagKind
+  factId: FactID
+  detail: String
+}
+
+/// The exporter's own package-validation verdict -- kept distinct from the
+/// recorded domain verdict in `ScenarioResult`/`CheckResult` per the issue's
+/// ask to keep the two identifiable separately.
+class ValidationResult {
+  schemaVersion: String
+  artifactHashes: Mapping<String, String>
+  structurallyValid: Boolean
+  validationErrors: Listing<String>
+}
+
+class EvidencePackage {
+  schemaVersion: String
+  execution: ExecutionIdentity
+  scenario: ScenarioResult
+  snapshots: Listing<SnapshotRef>
+  fileTree: Listing<FileTreeEntry>
+  diff: Listing<DiffEntry>
+  logs: Listing<LogExcerpt>
+
+  /// Populated once a capability-spike scenario (CIT-146) is an input;
+  /// empty listings are valid and expected until then.
+  capabilityFacts: Listing<CapabilityFact>
+  capabilityGrants: Listing<CapabilityGrant>
+  capabilityObservations: Listing<CapabilityObservation>
+  reconciliationFlags: Listing<ReconciliationFlag>
+
+  validation: ValidationResult
+}
