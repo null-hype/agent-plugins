@@ -74,8 +74,26 @@ jobs:
           pass-cli login
           pass-cli info
           bash .dagger/internal/devenv-base/hk/capture-vault-inventory.sh
-          pkl test .dagger/internal/devenv-base/pkl/Vaults.test.pkl
+          pkl_status=0
+          pkl test .dagger/internal/devenv-base/pkl/Vaults.test.pkl || pkl_status=$?
           pass-cli logout || true
+          exit "$pkl_status"
+
+      # JIN-116 follow-up: capture-vault-inventory.sh lists every vault's
+      # items, not just the ones Vaults.pkl declares -- but Vaults.test.pkl's
+      # facts/examples only ever print the declared subset, so a real,
+      # undeclared vault (or an item that moved out from under a declared
+      # one) is invisible from the pkl test output alone. Uploading the raw
+      # JSON here, `if: always()` so it survives the gate above failing, is
+      # what makes "which vault does this stale reference actually belong
+      # to now" answerable without a live pass-cli session.
+      - name: "Upload observed vault inventory (JIN-116)"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vaults-observed
+          path: .dagger/internal/devenv-base/build/vaults-observed.json
+          if-no-files-found: ignore
 
       - name: "Testing all scenarios (feature-local and global)"
         env:
