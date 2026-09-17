@@ -138,6 +138,59 @@ module (which has no top-level `EvidencePackage` value of its own, only
 class/type definitions) and would require a `pkl` binary at TK's runtime,
 which the exported JSON doesn't need.
 
+## TK lesson import (`cmd/tk-import`)
+
+`cmd/export` produces the contract; `cmd/tk-import` is the first real
+consumer of it, turning one `evidence.json` into a static Tutorial Kit
+lesson directory:
+
+```
+go run ./cmd/tk-import -evidence-json build/tk-evidence/evidence.json -out /path/to/lesson-N
+```
+
+This writes `content.mdx` plus a `_files/evidence/**` tree (one JSON file
+per `EvidencePackage` section, plus a `README.md` index) at `-out`. TK
+mounts a lesson's `_files/**` directly into its WebContainer editor and file
+tree at lesson load -- confirmed live against `null-hype/null-hype.github.io`
+(see "Verified so far" below) -- so this needs no React component, no
+`tutorialStore` calls, and no WebContainer runtime interaction at all.
+
+**Deliberately static, not a reuse of `null-hype.github.io#38`'s live
+`retrospective-mcp` bridge.** That bridge needs a deployed VM, a Cloudflare
+tunnel, and a native `dagger mcp` process reading exports from a *different*
+repo (`build_restic_model.py` in devenv-base-gce); its schema is also a
+before/after snapshot *pair* (two 64-hex ids), which a single-snapshot
+`EvidencePackage` can't satisfy without inventing a second snapshot. None of
+that machinery is needed here -- the whole point of `-out`'s generated
+`content.mdx` is that the published lesson consumes static artifacts.
+
+**Honesty constraints `content.mdx` enforces, not just documents:**
+
+- Every `EvidencePackage` list that's legitimately empty in a given export
+  (`checks`, `diff`, `logs`, `capabilityFacts`/etc.) is rendered as "not
+  captured in this run" / "not populated", never silently omitted or implied
+  to mean "nothing wrong happened." See `buildLessonFiles`'s "What's
+  available, and what isn't" table.
+- The scenario script's own recorded verdict (`scenario.outcome`) and this
+  run's real GitHub Actions job/step conclusions (`execution.stepRefs`) are
+  two different granularities of outcome and are both surfaced, distinctly,
+  even when they disagree -- `failingSteps` finds any step GitHub itself
+  marked non-`success`, independent of what the scenario script recorded.
+  A real run (35172465388, commit `d9a581d`) exercises exactly this: the
+  scenario recorded `passed` while the job's own "Testing all scenarios"
+  step concluded `failure` (an unrelated scenario in the same job) -- see
+  `testdata/evidence_real_run_d9a581d.json` and
+  `cmd/tk-import/main_test.go`'s `TestBuildLessonFilesRealFixture`, which
+  fails if either verdict stops being surfaced.
+
+`content.mdx`'s own opening line ("This lesson is generated, not authored")
+is a real constraint on this tool, not just a description: nothing about a
+specific run is meant to be hand-edited into the generated output -- doc/
+framing text about *why* a lesson exists belongs in that lesson's chapter
+`meta.md` instead (see the CIT-147 lesson under `part-1/chapter-3/` in
+`null-hype.github.io` for the pattern), keeping the generated files an
+honest, reproducible function of the input `evidence.json`.
+
 ## Provenance and validation claims
 
 `ValidationResult` (inside the package) separates two independently
@@ -262,25 +315,39 @@ structured runner exists to provide it.
   a nested-sandbox artifact, not something a real `ubuntu-latest` runner
   hits).
 
+## Confirmed on a real `workflow_dispatch` run
+
+Everything in the previous section's list *was* the gap before a live run
+existed. CI run
+[35172465388](https://github.com/null-hype/agent-plugins/actions/runs/35172465388)
+(commit `d9a581d8`) closed it: `restic-backup.sh` ran for real against real
+`pass-cli`/restic/GCP credentials, its evidence really did land under
+`devcontainer features test`'s bind-mounted scratch directory and got picked
+up by the workflow's `find`, `jdx/mise-action` really did put `pkl` on the
+runner's `PATH`, and the real GitHub Actions Jobs API (not the mocked test
+server) supplied `execution.stepRefs`. `cmd/export` produced a real,
+structurally valid `evidence.json` with a real snapshot
+(`eca7f3c2...`), 16 real `fileTree` entries, and zero validation errors --
+downloaded and checked into `testdata/evidence_real_run_d9a581d.json` for
+`cmd/tk-import`'s tests. `cmd/tk-import`'s output from that same file was
+also confirmed rendering correctly in a real `astro dev` Tutorial Kit
+instance (see `cmd/tk-import`'s section above).
+
+The one thing that run's outcome itself demonstrates rather than resolves:
+the job still finished `failure` overall, because `jin-90-dead-drop` (an
+unrelated scenario in the same job) hit a real Proton Pass `NotAllowed`
+error creating a note. That's a real, separate bug to track -- not a gap in
+this exporter, which correctly recorded `restic-backup`'s own `passed`
+verdict independent of it (see `cmd/tk-import`'s honesty-constraint section
+above for how the two are kept visibly distinct rather than collapsed).
+
 ## Not verified here (needs a real `workflow_dispatch` run)
 
-- That `restic-backup.sh`'s evidence actually lands under
-  `/tmp/devcontainercli/container-features-test/*/evidence/` on a real
-  runner and the workflow's `find` picks it up. The underlying mount
-  mechanism is confirmed (see above); the full round trip on a real,
-  non-nested runner is not.
-- Live GitHub Actions Jobs API behavior against a real run/job (the test
-  suite exercises `internal/ghactions` against a mocked server, not the real
-  API) -- though this is now only relevant to a direct/manual `cmd/export`
-  invocation that omits `-scenario-outcome-json`; `test-global.yaml` itself
-  always passes that flag when `restic-backup.sh` ran at all.
-- `color`'s `restic backup --json` writing a real, parseable summary line to
-  `/tmp/pass-cli-restic-backup.json`, and `restic-backup.sh`'s `on_exit`
-  trap, against real `pass-cli`/restic/GCP credentials -- this sandbox has
-  none of those, so this logic was only checked via `bash -n` and the `jq`
-  summary-extraction expression tested standalone against synthetic
-  `--json` output shaped like restic's documented summary line (see
-  "Verified so far" below), not by actually running `color`/the scenario.
-- `jdx/mise-action` actually installing `pkl` (per this repo's `mise.toml`)
-  onto a real `ubuntu-latest` runner's `PATH` before `cmd/export` runs --
-  not exercisable without a live `workflow_dispatch`.
+- A run where `restic-backup.sh` produces a snapshot *pair* (two backups),
+  so `-diff-json`/`DiffEntry` gets exercised against real `restic diff`
+  output rather than only unit-tested against a synthetic fixture -- the
+  real run above had exactly one snapshot.
+- CIT-146's capability-spike scenario as a real `-junit-dir` input --
+  `CapabilityFacts`/etc. are still only exercised against capability-spike's
+  own existing fixtures (see "Verified so far" above), not a real
+  devcontainer feature test run.
