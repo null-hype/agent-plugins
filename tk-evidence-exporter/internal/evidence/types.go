@@ -141,6 +141,59 @@ type ValidationResult struct {
 	ValidationErrors  []string       `pkl:"validationErrors" json:"validationErrors"`
 }
 
+// TransitionKind mirrors the Pkl typealias of the same name. Go alias for
+// the same pkl-go decoding reason as Outcome/FlagKind above.
+type TransitionKind = string
+
+const (
+	TransitionEvaluation      TransitionKind = "evaluation"
+	TransitionPolicyDecision  TransitionKind = "policy-decision"
+	TransitionMaterialization TransitionKind = "materialization"
+	TransitionReconciliation  TransitionKind = "reconciliation"
+)
+
+// Transition mirrors Evidence.pkl's Transition class -- one step in a
+// capability-decision sequence. See that class's doc comment for why
+// governingRule/the nested fact-or-flag's own message/detail carry real,
+// not re-authored, text.
+type Transition struct {
+	Index         int                    `pkl:"index" json:"index"`
+	Kind          TransitionKind         `pkl:"kind" json:"kind"`
+	Label         string                 `pkl:"label" json:"label"`
+	FactID        *string                `pkl:"factId" json:"factId"`
+	Vault         *string                `pkl:"vault" json:"vault"`
+	GoverningRule *string                `pkl:"governingRule" json:"governingRule"`
+	Fact          *CapabilityFact        `pkl:"fact" json:"fact"`
+	Grant         *CapabilityGrant       `pkl:"grant" json:"grant"`
+	Observation   *CapabilityObservation `pkl:"observation" json:"observation"`
+	Flag          *ReconciliationFlag    `pkl:"flag" json:"flag"`
+}
+
+// Check mirrors Evidence.pkl's Check class -- a governing rule a
+// supervisor enforces, independent of any single observation of it. See
+// that class's doc comment for why Constraint must be verbatim source
+// text, not re-authored prose.
+type Check struct {
+	ID          string `pkl:"id" json:"id"`
+	Requirement string `pkl:"requirement" json:"requirement"`
+	Constraint  string `pkl:"constraint" json:"constraint"`
+	Source      string `pkl:"source" json:"source"`
+	SourceRef   string `pkl:"sourceRef" json:"sourceRef"`
+}
+
+// CapabilityTrace mirrors Evidence.pkl's CapabilityTrace class -- a
+// sequence of Transitions produced by one execution adapter, plus the
+// Check(s) a consumer evaluates that recorded state against. A sibling
+// top-level type to Package, not nested under it.
+type CapabilityTrace struct {
+	TraceID     string       `pkl:"traceId" json:"traceId"`
+	Scenario    string       `pkl:"scenario" json:"scenario"`
+	Source      string       `pkl:"source" json:"source"`
+	SourceRef   string       `pkl:"sourceRef" json:"sourceRef"`
+	Checks      []Check      `pkl:"checks" json:"checks"`
+	Transitions []Transition `pkl:"transitions" json:"transitions"`
+}
+
 type Package struct {
 	SchemaVersion string            `pkl:"schemaVersion" json:"schemaVersion"`
 	Execution     ExecutionIdentity `pkl:"execution" json:"execution"`
@@ -212,4 +265,13 @@ func (p *Package) Normalize() {
 // DiffEntry.{from,to}SnapshotId, and replaced ValidationResult.artifactHashes
 // (previously a Pkl Mapping/JSON object) with a Listing<ArtifactHash> that
 // actually matches the array shape the exported JSON transport produces.
-const SchemaVersion = "1.1.0"
+//
+// 1.2.0: added Transition/CapabilityTrace (CIT-147 slice 2) -- a sibling
+// top-level type to EvidencePackage, not a field on it, so this bump adds a
+// new export shape without changing EvidencePackage's own fields.
+//
+// 1.3.0: added Check and CapabilityTrace.checks -- the axiom a trace's
+// transitions are evaluated against, kept separate from the transitions
+// themselves so a verdict is always computed by a consumer, never
+// replayed as pre-baked data (CIT-147 slice 2 follow-up).
+const SchemaVersion = "1.3.0"

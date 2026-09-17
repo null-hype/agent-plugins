@@ -11,7 +11,7 @@ import (
 )
 
 func TestDemoRedApproveGreenReconcile(t *testing.T) {
-	transcript, aligned, misaligned, err := runDemo(context.Background())
+	transcript, transitions, aligned, misaligned, err := runDemo(context.Background())
 	if err != nil {
 		t.Fatalf("runDemo: %v\ntranscript so far:\n%s", err, transcript)
 	}
@@ -26,6 +26,38 @@ func TestDemoRedApproveGreenReconcile(t *testing.T) {
 	}
 	if !strings.Contains(transcript, "CAP_REJECTED") {
 		t.Error("expected transcript to show the explicit-rejection diagnostic")
+	}
+
+	// CIT-147 slice 2: the structured trace must be the same execution as
+	// the transcript above, not a second, potentially-drifted run -- so it
+	// should carry the same diagnostics/flags the transcript assertions
+	// just checked, plus one transition per misaligned flag.
+	if len(transitions) == 0 {
+		t.Fatal("expected runDemo to also record transitions")
+	}
+	var sawNoGrant, sawRejected bool
+	var reconciliationTransitions int
+	for _, tr := range transitions {
+		if tr.Fact != nil && tr.Fact.Code == "CAP_NO_GRANT" {
+			sawNoGrant = true
+		}
+		if tr.Fact != nil && tr.Fact.Code == "CAP_REJECTED" {
+			sawRejected = true
+		}
+		if tr.Kind == "reconciliation" {
+			reconciliationTransitions++
+		}
+	}
+	if !sawNoGrant {
+		t.Error("expected a transition carrying the CAP_NO_GRANT diagnostic")
+	}
+	if !sawRejected {
+		t.Error("expected a transition carrying the CAP_REJECTED diagnostic")
+	}
+	// One reconciliation transition for the pre-materialization check, one
+	// for the aligned pass, plus one per misaligned flag.
+	if want := 2 + len(misaligned); reconciliationTransitions != want {
+		t.Errorf("expected %d reconciliation transitions, got %d", want, reconciliationTransitions)
 	}
 }
 

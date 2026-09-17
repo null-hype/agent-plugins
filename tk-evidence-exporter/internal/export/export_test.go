@@ -2,6 +2,9 @@ package export
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 
 	"dagger/tk-evidence-exporter/internal/evidence"
@@ -148,6 +151,77 @@ func TestDiagnoseCleanPackageHasNoWarnings(t *testing.T) {
 	pkg := samplePackage()
 	if warnings := Diagnose(pkg); len(warnings) != 0 {
 		t.Errorf("expected no warnings for a consistent package, got %v", warnings)
+	}
+}
+
+// TestEvaluateCapabilityTraceRealFixture is the shape-agreement check for
+// CIT-147 slice 2's real adapter: capability-spike's `cmd/trace-export`
+// (a separate Go module, deliberately not imported here) emits JSON
+// matching Evidence.pkl's CapabilityTrace class by field-name discipline
+// alone. This test evaluates a captured real run of that tool
+// (testdata/capability_trace_real.json, produced by
+// `go run . -trace-out=...` in capability-spike) through a real pkl-go
+// evaluator against the schema -- the cross-module check the plan
+// substitutes for a Go dependency between the two modules.
+func TestEvaluateCapabilityTraceRealFixture(t *testing.T) {
+	data, err := os.ReadFile("../../testdata/capability_trace_real.json")
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	var trace evidence.CapabilityTrace
+	if err := json.Unmarshal(data, &trace); err != nil {
+		t.Fatalf("decoding fixture: %v", err)
+	}
+
+	got, err := EvaluateCapabilityTrace(context.Background(), trace)
+	if err != nil {
+		t.Fatalf("EvaluateCapabilityTrace: %v", err)
+	}
+
+	if got.Source != "capability-spike-demo" {
+		t.Errorf("source = %q, want capability-spike-demo", got.Source)
+	}
+	if got.SourceRef == "" {
+		t.Error("sourceRef is empty -- provenance must always be identified")
+	}
+	if len(got.Transitions) != len(trace.Transitions) {
+		t.Errorf("got %d transitions after round-trip, want %d", len(got.Transitions), len(trace.Transitions))
+	}
+
+	var sawNoGrant, sawRejected, sawMaterialization int
+	for _, tr := range got.Transitions {
+		if tr.Fact != nil && tr.Fact.Code == "CAP_NO_GRANT" {
+			sawNoGrant++
+		}
+		if tr.Fact != nil && tr.Fact.Code == "CAP_REJECTED" {
+			sawRejected++
+		}
+		if tr.Observation != nil {
+			sawMaterialization++
+		}
+	}
+	if sawNoGrant != 1 {
+		t.Errorf("expected exactly 1 CAP_NO_GRANT transition, got %d", sawNoGrant)
+	}
+	if sawRejected != 1 {
+		t.Errorf("expected exactly 1 CAP_REJECTED transition, got %d", sawRejected)
+	}
+	if sawMaterialization != 1 {
+		t.Errorf("expected exactly 1 transition carrying an observation, got %d", sawMaterialization)
+	}
+
+	if len(got.Checks) != 1 {
+		t.Fatalf("expected exactly 1 check (the approval axiom), got %d", len(got.Checks))
+	}
+	check := got.Checks[0]
+	if check.ID != "ledger.checkAccess" {
+		t.Errorf("check.ID = %q, want ledger.checkAccess", check.ID)
+	}
+	if !strings.Contains(check.Constraint, "function checkAccess") {
+		t.Errorf("check.Constraint does not contain the verbatim checkAccess() source: %q", check.Constraint)
+	}
+	if check.Source == "" || check.SourceRef == "" {
+		t.Error("check.Source/SourceRef must never be empty -- the axiom's provenance must be identified")
 	}
 }
 

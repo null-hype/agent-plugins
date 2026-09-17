@@ -166,6 +166,71 @@ class ValidationResult {
   validationErrors: Listing<String>
 }
 
+/// One step in a capability-decision sequence (CIT-147 slice 2): a worker
+/// fact evaluation, a supervisor policy decision, a materialization, or a
+/// reconciliation check. `governingRule`/the nested fact-or-flag's own
+/// message/detail field are the *real* text a Pkl constraint or
+/// reconciliation check produced -- never re-authored prose -- so a
+/// `Transition` can be presented as rule+observation+evaluation without any
+/// in-browser Pkl evaluation.
+typealias TransitionKind = "evaluation"|"policy-decision"|"materialization"|"reconciliation"
+
+class Transition {
+  index: Int
+  kind: TransitionKind
+  label: String
+  factId: FactID?
+  vault: String?
+  /// The real diagnostic/flag text governing this transition (e.g.
+  /// `Ledger.pkl`'s own thrown message, or a reconciliation flag's detail
+  /// string) -- omitted only when this transition carries no such text of
+  /// its own (e.g. a plain "approved" grant has none beyond the grant
+  /// itself).
+  governingRule: String?
+  fact: CapabilityFact?
+  grant: CapabilityGrant?
+  observation: CapabilityObservation?
+  flag: ReconciliationFlag?
+}
+
+/// A governing rule a supervisor enforces, independent of any single
+/// observation of it. `requirement` is a hand-written one-sentence
+/// restatement of what `constraint` does -- not decorative prose, a
+/// literal description of the same logic. `constraint` is the exact
+/// function/rule text copied verbatim from `source` at `sourceRef`, not
+/// reworded or summarized -- so a lesson can show the actual axiom a
+/// trace's transitions are evaluated against, not just their outcomes.
+class Check {
+  id: String
+  requirement: String
+  constraint: String
+  source: String
+  sourceRef: String
+}
+
+/// A sequence of `Transition`s produced by one execution adapter over the
+/// same capability-decision model `EvidencePackage`'s capability* fields
+/// use. Deliberately a sibling top-level type, not nested under
+/// `EvidencePackage` -- a lesson can consume a trace on its own.
+class CapabilityTrace {
+  traceId: String
+  scenario: String
+  /// Identifies which adapter produced this trace (e.g.
+  /// "capability-spike-demo" | "webcontainer-mock-test") -- a consumer must
+  /// never infer provenance, only read it here.
+  source: String
+  /// A real commit SHA for a captured execution; a short human description
+  /// of what's mocked and why for a non-captured adapter. Never omitted.
+  sourceRef: String
+  /// The axiom(s) this trace's transitions are evidence for or against.
+  /// A trace's `transitions` carry raw recorded state (grants, facts,
+  /// diagnostics); `checks` is what a consumer evaluates that state
+  /// against to reach a verdict -- kept separate so the verdict is always
+  /// computed, never itself replayed as pre-baked data.
+  checks: Listing<Check>
+  transitions: Listing<Transition>
+}
+
 class EvidencePackage {
   schemaVersion: String
   execution: ExecutionIdentity

@@ -68,6 +68,45 @@ func Evaluate(ctx context.Context, pkg evidence.Package) (evidence.Package, erro
 	return out.Result, nil
 }
 
+type evaluatedTrace struct {
+	Result evidence.CapabilityTrace `pkl:"result"`
+}
+
+// EvaluateCapabilityTrace is Evaluate's counterpart for the sibling
+// CapabilityTrace root type (CIT-147 slice 2): same scratch-dir
+// generate-then-evaluate pattern, validating a captured or mocked trace
+// against Evidence.pkl's CapabilityTrace class through a real pkl-go
+// evaluator.
+func EvaluateCapabilityTrace(ctx context.Context, trace evidence.CapabilityTrace) (evidence.CapabilityTrace, error) {
+	dir, err := os.MkdirTemp("", "tk-evidence-exporter-trace-*")
+	if err != nil {
+		return evidence.CapabilityTrace{}, fmt.Errorf("export: creating scratch dir: %w", err)
+	}
+	defer os.RemoveAll(dir)
+
+	schemaPath := filepath.Join(dir, "Evidence.pkl")
+	if err := os.WriteFile(schemaPath, pklschema.EvidencePkl, 0o644); err != nil {
+		return evidence.CapabilityTrace{}, fmt.Errorf("export: writing schema: %w", err)
+	}
+
+	instancePath := filepath.Join(dir, "instance.pkl")
+	if err := os.WriteFile(instancePath, []byte(renderCapabilityTraceInstance(trace)), 0o644); err != nil {
+		return evidence.CapabilityTrace{}, fmt.Errorf("export: writing instance: %w", err)
+	}
+
+	evaluator, err := pkl.NewEvaluator(ctx, pkl.PreconfiguredOptions)
+	if err != nil {
+		return evidence.CapabilityTrace{}, fmt.Errorf("export: starting pkl evaluator: %w", err)
+	}
+	defer evaluator.Close()
+
+	var out evaluatedTrace
+	if err := evaluator.EvaluateModule(ctx, pkl.FileSource(instancePath), &out); err != nil {
+		return evidence.CapabilityTrace{}, fmt.Errorf("export: trace failed Pkl validation: %w", err)
+	}
+	return out.Result, nil
+}
+
 // CapabilityFactsFromChecks extracts the structured CAP_* diagnostic fields
 // out of any checks that carry one (see pkljunit.ParseDiagnostic), so a
 // capability-spike scenario's `pkl test --junit-reports` output becomes real
