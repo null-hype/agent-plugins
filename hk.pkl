@@ -44,6 +44,24 @@ hooks {
                     effect = "read"
                 }
             }
+            // CIT-150: the capability-spike axioms that need nothing but
+            // pkl -- Inventory.pkl's declared-vs-observed check and
+            // Reconcile.pkl's fact/grant/observation alignment check.
+            // Deliberately not the whole spike: `go run .` / `go test
+            // ./...` need a Go toolchain and rewrite the git-ignored
+            // pkl/GrantState.pkl, so they stay manual. These two read
+            // only committed fixtures and no credentials, which is what
+            // makes them cheap enough to run on every `hk check`.
+            // Reconcile.test.pkl's examples{} block also re-reads its own
+            // -expected.pcf, so this step is what catches a diagnostic
+            // message degrading while every assertion stays green.
+            ["capability-axioms"] {
+                dir = "capability-spike"
+                check {
+                    command = "mise exec -- pkl test pkl/Inventory.test.pkl pkl/Reconcile.test.pkl"
+                    effect = "read"
+                }
+            }
             // Syncs pushed commits to the Linear "Development" release.
             // Runs here (not pre-push) since it's a post-push sync, not a
             // push gate -- a stale pass-cli session or a renamed vault
