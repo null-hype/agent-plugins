@@ -1,0 +1,16 @@
+/// Negative fixture: the supervisor has decided on this fact and
+/// recorded an explicit rejection (approved = false), distinct from
+/// never having decided at all (CAP_NO_GRANT, see never_approved.pkl).
+/// Demonstrates CAP_REJECTED.
+amends "pkl:test"
+
+import "../../pkl/Ledger.pkl"
+
+local factID = "area51:site4:black-budget-vault-access"
+local requestedVault = "site4.internal"
+
+facts {
+  ["above my pay grade"] {
+    Ledger.checkAccess(factID, requestedVault)
+  }
+}

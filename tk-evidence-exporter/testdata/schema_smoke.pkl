@@ -1,0 +1,47 @@
+import "../pkl/Evidence.pkl"
+
+result: Evidence.EvidencePackage = new Evidence.EvidencePackage {
+  schemaVersion = "1.1.0"
+  execution {
+    sourceRevision = "abc123"
+    workflowRunId = "42"
+    workflowRunAttempt = "1"
+    runUrl = "https://github.com/null-hype/agent-plugins/actions/runs/42"
+    jobName = "test-scenarios"
+    stepRefs { "Testing all scenarios (feature-local and global)" }
+    scenarioName = "restic-backup"
+    snapshotId = "deadbeef"
+  }
+  scenario {
+    scenarioName = "restic-backup"
+    outcome = "passed"
+    checks {}
+  }
+  snapshots {
+    new {
+      id = "deadbeef"
+      shortId = "deadbee"
+      tag = "restic-backup"
+      takenAt = "2026-09-16T00:00:00Z"
+    }
+  }
+  fileTree {
+    new {
+      path = "/root/.claude"
+      type = "dir"
+      snapshotId = "deadbeef"
+    }
+  }
+  diff {}
+  logs {}
+  capabilityFacts {}
+  capabilityGrants {}
+  capabilityObservations {}
+  reconciliationFlags {}
+  validation {
+    schemaVersion = "1.1.0"
+    artifactHashes {}
+    structurallyValid = true
+    validationErrors {}
+  }
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="explicitly_rejected" tests="1" failures="1">
+    <testcase classname="explicitly_rejected.facts" name="above my pay grade">
+        <error message="CAP_REJECTED fact=area51:site4:black-budget-vault-access vault=site4.internal: supervisor explicitly rejected this request">–– Pkl Error ––
+CAP_REJECTED fact=area51:site4:black-budget-vault-access vault=site4.internal: supervisor explicitly rejected this request
+
+22 | throw(&quot;\(code) fact=\(factID) vault=\(vault): \(message)&quot;)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#deny (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 22)
+
+32 | deny(&quot;CAP_REJECTED&quot;, factID, vault, &quot;supervisor explicitly rejected this request&quot;)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#checkAccess (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 32)
+
+28 | let (grant = GrantState.approvedGrants.getOrNull(factID))
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#checkAccess.&lt;let expr&gt; (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 28)
+
+14 | Ledger.checkAccess(factID, requestedVault)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at explicitly_rejected#facts[&quot;above my pay grade&quot;][#1] (file:///workspaces/agent-plugins/capability-spike/worker/fixtures_invalid/explicitly_rejected.pkl, line 14)
+</error>
+    </testcase>
+</testsuite>

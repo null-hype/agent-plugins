@@ -1,0 +1,251 @@
+/// CIT-147 package contract: the versioned, externally-consumable shape of
+/// one exported feature-test run + its restic snapshot evidence.
+///
+/// Two roles live in this repo for Pkl (see capability-spike/README.md for
+/// the domain-facts role): this module is the *package contract* --
+/// `internal/export` renders a concrete `EvidencePackage` instance as Pkl
+/// source and evaluates it against this schema (real pkl-go evaluation, not
+/// just Go-side struct construction) so a structurally invalid export fails
+/// loudly during CI/export rather than being silently packaged.
+///
+/// `CapabilityFact`/`CapabilityGrant`/`CapabilityObservation`/
+/// `ReconciliationFlag` mirror capability-spike's Go types field-for-field
+/// (diagnostic.Diagnostic, supervisor.Grant, runtime.Observation,
+/// reconcile.Flag) so CIT-146's devcontainer scenario becomes an additional
+/// input later without renaming anything here.
+module evidence
+
+/// The domain verdict for one check/fact, independent of whether the
+/// *package itself* validated structurally (see `ValidationResult`).
+typealias Outcome = "passed"|"failed"|"skipped"|"eval-error"
+
+/// Mirrors reconcile.FlagKind exactly (capability-spike/reconcile/reconcile.go).
+typealias FlagKind =
+  "unapproved-materialization"|"missing-materialization"|"reason-mismatch"|"boundary-bypassed"
+
+/// A stable fact ID, per capability-spike's convention: a free-form string
+/// threaded unchanged across the Pkl fact, the thrown diagnostic, the grant
+/// state map key, and the Proton observation's FactID/Reason. Aliased here
+/// (rather than left as bare String) so a future stricter check can tighten
+/// this without changing every call site.
+typealias FactID = String
+
+/// Binds one export to its repository revision, GitHub Actions run/attempt,
+/// and job/step references -- sourced from the Actions Jobs API
+/// (`internal/ghactions`), not scraped from this workflow's own log output.
+class ExecutionIdentity {
+  sourceRevision: String
+  workflowRunId: String
+  workflowRunAttempt: String
+  runUrl: String
+  jobName: String
+  stepRefs: Listing<String>
+  /// The single name used consistently across the feature test, the pass-cli
+  /// `tag` assignment, the restic snapshot tag, and (eventually) TK lesson
+  /// identity.
+  scenarioName: String
+  /// The exact restic snapshot ID `color` produced *during this run*,
+  /// captured directly from that backup invocation's own `--json` summary
+  /// output (see restic-backup.sh) rather than queried afterward by tag --
+  /// a query against this shared/persistent restic repo can't rule out a
+  /// concurrent run's snapshot sharing the same tag. `null` when this run
+  /// produced no snapshot (e.g. the scenario was skipped or failed before
+  /// backing up).
+  snapshotId: String?
+}
+
+/// One check/fact's recorded outcome. `detail` carries the structured
+/// diagnostic/failure text when available (e.g. a JUnit `<failure message>`
+/// for a Pkl-test-backed fact) -- never a scraped log line.
+class CheckResult {
+  label: String
+  outcome: Outcome
+  detail: String?
+}
+
+/// A scenario with no deeper structured test runner beneath it (e.g. a plain
+/// bash `check`/`reportResults` scenario like `restic-backup`) legitimately
+/// has an empty `checks` listing -- its `outcome` still reflects the
+/// scenario script's own recorded verdict (or an explicit `eval-error` when
+/// that's unavailable; see cmd/export's `resolveScenarioOutcome`), just
+/// without per-check granularity.
+class ScenarioResult {
+  scenarioName: String
+  outcome: Outcome
+  checks: Listing<CheckResult>
+}
+
+class SnapshotRef {
+  id: String
+  shortId: String
+  tag: String
+  takenAt: String
+}
+
+class FileTreeEntry {
+  path: String
+  type: "file"|"dir"
+  size: Int?
+  /// The restic snapshot this entry was listed from (`restic ls`'s own
+  /// "snapshot" header line carries this) -- required so a future package
+  /// combining file trees from more than one snapshot can tell entries
+  /// apart, and so a consumer can verify this tree matches
+  /// `execution.snapshotId`.
+  snapshotId: String
+}
+
+class DiffEntry {
+  path: String
+  changeType: "added"|"removed"|"modified"
+  /// The two snapshot IDs `restic diff` compared, from its own trailing
+  /// "statistics" line (`source_snapshot`/`target_snapshot`) -- not
+  /// re-derived from the top-level `snapshots` listing, which this diff may
+  /// not even fully overlap with.
+  fromSnapshotId: String
+  toSnapshotId: String
+}
+
+/// A packaged log excerpt -- sourced from the GitHub Actions job-logs API or
+/// a structured test runner's own captured output (e.g. JUnit
+/// `<system-out>`), never a raw tee of this workflow's combined stdout.
+class LogExcerpt {
+  source: String
+  content: String
+}
+
+/// Mirrors diagnostic.Diagnostic (capability-spike/diagnostic/diagnostic.go).
+class CapabilityFact {
+  factId: FactID
+  severity: String
+  code: String
+  vault: String
+  message: String
+}
+
+/// Mirrors supervisor.Grant (capability-spike/supervisor/state.go).
+class CapabilityGrant {
+  factId: FactID
+  vault: String
+  approved: Boolean
+}
+
+/// Mirrors runtime.Observation (capability-spike/runtime/proton.go).
+class CapabilityObservation {
+  factId: FactID
+  vault: String
+  reason: String
+  operation: String
+  recordedAt: String
+}
+
+/// Mirrors reconcile.Flag (capability-spike/reconcile/reconcile.go).
+class ReconciliationFlag {
+  kind: FlagKind
+  factId: FactID
+  detail: String
+}
+
+/// One input file's content hash, keyed by path rather than held in a Pkl
+/// `Mapping` -- the exported JSON transport is a plain array of objects
+/// (`json.Marshal` has no way to emit a native `Map`), and modeling that
+/// directly here keeps the generated TypeScript binding (`Array<ArtifactHash>`)
+/// honest about the shape a consumer actually receives, instead of declaring
+/// a `Map<string, string>` that `JSON.parse` can never produce.
+class ArtifactHash {
+  path: String
+  sha256: String
+}
+
+/// The exporter's own package-validation verdict -- kept distinct from the
+/// recorded domain verdict in `ScenarioResult`/`CheckResult` per the issue's
+/// ask to keep the two identifiable separately.
+class ValidationResult {
+  schemaVersion: String
+  artifactHashes: Listing<ArtifactHash>
+  structurallyValid: Boolean
+  validationErrors: Listing<String>
+}
+
+/// One step in a capability-decision sequence (CIT-147 slice 2): a worker
+/// fact evaluation, a supervisor policy decision, a materialization, or a
+/// reconciliation check. `governingRule`/the nested fact-or-flag's own
+/// message/detail field are the *real* text a Pkl constraint or
+/// reconciliation check produced -- never re-authored prose -- so a
+/// `Transition` can be presented as rule+observation+evaluation without any
+/// in-browser Pkl evaluation.
+typealias TransitionKind = "evaluation"|"policy-decision"|"materialization"|"reconciliation"
+
+class Transition {
+  index: Int
+  kind: TransitionKind
+  label: String
+  factId: FactID?
+  vault: String?
+  /// The real diagnostic/flag text governing this transition (e.g.
+  /// `Ledger.pkl`'s own thrown message, or a reconciliation flag's detail
+  /// string) -- omitted only when this transition carries no such text of
+  /// its own (e.g. a plain "approved" grant has none beyond the grant
+  /// itself).
+  governingRule: String?
+  fact: CapabilityFact?
+  grant: CapabilityGrant?
+  observation: CapabilityObservation?
+  flag: ReconciliationFlag?
+}
+
+/// A governing rule a supervisor enforces, independent of any single
+/// observation of it. `requirement` is a hand-written one-sentence
+/// restatement of what `constraint` does -- not decorative prose, a
+/// literal description of the same logic. `constraint` is the exact
+/// function/rule text copied verbatim from `source` at `sourceRef`, not
+/// reworded or summarized -- so a lesson can show the actual axiom a
+/// trace's transitions are evaluated against, not just their outcomes.
+class Check {
+  id: String
+  requirement: String
+  constraint: String
+  source: String
+  sourceRef: String
+}
+
+/// A sequence of `Transition`s produced by one execution adapter over the
+/// same capability-decision model `EvidencePackage`'s capability* fields
+/// use. Deliberately a sibling top-level type, not nested under
+/// `EvidencePackage` -- a lesson can consume a trace on its own.
+class CapabilityTrace {
+  traceId: String
+  scenario: String
+  /// Identifies which adapter produced this trace (e.g.
+  /// "capability-spike-demo" | "webcontainer-mock-test") -- a consumer must
+  /// never infer provenance, only read it here.
+  source: String
+  /// A real commit SHA for a captured execution; a short human description
+  /// of what's mocked and why for a non-captured adapter. Never omitted.
+  sourceRef: String
+  /// The axiom(s) this trace's transitions are evidence for or against.
+  /// A trace's `transitions` carry raw recorded state (grants, facts,
+  /// diagnostics); `checks` is what a consumer evaluates that state
+  /// against to reach a verdict -- kept separate so the verdict is always
+  /// computed, never itself replayed as pre-baked data.
+  checks: Listing<Check>
+  transitions: Listing<Transition>
+}
+
+class EvidencePackage {
+  schemaVersion: String
+  execution: ExecutionIdentity
+  scenario: ScenarioResult
+  snapshots: Listing<SnapshotRef>
+  fileTree: Listing<FileTreeEntry>
+  diff: Listing<DiffEntry>
+  logs: Listing<LogExcerpt>
+
+  /// Populated once a capability-spike scenario (CIT-146) is an input;
+  /// empty listings are valid and expected until then.
+  capabilityFacts: Listing<CapabilityFact>
+  capabilityGrants: Listing<CapabilityGrant>
+  capabilityObservations: Listing<CapabilityObservation>
+  reconciliationFlags: Listing<ReconciliationFlag>
+
+  validation: ValidationResult
+}
