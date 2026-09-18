@@ -56,10 +56,10 @@ func LoadVocabulary(ctx context.Context, vocabularyPath string) (GovernedVocabul
 // Ledger.checkAccess's own true/throw split rather than adding a redundant
 // boolean next to it.
 type ResolvedReason struct {
-	Raw            string
-	ResolvedFactID *string
-	LossAxes       []string
-	Diagnostic     *diagnostic.Diagnostic
+	Raw            string                 `json:"raw"`
+	ResolvedFactID *string                `json:"resolvedFactId"`
+	LossAxes       []string               `json:"lossAxes"`
+	Diagnostic     *diagnostic.Diagnostic `json:"diagnostic"`
 }
 
 // reasonPattern matches the "<scope> scenario: <phrase>" shape the
@@ -81,7 +81,8 @@ func Resolve(raw string, vocab GovernedVocabulary, grantsByFactID map[string]*su
 	m := reasonPattern.FindStringSubmatch(raw)
 	if m == nil {
 		return ResolvedReason{
-			Raw: raw,
+			Raw:      raw,
+			LossAxes: []string{},
 			Diagnostic: &diagnostic.Diagnostic{
 				Severity: diagnostic.SeverityError,
 				Code:     diagnostic.CodeTermUnresolved,
@@ -100,7 +101,8 @@ func Resolve(raw string, vocab GovernedVocabulary, grantsByFactID map[string]*su
 	}
 	if entry == nil {
 		return ResolvedReason{
-			Raw: raw,
+			Raw:      raw,
+			LossAxes: []string{},
 			Diagnostic: &diagnostic.Diagnostic{
 				Severity: diagnostic.SeverityError,
 				Code:     diagnostic.CodeTermUnresolved,
