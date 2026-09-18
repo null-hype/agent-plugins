@@ -48,6 +48,41 @@ fixtures under `worker/fixtures_invalid/`.
      `Ledger.checkAccess` at all (static check on the fact's own text,
      since `pkl test`'s pass/fail can't tell approved-green from
      hardcoded-green)
+- `pkl/Reconcile.pkl` -- the same alignment invariant stated as a Pkl
+  function instead of only as Go, so it can be exercised with no Go
+  toolchain, no Proton Pass credentials and no state on disk. It takes
+  the grants, observations and fact-file sources it reconciles as
+  arguments (it deliberately does not import the git-ignored
+  `GrantState.pkl`), which is what makes `pkl test
+  pkl/Reconcile.test.pkl` a one-command check.
 
-No `hk.pkl` check wires this into `git push` -- it's a standalone spike,
-run manually or from CI, not a repo-wide gate.
+## Running just the axioms
+
+```
+pkl test pkl/Inventory.test.pkl pkl/Reconcile.test.pkl
+```
+
+Credential-free and state-free -- no `go run .` first, no
+`pkl/GrantState.pkl` on disk. `Reconcile.test.pkl` pins every flag's
+diagnostic text against `Reconcile.test.pkl-expected.pcf` in its
+`examples {}` block: the `facts {}` block checks that the right flag
+fires, the golden file checks that the message a supervisor has to act on
+is still worth acting on.
+
+Wired as an `hk check` step (`capability-axioms`) so it runs in the same
+local pass as this repo's other Pkl contracts. It is not in `pre-push`:
+nothing here gates `git push`, and the rest of the spike (`go run .`,
+`go test ./...`, which need a Go toolchain and rewrite
+`pkl/GrantState.pkl`) still runs manually or from CI, not as a repo-wide
+gate.
+
+## Where this is taught
+
+`null-hype.github.io`'s TutorialKit chapter 3, lesson 5 ("The wrong-way
+peninsula", CIT-150) is built on this directory: it replays
+`reconcile.Check` in TypeScript against these exact fixtures and asks the
+reader to decide, for each flag, whether the fact, the agent's stated
+reason, or the axiom itself is what's wrong. `bypassed_gate.pkl` and
+`TestBypassedGatePassesPklTestButFlaggedByReconciliation` are that
+lesson's central exhibit -- a fact whose test is green and whose frame is
+wrong.
