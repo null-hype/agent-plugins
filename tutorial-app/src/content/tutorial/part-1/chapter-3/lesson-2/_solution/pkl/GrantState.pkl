@@ -1,0 +1,16 @@
+/// Supervisor-owned approval ledger. Rendered by supervisor/state.go --
+/// do not hand-edit; do not let worker code write this file.
+module grantState
+
+class Grant {
+  factID: String
+  vault: String
+  approved: Boolean
+}
+
+// The real supervisor.Decide result this lesson's grantState.json mirrors
+// (capability-spike/supervisor/state.go), captured once from a real run,
+// not re-read from that git-ignored file live -- see its own header.
+approvedGrants: Mapping<String, Grant> = new {
+  ["flight-booking:area51:vault-access"] { factID = "flight-booking:area51:vault-access"; vault = "thepentagon.com"; approved = true }
+}

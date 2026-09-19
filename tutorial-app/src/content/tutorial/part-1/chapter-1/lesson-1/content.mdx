@@ -1,0 +1,35 @@
+---
+type: lesson
+title: Schadenfreude
+template: otel-warm-log
+focus: /translation.en
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+previews:
+  - [4173, "Warm Log"]
+terminal: false
+editor:
+  fileTree: false
+custom:
+  loanwordArc:
+    lessonId: schadenfreude
+    translationFile: /translation.en
+    vocabularyFile: /PersonalVocabulary.pkl
+    runtimeFile: /loanword-runtime.json
+    storyFile: /warm-log-story.json
+    scenario: schadenfreude-admission
+---
+
+import LoanwordArcBridge from '../../../../../components/LoanwordArcBridge';
+
+How do you say 'Schadenfreude' in English?
+
+Try an answer in `translation.en`. Watch which check blocks it, then inspect the rule.
+
+<LoanwordArcBridge client:load />
+
+For this exercise, preserve the source form and add it to `PersonalVocabulary.pkl`.
+Passing the first check does not pass the second: a proposed word also needs an entry in the vocabulary.
+
+Use **Solve** in the editor if you want to inspect the completed files, then change one back to see the check fail again.

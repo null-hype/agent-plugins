@@ -1,0 +1,54 @@
+{
+  "lessonId": "fingerspitzengefuhl",
+  "scenario": "fingerspitzengefuhl-preservation",
+  "sourceLexeme": "Fingerspitzengefühl",
+  "canonicalTranslation": "Fingerspitzengefühl",
+  "requiresVocabularyAdmission": false,
+  "messages": {
+    "empty": "Type an English attempt in `translation.en`.",
+    "paraphraseLoss": "Any gloss still drops lexicalization, Gefühl register, Spitzen valence, and lineage. Preserve `Fingerspitzengefühl` directly.",
+    "pendingAdmission": "`Fingerspitzengefühl` preserves the surface, but this word isn't part of English yet.",
+    "vocabularyMissing": "Add the loanword to `entries` as a `LoanwordEntry` before this translation can pass.",
+    "vocabularyShape": "Finish the `LoanwordEntry` block so `PersonalVocabulary.pkl` can admit the loanword."
+  },
+  "peek": {
+    "translation": {
+      "title": "Peek: LoanwordRules.pkl",
+      "source": "LoanwordRules.pkl",
+      "explanation": "Lesson 1 keeps one aggregate rule: paraphrase causes structural loss, so the valid English output is the preserved German surface.",
+      "snippet": "module LoanwordRules\n\nclass LossAxis {\n  name: String\n  title: String\n  message: String\n}\n\nclass LoanwordRule {\n  sourceLexeme: String\n  canonicalEnglish: String\n  requiresVocabularyAdmission: Boolean\n  axes: Listing<LossAxis>\n}\n\nloanword = new LoanwordRule {\n  sourceLexeme = \"Fingerspitzengefühl\"\n  canonicalEnglish = \"Fingerspitzengefühl\"\n  requiresVocabularyAdmission = false\n  axes = new Listing<LossAxis> {\n    new LossAxis {\n      name = \"lexicalization\"\n      title = \"lexicalization\"\n      message = \"A gloss like tact lexicalizes only one residue and drops the compound surface.\"\n    }\n    new LossAxis {\n      name = \"gefuhl_register\"\n      title = \"Gefühl register\"\n      message = \"Gefühl carries embodied social judgment that no thin English substitute preserves.\"\n    }\n    new LossAxis {\n      name = \"spitzen_valence\"\n      title = \"Spitzen valence\"\n      message = \"The sharpened leading edge remembered by Spitzen vanishes once the word is paraphrased.\"\n    }\n    new LossAxis {\n      name = \"lineage\"\n      title = \"lineage\"\n      message = \"The strategic and cultural lineage disappears when the term is flattened into etiquette.\"\n    }\n  }\n}"
+    }
+  },
+  "preview": {
+    "idleSummary": "loanword(Fingerspitzengefühl) awaiting attempt",
+    "paraphraseLossSummary": "loanword(Fingerspitzengefühl) -> loss axes",
+    "pendingAdmissionSummary": "loanword(Fingerspitzengefühl) -> pending admission",
+    "validSummary": "loanword(Fingerspitzengefühl) -> preserved"
+  },
+  "completion": {
+    "title": "loanword(Fingerspitzengefühl) -> preserved",
+    "message": "now we need to learn to add words to our vocabulary"
+  },
+  "lossAxes": [
+    {
+      "name": "lexicalization",
+      "title": "lexicalization",
+      "message": "A gloss like tact lexicalizes only one residue and drops the compound surface."
+    },
+    {
+      "name": "gefuhl_register",
+      "title": "Gefühl register",
+      "message": "Gefühl carries embodied social judgment that no thin English substitute preserves."
+    },
+    {
+      "name": "spitzen_valence",
+      "title": "Spitzen valence",
+      "message": "The sharpened leading edge remembered by Spitzen vanishes once the word is paraphrased."
+    },
+    {
+      "name": "lineage",
+      "title": "lineage",
+      "message": "The strategic and cultural lineage disappears when the term is flattened into etiquette."
+    }
+  ]
+}

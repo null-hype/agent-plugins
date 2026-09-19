@@ -1,0 +1,44 @@
+/// Declared-vs-observed inventory checking, for this lesson's capability-
+/// acquisition scenario (see Inventory.test.pkl and the tutorial-app lesson
+/// it feeds). `VaultSpec` mirrors
+/// .dagger/internal/devenv-base/pkl/Vaults.pkl's class of the same name,
+/// field-for-field; `ObservedVault`/`ObservedInventory` formalize the shape
+/// .dagger/internal/devenv-base/hk/capture-vault-inventory.sh writes to
+/// build/vaults-observed.json, which
+/// .dagger/internal/devenv-base/pkl/Vaults.test.pkl currently reads as
+/// untyped `Dynamic`. That directory's own CLAUDE.md reserves it for
+/// container-use environments, so these classes are duplicated here by
+/// hand, not imported -- keep them in sync with the source on drift, same
+/// discipline tk-evidence-exporter/ts/evidence.pkl.ts's own header already
+/// documents for its vendoring into tutorial-app.
+module inventory
+
+/// A task's declared requirement: which vault, and which items in it, it
+/// needs.
+class VaultSpec {
+  name: String
+  items: Listing<String>
+}
+
+/// One vault's contents as actually observed (captured from the real
+/// system), not asserted.
+class ObservedVault {
+  name: String
+  items: Listing<String>
+}
+
+/// The full observed inventory a `VaultSpec` requirement is checked
+/// against. Mirrors vaults-observed.json's top-level `{vaults: [...]}`
+/// shape.
+class ObservedInventory {
+  vaults: Listing<ObservedVault>
+}
+
+/// Which of a requirement's declared items are absent from the observed
+/// inventory for that vault. Generalizes Vaults.test.pkl's per-vault
+/// "every declared item actually exists in its declared vault" fact from
+/// "every declared vault" down to one task's single requirement.
+function missingItems(requirement: VaultSpec, observed: ObservedInventory): List<String> =
+  let (observedVault = observed.vaults.toList().findOrNull((v) -> v.name == requirement.name))
+  let (have = observedVault?.items?.toList() ?? List())
+  requirement.items.toList().filter((item) -> !have.contains(item))

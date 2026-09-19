@@ -1,0 +1,9 @@
+{
+  "approvedGrants": {
+    "flight-booking:area51:vault-access": {
+      "factID": "flight-booking:area51:vault-access",
+      "vault": "thepentagon.com",
+      "approved": true
+    }
+  }
+}

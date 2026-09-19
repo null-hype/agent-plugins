@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.1.0",
+  "artifactHashes": [
+    {
+      "path": "restic-ls.json",
+      "sha256": "9a6423f2f8a0b38934345c140a85fb1cdb8bd22fc067f2c5a9f44a5d50fbb61c"
+    },
+    {
+      "path": "restic-snapshots.json",
+      "sha256": "227b70c258f0a59619264b1d216e9cd08f9b3f69fc06d96c936efd0b534f83d7"
+    },
+    {
+      "path": "scenario-outcome.json",
+      "sha256": "b973b1e2430f6c2872c0eb8053892b477c8533e7e541218cbd4194ce69b313da"
+    }
+  ],
+  "structurallyValid": true,
+  "validationErrors": []
+}

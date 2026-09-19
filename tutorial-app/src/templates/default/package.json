@@ -1,0 +1,7 @@
+{
+  "name": "grammar-protocol-template",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "echo 'Grammar Server Ready' && sleep infinity"
+  }
+}

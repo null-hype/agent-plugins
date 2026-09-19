@@ -1,0 +1,98 @@
+[
+  {
+    "path": "/root",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/backups",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/backups/.claude.json.backup.1787287842241",
+    "type": "file",
+    "size": 50,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/backups/.claude.json.backup.1789610341951",
+    "type": "file",
+    "size": 483,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/downloads",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/policy-limits.json",
+    "type": "file",
+    "size": 214,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/projects",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/projects/-workspaces-1789610264294",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/projects/-workspaces-1789610264294/7048289f-bd76-4f39-90ad-986900345c2c.jsonl",
+    "type": "file",
+    "size": 15521,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/projects/-workspaces-1789610264294/memory",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/remote-settings.json",
+    "type": "file",
+    "size": 2,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/sessions",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/skills",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/skills/pass-cli",
+    "type": "dir",
+    "size": null,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  {
+    "path": "/root/.claude/skills/pass-cli/SKILL.md",
+    "type": "file",
+    "size": 4918,
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  }
+]

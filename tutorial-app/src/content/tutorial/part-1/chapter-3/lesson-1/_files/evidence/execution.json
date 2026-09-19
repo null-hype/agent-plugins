@@ -1,0 +1,24 @@
+{
+  "sourceRevision": "d9a581d8fcbabe81b61cf1417fb62dbbb38fb59b",
+  "workflowRunId": "35172465388",
+  "workflowRunAttempt": "1",
+  "runUrl": "https://github.com/null-hype/agent-plugins/actions/runs/35172465388",
+  "jobName": "test-scenarios",
+  "stepRefs": [
+    "Set up job (success)",
+    "Run actions/checkout@v4 (success)",
+    "Install latest devcontainer CLI (success)",
+    "Install mise-managed tools (pkl, hk) (success)",
+    "Verify pkl is on PATH (success)",
+    "Validate declared Proton Pass vault inventory (JIN-116) (success)",
+    "Upload observed vault inventory (JIN-116) (success)",
+    "Testing all scenarios (feature-local and global) (failure)",
+    "Set up Go for tk-evidence-exporter (success)",
+    "Export restic-backup scenario evidence (CIT-147) ()",
+    "Upload evidence package ()",
+    "Post Set up Go for tk-evidence-exporter ()",
+    "Post Run actions/checkout@v4 ()"
+  ],
+  "scenarioName": "restic-backup",
+  "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+}
