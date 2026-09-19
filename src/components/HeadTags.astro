@@ -1,0 +1,153 @@
+<slot name="title" />
+<slot name="links" />
+<slot name="meta" />
+
+<style is:global>
+  /* Reserve space for the fixed footer band */
+  body {
+    padding-bottom: 28px !important;
+  }
+
+  #gap-footer-band {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    font-size: 11px;
+    font-family: Inter, system-ui, sans-serif;
+    background-color: var(--tk-background-secondary, #f6f8f9);
+    border-top: 1px solid var(--tk-elements-app-borderColor, #e4e6e9);
+    color: var(--tk-text-secondary, #6b7280);
+    padding: 0 16px;
+  }
+
+  [data-theme='dark'] #gap-footer-band {
+    background-color: var(--tk-background-secondary, #2b2d35);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255,255,255,0.45);
+  }
+
+  #gap-footer-band a {
+    color: inherit;
+    text-decoration: none;
+    opacity: 0.8;
+  }
+
+  #gap-footer-band a:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+
+  #gap-footer-band .gap-footer-sep {
+    opacity: 0.3;
+  }
+</style>
+
+<script is:inline>
+  (function injectFooter() {
+    if (document.getElementById('gap-footer-band')) return;
+    var footer = document.createElement('div');
+    footer.id = 'gap-footer-band';
+    footer.innerHTML = [
+      '<span class="gap-footer-sep">·</span>',
+      // TODO: replace href with live article URL once PLAN-326 publishes on tidelands.dev
+      '<a href="https://github.com/null-hype/null-hype.github.io" target="_blank" rel="noopener">Grammar as Protocol</a>',
+      '<span class="gap-footer-sep">·</span>',
+      '<a href="https://github.com/null-hype" target="_blank" rel="noopener">GitHub</a>',
+    ].join('');
+    if (document.body) {
+      document.body.appendChild(footer);
+    } else {
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.appendChild(footer);
+      });
+    }
+  })();
+</script>
+
+<script is:inline src="/coi-serviceworker.js"></script>
+
+<style is:global>
+  :root,
+  :root[data-theme='light'] {
+    --tk-background-primary: #ffffff !important;
+    --tk-background-secondary: #f6f8f9 !important;
+    --tk-elements-app-backgroundColor: #ffffff !important;
+    --tk-elements-breadcrumbs-dropdown-backgroundColor: #ffffff !important;
+  }
+
+  :root[data-theme='dark'] {
+    --tk-background-primary: #232429 !important;
+    --tk-background-secondary: #2b2d35 !important;
+    --tk-elements-app-backgroundColor: #232429 !important;
+    --tk-elements-breadcrumbs-dropdown-backgroundColor: #232429 !important;
+  }
+
+  html, body {
+    background-color: var(--tk-background-primary) !important;
+    color: var(--tk-text-primary, #31343b) !important;
+  }
+
+  [data-panel-id='previews-opened'] [data-panel] > .panel-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  [data-panel-id='previews-opened'] [data-panel] > .panel-container > :last-child {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* Fix transparent navigation dropdown and components */
+  [class*='_NavContainer_'],
+  [class*='bg-tk-elements-breadcrumbs-dropdown-backgroundColor'],
+  [class*='bg-tk-elements-app-backgroundColor'],
+  header nav,
+  nav[class*='bg-tk-elements-breadcrumbs-dropdown-backgroundColor'] {
+    background-color: var(--tk-background-primary) !important;
+    border: 1px solid var(--tk-border-primary, #e4e6e9) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    z-index: 1000 !important;
+  }
+
+  [data-theme='dark'] [class*='_NavContainer_'],
+  [data-theme='dark'] [class*='bg-tk-elements-breadcrumbs-dropdown-backgroundColor'],
+  [data-theme='dark'] header nav {
+    background-color: var(--tk-background-primary) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  [class*='_ToggleButton_'] {
+    background-color: transparent !important;
+    color: var(--tk-text-primary, #111827) !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  /* Force dropdown lists to have solid background */
+  [class*='_NavList_'],
+  [class*='_NavList_'] ul,
+  ul[class*='_NavList_'],
+  [class*='_AccordionContent_'] {
+    background-color: var(--tk-background-primary) !important;
+    opacity: 1 !important;
+  }
+
+  [class*='_NavListItem_'] {
+    color: var(--tk-text-secondary, #374151) !important;
+    border-radius: 6px !important;
+    margin: 2px 0 !important;
+    background-color: transparent !important;
+  }
+
+  [class*='_NavListItem_']:hover {
+    background-color: var(--tk-background-secondary, rgba(0, 0, 0, 0.05)) !important;
+  }
+</style>

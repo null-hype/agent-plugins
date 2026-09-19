@@ -1,0 +1,11 @@
+15:54:10 [WARN] [@astrojs/react] More than one JSX renderer is enabled. This will lead to unexpected behavior unless you set the `include` or `exclude` option. See https://docs.astro.build/en/guides/integrations-guide/react/#combining-multiple-jsx-frameworks for more information.
+15:54:10 [types] Generated 1ms
+15:54:10 [@tutorialkit/astro] Generated part-1-chapter-1-lesson-1-files.json 6ms
+15:54:10 [@tutorialkit/astro] Generated template-default.json 6ms
+
+ astro  v4.16.19 ready in 308 ms
+
+┃ Local    http://localhost:4321/tutorial-app/
+┃ Network  use --host to expose
+
+15:54:10 watching for file changes...

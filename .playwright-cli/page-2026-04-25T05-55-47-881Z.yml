@@ -1,0 +1,105 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - navigation [ref=e3]:
+      - generic:
+        - link:
+          - /url: /
+      - button "Open in StackBlitz" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+    - generic [ref=e10]:
+      - generic [ref=e12]:
+        - button "Schadenfreude" [ref=e14] [cursor=pointer]:
+          - strong [ref=e16]: Schadenfreude
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - heading "Schadenfreude" [level=1] [ref=e19]
+            - paragraph [ref=e20]: Lesson 1 introduces the preservation move and then blocks it.
+            - paragraph [ref=e21]:
+              - text: Start in
+              - code [ref=e22]: translation.en
+              - text: . A paraphrase still squiggles. If you switch the English text to
+              - code [ref=e23]: Schadenfreude
+              - text: ", the squiggle stays for a new reason: the word is not yet admitted into"
+              - code [ref=e24]: PersonalVocabulary.pkl
+              - text: .
+            - heading "The Task" [level=3] [ref=e25]
+            - list [ref=e26]:
+              - listitem [ref=e27]:
+                - text: Edit
+                - code [ref=e28]: translation.en
+                - text: .
+              - listitem [ref=e29]: Hover the squiggle to inspect the same four structural-loss axes.
+              - listitem [ref=e30]:
+                - text: Type
+                - code [ref=e31]: Schadenfreude
+                - text: directly and notice that the lesson still stays blocked.
+              - listitem [ref=e32]:
+                - text: Open
+                - code [ref=e33]: PersonalVocabulary.pkl
+                - text: and add the loanword to
+                - code [ref=e34]: entries
+                - text: .
+              - listitem [ref=e35]:
+                - text: "When validation passes, the preview should say:"
+                - code [ref=e36]: you solved this by amending vocabulary, not by refining the gloss
+                - text: .
+            - heading "What you are seeing" [level=3] [ref=e37]
+            - list [ref=e38]:
+              - listitem [ref=e39]:
+                - code [ref=e40]: LoanwordRules.pkl
+                - text: is the authoring source for the structural-loss rule.
+              - listitem [ref=e41]:
+                - code [ref=e42]: loanword-runtime.json
+                - text: is the runtime artifact the browser uses for validation.
+              - listitem [ref=e43]:
+                - code [ref=e44]: PersonalVocabulary.pkl
+                - text: is the admission file for accepted loanwords.
+              - listitem [ref=e45]:
+                - code [ref=e46]: warm-log-story.json
+                - text: is the static warm-log fixture rendered in Monaco.
+          - link "Fingerspitzengefühl" [ref=e50] [cursor=pointer]:
+            - /url: /tutorial-app/part-1/chapter-1/lesson-2
+            - generic [ref=e51]: Fingerspitzengefühl
+          - link "Powered by WebContainers" [ref=e52] [cursor=pointer]:
+            - /url: https://webcontainers.io/
+      - generic [ref=e56]:
+        - generic [ref=e58]:
+          - generic:
+            - generic:
+              - generic: Files
+            - generic:
+              - button "LoanwordRules.pkl" [ref=e59] [cursor=pointer]:
+                - generic [ref=e60]: LoanwordRules.pkl
+              - button "PersonalVocabulary.pkl" [ref=e61] [cursor=pointer]:
+                - generic [ref=e62]: PersonalVocabulary.pkl
+              - button "loanword-runtime.json" [ref=e63] [cursor=pointer]:
+                - generic [ref=e64]: loanword-runtime.json
+              - button "translation.en" [ref=e65] [cursor=pointer]:
+                - generic [ref=e66]: translation.en
+              - button "warm-log-story.json" [ref=e67] [cursor=pointer]:
+                - generic [ref=e68]: warm-log-story.json
+          - separator
+          - button "Reset" [disabled] [ref=e71]: Reset
+        - separator
+        - generic [ref=e76]:
+          - generic [ref=e78]: Preparing Environment
+          - list [ref=e80]:
+            - listitem [ref=e81]:
+              - generic [ref=e82]: npm install
+            - listitem [ref=e83]:
+              - generic [ref=e84]: npm run dev
+        - separator
+        - tablist [ref=e89]
+  - generic [ref=e93]:
+    - button "Menu" [ref=e94]:
+      - img [ref=e96]
+      - generic: Menu
+    - button "Inspect" [ref=e100]:
+      - img [ref=e102]
+      - generic: Inspect
+    - button "Audit" [ref=e104]:
+      - img [ref=e106]
+      - generic: Audit
+    - button "Settings" [ref=e109]:
+      - img [ref=e111]
+      - generic: Settings

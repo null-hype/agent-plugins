@@ -1,0 +1,28 @@
+---
+type: lesson
+title: Fingerspitzengefühl
+template: otel-warm-log
+focus: /translation.en
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+previews:
+  - [4173, "Warm Log"]
+terminal: false
+editor:
+  fileTree: false
+custom:
+  loanwordArc:
+    lessonId: fingerspitzengefuhl
+    translationFile: /translation.en
+    vocabularyFile: /PersonalVocabulary.pkl
+    runtimeFile: /loanword-runtime.json
+    storyFile: /warm-log-story.json
+    scenario: fingerspitzengefuhl-preservation
+---
+
+import LoanwordArcBridge from '../../../../../components/LoanwordArcBridge';
+
+<LoanwordArcBridge client:load />
+
+How do you say 'Fingerspitzengefühl' in English?

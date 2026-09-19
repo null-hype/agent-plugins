@@ -1,0 +1,11 @@
+{
+  "name": "goose-client-template",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "monaco-editor": "^0.55.1"
+  },
+  "scripts": {
+    "dev": "node server.cjs"
+  }
+}

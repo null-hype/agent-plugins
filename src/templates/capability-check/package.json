@@ -1,0 +1,17 @@
+{
+  "name": "capability-check-template",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@rolldown/binding-wasm32-wasi": "1.2.9",
+    "vitest": "5.0.1"
+  },
+  "overrides": {
+    "rolldown": "1.2.9",
+    "vite": "8.3.0"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

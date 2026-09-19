@@ -1,0 +1,57 @@
+---
+type: lesson
+title: Authorization by Benutzer-ID
+template: otel-warm-log
+focus: /exercise.de
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+previews:
+  - [4173, "Warm Log"]
+terminal: false
+editor:
+  fileTree: true
+custom:
+  ruleTrace:
+    commandFile: /exercise.de
+    grammarFile: /AuthorizationGrammar.pkl
+    runtimeFile: /authorization-grammar.json
+    storyFile: /trace-story.json
+    scenario: opentrader-idor
+---
+
+import RuleTraceBridge from '../../../../../components/RuleTraceBridge';
+
+# Authorization by Benutzer-ID
+
+<RuleTraceBridge client:load />
+
+Lesson 3 concludes the Black Thursday loop as the capstone.
+
+The editor on the right validates a missing article against a lesson-local Pkl grammar rule. The preview pane replays a mocked OpenTrader warm log once the phrase is repaired.
+
+### The Task
+Complete the sentence:
+
+`Die API prüft die Berechtigung anhand _____ Benutzer-ID`
+
+1. Fill the blank with the required genitive article.
+2. If the answer is wrong, hover the squiggle to peek at the governing **Pkl grammar rule**.
+3. When the squiggle clears, the preview will automatically render the mocked **Insecure Direct Object Reference (IDOR)** warm log.
+4. Expand the anomaly span in the preview to inspect the security rule that flags the authorization drift.
+
+### What you are seeing
+- **`AuthorizationGrammar.pkl`**: Defines the grammar contract for this lesson. In protocol engineering, we treat natural language and API schemas with the same rigor.
+- **`authorization-grammar.json`**: The compiled artifact that powers the real-time validator.
+- **`OpenTraderSecurityRules.pkl`**: The actual security policy that detects the IDOR vulnerability when the "grammar" of the system request is invalid.
+- **`trace-story.json`**: An OTel-compatible story fixture that simulates a live system breach.
+
+---
+
+<div style="margin-top: 2rem; padding: 1.25rem 1.5rem; border: 1px solid #e4e6e9; border-radius: 10px; background: #f9fafb;">
+  <p style="margin: 0 0 0.5rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af;">This is Grammar as Protocol</p>
+  <p style="margin: 0 0 1rem; font-size: 0.95rem; line-height: 1.5; color: #374151;">The same Pkl constraint engine that validated a German loanword just detected an IDOR. Three more domains are in the queue: Music, Chess, Argumentation. The full methodology is in the article.</p>
+  <a href="https://github.com/null-hype/null-hype.github.io" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; font-weight: 500; color: #1d4ed8; text-decoration: none;">
+    Read the article →
+  </a>
+</div>
