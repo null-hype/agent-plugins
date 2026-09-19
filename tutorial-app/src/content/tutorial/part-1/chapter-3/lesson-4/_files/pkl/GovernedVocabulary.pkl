@@ -1,0 +1,60 @@
+/// Modelled on tutorial-app's chapter-1 lesson-2 `PersonalVocabulary.pkl`
+/// (part-1/chapter-1/lesson-2/_files/PersonalVocabulary.pkl in
+/// null-hype/null-hype.github.io), ownership inverted: that lesson lets
+/// the worker admit its own loanwords into its own vocabulary. Here the
+/// worker may only *reference* a term by name -- admitting one is a
+/// supervisor action, the same boundary `Ledger.pkl` already draws around
+/// capability grants (CIT-139), extended from "may this fact acquire the
+/// capability" to "does this fact's stated reason even name something the
+/// supervisor recognizes."
+///
+/// `resolver.Resolve` (../resolver/resolver.go) is the only code that
+/// reads `admitted`; nothing here decides access on its own -- a phrase
+/// found here still has to clear `Ledger.checkAccess(factId, scope)`
+/// before its fact resolves clean. See CAP_TERM_UNRESOLVED in
+/// diagnostic.go for what happens when a phrase isn't found at all, as
+/// distinct from found-but-not-granted (CAP_NO_GRANT).
+module governedVocabulary
+
+requiresVocabularyAdmission = true
+
+/// One admitted mapping from a prose fragment to a stable fact ID.
+///
+/// `scope` is the AGENT_ASSIGNMENT prefix a real PROTON_PASS_AGENT_REASON
+/// carries ahead of "scenario: <phrase>" (see src/pass-cli/install.sh) --
+/// it is a checked field here, not decoration: `resolver.Resolve` passes
+/// it as the `vault` argument to `Ledger.checkAccess`, so an admission for
+/// one scope does not resolve a reason carrying a different one.
+///
+/// `lossAxes` names what canonicalizing free prose into `factId` throws
+/// away -- e.g. the exact verb tense, or which session boundary the
+/// phrase described -- following `PersonalVocabulary.pkl`'s
+/// `defaultLossAxes` precedent of naming the loss rather than silently
+/// discarding it.
+class AdmittedTerm {
+  phrase: String
+  factId: String
+  scope: String
+  lossAxes: Listing<String>
+}
+
+admitted: Listing<AdmittedTerm> = new Listing<AdmittedTerm> {
+  new AdmittedTerm {
+    phrase = "planting codeword in a fresh session"
+    factId = "pass-cli:color:resume:plant-codeword"
+    scope = "jin-91-resume-session"
+    lossAxes {
+      "session-lifecycle-detail"
+      "verb-tense"
+    }
+  }
+  new AdmittedTerm {
+    phrase = "resuming restored session to read back the codeword"
+    factId = "pass-cli:color:resume:read-codeword"
+    scope = "jin-91-resume-session"
+    lossAxes {
+      "session-lifecycle-detail"
+      "restoration-provenance"
+    }
+  }
+}

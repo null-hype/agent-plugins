@@ -1,0 +1,5 @@
+{
+  "scenarioName": "restic-backup",
+  "outcome": "passed",
+  "checks": []
+}

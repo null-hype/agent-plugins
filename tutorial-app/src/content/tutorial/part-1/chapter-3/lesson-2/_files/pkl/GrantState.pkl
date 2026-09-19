@@ -1,0 +1,14 @@
+/// Supervisor-owned approval ledger. Rendered by supervisor/state.go --
+/// do not hand-edit; do not let worker code write this file.
+module grantState
+
+class Grant {
+  factID: String
+  vault: String
+  approved: Boolean
+}
+
+// No decision has been recorded yet -- Solve-as-supervisor is what
+// populates this map (see grantState.json, the TypeScript mirror this
+// lesson's spec actually reads; this file is the display copy).
+approvedGrants: Mapping<String, Grant> = new {}

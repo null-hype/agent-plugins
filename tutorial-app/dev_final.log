@@ -1,0 +1,12 @@
+17:30:51 [types] Generated 1ms
+17:30:51 [@tutorialkit/astro] Generated part-1-chapter-1-lesson-1-files.json 11ms
+17:30:51 [@tutorialkit/astro] Generated part-1-chapter-1-lesson-2-files.json 11ms
+17:30:51 [@tutorialkit/astro] Generated template-default.json 11ms
+17:30:51 [@tutorialkit/astro] Generated part-1-chapter-1-lesson-3-files.json 12ms
+
+ astro  v4.16.19 ready in 391 ms
+
+┃ Local    http://localhost:4321/tutorial-app/
+┃ Network  use --host to expose
+
+17:30:51 watching for file changes...
