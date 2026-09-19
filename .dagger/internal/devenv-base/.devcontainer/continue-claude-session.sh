@@ -35,7 +35,7 @@
 # itself to act from.
 #
 # CLAUDE_SESSION_ID and CLAUDE_MAX_BUDGET_USD are pulled from the pass-cli
-# env file below (pass://tidelands.dev/claude/...), not forwarded in via
+# env file below (pass://anthropic.ai/claude/...), not forwarded in via
 # `devpod ssh --set-env` from the caller. Neither is a secret, but pass-cli
 # is this deployment's one config/secret path end to end (same as
 # CLAUDE_CODE_OAUTH_TOKEN, RESTIC_*) -- routing them in a second way through

@@ -1,0 +1,21 @@
+/// Supervisor-owned approval ledger. Rendered by supervisor/state.go --
+/// do not hand-edit; do not let worker code write this file.
+///
+/// The two decisions demo.go step 3 records through a real
+/// `supervisor.Decide` call: the flight-booking request approved for
+/// `thepentagon.com`, and a second request explicitly rejected. Nothing
+/// in this lesson lets you write this file, and that is deliberate --
+/// three of the four things you could change to make a check go green
+/// are not yours to change.
+module grantState
+
+class Grant {
+  factID: String
+  vault: String
+  approved: Boolean
+}
+
+approvedGrants: Mapping<String, Grant> = new {
+  ["flight-booking:area51:vault-access"] { factID = "flight-booking:area51:vault-access"; vault = "thepentagon.com"; approved = true }
+  ["area51:site4:black-budget-vault-access"] { factID = "area51:site4:black-budget-vault-access"; vault = "site4.internal"; approved = false }
+}

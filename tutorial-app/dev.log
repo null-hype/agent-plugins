@@ -1,0 +1,13 @@
+17:27:55 [types] Generated 1ms
+17:27:55 [@tutorialkit/astro] Generated part-1-chapter-1-lesson-1-files.json 11ms
+17:27:55 [@tutorialkit/astro] Generated part-1-chapter-1-lesson-2-files.json 11ms
+17:27:55 [@tutorialkit/astro] Generated template-default.json 11ms
+17:27:55 [@tutorialkit/astro] Generated part-1-chapter-1-lesson-3-files.json 12ms
+17:27:55 [vite] Port 4321 is in use, trying another one...
+
+ astro  v4.16.19 ready in 392 ms
+
+┃ Local    http://localhost:4322/tutorial-app/
+┃ Network  use --host to expose
+
+17:27:55 watching for file changes...

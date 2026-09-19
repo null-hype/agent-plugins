@@ -1,0 +1,163 @@
+{
+  "schemaVersion": "1.1.0",
+  "execution": {
+    "sourceRevision": "d9a581d8fcbabe81b61cf1417fb62dbbb38fb59b",
+    "workflowRunId": "35172465388",
+    "workflowRunAttempt": "1",
+    "runUrl": "https://github.com/null-hype/agent-plugins/actions/runs/35172465388",
+    "jobName": "test-scenarios",
+    "stepRefs": [
+      "Set up job (success)",
+      "Run actions/checkout@v4 (success)",
+      "Install latest devcontainer CLI (success)",
+      "Install mise-managed tools (pkl, hk) (success)",
+      "Verify pkl is on PATH (success)",
+      "Validate declared Proton Pass vault inventory (JIN-116) (success)",
+      "Upload observed vault inventory (JIN-116) (success)",
+      "Testing all scenarios (feature-local and global) (failure)",
+      "Set up Go for tk-evidence-exporter (success)",
+      "Export restic-backup scenario evidence (CIT-147) ()",
+      "Upload evidence package ()",
+      "Post Set up Go for tk-evidence-exporter ()",
+      "Post Run actions/checkout@v4 ()"
+    ],
+    "scenarioName": "restic-backup",
+    "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+  },
+  "scenario": {
+    "scenarioName": "restic-backup",
+    "outcome": "passed",
+    "checks": []
+  },
+  "snapshots": [
+    {
+      "id": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1",
+      "shortId": "eca7f3c2",
+      "tag": "restic-backup",
+      "takenAt": "2026-09-17T01:59:09.338435392Z"
+    }
+  ],
+  "fileTree": [
+    {
+      "path": "/root",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/backups",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/backups/.claude.json.backup.1787287842241",
+      "type": "file",
+      "size": 50,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/backups/.claude.json.backup.1789610341951",
+      "type": "file",
+      "size": 483,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/downloads",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/policy-limits.json",
+      "type": "file",
+      "size": 214,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/projects",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/projects/-workspaces-1789610264294",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/projects/-workspaces-1789610264294/7048289f-bd76-4f39-90ad-986900345c2c.jsonl",
+      "type": "file",
+      "size": 15521,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/projects/-workspaces-1789610264294/memory",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/remote-settings.json",
+      "type": "file",
+      "size": 2,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/sessions",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/skills",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/skills/pass-cli",
+      "type": "dir",
+      "size": null,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    },
+    {
+      "path": "/root/.claude/skills/pass-cli/SKILL.md",
+      "type": "file",
+      "size": 4918,
+      "snapshotId": "eca7f3c26d277bbb4cf5d4d8f7ac9528dc0fb9fa071b85497ceec09c8c0225a1"
+    }
+  ],
+  "diff": [],
+  "logs": [],
+  "capabilityFacts": [],
+  "capabilityGrants": [],
+  "capabilityObservations": [],
+  "reconciliationFlags": [],
+  "validation": {
+    "schemaVersion": "1.1.0",
+    "artifactHashes": [
+      {
+        "path": "restic-ls.json",
+        "sha256": "9a6423f2f8a0b38934345c140a85fb1cdb8bd22fc067f2c5a9f44a5d50fbb61c"
+      },
+      {
+        "path": "restic-snapshots.json",
+        "sha256": "227b70c258f0a59619264b1d216e9cd08f9b3f69fc06d96c936efd0b534f83d7"
+      },
+      {
+        "path": "scenario-outcome.json",
+        "sha256": "b973b1e2430f6c2872c0eb8053892b477c8533e7e541218cbd4194ce69b313da"
+      }
+    ],
+    "structurallyValid": true,
+    "validationErrors": []
+  }
+}

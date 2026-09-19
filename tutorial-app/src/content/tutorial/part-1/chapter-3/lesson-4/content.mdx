@@ -1,0 +1,123 @@
+---
+type: lesson
+title: "One true diagnostic on a real agent reason"
+template: otel-warm-log
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+previews:
+  - [4173, "Warm Log"]
+terminal: false
+editor:
+  fileTree: true
+focus: /pkl/GovernedVocabulary.pkl
+---
+
+Every reason string in the log to the right is real: copied verbatim from
+`src/pass-cli/install.sh`, the script that generates the `color` bin used
+throughout this repo's own `pass-cli` test scenarios. Nothing here was
+authored to resolve cleanly.
+
+**The claim this lesson demonstrates is not "here is a log viewer."** It's
+that an agent's stated reason can be type-checked against what it was
+actually permitted to do -- the same `Diagnostic{severity, code, message}`
+shape [CIT-139](https://github.com/null-hype/agent-plugins/tree/main/capability-spike)
+already uses for `pkl/Ledger.pkl`'s `CAP_NO_GRANT`, `CAP_REJECTED`, and
+`CAP_VAULT_MISMATCH`, extended one step earlier: from "may this fact
+acquire the capability" to "does this fact's stated reason even name
+something the supervisor recognizes."
+
+## The vocabulary is governed, not personal
+
+`pkl/GovernedVocabulary.pkl` is modelled on chapter-1 lesson-2's
+`PersonalVocabulary.pkl`, with ownership inverted. There, *you* admitted
+`Schadenfreude` into your own vocabulary. Here, only the supervisor may
+admit a phrase -- a worker fact can reference an admitted term by name, but
+cannot add one. `requiresVocabularyAdmission = true`, same field name as
+lesson 2, opposite direction of control.
+
+## The resolver
+
+[`reasonResolver.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/reasonResolver.ts)
+maps a raw reason to `{ raw, resolvedFactId, lossAxes, diagnostic }`:
+
+1. Parse the reason's `<scope> scenario: <phrase>` shape -- `scope` is the
+   `AGENT_ASSIGNMENT` prefix `install.sh` bakes in ahead of the phrase.
+2. Look `phrase` up in `GovernedVocabulary.pkl`'s `admitted` listing, under
+   that exact `scope`. Not found -> `CAP_TERM_UNRESOLVED`, the one new code
+   this lesson adds. `resolvedFactId` stays `null`.
+3. Found -> check the resulting `(factId, scope)` pair the same way
+   [`ledgerCheckAccess.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/ledgerCheckAccess.ts)
+   already does for every other fact in this chapter: `CAP_NO_GRANT`,
+   `CAP_REJECTED`, or `CAP_VAULT_MISMATCH`. `scope` is passed through as
+   the `vault` argument -- it is a checked field, not decoration, so a
+   reason whose scope doesn't match what was admitted never resolves
+   clean.
+
+Three real lines from `install.sh`, three different outcomes:
+
+- **`resuming restored session to read back the codeword`** (scope
+  `jin-91-resume-session`) -- admitted *and* granted. Resolves clean: no
+  diagnostic, no underline.
+- **`planting codeword in a fresh session`** (same scope) -- admitted, but
+  no grant was ever recorded for it. `CAP_NO_GRANT`. **Admission does not
+  confer access** -- this is the point of drawing the vocabulary and the
+  grant as two separate gates instead of one.
+- **`color bin asking claude its favorite color`** (scope
+  `jin-81-pass-cli`, a different real scenario) -- never admitted at all.
+  `CAP_TERM_UNRESOLVED`. A different code from the line above, on purpose:
+  "nobody approved this yet" and "nobody has ever heard of this" are not
+  the same failure.
+
+[`reasonResolver.spec.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/reasonResolver.spec.ts)
+(vendored into this lesson's file tree, alongside its own
+`agent-plugins`-side counterpart,
+[`resolver_test.go`](https://github.com/null-hype/agent-plugins/blob/main/capability-spike/resolver/resolver_test.go))
+checks all three cases, plus a scope mismatch and an explicit rejection.
+One of its tests reads `reason-log.jsonl` -- the exact file the preview to
+the right renders -- and asserts every record equals `resolveReason(record.raw,
+...)` exactly, so that log can never quietly drift from what the resolver
+actually produces.
+
+## Rendered in the editor surface that already exists
+
+The preview on the right is the same `otel-warm-log` Monaco template
+chapter 1 uses for its warm-log traces. That template already registered a
+Monarch tokenizer and a folding provider; this lesson is what adds
+`setModelMarkers` (the underline under the two failing lines) and
+`registerHoverProvider` (the message when you hover one). No new file
+format, no OTLP ingest -- open the log, see one line underlined, hover it,
+read the reason it failed.
+
+## The diagnostic is a language service, not a rendering
+
+[CIT-152](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/governanceDiagnostic.ts)
+widens that same `{severity, code, message, factID, vault}` `Diagnostic`
+one step further: `reasonDiagnosticToGovernance` (in `governanceDiagnostic.ts`,
+alongside `reasonResolver.ts` in the tree to the left) reads the same
+`admitted`/`grantsByFactId` inputs `resolveReason` took and names the
+actual evidence a verdict rests on -- the admitted-vocabulary entry, the
+grant it found or didn't -- as a `related: EvidenceLocation[]` list, not
+just the verdict's own code and message. `reason-log.jsonl` carries that
+list for every record, and `reasonResolver.spec.ts` proves it can never
+drift from what the adapter itself produces.
+
+The preview renders that list two ways now: hovering a failing line shows
+the related evidence alongside the verdict, and each failing line also
+carries a CodeLens -- `✗ CAP_NO_GRANT · 2 related` -- that toggles a small
+panel underneath the line showing the same evidence, closer to
+`✗ CAP_NO_GRANT · supervisor never recorded a grant` sitting next to
+`Ledger.checkAccess(factID, requestedVault)` than to a log viewer. (This
+build's Monaco bundle doesn't register a `peek-definition` action to hang
+that panel off of -- checked directly, no `editor.action.peekDefinition`
+exists on a freshly created editor here -- so it's a Monaco content widget
+instead of the built-in Peek View; the shape of what's shown is the same
+either way.)
+
+**Supporting files**, all real, in the tree to the left:
+`pkl/GovernedVocabulary.pkl` (the admitted vocabulary) and `pkl/Ledger.pkl`
+(the capability gate, unchanged from CIT-139), plus the TypeScript replays
+this browser lesson runs instead of a live Pkl evaluator --
+`reasonResolver.ts`, `governedVocabulary.ts`, `ledgerCheckAccess.ts`,
+`governanceDiagnostic.ts`, and the fixtures themselves in
+`reasonFixture.ts`.

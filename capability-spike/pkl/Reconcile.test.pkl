@@ -1,0 +1,179 @@
+/// Exercises `Reconcile.pkl` against the exact values `demo.go`'s
+/// steps 3, 7 and 9 put through `reconcile.Check` -- same fact IDs, same
+/// vaults, same deliberately-misaligned observations -- so the Pkl axiom
+/// and the Go one cannot quietly disagree about what alignment means.
+///
+/// Credential-free and state-free on purpose: unlike the rest of this
+/// spike it needs no `pkl/GrantState.pkl` on disk (git-ignored, rendered
+/// by `supervisor.Decide`), no `build/proton-observed.jsonl`, and no Go
+/// toolchain. `pkl test pkl/Reconcile.test.pkl` from `capability-spike/`
+/// is the whole invocation.
+///
+/// `facts {}` and `examples {}` are doing different jobs here, and the
+/// difference is the point. A fact is a proposition that must hold: the
+/// checked expectation. An example is a rendered value pinned against
+/// `Reconcile.test.pkl-expected.pcf` -- it asserts nothing on its own,
+/// it just makes the diagnostic text itself reviewable in a diff, so a
+/// message can't silently degrade into something a reader can no longer
+/// act on while every fact stays green.
+amends "pkl:test"
+
+import "Reconcile.pkl"
+
+/// Verbatim from demo.go's constant block.
+local mainFactID = "flight-booking:area51:vault-access"
+local mainVault = "thepentagon.com"
+local rejectedFactID = "area51:site4:black-budget-vault-access"
+local rejectedVault = "site4.internal"
+local neverApprovedFactID = "shadow-request:roswell:vault-access"
+
+/// The state demo.go step 3 writes via a real `supervisor.Decide` call:
+/// one approval, one explicit rejection.
+local grants: Mapping<String, Reconcile.Grant> = new {
+  [mainFactID] { factID = mainFactID; vault = mainVault; approved = true }
+  [rejectedFactID] { factID = rejectedFactID; vault = rejectedVault; approved = false }
+}
+
+/// demo.go step 7: PROTON_PASS_AGENT_REASON carries the stable fact ID.
+local alignedObservation = new Reconcile.Observation {
+  factID = mainFactID
+  vault = mainVault
+  reason = mainFactID
+}
+
+/// demo.go step 9's second misaligned observation, and the single most
+/// instructive value in this file: the reason is a real, well-formed,
+/// currently-recorded fact ID. It parses. It resolves. It is simply not
+/// this operation's fact. Every local clue is coherent and the frame is
+/// still wrong.
+local misattributedObservation = new Reconcile.Observation {
+  factID = mainFactID
+  vault = mainVault
+  reason = rejectedFactID
+}
+
+/// demo.go step 9's third: right reason, wrong vault.
+local wrongVaultObservation = new Reconcile.Observation {
+  factID = mainFactID
+  vault = "cia.gov"
+  reason = mainFactID
+}
+
+/// demo.go step 9's first: materialized with no grant behind it at all.
+local ungrantedObservation = new Reconcile.Observation {
+  factID = neverApprovedFactID
+  vault = "area51.internal"
+  reason = neverApprovedFactID
+}
+
+/// The real fixture files, read as text rather than transcribed, so
+/// editing either one is what changes this test's verdict.
+local bypassedFact = new Reconcile.FactFile {
+  factID = mainFactID
+  path = "worker/fixtures_invalid/bypassed_gate.pkl"
+  source = read("../worker/fixtures_invalid/bypassed_gate.pkl").text
+}
+
+local governedFact = new Reconcile.FactFile {
+  factID = mainFactID
+  path = "worker/flight_booking_area51.pkl"
+  source = read("../worker/flight_booking_area51.pkl").text
+}
+
+/// The bypassed fixture with the one line that routes it through the
+/// supervisor put back -- the repair, applied to the fact's own text
+/// rather than to anyone's state.
+local repairedFact = (bypassedFact) {
+  source = bypassedFact.source.replaceFirst("true", "Ledger.checkAccess(factID, requestedVault)")
+}
+
+local noObservations: Listing<Reconcile.Observation> = new {}
+local noFacts: Listing<Reconcile.FactFile> = new {}
+local aligned: Listing<Reconcile.Observation> = new { alignedObservation }
+local misattributed: Listing<Reconcile.Observation> = new { misattributedObservation }
+local wrongVault: Listing<Reconcile.Observation> = new { wrongVaultObservation }
+local ungranted: Listing<Reconcile.Observation> = new { ungrantedObservation }
+local everyMisalignment: Listing<Reconcile.Observation> = new {
+  ungrantedObservation
+  misattributedObservation
+  wrongVaultObservation
+}
+local governedOnly: Listing<Reconcile.FactFile> = new { governedFact }
+local bypassedOnly: Listing<Reconcile.FactFile> = new { bypassedFact }
+local repairedOnly: Listing<Reconcile.FactFile> = new { repairedFact }
+local bothFactFiles: Listing<Reconcile.FactFile> = new { bypassedFact; governedFact }
+
+local function kinds(flags: List<Reconcile.Flag>): List<String> = flags.map((f) -> f.kind)
+
+facts {
+  ["an aligned world produces no flags at all"] {
+    Reconcile.check(grants, aligned, governedOnly) == List()
+  }
+
+  ["a reason naming a different real fact is still a mismatch -- well-formed is not the same as correct"] {
+    kinds(Reconcile.check(grants, misattributed, noFacts)) == List("reason-mismatch")
+  }
+
+  ["an observation whose vault the grant never covered is a mismatch"] {
+    kinds(Reconcile.check(grants, wrongVault, noFacts)) == List("reason-mismatch")
+  }
+
+  // Two flags, two different fact IDs, from one call: the ungranted
+  // observation is flagged, and -- in the same world -- the approved
+  // grant that nothing observed is flagged too. `check()` reports on
+  // every fact it can see, so a caller that reads only the first flag
+  // reads only part of the divergence.
+  ["a materialization with no approved grant behind it is reported once, not checked further"] {
+    kinds(Reconcile.check(grants, ungranted, noFacts)) ==
+      List("unapproved-materialization", "missing-materialization")
+  }
+
+  ["an approved grant nobody materialized is reported, and a rejected one is not"] {
+    Reconcile.check(grants, noObservations, noFacts) ==
+      List(new Reconcile.Flag {
+        kind = "missing-materialization"
+        factID = mainFactID
+        detail = "grant approved but no Proton materialization was ever observed"
+      })
+  }
+
+  // The claim this whole module exists to make executable. `pkl test
+  // worker/fixtures_invalid/bypassed_gate.pkl` passes -- demo_test.go's
+  // TestBypassedGatePassesPklTestButFlaggedByReconciliation asserts
+  // exactly that. Nothing about its own result distinguishes it from the
+  // governed fact below.
+  ["a fact file that passes `pkl test` while never calling the gate is flagged anyway"] {
+    kinds(Reconcile.check(grants, aligned, bypassedOnly)) == List("boundary-bypassed")
+  }
+
+  ["the governed fact file, whose `pkl test` result is identical, is not flagged"] {
+    Reconcile.check(grants, aligned, governedOnly) == List()
+  }
+
+  // Making the bypassed fact's *test* green was never the repair, and
+  // making it red is not one either: the repair is routing it through
+  // the gate, after which the boundary flag clears regardless of what
+  // the supervisor then answers.
+  ["restoring the gate call clears the boundary flag without changing any grant"] {
+    Reconcile.check(grants, aligned, repairedOnly) == List()
+  }
+}
+
+examples {
+  // Pinned so the diagnostic a supervisor actually has to act on stays
+  // reviewable in a diff, not just assertable. Every detail string here
+  // names the divergence and the two values that diverged; a change that
+  // degrades one into "check failed" shows up here even though no fact
+  // above would notice.
+  //
+  // Rendered through demo.go's own `flagged: %s fact=%s: %s` transcript
+  // format rather than as `Flag` instances: pkl:test re-reads this
+  // module's `-expected.pcf` on every later run, and a bare `new { ... }`
+  // inside a rendered `List` is not re-readable ("Cannot tell which
+  // parent to amend"), so a golden file full of class instances would
+  // pass once and then fail forever.
+  ["every flag kind's diagnostic text"] {
+    Reconcile.check(grants, everyMisalignment, bothFactFiles)
+      .map((f) -> "\(f.kind) fact=\(f.factID): \(f.detail)")
+  }
+}

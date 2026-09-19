@@ -1,0 +1,151 @@
+/// The alignment axiom, written as Pkl instead of only as Go.
+///
+/// `reconcile/reconcile.go`'s `Check` already reconciles three
+/// representations of the same capability acquisition:
+///
+///     worker fact requesting the capability
+///             ↕
+///     supervisor-approved grant
+///             ↕
+///     observed PROTON_PASS_AGENT_REASON / materialization
+///
+/// This module states the same invariant as a function, so it can be
+/// exercised by `pkl test` with no Go toolchain, no Proton Pass
+/// credentials, and no `build/proton-observed.jsonl` on disk -- see
+/// `Reconcile.test.pkl`, which is what actually makes this file an
+/// instrument rather than a description.
+///
+/// Why it matters that this is an *axiom* and not a *fact*: a fact
+/// records observed state, and every value `check()` takes is a fact
+/// (what the worker asked for, what the supervisor decided, what the
+/// runtime recorded). `check()` itself is the expectation about what
+/// must follow if those three facts describe one coherent world. Running
+/// it is what turns that expectation into an observable diagnostic.
+///
+/// `boundary-bypassed` is the flag this whole module exists for. Every
+/// other kind here fires on a divergence you could also have noticed by
+/// reading the values. That one fires on a fact file that *passes*
+/// `pkl test` -- see `worker/fixtures_invalid/bypassed_gate.pkl` and
+/// `TestBypassedGatePassesPklTestButFlaggedByReconciliation` in
+/// `demo_test.go`, a committed Go test whose entire assertion is that
+/// the green result means nothing. A green test is evidence about the
+/// test, not about the world it was supposed to be watching.
+module reconcile
+
+/// Mirrors `GrantState.pkl`'s class of the same name, field-for-field.
+/// Duplicated rather than imported on purpose: `GrantState.pkl` is
+/// supervisor-rendered and git-ignored (see `.gitignore`'s own comment),
+/// so importing it would make this module unevaluatable in a fresh
+/// checkout -- and `check()` takes the grants it reconciles against as an
+/// argument anyway, exactly as `reconcile.Check` takes `statePath`. Same
+/// duplication discipline `Inventory.pkl`'s header already documents for
+/// its copy of `Vaults.pkl`'s `VaultSpec`; keep the two in sync on drift.
+class Grant {
+  factID: String
+  vault: String
+  approved: Boolean
+}
+
+/// One recorded Proton Pass operation, mirroring
+/// `runtime.Observation`. `reason` is the literal
+/// `PROTON_PASS_AGENT_REASON` value the operation actually carried --
+/// the field that can drift in a real integration. `factID` is metadata
+/// the recorder chose, so checking it alone would validate nothing.
+class Observation {
+  factID: String
+  vault: String
+  reason: String
+}
+
+/// One worker-owned fact file, carried by its own text rather than its
+/// path, because this module has no filesystem access and the check is a
+/// structural one over the source anyway. `reconcile.FactFile` carries
+/// the path and reads the bytes; the predicate applied to them is the
+/// same.
+class FactFile {
+  factID: String
+  path: String
+  source: String
+}
+
+class Flag {
+  kind: String
+  factID: String
+  detail: String
+}
+
+/// Kept as constants rather than inline strings so the Go `FlagKind`
+/// values, this module, and tutorial-app's `reconcileCheck.ts` replay
+/// can be compared literally instead of by eye.
+const UNAPPROVED_MATERIALIZATION = "unapproved-materialization"
+const MISSING_MATERIALIZATION = "missing-materialization"
+const REASON_MISMATCH = "reason-mismatch"
+const BOUNDARY_BYPASSED = "boundary-bypassed"
+
+/// The one substring that distinguishes a fact that asked the supervisor
+/// a question from a fact that answered it itself.
+const GATE_CALL = "Ledger.checkAccess("
+
+/// Parameter names are deliberately not the field names they set: inside
+/// a `new Flag { ... }` body an unqualified `kind` resolves to the
+/// object's own property, not the enclosing function's parameter, so
+/// `kind = kind` is a self-reference that overflows the stack rather
+/// than a copy.
+local function flag(flagKind: String, subject: String, explanation: String): Flag = new Flag {
+  kind = flagKind
+  factID = subject
+  detail = explanation
+}
+
+/// Flags for one observation, checked against the grant it claims to be
+/// governed by. An observation with no approved grant behind it is
+/// reported once and not checked further -- there is nothing coherent to
+/// compare its reason or vault against.
+function observationFlags(grants: Mapping<String, Grant>, o: Observation): List<Flag> =
+  let (grant = grants.getOrNull(o.factID))
+    if (grant == null || !grant.approved)
+      List(flag(UNAPPROVED_MATERIALIZATION, o.factID, "Proton observation recorded with no matching approved grant"))
+    else
+      (if (o.reason != o.factID)
+        List(flag(REASON_MISMATCH, o.factID, "PROTON_PASS_AGENT_REASON \"\(o.reason)\" does not match the governing fact ID \"\(o.factID)\""))
+      else List())
+      +
+      (if (o.vault != grant.vault)
+        List(flag(REASON_MISMATCH, o.factID, "observed vault \"\(o.vault)\" does not match the governing grant's vault \"\(grant.vault)\""))
+      else List())
+
+/// An approved grant nobody ever materialized. Not an error in itself --
+/// it is the state every approval passes through -- which is exactly why
+/// it is reported as a flag to interpret rather than a test to make
+/// green.
+function missingMaterializationFlags(grants: Mapping<String, Grant>, observations: Listing<Observation>): List<Flag> =
+  let (materialized = observations.toList().map((o) -> o.factID).toSet())
+    grants.toMap().values.toList()
+      .filter((g) -> g.approved && !materialized.contains(g.factID))
+      .map((g) -> flag(MISSING_MATERIALIZATION, g.factID, "grant approved but no Proton materialization was ever observed"))
+
+/// A structural check over the fact's own text, not a semantic one:
+/// `pkl test`'s exit code cannot distinguish a fact that passed because
+/// the supervisor approved it from one a worker hardcoded to `true`.
+/// Both just report success.
+function boundaryFlags(facts: Listing<FactFile>): List<Flag> =
+  facts.toList()
+    .filter((f) -> !f.source.contains(GATE_CALL))
+    .map((f) -> flag(BOUNDARY_BYPASSED, f.factID, "\(f.path) does not call Ledger.checkAccess -- any green result did not go through the supervisor boundary"))
+
+/// The full reconciliation, in `reconcile.Check`'s own order:
+/// observations first, then approved-but-unobserved grants, then the
+/// structural boundary check over the fact files themselves.
+///
+/// An empty result is the alignment condition CIT-139 states as "fact,
+/// approval, and observed reason agree" -- or, in the framing this
+/// module's lesson uses: facts, reasons, and executable consequences
+/// admit the same interpretation.
+function check(
+  grants: Mapping<String, Grant>,
+  observations: Listing<Observation>,
+  facts: Listing<FactFile>
+): List<Flag> =
+  observations.toList().flatMap((o) -> observationFlags(grants, o))
+    + missingMaterializationFlags(grants, observations)
+    + boundaryFlags(facts)

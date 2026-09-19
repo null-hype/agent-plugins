@@ -1,0 +1,13 @@
+module AuthorizationGrammar
+
+class ArticleRule {
+  phrase: String
+  governedCase: String
+  requiredArticle: String
+}
+
+authorizationAnchor = new ArticleRule {
+  phrase = "anhand ... Benutzer-ID"
+  governedCase = "Dative"
+  requiredArticle = "der"
+}
