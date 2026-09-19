@@ -1,5 +1,5 @@
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 // Using a coding agent? See https://hk.jdx.dev/agents
 
 local linters = new Mapping<String, Step> {
@@ -28,7 +28,7 @@ hooks {
     ["check"] {
         steps = (linters) {
             ["restic-check"] {
-                check {
+                check = new CommandSpec {
                     command = "bash .dagger/internal/devenv-base/hk/restic-check.sh"
                     effect = "read"
                 }
@@ -39,7 +39,7 @@ hooks {
             // declared vault/item must actually exist in Proton Pass.
             // Read-only (vault/item listings only, no field values).
             ["vault-inventory"] {
-                check {
+                check = new CommandSpec {
                     command = "bash .dagger/internal/devenv-base/hk/capture-vault-inventory.sh && mise exec -- pkl test .dagger/internal/devenv-base/pkl/Vaults.test.pkl"
                     effect = "read"
                 }
@@ -57,7 +57,7 @@ hooks {
             // message degrading while every assertion stays green.
             ["capability-axioms"] {
                 dir = "capability-spike"
-                check {
+                check = new CommandSpec {
                     command = "mise exec -- pkl test pkl/Inventory.test.pkl pkl/Reconcile.test.pkl"
                     effect = "read"
                 }
@@ -68,7 +68,7 @@ hooks {
             // should never block `git push`. See
             // .dagger/internal/devenv-base/hk/linear-release-sync.sh.
             ["linear-release"] {
-                check {
+                check = new CommandSpec {
                     command = "bash .dagger/internal/devenv-base/hk/linear-release-sync.sh"
                     effect = "read"
                 }
