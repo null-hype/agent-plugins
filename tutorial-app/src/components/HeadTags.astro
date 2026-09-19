@@ -1,6 +1,12 @@
 <slot name="title" />
 <slot name="links" />
 <slot name="meta" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Null Hype" />
+<meta property="og:title" content="Agent capability governance: executable evidence" />
+<meta property="og:description" content="Agent capabilities can each be acceptable alone and unsafe once composed. Run the lessons and inspect the evidence." />
+<meta name="twitter:card" content="summary" />
+<!-- TODO(CIT-168/169): add og:image, favicon and canonical once the visual kit and final site URL exist -->
 
 <style is:global>
   /* Reserve space for the fixed footer band */
@@ -57,9 +63,11 @@
     footer.innerHTML = [
       '<span class="gap-footer-sep">·</span>',
       // TODO: replace href with live article URL once PLAN-326 publishes on tidelands.dev
-      '<a href="https://github.com/null-hype/null-hype.github.io" target="_blank" rel="noopener">Grammar as Protocol</a>',
+      '<a href="https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md" target="_blank" rel="noopener">Inspect the evidence</a>',
       '<span class="gap-footer-sep">·</span>',
-      '<a href="https://github.com/null-hype" target="_blank" rel="noopener">GitHub</a>',
+      '<a href="https://github.com/null-hype/agent-plugins" target="_blank" rel="noopener">Source</a>',
+      '<span class="gap-footer-sep">·</span>',
+      '<a href="https://github.com/null-hype" target="_blank" rel="noopener">Null Hype</a>',
     ].join('');
     if (document.body) {
       document.body.appendChild(footer);

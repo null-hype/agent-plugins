@@ -3,5 +3,5 @@ type: tutorial
 title: Grammar as Protocol — A Tutorial
 meta:
   title: Grammar as Protocol — A Tutorial
-  description: Formal grammars are the protocol layer between human intent and agent execution. An interactive tutorial showing the same Pkl constraint engine across German linguistics, API authorization, and security vulnerability detection.
+  description: Agent capabilities can each be acceptable alone and unsafe once composed. Interactive lessons on turning capability governance into executable, typed checks that flag the conflict, and its evidence, before acceptance.
 ---
