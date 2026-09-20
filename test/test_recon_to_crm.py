@@ -22,6 +22,10 @@ from scripts.recon_to_crm import (
     generate_review_queue,
     load_csv,
     save_canonical_csv,
+    load_linear_triage_state,
+    validate_decision_against_linear,
+    validate_invariants,
+    AuthoritativeLinearError,
 )
 
 
@@ -201,7 +205,7 @@ class TestReconToCRM(unittest.TestCase):
     def test_canonical_dataset_validation(self):
         header, rows = load_csv("docs/launch/crm.csv")
         self.assertEqual(detect_file_schema(header), "canonical_crm")
-        self.assertEqual(len(rows), 49)
+        self.assertEqual(len(rows), 22)
         is_valid, errors = validate_canonical_dataset(rows)
         self.assertTrue(is_valid, f"Validation errors: {errors}")
 
@@ -209,6 +213,199 @@ class TestReconToCRM(unittest.TestCase):
         self.assertEqual(detect_file_schema(rej_header), "crm_rejections")
         self.assertEqual(len(rej_rows), 1)
         self.assertEqual(rej_rows[0]["person"], "Tom McLeod")
+
+    def test_linear_invariants_hold_on_canonical_state(self):
+        """Validate CIT-198 invariants on current canonical repo files."""
+        _, crm_records = load_csv("docs/launch/crm.csv")
+        _, rejections = load_csv("docs/launch/crm-rejections.csv")
+        linear_state = load_linear_triage_state("docs/launch/linear-triage-state.json")
+
+        valid, errors = validate_invariants(crm_records, linear_state, rejections, grandfathered_count=20)
+        self.assertTrue(valid, f"Invariant violations: {errors}")
+
+    def test_unresolved_triage_candidate_absent_from_crm(self):
+        """Invariant: Unresolved Triage candidates must be completely absent from CRM."""
+        _, crm_records = load_csv("docs/launch/crm.csv")
+        crm_names = [r["person"].lower() for r in crm_records]
+        crm_urls = [normalize_profile_url(r.get("profile_url", "")) for r in crm_records if r.get("profile_url")]
+
+        # Candidates currently in Triage in Linear
+        triage_candidates = [
+            ("Ishmael Chibvuri", "https://www.linkedin.com/in/ishmaelchibvuri"),
+            ("Inna Carp", "https://www.linkedin.com/in/innacarp"),
+            ("Ofir Har-Chen", "https://www.linkedin.com/in/ofirhc"),
+            ("Jason Keirstead", "https://www.linkedin.com/in/jasonkeirstead"),
+            ("Mandy Andress", "https://www.linkedin.com/in/mandyandress"),
+            ("Max Nadeau", "https://www.linkedin.com/in/max-nadeau"),
+            ("Dewi Erwan", "https://www.linkedin.com/in/dewierwan"),
+        ]
+
+        for name, url in triage_candidates:
+            self.assertNotIn(name.lower(), crm_names, f"Triage candidate {name} should NOT be in canonical CRM")
+            self.assertNotIn(normalize_profile_url(url), crm_urls, f"Triage candidate URL {url} should NOT be in CRM")
+
+    def test_research_candidate_absent_from_crm(self):
+        """Invariant: Research/Backlog candidates must remain outside canonical CRM in staging."""
+        _, crm_records = load_csv("docs/launch/crm.csv")
+        crm_names = [r["person"].lower() for r in crm_records]
+        crm_urls = [normalize_profile_url(r.get("profile_url", "")) for r in crm_records if r.get("profile_url")]
+
+        self.assertNotIn("brian peretti", crm_names, "Brian Peretti (Research/Backlog) must not be in canonical CRM")
+        self.assertNotIn("https://www.linkedin.com/in/brianperetti", crm_urls)
+
+    def test_reject_candidate_absent_from_crm_and_present_in_rejections(self):
+        """Invariant: Rejected candidates must be absent from CRM and recorded in rejections registry."""
+        _, crm_records = load_csv("docs/launch/crm.csv")
+        _, rejections = load_csv("docs/launch/crm-rejections.csv")
+
+        crm_names = [r["person"].lower() for r in crm_records]
+        rej_names = [r["person"].lower() for r in rejections]
+
+        self.assertNotIn("tom mcleod", crm_names, "Tom McLeod (Rejected) must not be in CRM")
+        self.assertIn("tom mcleod", rej_names, "Tom McLeod must be present in rejection registry")
+
+    def test_accept_candidate_present_exactly_once(self):
+        """Invariant: Every Accept decision corresponds to exactly one canonical CRM record."""
+        _, crm_records = load_csv("docs/launch/crm.csv")
+
+        kotadia_matches = [r for r in crm_records if "harish kotadia" in r["person"].lower()]
+        self.assertEqual(len(kotadia_matches), 1, "Dr. Harish Kotadia must appear exactly once in CRM")
+        self.assertEqual(kotadia_matches[0]["id"], "21")
+
+        anurag_matches = [r for r in crm_records if "anurag roy barman" in r["person"].lower()]
+        self.assertEqual(len(anurag_matches), 1, "Anurag Roy Barman must appear exactly once in CRM")
+        self.assertEqual(anurag_matches[0]["id"], "22")
+
+    def test_merge_does_not_create_second_identity(self):
+        """Invariant: Merging evidence into an existing contact updates provenance without creating a new record."""
+        engine = IngestionEngine()
+        seed = {
+            "id": "1",
+            "person": "Matthew Hart",
+            "profile_url": "https://www.linkedin.com/in/matthewhart",
+            "role_organisation": "Head of Security at Canva",
+            "observed_signal": "Initial signal",
+        }
+        engine.ingest_record(seed)
+        self.assertEqual(len(engine.records), 1)
+
+        # Merge new signal
+        incoming = {
+            "name": "Matthew Hart",
+            "profile_url": "https://www.linkedin.com/in/matthewhart/",
+            "observed_signal": "Second signal: agent governance",
+            "terminology_notes": "NHI tokens",
+        }
+        norm_rec = parse_cit184_record(incoming, 0)
+        engine.merge_evidence(0, norm_rec)
+
+        self.assertEqual(len(engine.records), 1, "Merge must not increase record count")
+        self.assertIn("Initial signal", engine.records[0]["observed_signal"])
+        self.assertIn("Second signal: agent governance", engine.records[0]["observed_signal"])
+
+    def test_same_name_different_person_does_not_automerge_or_suppress(self):
+        """Invariant: Same-name-only matches must NEVER auto-merge or suppress; route to ambiguous triage."""
+        crm = [{
+            "id": "1",
+            "person": "John Smith",
+            "profile_url": "https://www.linkedin.com/in/johnsmith-canva",
+            "role_organisation": "Security Engineer at Canva",
+        }]
+        rejections = [{
+            "person": "Alice Johnson",
+            "profile_url": "https://www.linkedin.com/in/alice-johnson-auditor",
+            "role_organisation": "Auditor at Firm A",
+            "rejection_reason": "Out of scope",
+            "linear_issue_id": "CIT-999",
+        }]
+        engine = IngestionEngine(crm, rejections)
+
+        # 1. Different person with same name as CRM contact -> MUST NOT auto-merge!
+        eval_diff_crm = engine.evaluate_recon_candidate({
+            "name": "John Smith",
+            "profile_url": "https://www.linkedin.com/in/johnsmith-different-company",
+            "role_organisation": "DevOps at Other Corp",
+        })
+        self.assertNotEqual(eval_diff_crm["action"], "mechanical_merge", "Different URL must NOT auto-merge")
+        self.assertEqual(eval_diff_crm["action"], "triage_proposal")
+        self.assertTrue(eval_diff_crm["is_ambiguous"])
+        self.assertIn("Ambiguous Name Match", eval_diff_crm["org_matches"])
+
+        # 2. Different person with same name as rejected contact -> MUST NOT auto-suppress!
+        eval_diff_rej = engine.evaluate_recon_candidate({
+            "name": "Alice Johnson",
+            "profile_url": "https://www.linkedin.com/in/alice-johnson-ai-researcher",
+            "role_organisation": "AI Safety Lead at Labs",
+        })
+        self.assertNotEqual(eval_diff_rej["action"], "suppressed_rejection", "Different URL must NOT auto-suppress")
+        self.assertEqual(eval_diff_rej["action"], "triage_proposal")
+        self.assertTrue(eval_diff_rej["is_ambiguous"])
+
+    def test_rerunning_decisions_is_idempotent(self):
+        """Invariant: Applying the same Accept or Reject decisions multiple times produces identical state."""
+        crm = [{
+            "id": "1",
+            "person": "Matthew Hart",
+            "profile_url": "https://www.linkedin.com/in/matthewhart",
+            "priority_rationale": "Seed",
+        }]
+        rejections = []
+        engine = IngestionEngine(crm, rejections)
+
+        # Ingest new record
+        rec = {
+            "id": "2",
+            "person": "Dr. Harish Kotadia Ph.D.",
+            "profile_url": "https://www.linkedin.com/in/hkotadia",
+            "role_organisation": "Agentic Architect",
+            "priority_rationale": "Accepted via Linear CIT-187",
+            "stage": "researched",
+        }
+        engine.ingest_record(rec)
+        self.assertEqual(len(engine.records), 2)
+
+        # Re-ingest same record -> merges evidence, does NOT append duplicate
+        engine.ingest_record(rec)
+        self.assertEqual(len(engine.records), 2, "Idempotent: record count must not change on duplicate ingest")
+
+    def test_linear_authorization_validation_rejections(self):
+        """Invariant: Local decisions contradicting authoritative Linear state are rejected."""
+        mock_linear = {
+            "CIT-188": {"id": "CIT-188", "status": "Triage", "statusType": "triage"},
+            "CIT-196": {"id": "CIT-196", "status": "Backlog", "statusType": "backlog"},
+            "CIT-197": {"id": "CIT-197", "status": "Canceled", "statusType": "canceled"},
+            "CIT-187": {"id": "CIT-187", "status": "Todo", "statusType": "unstarted"},
+        }
+
+        # 1. Attempting to Accept an issue still in Triage -> REJECTED
+        valid, reason = validate_decision_against_linear({"linear_issue_id": "CIT-188", "outcome": "accept"}, mock_linear)
+        self.assertFalse(valid)
+        self.assertIn("still in 'Triage'", reason)
+
+        # 2. Attempting to Accept an issue that is Backlog (Research) -> REJECTED
+        valid, reason = validate_decision_against_linear({"linear_issue_id": "CIT-196", "outcome": "accept"}, mock_linear)
+        self.assertFalse(valid)
+        self.assertIn("does not authorize 'accept'", reason)
+
+        # 3. Attempting to Accept an issue that is Canceled (Rejected) -> REJECTED
+        valid, reason = validate_decision_against_linear({"linear_issue_id": "CIT-197", "outcome": "accept"}, mock_linear)
+        self.assertFalse(valid)
+        self.assertIn("does not authorize 'accept'", reason)
+
+        # 4. Unknown Linear issue ID -> REJECTED
+        valid, reason = validate_decision_against_linear({"linear_issue_id": "CIT-9999", "outcome": "accept"}, mock_linear)
+        self.assertFalse(valid)
+        self.assertIn("not found in authoritative Linear state", reason)
+
+        # 5. Correct outcome matching Linear state -> ACCEPTED
+        valid, _ = validate_decision_against_linear({"linear_issue_id": "CIT-187", "outcome": "accept"}, mock_linear)
+        self.assertTrue(valid)
+
+        valid, _ = validate_decision_against_linear({"linear_issue_id": "CIT-197", "outcome": "reject"}, mock_linear)
+        self.assertTrue(valid)
+
+        valid, _ = validate_decision_against_linear({"linear_issue_id": "CIT-196", "outcome": "research"}, mock_linear)
+        self.assertTrue(valid)
 
 
 if __name__ == "__main__":
