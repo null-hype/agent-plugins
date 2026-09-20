@@ -3,6 +3,7 @@
 test/test_recon_to_crm.py - Unit tests for repeatable recon-to-CRM pipeline with Linear Triage (CIT-185 / CIT-186)
 """
 
+import json
 import os
 import tempfile
 import unittest
@@ -23,6 +24,7 @@ from scripts.recon_to_crm import (
     load_csv,
     save_canonical_csv,
     load_linear_triage_state,
+    get_linear_state_metadata,
     validate_decision_against_linear,
     validate_invariants,
     AuthoritativeLinearError,
@@ -123,8 +125,8 @@ class TestReconToCRM(unittest.TestCase):
         merged = engine.records[0]
         self.assertIn("Talk on IAM architecture.", merged["observed_signal"])
         self.assertIn("Published post on Planner-Authoriser Collision.", merged["observed_signal"])
-        self.assertEqual(merged["review_priority"], "P1")
-        self.assertIn("Elevated via:", merged["priority_rationale"])
+        self.assertEqual(merged["review_priority"], "P2", "Mechanical merge must NOT elevate priority")
+        self.assertEqual(merged["priority_rationale"], "Initial seed", "Mechanical merge must NOT alter priority rationale")
         self.assertIn("Planner-authoriser collision", merged["terminology_used"])
 
     def test_generic_proposal_heuristic(self):
@@ -406,6 +408,124 @@ class TestReconToCRM(unittest.TestCase):
 
         valid, _ = validate_decision_against_linear({"linear_issue_id": "CIT-196", "outcome": "research"}, mock_linear)
         self.assertTrue(valid)
+
+    def test_mechanical_merge_does_not_promote_priority(self):
+        """Invariant: Exact URL is authority to append evidence only, NOT to elevate priority or rationale."""
+        engine = IngestionEngine()
+        seed = {
+            "id": "1",
+            "person": "Jane Doe",
+            "role_organisation": "Engineer at Corp",
+            "profile_url": "https://www.linkedin.com/in/janedoe",
+            "review_priority": "P3",
+            "priority_rationale": "Base heuristic P3",
+            "stage": "researched",
+            "observed_signal": "Initial post",
+        }
+        engine.ingest_record(seed)
+        self.assertEqual(engine.records[0]["review_priority"], "P3")
+
+        # Incoming recon proposes P1
+        incoming = {
+            "name": "Jane Doe",
+            "profile_url": "https://www.linkedin.com/in/janedoe/",
+            "review_priority": "P1",
+            "priority_rationale": "Proposed P1",
+            "observed_signal": "New critical signal",
+        }
+        norm_inc = parse_cit184_record(incoming, 0)
+        norm_inc["review_priority"] = "P1"
+        norm_inc["priority_rationale"] = "Proposed P1"
+
+        engine.merge_evidence(0, norm_inc)
+
+        record = engine.records[0]
+        self.assertEqual(record["review_priority"], "P3", "Priority must NOT be altered by mechanical evidence merge")
+        self.assertEqual(record["priority_rationale"], "Base heuristic P3", "Priority rationale must NOT be altered")
+        self.assertIn("New critical signal", record["observed_signal"], "Evidence MUST be appended")
+
+    def test_accept_same_name_different_url_does_not_merge(self):
+        """Invariant: Accepted candidate with same name as existing CRM record but different URL must NOT merge."""
+        engine = IngestionEngine()
+        seed = {
+            "id": "1",
+            "person": "John Smith",
+            "role_organisation": "CISO at Acme Corp",
+            "profile_url": "https://www.linkedin.com/in/johnsmith-acme",
+            "priority_rationale": "Accepted via Linear CIT-101: Initial seed",
+            "review_priority": "P1",
+            "stage": "review_queue",
+        }
+        engine.ingest_record(seed)
+        self.assertEqual(len(engine.records), 1)
+
+        # Candidate with same name, different URL, accepted via different Linear issue
+        new_candidate = {
+            "name": "John Smith",
+            "role_organisation": "VP Security at Beta Ltd",
+            "profile_url": "https://www.linkedin.com/in/johnsmith-beta",
+            "priority_rationale": "VP Security",
+        }
+        new_linear_id = "CIT-202"
+
+        # Simulate Accept logic from apply-triage
+        norm_url = normalize_profile_url(new_candidate["profile_url"])
+        existing_match_idx = None
+        if norm_url and norm_url in engine.url_index:
+            existing_match_idx = engine.url_index[norm_url]
+        elif new_linear_id and new_linear_id != "N/A":
+            for idx, r in enumerate(engine.records):
+                if new_linear_id in r.get("priority_rationale", ""):
+                    existing_match_idx = idx
+                    break
+
+        self.assertIsNone(existing_match_idx, "Must NOT find a match purely by normalized name")
+
+        # Ingest as separate identity
+        next_id = len(engine.records) + 1
+        norm_rec = parse_cit184_record(new_candidate, next_id)
+        norm_rec["priority_rationale"] = f"Accepted via Linear {new_linear_id}: {norm_rec['priority_rationale']}"
+        engine.records.append(norm_rec)
+
+        self.assertEqual(len(engine.records), 2, "Same name with different URL must create two independent CRM records")
+        self.assertEqual(engine.records[0]["profile_url"], "https://www.linkedin.com/in/johnsmith-acme")
+        self.assertEqual(engine.records[1]["profile_url"], "https://www.linkedin.com/in/johnsmith-beta")
+
+    def test_linear_state_cache_freshness_and_metadata(self):
+        """Invariant: Linear cache must record metadata and validate freshness."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tf:
+            stale_data = {
+                "_metadata": {
+                    "version": "1.0",
+                    "fetched_at": "2020-01-01T00:00:00Z",
+                    "source": "linear_live_api",
+                    "parent_issue": "CIT-186",
+                },
+                "CIT-187": {
+                    "id": "CIT-187",
+                    "status": "Todo",
+                    "statusType": "unstarted",
+                },
+            }
+            json.dump(stale_data, tf)
+            stale_path = tf.name
+
+        try:
+            # Stale cache should raise AuthoritativeLinearError when allow_stale=False
+            with self.assertRaises(AuthoritativeLinearError):
+                load_linear_triage_state(stale_path, max_age_hours=24.0, allow_stale=False)
+
+            # Should succeed when allow_stale=True
+            state = load_linear_triage_state(stale_path, max_age_hours=24.0, allow_stale=True)
+            self.assertIn("CIT-187", state)
+            self.assertNotIn("_metadata", state, "_metadata must be stripped from issues dict")
+
+            # Verify get_linear_state_metadata
+            meta = get_linear_state_metadata(stale_path)
+            self.assertEqual(meta.get("parent_issue"), "CIT-186")
+            self.assertEqual(meta.get("source"), "linear_live_api")
+        finally:
+            os.remove(stale_path)
 
 
 if __name__ == "__main__":

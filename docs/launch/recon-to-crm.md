@@ -13,6 +13,12 @@ Per **CIT-198**, the Linear gate is authoritative in machine state, not just des
 > **Invariant 1:** Every non-grandfathered CRM record must have an explicit `Accept` decision in Linear, and every `Accept` decision must correspond to exactly one CRM identity.
 >
 > **Invariant 2:** No `Triage` (unresolved), `Research` (`Backlog`), `Reject` (`Canceled`), or unresolved `Merge` (`Duplicate`) decision may create an independent CRM record.
+>
+> **Invariant 3 (Authority Model):**
+> * **Linear live state = authority.**
+> * **`linear-triage-state.json` = cached evidence of that authority** (with `_metadata` freshness verification).
+> * **Exact URL = authority to append evidence only, NOT authority to change campaign decisions.** Priority elevations or stage movements cannot happen silently through mechanical merges and must go through Linear.
+> * **Zero name-only merge fallbacks.** Accepted candidates with identical names create separate CRM records unless bound by exact profile URL or an explicit Merge decision.
 
 ```
 recon facts → deterministic identity check → Linear proposal → human decision → accepted state mutation
@@ -23,7 +29,7 @@ The ingestion code produces **proposals, not decisions**. A fabricated or stale 
 ```mermaid
 flowchart TD
     A["Recon Run (LinkedIn, GitHub, Meetup, Funders)"] --> B["Deterministic Identity & Dedupe Engine"]
-    B -- "Exact Profile URL Match in CRM" --> C["Mechanical Auto-Merge (Enriches Provenance)"]
+    B -- "Exact Profile URL Match in CRM" --> C["Mechanical Auto-Merge (Evidence ONLY; No Priority Drift)"]
     B -- "Exact Profile URL in Rejections" --> D["Mechanical Suppression (crm-rejections.csv)"]
     B -- "Genuinely New or Same-Name Ambiguous" --> E["Linear Triage Sub-Issue (state: Triage)"]
     
@@ -38,13 +44,13 @@ flowchart TD
 ```
 
 ### Separation of Responsibilities & Mutation Boundaries
-1. **Recon agents (e.g. Playwright-MCP):** Discover verifiable public evidence and output structured candidate dossiers.
-2. **Deterministic code (`scripts/recon_to_crm.py`):**
-   - Exact normalized profile URL match: auto-merges evidence to existing CRM contact.
-   - Same-name-only matches: **never** auto-merged or suppressed; routed to ambiguous triage.
+1. **Linear live state:** Sole authority for campaign decisions (acceptance, rejection, research staging, priority elevation).
+2. **`docs/launch/linear-triage-state.json`:** Checked-in cached evidence of Linear authority, refreshed via live Linear GraphQL API (`refresh-linear-state` / `--refresh`) and verified for freshness.
+3. **Deterministic code (`scripts/recon_to_crm.py`):**
+   - Exact normalized profile URL match: auto-appends observed signals and terminology **without** promoting priority or altering stage.
+   - Same-name-only matches: **never** auto-merged, suppressed, or collapsed during Accept; routed to ambiguous triage or ingested as distinct CRM identities.
    - Rejection registry: suppresses known rejected profiles by exact URL.
    - Direct ingestion bypass: blocked. `ingest` cannot create new identities without a Linear decision.
-3. **Linear (`docs/launch/linear-triage-state.json`):** Authoritative state machine. Only `Todo` or `Done` status authorizes CRM identity creation.
 4. **Canonical CRM (`docs/launch/crm.csv`):** 22 contacts (20 grandfathered CIT-110 contacts + 2 accepted CIT-187/CIT-189 contacts). Zero unresolved triage or research leads.
 5. **Research Staging (`docs/launch/crm-research.json`):** Candidates awaiting missing facts remain strictly outside canonical CRM.
 6. **Rejection Provenance (`docs/launch/crm-rejections.csv`):** Retains negative provenance to suppress duplicate research churn across campaigns.
@@ -173,7 +179,12 @@ python3 scripts/recon_to_crm.py validate-invariants \
   --linear-state docs/launch/linear-triage-state.json \
   --rejections docs/launch/crm-rejections.csv
 
-# 3. Apply Triage Decisions directly from Linear Authority
+# 3. Refresh Linear Triage Cache from Linear Live GraphQL API
+python3 scripts/recon_to_crm.py refresh-linear-state \
+  --parent CIT-186 \
+  --out docs/launch/linear-triage-state.json
+
+# 4. Apply Triage Decisions directly from Linear Authority (with optional --refresh)
 python3 scripts/recon_to_crm.py apply-triage \
   --from-linear \
   --linear-state docs/launch/linear-triage-state.json \
@@ -182,7 +193,7 @@ python3 scripts/recon_to_crm.py apply-triage \
   --research docs/launch/crm-research.json \
   --proposals docs/launch/triage-proposals.json
 
-# 4. Ingest (Mechanical enrichment ONLY; direct bypass blocked)
+# 5. Ingest (Mechanical enrichment ONLY; direct bypass blocked)
 python3 scripts/recon_to_crm.py ingest \
   --recon docs/launch/linkedin-recon-candidates.csv \
   --crm docs/launch/crm.csv \

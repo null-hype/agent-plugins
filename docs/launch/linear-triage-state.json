@@ -1,4 +1,11 @@
 {
+  "_metadata": {
+    "version": "1.0",
+    "fetched_at": "2026-09-20T08:00:00Z",
+    "source": "linear_live_api",
+    "parent_issue": "CIT-186",
+    "issue_count": 11
+  },
   "CIT-197": {
     "id": "CIT-197",
     "uuid": "00bd26e5-0345-4b86-a15a-a7c45253d73c",
