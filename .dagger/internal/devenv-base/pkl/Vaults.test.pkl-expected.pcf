@@ -1,13 +1,22 @@
 examples {
   ["observed vault names"] {
-    List("infra", "tidelands.dev")
+    List("anthropic.ai", "api.linear.app", "infra", "jingling057", "test", "tidelands.dev")
   }
   ["observed items in each declared vault"] {
     new {
-      ["infra"] = List("cloudflare", "dagger.cloud", "github.com", "render.com", "restic", "tailscale")
+      ["infra"] = List("SSH-tidelane", "cloudflare", "dagger.cloud", "github.com", "jules.googleapis.com", "netlify", "render.com", "restic", "stitch.withgoogle.com", "tailscale", "tidelands-1.seahorse-saurolophus.ts.net")
     }
     new {
-      ["tidelands.dev"] = List("agent.tidelands.dev", "claude", "linear-release", "pass-cli")
+      ["tidelands.dev"] = List("agent.tidelands.dev", "pass-cli")
+    }
+    new {
+      ["anthropic.ai"] = List("claude")
+    }
+    new {
+      ["jingling057"] = List("agent.tidelands.dev", "linear-release")
+    }
+    new {
+      ["test"] = List("cit-96")
     }
   }
 }

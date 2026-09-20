@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="never_approved" tests="1" failures="1">
+    <testcase classname="never_approved.facts" name="nothing to see here">
+        <error message="CAP_NO_GRANT fact=shadow-request:roswell:vault-access vault=area51.internal: no grant has been recorded for this fact -- request pending supervisor review">–– Pkl Error ––
+CAP_NO_GRANT fact=shadow-request:roswell:vault-access vault=area51.internal: no grant has been recorded for this fact -- request pending supervisor review
+
+22 | throw(&quot;\(code) fact=\(factID) vault=\(vault): \(message)&quot;)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#deny (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 22)
+
+30 | deny(&quot;CAP_NO_GRANT&quot;, factID, vault, &quot;no grant has been recorded for this fact -- request pending supervisor review&quot;)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#checkAccess (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 30)
+
+28 | let (grant = GrantState.approvedGrants.getOrNull(factID))
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ledger#checkAccess.&lt;let expr&gt; (file:///workspaces/agent-plugins/capability-spike/pkl/Ledger.pkl, line 28)
+
+14 | Ledger.checkAccess(factID, requestedVault)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at never_approved#facts[&quot;nothing to see here&quot;][#1] (file:///workspaces/agent-plugins/capability-spike/worker/fixtures_invalid/never_approved.pkl, line 14)
+</error>
+    </testcase>
+</testsuite>
