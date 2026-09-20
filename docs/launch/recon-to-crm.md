@@ -1,63 +1,79 @@
-# Repeatable Recon-to-CRM Ingestion Pipeline with Linear Triage (CIT-185 / CIT-186)
+# Repeatable Recon-to-CRM Ingestion Pipeline with Linear Triage (CIT-185 / CIT-186 / CIT-198)
 
 > **Status:** APPROVED WORKFLOW & CANONICAL PIPELINE  
-> **Linear Issues:** [CIT-186](https://linear.app/citizen6librarian6refrain4/issue/CIT-186/use-linear-triage-for-human-decisions-before-crm-ingestion) (Linear Triage Layer), [CIT-185](https://linear.app/citizen6librarian6refrain4/issue/CIT-185/build-repeatable-recon-to-crm-ingestion-workflow) (Pipeline), [CIT-110](https://linear.app/citizen6librarian6refrain4/issue/CIT-110/build-prioritized-direct-connection-list-and-lightweight-crm) (Canonical CRM), [CIT-184](https://linear.app/citizen6librarian6refrain4/issue/CIT-184/run-linkedin-recon-with-playwright-mcp-using-reproducible-search) (LinkedIn Recon Fixture), [CIT-113](https://linear.app/citizen6librarian6refrain4/issue/CIT-113/run-personalized-outreach-and-meetup-follow-up-cadence) (Outreach Handoff).  
+> **Linear Issues:** [CIT-198](https://linear.app/citizen6librarian6refrain4/issue/CIT-198/make-linear-authoritative-before-crm-ingestion) (Linear Authority & Invariants), [CIT-186](https://linear.app/citizen6librarian6refrain4/issue/CIT-186/use-linear-triage-for-human-decisions-before-crm-ingestion) (Linear Triage Layer), [CIT-185](https://linear.app/citizen6librarian6refrain4/issue/CIT-185/build-repeatable-recon-to-crm-ingestion-workflow) (Pipeline), [CIT-110](https://linear.app/citizen6librarian6refrain4/issue/CIT-110/build-prioritized-direct-connection-list-and-lightweight-crm) (Canonical CRM), [CIT-184](https://linear.app/citizen6librarian6refrain4/issue/CIT-184/run-linkedin-recon-with-playwright-mcp-using-reproducible-search) (LinkedIn Recon Fixture), [CIT-113](https://linear.app/citizen6librarian6refrain4/issue/CIT-113/run-personalized-outreach-and-meetup-follow-up-cadence) (Outreach Handoff).  
 > **Strict Operational Guardrail:** Recon, triage, and ingestion **ONLY**. Absolutely no connection requests, messages, comments, applications, or outbound communications are authorized by this pipeline. Outbound action belongs strictly to **CIT-113** following supervisor decision and explicit authorization.
 
 ---
 
-## 1. Architectural Principles: Linear as the Human Decision Layer
+## 1. Architectural Invariants: Linear as the Authoritative Gate (CIT-198)
 
-Per **CIT-186**, review judgment is decoupled from ingestion code and recorded explicitly in Linear:
+Per **CIT-198**, the Linear gate is authoritative in machine state, not just descriptive. The architecture is bound by two fundamental invariants:
+
+> **Invariant 1:** Every non-grandfathered CRM record must have an explicit `Accept` decision in Linear, and every `Accept` decision must correspond to exactly one CRM identity.
+>
+> **Invariant 2:** No `Triage` (unresolved), `Research` (`Backlog`), `Reject` (`Canceled`), or unresolved `Merge` (`Duplicate`) decision may create an independent CRM record.
+>
+> **Invariant 3 (Authority Model):**
+> * **Linear live state = authority.**
+> * **`linear-triage-state.json` = cached evidence of that authority** (with `_metadata` freshness verification).
+> * **Exact URL = authority to append evidence only, NOT authority to change campaign decisions.** Priority elevations or stage movements cannot happen silently through mechanical merges and must go through Linear.
+> * **Zero name-only merge fallbacks.** Accepted candidates with identical names create separate CRM records unless bound by exact profile URL or an explicit Merge decision.
 
 ```
-recon → deterministic identity/dedupe → Linear triage issue → Accept / Reject / Research / Merge → canonical CRM
+recon facts → deterministic identity check → Linear proposal → human decision → accepted state mutation
 ```
 
-The ingestion code produces **proposals, not unilateral decisions**.
+The ingestion code produces **proposals, not decisions**. A fabricated or stale local JSON decision cannot override Linear authority.
 
 ```mermaid
 flowchart TD
     A["Recon Run (LinkedIn, GitHub, Meetup, Funders)"] --> B["Deterministic Identity & Dedupe Engine"]
-    B -- "Exact Profile URL Match" --> C["Mechanical Auto-Merge to CRM (Appends Evidence)"]
-    B -- "Known Rejected Match" --> D["Mechanical Suppression (crm-rejections.csv)"]
-    B -- "Genuinely New or Ambiguous" --> E["Linear Triage Issue (state: Triage)"]
+    B -- "Exact Profile URL Match in CRM" --> C["Mechanical Auto-Merge (Evidence ONLY; No Priority Drift)"]
+    B -- "Exact Profile URL in Rejections" --> D["Mechanical Suppression (crm-rejections.csv)"]
+    B -- "Genuinely New or Same-Name Ambiguous" --> E["Linear Triage Sub-Issue (state: Triage)"]
     
-    E --> F{"Human / Supervisor Decision in Linear"}
+    E --> F{"Supervisor Decision in Linear"}
     F -- "Accept (Todo / Done)" --> G["Canonical CRM (`docs/launch/crm.csv`)"]
-    F -- "Reject (Canceled)" --> H["Rejection Registry (`docs/launch/crm-rejections.csv`)"]
-    F -- "Research (Backlog)" --> I["Return to Recon (Playwright-MCP for missing fact)"]
+    F -- "Reject (Canceled)" --> H["Negative Provenance (`docs/launch/crm-rejections.csv`)"]
+    F -- "Research (Backlog)" --> I["Research Staging (`docs/launch/crm-research.json`)"]
     F -- "Merge (Duplicate)" --> J["Merge Evidence into Target CRM ID"]
 
     G --> K["Downstream Queue (`approved_for_outreach`)"]
-    K --> L["CIT-113 Outbound Cadence (Authorized Action)"]
+    K --> L["CIT-113 Outbound Cadence (Strictly Authorized Action)"]
 ```
 
-### Separation of Responsibilities
-1. **Recon agents (e.g. Playwright-MCP):** Discover verifiable public evidence and output structured candidate dossiers.
-2. **Deterministic code (`scripts/recon_to_crm.py`):** Performs mechanical identity checks, exact-URL evidence merging, rejection suppression, and generates Linear triage proposals. No hard-coded batch opinions (`RAW_CIT184_P1` removed).
-3. **Linear:** The human/supervisor decision layer where triage outcomes (**Accept**, **Reject**, **Research**, **Merge**) are recorded with full audit trails.
-4. **CRM (`docs/launch/crm.csv`):** Represents accepted, active campaign state.
-5. **Rejections Registry (`docs/launch/crm-rejections.csv`):** Retains rejected candidate provenance so future recon runs do not rediscover or repropose them without materially new evidence.
-6. **CIT-113:** Remains the sole outbound-action boundary.
+### Separation of Responsibilities & Mutation Boundaries
+1. **Linear live state:** Sole authority for campaign decisions (acceptance, rejection, research staging, priority elevation).
+2. **`docs/launch/linear-triage-state.json`:** Checked-in cached evidence of Linear authority, refreshed via live Linear GraphQL API (`refresh-linear-state` / `--refresh`) and verified for freshness.
+3. **Deterministic code (`scripts/recon_to_crm.py`):**
+   - Exact normalized profile URL match: auto-appends observed signals and terminology **without** promoting priority or altering stage.
+   - Same-name-only matches: **never** auto-merged, suppressed, or collapsed during Accept; routed to ambiguous triage or ingested as distinct CRM identities.
+   - Rejection registry: suppresses known rejected profiles by exact URL.
+   - Direct ingestion bypass: blocked. `ingest` cannot create new identities without a Linear decision.
+4. **Canonical CRM (`docs/launch/crm.csv`):** 22 contacts (20 grandfathered CIT-110 contacts + 2 accepted CIT-187/CIT-189 contacts). Zero unresolved triage or research leads.
+5. **Research Staging (`docs/launch/crm-research.json`):** Candidates awaiting missing facts remain strictly outside canonical CRM.
+6. **Rejection Provenance (`docs/launch/crm-rejections.csv`):** Retains negative provenance to suppress duplicate research churn across campaigns.
+7. **CIT-113:** Sole outbound-action boundary.
 
 ---
 
-## 2. The Four Linear Triage Outcomes
+## 2. The Four Authoritative Triage Outcomes
 
 Every genuinely new candidate enters Linear as a sub-issue under parent **CIT-186** in state **`Triage`**. The supervisor or reviewer selects one of four explicit outcomes:
 
-| Outcome | Linear Action | Effect on Canonical CRM & Rejections | Downstream Handoff |
+| Outcome | Authoritative Linear State | Effect on Canonical CRM & Registries | Downstream Handoff |
 |---|---|---|---|
-| **Accept** | Move issue to `Todo` or `Done` with comment | Normalizes record and appends to `docs/launch/crm.csv`. Sets `stage: researched` or `approved_for_outreach`. | Queued for personalized outreach preparation in **CIT-113**. |
-| **Reject** | Move issue to `Canceled` with reason comment | Appends candidate to `docs/launch/crm-rejections.csv`. Candidate is **never** added to active CRM. Suppressed from future recon proposals. | None. Audit trail preserved. |
-| **Research** | Move issue to `Backlog` with missing-fact note | Kept out of active CRM. Assigned `stage: held_for_research`. | Returned to recon agents (e.g. Playwright-MCP) to verify specific missing facts. |
-| **Merge** | Move issue to `Duplicate` citing target CRM ID | Resolves ambiguous identity by appending observed evidence and signals into existing target CRM record. | Target contact enriched with additional evidence. |
+| **Accept** | `Todo` or `Done` | Creates exactly one canonical CRM record in `docs/launch/crm.csv`. Rerunning is idempotent. | Queued for personalized outreach preparation in **CIT-113**. |
+| **Reject** | `Canceled` | Appends candidate to `docs/launch/crm-rejections.csv`. Candidate is removed if present in CRM and suppressed from future recon. | None. Audit trail preserved. |
+| **Research** | `Backlog` | Staged outside CRM in `docs/launch/crm-research.json`. **Never** creates an active CRM identity. | Returned to recon agents (Playwright-MCP) to verify specific missing facts. |
+| **Merge** | `Duplicate` citing target ID | Resolves ambiguous identity by appending evidence into existing target CRM record without creating a new record. | Target contact enriched with additional evidence. |
 
-### Purely Mechanical Cases Kept Out of Linear
-To prevent Linear issue clutter:
-* **Exact normalized profile URL match:** If a candidate's profile URL already exists in `docs/launch/crm.csv`, the engine automatically appends the new signal, timestamp, and query method to the existing record. No Linear issue is created.
-* **Known rejection match:** If a candidate's profile URL or normalized name exists in `docs/launch/crm-rejections.csv`, the engine automatically suppresses the candidate unless materially new evidence is supplied.
+### Strict Mechanical Boundaries
+To guarantee safety and prevent identity collision:
+* **Exact normalized profile URL match:** Purely mechanical enrichment; appends new evidence to existing CRM contact.
+* **Same-name-only matches:** Never auto-merged and never auto-suppressed. Flagged as `⚠️ Ambiguous Name Match` and routed to human triage.
+* **Known rejection match:** If an incoming candidate's profile URL matches `crm-rejections.csv`, it is suppressed mechanically.
 
 ---
 
@@ -147,52 +163,72 @@ Retains negative provenance to prevent duplicate research churn:
 
 ## 5. CLI Tooling: `scripts/recon_to_crm.py`
 
-The deterministic Python utility provides complete support for proposal generation, validation, and triage decision application:
+The deterministic Python utility provides complete support for proposal generation, Linear authority synchronization, invariant validation, and decision application:
 
 ```bash
-# 1. Propose: Evaluate recon candidates against CRM and rejections
+# 1. Propose: Evaluate recon candidates and persist mechanical URL enrichments
 python3 scripts/recon_to_crm.py propose \
   --recon docs/launch/linkedin-recon-candidates.csv \
   --crm docs/launch/crm.csv \
   --rejections docs/launch/crm-rejections.csv \
   --out docs/launch/triage-proposals.json
 
-# 2. Apply Triage Decisions: Apply accepted/rejected decisions to CRM and rejections
-python3 scripts/recon_to_crm.py apply-triage \
-  --decisions docs/launch/triage-decisions.json \
+# 2. Validate Linear Authority Invariants (CIT-198)
+python3 scripts/recon_to_crm.py validate-invariants \
   --crm docs/launch/crm.csv \
+  --linear-state docs/launch/linear-triage-state.json \
   --rejections docs/launch/crm-rejections.csv
 
-# 3. Validate Dataset Integrity: Check 100% compliance of CRM and Rejections
+# 3. Refresh Linear Triage Cache from Linear Live GraphQL API
+python3 scripts/recon_to_crm.py refresh-linear-state \
+  --parent CIT-186 \
+  --out docs/launch/linear-triage-state.json
+
+# 4. Apply Triage Decisions directly from Linear Authority (with optional --refresh)
+python3 scripts/recon_to_crm.py apply-triage \
+  --from-linear \
+  --linear-state docs/launch/linear-triage-state.json \
+  --crm docs/launch/crm.csv \
+  --rejections docs/launch/crm-rejections.csv \
+  --research docs/launch/crm-research.json \
+  --proposals docs/launch/triage-proposals.json
+
+# 5. Ingest (Mechanical enrichment ONLY; direct bypass blocked)
+python3 scripts/recon_to_crm.py ingest \
+  --recon docs/launch/linkedin-recon-candidates.csv \
+  --crm docs/launch/crm.csv \
+  --apply
+
+# 5. Validate Canonical CSV Schema
 python3 scripts/recon_to_crm.py validate --file docs/launch/crm.csv
 python3 scripts/recon_to_crm.py validate --file docs/launch/crm-rejections.csv
 
-# 4. Review Queue: Inspect top prioritized candidates awaiting outreach
+# 6. Review Queue: Top prioritized candidates awaiting outreach approval
 python3 scripts/recon_to_crm.py review-queue --crm docs/launch/crm.csv --limit 10
 
-# 5. Report: View CRM summary distributions
+# 7. Report: View CRM distributions
 python3 scripts/recon_to_crm.py report --crm docs/launch/crm.csv
 ```
 
 ---
 
-## 6. Live Linear Triage Test Fixtures (Demonstrating Outcomes)
+## 6. Authoritative Linear Triage Fixtures & Current State
 
-Under parent issue **CIT-186**, compact Linear triage issues were created to demonstrate the live decision workflow:
+Under parent issue **CIT-186**, Linear triage issues demonstrate the live decision workflow:
 
-| Linear Issue | Candidate & Role | Outcome | Reason & Decision Notes |
-|---|---|---|---|
-| [CIT-187](https://linear.app/citizen6librarian6refrain4/issue/CIT-187/triage-dr-harish-kotadia-phd-agentic-ai-architect-regulated) | **Dr. Harish Kotadia Ph.D.**<br>Agentic AI Architect | **Accept** (`Todo`) | Ingested into CRM as P1 practitioner. Published analysis showing policies guide but stop nothing; validates executable pre-merge gates. |
-| [CIT-188](https://linear.app/citizen6librarian6refrain4/issue/CIT-188/triage-ishmael-chibvuri-senior-security-architect-enterprise-cloud-and) | **Ishmael Chibvuri**<br>Sr Security Architect | **Accept** (`Triage`) | Ingested into CRM as P1 practitioner. Author of 'Snapshot Discipline' and reversibility for agentic AI. |
-| [CIT-189](https://linear.app/citizen6librarian6refrain4/issue/CIT-189/triage-anurag-roy-barman-tech-area-architect-digital-iam-at-anz) | **Anurag Roy Barman**<br>Tech Area Architect, ANZ | **Accept** (`Todo`) | Ingested into CRM as P1 practitioner. Author of 'Planner-Authoriser Collision'; enterprise banking IAM architect. |
-| [CIT-190](https://linear.app/citizen6librarian6refrain4/issue/CIT-190/triage-inna-carp-ai-erp-and-business-analysis-lead-dynamics-365) | **Inna Carp**<br>AI ERP Lead, Dynamics 365 | **Accept** (`Triage`) | Ingested into CRM as P1 practitioner. Documented 'Agent Tool Drift' in enterprise ERP; demonstrates why prompts fail as boundaries. |
-| [CIT-191](https://linear.app/citizen6librarian6refrain4/issue/CIT-191/triage-ofir-har-chen-co-founder-and-ceo-at-clutch-security) | **Ofir Har-Chen**<br>CEO Clutch Security | **Accept** (`Triage`) | Ingested into CRM as P1 practitioner. Quantified NHI sprawl (median 15 NHIs per agent, max 67k). |
-| [CIT-192](https://linear.app/citizen6librarian6refrain4/issue/CIT-192/triage-jason-keirstead-founding-ctociso-cybersecurity-and-ai-leader) | **Jason Keirstead**<br>Founding CTO/CISO | **Accept** (`Triage`) | Ingested into CRM as P1 researcher. Advocates deterministic controls over soft alignment. |
-| [CIT-193](https://linear.app/citizen6librarian6refrain4/issue/CIT-193/triage-mandy-andress-ciso-at-elastic) | **Mandy Andress**<br>CISO at Elastic | **Accept** (`Triage`) | Ingested into CRM as P1 buyer. Articulates CISO requirements for agent least privilege and disposable credentials. |
-| [CIT-194](https://linear.app/citizen6librarian6refrain4/issue/CIT-194/triage-max-nadeau-program-officer-technical-ai-safety-at-coefficient) | **Max Nadeau**<br>Program Officer, Coefficient | **Accept** (`Triage`) | Ingested into CRM as P1 funder. Key decision-maker for CIT-179 technical AI safety grantmaking. |
-| [CIT-195](https://linear.app/citizen6librarian6refrain4/issue/CIT-195/triage-dewi-erwan-co-founder-and-ceo-at-bluedot-impact) | **Dewi Erwan**<br>CEO BlueDot Impact | **Accept** (`Triage`) | Ingested into CRM as P1 funder. Oversees Rapid Grants fund for open-source technical AI safety infrastructure. |
-| [CIT-196](https://linear.app/citizen6librarian6refrain4/issue/CIT-196/triage-brian-peretti-retired-cto-and-deputy-chief-ai-officer) | **Brian Peretti**<br>[Retired] CTO & Deputy CAIO | **Research** (`Backlog`) | Held out of CRM. Returned to recon: verify whether Brian is taking active advisory/consulting engagements or is fully retired. |
-| [CIT-197](https://linear.app/citizen6librarian6refrain4/issue/CIT-197/triage-tom-mcleod-global-advisor-in-internal-audit-and-assurance) | **Tom McLeod**<br>Advisor Internal Audit | **Reject** (`Canceled`) | Recorded in `docs/launch/crm-rejections.csv`. Traditional audit market structure focus; out of scope for technical agent capability governance launch. |
+| Linear Issue | Candidate & Role | Linear Status | Triage Outcome | CRM State | Decision Rationale & Next Steps |
+|---|---|---|---|---|---|
+| [CIT-187](https://linear.app/citizen6librarian6refrain4/issue/CIT-187/triage-dr-harish-kotadia-phd-agentic-ai-architect-regulated) | **Dr. Harish Kotadia Ph.D.**<br>Agentic AI Architect | `Todo` | **Accept** | Ingested (CRM ID 21) | Published analysis proving advisory policies fail and controls must halt actions mechanically. |
+| [CIT-189](https://linear.app/citizen6librarian6refrain4/issue/CIT-189/triage-anurag-roy-barman-tech-area-architect-digital-iam-at-anz) | **Anurag Roy Barman**<br>Tech Area Architect, ANZ | `Todo` | **Accept** | Ingested (CRM ID 22) | Author of 'Planner-Authoriser Collision'; enterprise banking IAM architect. |
+| [CIT-196](https://linear.app/citizen6librarian6refrain4/issue/CIT-196/triage-brian-peretti-retired-cto-and-deputy-chief-ai-officer) | **Brian Peretti**<br>[Retired] CTO & Deputy CAIO | `Backlog` | **Research** | Staged in `crm-research.json` (**Absent from CRM**) | Verify active consulting availability before direct contact. |
+| [CIT-197](https://linear.app/citizen6librarian6refrain4/issue/CIT-197/triage-tom-mcleod-global-advisor-in-internal-audit-and-assurance) | **Tom McLeod**<br>Advisor Internal Audit | `Canceled` | **Reject** | Recorded in `crm-rejections.csv` (**Absent from CRM**) | Traditional audit focus out of scope for agent capability controls launch. |
+| [CIT-188](https://linear.app/citizen6librarian6refrain4/issue/CIT-188/triage-ishmael-chibvuri-senior-security-architect-enterprise-cloud-and) | **Ishmael Chibvuri**<br>Sr Security Architect | `Triage` | *Pending* | **Absent from CRM** | Awaiting supervisor triage decision. |
+| [CIT-190](https://linear.app/citizen6librarian6refrain4/issue/CIT-190/triage-inna-carp-ai-erp-and-business-analysis-lead-dynamics-365) | **Inna Carp**<br>AI ERP Lead | `Triage` | *Pending* | **Absent from CRM** | Awaiting supervisor triage decision. |
+| [CIT-191](https://linear.app/citizen6librarian6refrain4/issue/CIT-191/triage-ofir-har-chen-co-founder-and-ceo-at-clutch-security) | **Ofir Har-Chen**<br>CEO Clutch Security | `Triage` | *Pending* | **Absent from CRM** | Awaiting supervisor triage decision. |
+| [CIT-192](https://linear.app/citizen6librarian6refrain4/issue/CIT-192/triage-jason-keirstead-founding-ctociso-cybersecurity-and-ai-leader) | **Jason Keirstead**<br>Founding CTO/CISO | `Triage` | *Pending* | **Absent from CRM** | Awaiting supervisor triage decision. |
+| [CIT-193](https://linear.app/citizen6librarian6refrain4/issue/CIT-193/triage-mandy-andress-ciso-at-elastic) | **Mandy Andress**<br>CISO at Elastic | `Triage` | *Pending* | **Absent from CRM** | Awaiting supervisor triage decision. |
+| [CIT-194](https://linear.app/citizen6librarian6refrain4/issue/CIT-194/triage-max-nadeau-program-officer-technical-ai-safety-at-coefficient) | **Max Nadeau**<br>Program Officer, Coefficient | `Triage` | *Pending* | **Absent from CRM** | Awaiting supervisor triage decision. |
+| [CIT-195](https://linear.app/citizen6librarian6refrain4/issue/CIT-195/triage-dewi-erwan-co-founder-and-ceo-at-bluedot-impact) | **Dewi Erwan**<br>CEO BlueDot Impact | `Triage` | *Pending* | **Absent from CRM** | Awaiting supervisor triage decision. |
 
 ---
 
@@ -205,14 +241,18 @@ When conducting new recon runs (e.g. GitHub repos, Meetup attendees, AI safety g
    ```bash
    python3 scripts/recon_to_crm.py propose --recon <new_recon.csv>
    ```
-   - Automatically merges exact URL matches into `crm.csv` (no Linear issues).
-   - Automatically suppresses candidates in `crm-rejections.csv` (no Linear issues).
+   - Automatically enriches existing CRM contacts by exact normalized URL.
+   - Automatically suppresses candidates in `crm-rejections.csv` by exact normalized URL.
    - Generates compact Linear triage issues for genuinely new candidates or ambiguous matches.
 3. **Supervisor Triage in Linear:**
-   - Supervisor moves triage issues to `Todo` (Accept), `Canceled` (Reject), `Backlog` (Research), or `Duplicate` (Merge).
-4. **Apply Decisions to CRM:**
+   - Supervisor reviews triage issues in Linear and moves them to `Todo` (Accept), `Canceled` (Reject), `Backlog` (Research), or `Duplicate` (Merge).
+4. **Apply Verified Decisions:**
    ```bash
-   python3 scripts/recon_to_crm.py apply-triage --decisions <decisions.json>
+   python3 scripts/recon_to_crm.py apply-triage --from-linear
    ```
-5. **Outreach Handoff:**
+5. **Verify Invariants:**
+   ```bash
+   python3 scripts/recon_to_crm.py validate-invariants
+   ```
+6. **Outreach Handoff:**
    - Only accepted candidates in `docs/launch/crm.csv` with `stage: approved_for_outreach` are passed to **CIT-113** for personalized outreach.
