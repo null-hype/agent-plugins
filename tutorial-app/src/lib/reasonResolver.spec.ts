@@ -100,11 +100,14 @@ describe('chapter-3/lesson-4 reason-log.jsonl matches resolveReason', () => {
       import.meta.url,
     ),
   );
+  // CIT-176 appends a fourth, pre-merge record whose evaluator is the flow
+  // check, not resolveReason; integrationLogRecord.spec.ts proves that one.
   const records = readFileSync(jsonlPath, 'utf8')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => JSON.parse(line));
+    .map((line) => JSON.parse(line))
+    .slice(0, 3);
 
   const grantsByFactId = new Map<string, Grant>([
     ['pass-cli:color:resume:read-codeword', { factID: 'pass-cli:color:resume:read-codeword', vault: 'jin-91-resume-session', approved: true }],

@@ -247,13 +247,20 @@ function renderPage() {
 
       function buildEvidenceDomNode(related) {
         const node = document.createElement('div');
+        node.setAttribute('role', 'region');
+        node.setAttribute('aria-label', 'Diagnostic evidence');
+        node.className = 'evidence-widget';
         node.style.cssText =
           'background:#1e1e1e;color:#d4d4d4;border:1px solid #454545;border-radius:3px;' +
-          'padding:6px 10px;font:12px "Roboto Mono",Menlo,Consolas,monospace;max-width:640px;white-space:pre-wrap;';
+          'padding:6px 10px;font:12px "Roboto Mono",Menlo,Consolas,monospace;width:600px;max-width:80vw;max-height:300px;overflow:auto;white-space:pre-wrap;';
 
         related.forEach((entry) => {
           const row = document.createElement('div');
-          row.textContent = entry.role + ' (' + entry.uri + '): ' + entry.detail;
+          // CIT-176: a revision-qualified location (same path, different
+          // content per revision) reads uri@revision:line.
+          const where =
+            entry.uri + (entry.revision ? '@' + entry.revision : '') + (entry.line ? ':' + entry.line : '');
+          row.textContent = entry.role + ' (' + where + '): ' + entry.detail;
           row.style.padding = '2px 0';
           node.appendChild(row);
         });
