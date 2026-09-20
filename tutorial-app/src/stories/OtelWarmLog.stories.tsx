@@ -85,7 +85,8 @@ export const LoanwordCompleted: Story = {
 
 // Chapter 3, lesson 4: no lesson-state message at all. The page loads
 // /reason-log.jsonl and underlines failing lines; hover for the verdict and
-// its evidence, or click a line's CodeLens for the evidence panel.
+// its evidence, or click a line's CodeLens for the evidence panel. The
+// fourth line is CIT-176's pre-merge disagreement (synthetic fixture).
 export const ReasonLogDiagnostics: Story = {
 	args: { fixtures: { '/reason-log.jsonl': reasonLog }, height: 480 },
 	play: async ({ canvasElement }) => {
@@ -93,12 +94,38 @@ export const ReasonLogDiagnostics: Story = {
 		await waitFor(
 			() => {
 				const doc = canvasElement.querySelector('iframe')?.contentDocument;
-				// One CodeLens verdict row per failing record (lines 2 and 3).
-				if (doc?.querySelectorAll('.codelens-decoration').length !== 2) {
+				// One CodeLens verdict row per failing record (lines 2, 3 and 4).
+				if (doc?.querySelectorAll('.codelens-decoration').length !== 3) {
 					throw new Error('reason-log CodeLens verdicts have not rendered yet');
 				}
 			},
 			{ timeout: 15000 },
 		);
+	},
+};
+
+// CIT-176: activate the pre-merge lens on line 4. The evidence widget lists
+// each candidate's contribution, the combined path, the rule and the check,
+// every location qualified by its revision (path@sim-revision:line).
+export const PreMergeDisagreementEvidence: Story = {
+	args: { ...ReasonLogDiagnostics.args, height: 560 },
+	play: async ({ canvasElement }) => {
+		await ReasonLogDiagnostics.play!({ canvasElement } as never);
+		const doc = canvasElement.querySelector('iframe')!.contentDocument!;
+		const lens = Array.from(doc.querySelectorAll<HTMLElement>('.codelens-decoration a')).find((a) =>
+			a.textContent?.includes('POLICY_CLASS_REACHES_EXTERNAL'),
+		);
+		if (!lens) throw new Error('pre-merge CodeLens not found');
+		// Monaco listens for the full pointer sequence, not a bare click().
+		const win = doc.defaultView!;
+		for (const type of ['mousedown', 'mouseup', 'click']) {
+			lens.dispatchEvent(new win.MouseEvent(type, { bubbles: true, cancelable: true, view: win }));
+		}
+		await waitFor(() => {
+			const text = doc.querySelector('.evidence-widget')?.textContent ?? '';
+			for (const needle of ['candidate A', 'candidate B', 'flow-policy@1', 'agent.tasks@sim-']) {
+				if (!text.includes(needle)) throw new Error('evidence widget missing ' + needle);
+			}
+		});
 	},
 };
