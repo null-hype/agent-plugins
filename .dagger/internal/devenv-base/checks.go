@@ -35,7 +35,7 @@ type toolCheck struct {
 // first failure.
 func runToolChecks(ctx context.Context, image *dagger.Container, checks []toolCheck) error {
 	for _, tc := range checks {
-		out, err := image.WithExec([]string{tc.bin, tc.arg}).Stdout(ctx)
+		out, err := image.WithExec([]string{tc.bin, tc.arg}).CombinedOutput(ctx)
 		if err != nil {
 			return fmt.Errorf("%s: %w", tc.bin, err)
 		}
