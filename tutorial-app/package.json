@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
+    "@google/stitch-sdk": "^0.3.5",
     "@tutorialkit/astro": "^1.6.0",
     "@tutorialkit/react": "^1.6.0",
     "astro": "^4.16.0",
