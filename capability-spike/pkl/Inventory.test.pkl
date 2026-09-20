@@ -1,0 +1,74 @@
+/// Real fixtures for this lesson's scenario: a task requiring
+/// `vault-access` under vault `thepentagon.com` (the same (factID, vault)
+/// GrantState.pkl records as approved for `flight-booking:area51:vault-access`
+/// -- see Inventory.pkl's `missingItems`, checked here against inventory
+/// that hasn't observed the item yet, and against inventory that has.
+/// tutorial-app's inventoryCheck.spec.ts mirrors these exact values in
+/// TypeScript and is validated against this file's real `pkl test` output,
+/// same conformance discipline as ledgerCheckAccess.ts/Ledger.pkl.
+amends "pkl:test"
+
+import "Inventory.pkl"
+
+local requirement = new Inventory.VaultSpec {
+  name = "thepentagon.com"
+  items { "vault-access" }
+}
+
+local notYetObserved = new Inventory.ObservedInventory {
+  vaults {
+    new { name = "thepentagon.com"; items {} }
+  }
+}
+
+local materialized = new Inventory.ObservedInventory {
+  vaults {
+    new { name = "thepentagon.com"; items { "vault-access" } }
+  }
+}
+
+local vaultNeverSeen = new Inventory.ObservedInventory {
+  vaults {}
+}
+
+// The real drift .dagger/internal/devenv-base/pkl/Vaults.pkl's own header
+// comment documents: "claude" used to be declared under a vault this repo
+// called "tidelands.dev" (pre-consolidation), then moved to "anthropic.ai"
+// directly in Proton Pass, with no commit recording the move. A declaration
+// still pointing at the old vault is a real bug this axiom catches -- not a
+// missing grant, a stale declaration -- and a human fixes it by editing
+// the declaration to name the vault the item actually lives in now.
+local staleDeclaration = new Inventory.VaultSpec {
+  name = "tidelands.dev"
+  items { "claude" }
+}
+
+local correctedDeclaration = new Inventory.VaultSpec {
+  name = "anthropic.ai"
+  items { "claude" }
+}
+
+local driftObserved = new Inventory.ObservedInventory {
+  vaults {
+    new { name = "tidelands.dev"; items { "agent.tidelands.dev"; "pass-cli" } }
+    new { name = "anthropic.ai"; items { "claude" } }
+  }
+}
+
+facts {
+  ["a requirement not yet observed reports its item missing"] {
+    Inventory.missingItems(requirement, notYetObserved) == List("vault-access")
+  }
+  ["once the item is observed, nothing is missing"] {
+    Inventory.missingItems(requirement, materialized) == List()
+  }
+  ["a vault absent from observed state entirely still reports every declared item missing"] {
+    Inventory.missingItems(requirement, vaultNeverSeen) == List("vault-access")
+  }
+  ["a declaration pointing at the vault an item used to live in still reports it missing -- the item moved"] {
+    Inventory.missingItems(staleDeclaration, driftObserved) == List("claude")
+  }
+  ["correcting the declaration to where the item actually lives now resolves it"] {
+    Inventory.missingItems(correctedDeclaration, driftObserved) == List()
+  }
+}

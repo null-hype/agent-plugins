@@ -1,0 +1,3 @@
+{"message_type":"change","path":"/tmp/restic-fixture-src/.claude/projects/session-b.jsonl","modifier":"+"}
+{"message_type":"change","path":"/tmp/restic-fixture-src/.claude/shared.txt","modifier":"M"}
+{"message_type":"statistics","source_snapshot":"d543a8f00a0407c733508a78e2fd571965c77681a0d52259a539eae2ae0c56d0","target_snapshot":"bcdd5068c04dfd711c5ddce3188664d1839c5efb2aa232f40bc2127a9f62661a","changed_files":1,"added":{"files":1,"dirs":0,"others":0,"data_blobs":2,"tree_blobs":5,"bytes":3008},"removed":{"files":0,"dirs":0,"others":0,"data_blobs":1,"tree_blobs":5,"bytes":2632}}
