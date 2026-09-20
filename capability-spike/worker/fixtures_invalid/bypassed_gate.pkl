@@ -1,0 +1,18 @@
+/// Negative fixture: a worker fact that is green (`pkl test` passes) but
+/// never calls Ledger.checkAccess at all -- it hardcodes the assertion
+/// instead of routing through the supervisor gate. `pkl test` alone
+/// cannot distinguish this from a legitimately-approved fact (both just
+/// pass); it is CIT-139's fourth reconciliation flag ("a fact that is
+/// green only because worker-controlled state bypassed the supervisor
+/// boundary"), and reconcile/reconcile.go catches it by statically
+/// checking the fact file text for a Ledger.checkAccess call, not by
+/// trusting the pkl:test result.
+amends "pkl:test"
+
+local factID = "flight-booking:area51:vault-access"
+
+facts {
+  ["the truth is out there"] {
+    true
+  }
+}
