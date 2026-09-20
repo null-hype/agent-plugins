@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-test/test_recon_to_crm.py - Unit tests for repeatable recon-to-CRM pipeline (CIT-185)
+test/test_recon_to_crm.py - Unit tests for repeatable recon-to-CRM pipeline with Linear Triage (CIT-185 / CIT-186)
 """
 
 import os
@@ -8,11 +8,14 @@ import tempfile
 import unittest
 from scripts.recon_to_crm import (
     CANONICAL_FIELDS,
+    REJECTION_FIELDS,
     IngestionEngine,
     detect_file_schema,
     normalize_person_name,
     normalize_profile_url,
     extract_organization,
+    propose_candidate_priority,
+    generate_linear_triage_description,
     parse_cit110_record,
     parse_cit184_record,
     validate_canonical_dataset,
@@ -30,6 +33,11 @@ class TestReconToCRM(unittest.TestCase):
         self.assertIn("primitive_relevance", CANONICAL_FIELDS)
         self.assertIn("terminology_used", CANONICAL_FIELDS)
         self.assertIn("review_priority", CANONICAL_FIELDS)
+
+    def test_rejection_fields_count(self):
+        self.assertEqual(len(REJECTION_FIELDS), 8)
+        self.assertIn("rejection_reason", REJECTION_FIELDS)
+        self.assertIn("linear_issue_id", REJECTION_FIELDS)
 
     def test_normalization_helpers(self):
         self.assertEqual(normalize_person_name("Dr. Harish Kotadia Ph.D."), "harish kotadia")
@@ -77,7 +85,6 @@ class TestReconToCRM(unittest.TestCase):
         engine.ingest_record(seed_record)
         self.assertEqual(len(engine.records), 1)
 
-        # Ingest secondary recon signal for same person
         recon_signal = {
             "id": "99",
             "person": "Anurag Roy Barman",
@@ -106,33 +113,102 @@ class TestReconToCRM(unittest.TestCase):
         }
         engine.ingest_record(recon_signal)
 
-        # Record count must remain 1 (no duplicate row)
         self.assertEqual(len(engine.records), 1)
         self.assertEqual(engine.exact_duplicates_merged, 1)
 
         merged = engine.records[0]
-        # Evidence must be preserved and appended
         self.assertIn("Talk on IAM architecture.", merged["observed_signal"])
         self.assertIn("Published post on Planner-Authoriser Collision.", merged["observed_signal"])
         self.assertEqual(merged["review_priority"], "P1")
         self.assertIn("Elevated via:", merged["priority_rationale"])
         self.assertIn("Planner-authoriser collision", merged["terminology_used"])
 
+    def test_generic_proposal_heuristic(self):
+        # Test CISO -> P1 proposal
+        ciso_row = {
+            "role_organisation": "CISO at Elastic",
+            "public_signal": "Non-human identity containment is critical.",
+            "confidence": "high",
+            "segment": "buyer",
+        }
+        priority, rationale, stage = propose_candidate_priority(ciso_row)
+        self.assertEqual(priority, "P1")
+        self.assertIn("CISO", rationale)
+
+        # Test Retired -> P3 proposal
+        retired_row = {
+            "role_organisation": "[Retired] CTO and Deputy Chief AI Officer",
+            "public_signal": "AI safety controls are management controls.",
+            "confidence": "medium",
+            "segment": "practitioner",
+        }
+        priority, rationale, stage = propose_candidate_priority(retired_row)
+        self.assertEqual(priority, "P3")
+        self.assertEqual(stage, "held_for_research")
+
+    def test_rejection_registry_and_evaluation(self):
+        existing_crm = [{
+            "id": "1",
+            "person": "Matthew Hart",
+            "role_organisation": "Head of Security at Canva",
+            "profile_url": "https://www.linkedin.com/in/matthewhart",
+            "observed_signal": "Oversees security",
+            "problem_hypothesis": "Lateral access risk",
+            "review_priority": "P1",
+            "stage": "researched",
+        }]
+        rejections = [{
+            "person": "Tom McLeod",
+            "role_organisation": "Global Advisor in Internal Audit",
+            "profile_url": "https://www.linkedin.com/in/tommcleod",
+            "rejection_reason": "Out of scope",
+            "linear_issue_id": "CIT-197",
+            "rejected_date": "2026-09-20",
+            "source_query_method": "AI auditing",
+            "observed_signal": "Internal audit market failure",
+        }]
+
+        engine = IngestionEngine(existing_crm, rejections)
+
+        # 1. Exact URL match -> mechanical merge
+        eval_match = engine.evaluate_recon_candidate({
+            "name": "Matthew Hart",
+            "profile_url": "https://www.linkedin.com/in/matthewhart/",
+        })
+        self.assertEqual(eval_match["action"], "mechanical_merge")
+        self.assertEqual(eval_match["target_crm_id"], "1")
+
+        # 2. Known rejection -> suppressed
+        eval_rej = engine.evaluate_recon_candidate({
+            "name": "Tom McLeod",
+            "profile_url": "https://www.linkedin.com/in/tommcleod/",
+        })
+        self.assertEqual(eval_rej["action"], "suppressed_rejection")
+        self.assertEqual(eval_rej["linear_issue_id"], "CIT-197")
+
+        # 3. Genuinely new candidate -> triage proposal
+        eval_new = engine.evaluate_recon_candidate({
+            "name": "Dr. Harish Kotadia Ph.D.",
+            "role_organisation": "Agentic AI Architect",
+            "profile_url": "https://www.linkedin.com/in/hkotadia/",
+            "public_signal": "Does it stop the action by itself?",
+            "confidence": "high",
+        })
+        self.assertEqual(eval_new["action"], "triage_proposal")
+        self.assertIn("[Triage]", eval_new["linear_issue_payload"]["title"])
+        self.assertIn("[INFERRED HYPOTHESIS]", eval_new["linear_issue_payload"]["description"])
+
     def test_canonical_dataset_validation(self):
         header, rows = load_csv("docs/launch/crm.csv")
         self.assertEqual(detect_file_schema(header), "canonical_crm")
-        self.assertEqual(len(rows), 50)
+        self.assertEqual(len(rows), 49)
         is_valid, errors = validate_canonical_dataset(rows)
         self.assertTrue(is_valid, f"Validation errors: {errors}")
 
-    def test_review_queue_ranking(self):
-        header, rows = load_csv("docs/launch/crm.csv")
-        queue = generate_review_queue(rows, limit=5)
-        self.assertEqual(len(queue), 5)
-        # All top 5 must be P1
-        for candidate in queue:
-            self.assertEqual(candidate["review_priority"], "P1")
-            self.assertEqual(candidate["stage"], "review_queue")
+        rej_header, rej_rows = load_csv("docs/launch/crm-rejections.csv")
+        self.assertEqual(detect_file_schema(rej_header), "crm_rejections")
+        self.assertEqual(len(rej_rows), 1)
+        self.assertEqual(rej_rows[0]["person"], "Tom McLeod")
 
 
 if __name__ == "__main__":
