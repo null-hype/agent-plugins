@@ -1,0 +1,17 @@
+/// Worker-owned fact. The worker writes and owns this file; it must
+/// never edit `../pkl/Ledger.pkl` or `../pkl/GrantState.pkl` to make this
+/// pass. See CIT-139's toy example -- `fact_id` is the stable identifier
+/// the Proton Pass reconciliation keys on; `"the truth is out there"` is
+/// just the human-readable label pkl:test prints.
+amends "pkl:test"
+
+import "../pkl/Ledger.pkl"
+
+local factID = "flight-booking:area51:vault-access"
+local requestedVault = "thepentagon.com"
+
+facts {
+  ["the truth is out there"] {
+    Ledger.checkAccess(factID, requestedVault)
+  }
+}

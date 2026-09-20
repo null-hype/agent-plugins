@@ -1,0 +1,99 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - navigation [ref=e3]:
+      - generic:
+        - link:
+          - /url: /
+      - button "Open in StackBlitz" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Toggle Theme" [ref=e11] [cursor=pointer]
+    - generic [ref=e13]:
+      - generic [ref=e15]:
+        - button "Authorization by Benutzer-ID" [ref=e17] [cursor=pointer]:
+          - strong [ref=e19]: Authorization by Benutzer-ID
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Authorization by Benutzer-ID" [level=1] [ref=e22]
+            - paragraph [ref=e23]: Lesson 1 opens the Black Thursday loop.
+            - paragraph [ref=e24]: The editor on the right validates a missing article against a lesson-local Pkl grammar rule. The preview pane replays a mocked OpenTrader warm log once the phrase is repaired.
+            - heading "The Task" [level=3] [ref=e25]
+            - paragraph [ref=e26]: "Complete the sentence:"
+            - paragraph [ref=e27]:
+              - code [ref=e28]: Die API prüft die Berechtigung anhand _____ Benutzer-ID
+            - list [ref=e29]:
+              - listitem [ref=e30]: Fill the blank with the required article.
+              - listitem [ref=e31]: If the answer is wrong, hover the squiggle to peek the governing Pkl rule.
+              - listitem [ref=e32]: When the squiggle clears, the preview renders the mocked IDOR warm log.
+              - listitem [ref=e33]: Expand the anomaly span to inspect the security rule that flags the auth drift.
+            - heading "What you are seeing" [level=3] [ref=e34]
+            - list [ref=e35]:
+              - listitem [ref=e36]:
+                - code [ref=e37]: AuthorizationGrammar.pkl
+                - text: defines the lesson grammar contract.
+              - listitem [ref=e38]:
+                - code [ref=e39]: authorization-grammar.json
+                - text: is the generated runtime artifact the browser uses for validation.
+              - listitem [ref=e40]:
+                - code [ref=e41]: OpenTraderSecurityRules.pkl
+                - text: is the policy source surfaced inside the anomaly span.
+              - listitem [ref=e42]:
+                - code [ref=e43]: trace-story.json
+                - text: is the mocked OTel story fixture consumed by the Monaco preview.
+          - link "Fingerspitzengefühl" [ref=e47] [cursor=pointer]:
+            - /url: /tutorial-app/part-2/chapter-2/lesson-1
+            - generic [ref=e48]: Fingerspitzengefühl
+          - link "Powered by WebContainers" [ref=e49] [cursor=pointer]:
+            - /url: https://webcontainers.io/
+      - generic [ref=e53]:
+        - generic [ref=e55]:
+          - generic:
+            - generic:
+              - generic: Files
+            - generic:
+              - button "AuthorizationGrammar.pkl" [ref=e56] [cursor=pointer]:
+                - generic [ref=e57]: AuthorizationGrammar.pkl
+              - button "OpenTraderSecurityRules.pkl" [ref=e58] [cursor=pointer]:
+                - generic [ref=e59]: OpenTraderSecurityRules.pkl
+              - button "authorization-grammar.json" [ref=e60] [cursor=pointer]:
+                - generic [ref=e61]: authorization-grammar.json
+              - button "exercise.de" [pressed] [ref=e62] [cursor=pointer]:
+                - generic [ref=e63]: exercise.de
+              - button "trace-story.json" [ref=e64] [cursor=pointer]:
+                - generic [ref=e65]: trace-story.json
+          - separator
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - generic [ref=e68]: exercise.de
+              - button "Solve" [disabled] [ref=e69]: Solve
+            - generic [ref=e74]:
+              - generic [ref=e76]:
+                - generic [ref=e77]: "1"
+                - generic [ref=e78]: "2"
+              - textbox "Editor" [ref=e81]:
+                - generic [ref=e82]: Die API prüft die Berechtigung anhand _____ Benutzer-ID
+        - separator
+        - generic [ref=e85]:
+          - generic [ref=e87]: Preparing Environment
+          - list [ref=e89]:
+            - listitem [ref=e90]:
+              - generic [ref=e91]: npm install
+            - listitem [ref=e92]:
+              - generic [ref=e93]: npm run dev
+        - separator
+        - tablist [ref=e98]
+  - generic [ref=e102]:
+    - button "Menu" [ref=e103]:
+      - img [ref=e105]
+      - generic: Menu
+    - button "Inspect" [ref=e109]:
+      - img [ref=e111]
+      - generic: Inspect
+    - button "Audit" [ref=e113]:
+      - generic [ref=e114]:
+        - img [ref=e115]
+        - img [ref=e118]
+      - generic: Audit
+    - button "Settings" [ref=e121]:
+      - img [ref=e123]
+      - generic: Settings
+  - button [ref=e126]

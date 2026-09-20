@@ -1,0 +1,19 @@
+/// Worker-owned fact. The worker writes and owns this file; it must
+/// never edit `../pkl/Ledger.pkl` or `../pkl/GrantState.pkl` to make this
+/// pass. Unlike `flight_booking_area51.pkl`, this factID's grant in
+/// GrantState.pkl is explicitly `approved = false` -- the supervisor saw
+/// the request and said no. `pkl test` on this file fails with
+/// `CAP_REJECTED`, on purpose: a rejected request is a real, resolved
+/// outcome, not a bug in this fixture.
+amends "pkl:test"
+
+import "../pkl/Ledger.pkl"
+
+local factID = "area51:site4:black-budget-vault-access"
+local requestedVault = "site4.internal"
+
+facts {
+  ["the supervisor's answer was no"] {
+    Ledger.checkAccess(factID, requestedVault)
+  }
+}

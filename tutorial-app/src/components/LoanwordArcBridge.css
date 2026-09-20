@@ -1,0 +1,26 @@
+.gap-check {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 1px solid var(--tk-border-primary, #cbd5e1);
+  border-radius: 12px;
+  background: var(--tk-background-secondary, #f6f8f9);
+  color: inherit;
+  font-size: 0.9rem;
+}
+.gap-check-heading, .gap-check-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; }
+.gap-check-heading { justify-content: space-between; }
+.gap-check-eyebrow { font-size: 0.75rem; letter-spacing: 0.04em; }
+.gap-check-badge { border: 1px solid currentColor; border-radius: 999px; padding: 0.15rem 0.65rem; font-size: 0.75rem; }
+.gap-check-badge[data-state="completed"] { color: #167344; }
+.gap-check-proposal { display: grid; gap: 0.35rem; }
+.gap-check-proposal code { overflow-wrap: anywhere; white-space: pre-wrap; }
+.gap-check .gap-check-gates { list-style: none; padding: 0; margin: 1rem 0; }
+.gap-check-gates li { display: flex; gap: 0.65rem; margin: 0.5rem 0; }
+.gap-check-feedback { border-left: 3px solid currentColor; padding-left: 0.8rem; }
+.gap-check-actions button { border: 1px solid currentColor; border-radius: 6px; padding: 0.4rem 0.7rem; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.gap-check-actions button:hover { background: var(--tk-background-primary, white); }
+.gap-check-actions button:focus-visible, .gap-check-details summary:focus-visible { outline: 2px solid #3986ff; outline-offset: 3px; }
+.gap-check-details { margin-top: 1rem; }
+.gap-check-details summary { cursor: pointer; font-weight: 600; }
+.gap-check-details p { font-size: 0.8rem; }
+[data-theme="dark"] .gap-check-badge[data-state="completed"] { color: #86efac; }

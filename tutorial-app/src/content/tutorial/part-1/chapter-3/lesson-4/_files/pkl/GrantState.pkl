@@ -1,0 +1,19 @@
+/// Supervisor-owned approval ledger. Rendered by supervisor/state.go --
+/// do not hand-edit; do not let worker code write this file.
+///
+/// This is the real state reason-log.jsonl's fixtures were resolved
+/// against: `pass-cli:color:resume:read-codeword` is approved for scope
+/// `jin-91-resume-session` (the clean line in the preview to the right);
+/// `pass-cli:color:resume:plant-codeword` has no entry at all, which is
+/// exactly what makes its line resolve to CAP_NO_GRANT instead of passing.
+module grantState
+
+class Grant {
+  factID: String
+  vault: String
+  approved: Boolean
+}
+
+approvedGrants: Mapping<String, Grant> = new {
+  ["pass-cli:color:resume:read-codeword"] { factID = "pass-cli:color:resume:read-codeword"; vault = "jin-91-resume-session"; approved = true }
+}

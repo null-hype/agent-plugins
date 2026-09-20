@@ -1,0 +1,52 @@
+---
+type: lesson
+title: "Evidence: restic-backup (run 35172465388)"
+editor:
+  fileTree: true
+focus: /evidence/README.md
+terminal: false
+previews: false
+---
+
+This lesson is generated, not authored: every file under **evidence/** is a
+direct export of one real CI run, produced by [tk-evidence-exporter](https://github.com/null-hype/agent-plugins/tree/main/tk-evidence-exporter)
+from [run 35172465388](https://github.com/null-hype/agent-plugins/actions/runs/35172465388), commit `d9a581d8fcba`. Nothing here is a simulation or a scripted
+example.
+
+## Recorded verdict
+
+The **restic-backup** scenario's own script recorded outcome **passed**.
+
+This run's CI job itself did **not** finish cleanly -- 1 step(s) recorded a
+non-success conclusion:
+
+- Testing all scenarios (feature-local and global) (failure)
+
+These are two different granularities of outcome and must not be collapsed into
+one: the scenario script's own recorded verdict above describes only the
+**restic-backup** scenario; the job-level failure above may come from a different
+scenario or step entirely. See `evidence/execution.json`'s `stepRefs` for the
+full list this run recorded.
+
+## What's available, and what isn't
+
+| Evidence | This run | File |
+|---|---|---|
+| Per-check breakdown | not captured -- this scenario has no structured test runner beneath it (see README.md in tk-evidence-exporter) | `evidence/scenario.json` |
+| Restic snapshot(s) | 1 snapshot(s) | `evidence/snapshots.json` |
+| Snapshot file-tree manifest | 16 entries (paths and types only -- no file contents captured) | `evidence/file-tree.json` |
+| Snapshot diff | not captured -- this export has a single snapshot, not a before/after pair | `evidence/diff.json` |
+| Log excerpts | not captured in this run | (none exported) |
+| Capability facts/grants/observations | not populated -- this export predates the capability-spike scenario (CIT-146) as an input | `evidence/capability.json` |
+
+## Provenance and validation
+
+The exporter's own package-validation verdict (`evidence/validation.json`) is
+kept separate from the recorded scenario verdict above -- one says the package
+is structurally well-formed, the other says what the scenario actually did.
+This package validated cleanly against schema version `1.1.0` with zero diagnostics.
+
+Browse **evidence/README.md** (already open) and the files beside it in the
+editor's file tree. Nothing in this lesson is interactive -- there is no
+runtime to boot, no code to run, and no MCP tool to call. It is a static
+browse-the-real-export experience, not a simulation.

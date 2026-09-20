@@ -1,0 +1,33 @@
+.ic { font: inherit; max-width: 60rem; }
+.ic h3, .ic h4 { margin: 0.5rem 0 0.25rem; }
+.ic p { margin: 0.35rem 0; }
+.ic code { font-size: 0.85em; overflow-wrap: anywhere; }
+.ic-note { font-size: 0.85em; opacity: 0.8; }
+.ic-cards { list-style: none; padding: 0 !important; margin: 0.75rem 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.ic-card { border: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 30%, transparent); border-radius: 6px; padding: 0.6rem 0.8rem; }
+.ic-meta { font-size: 0.85em; opacity: 0.85; }
+.ic-badge { display: inline-block; padding: 0 0.5em; border-radius: 1em; font-size: 0.85em; font-weight: 600; background: #e4e4e4; color: #222; }
+.ic-pass, .ic-passed, .ic-appr-granted { background: #d1f7d8; color: #0b3d17; }
+.ic-fail, .ic-failed, .ic-conflict { background: #ffd9d9; color: #6b0f0f; }
+.ic-stale, .ic-appr-stale { background: #fff1c2; color: #5c4300; }
+.ic-origin-A { background: #d6e4ff; color: #12295e; }
+.ic-origin-B { background: #f0dcff; color: #45185f; }
+.ic-origin-base { background: #e4e4e4; color: #222; }
+.ic-warn { font-size: 0.9em; border-left: 3px solid #d9a400; padding-left: 0.5rem; }
+.ic-diag { border: 2px solid #c62828; border-radius: 6px; padding: 0.5rem 0.8rem; margin: 0.75rem 0; }
+.ic-panel { border: 1px solid; border-color: color-mix(in srgb, currentColor 30%, transparent); border-radius: 6px; padding: 0.25rem 0.8rem 0.75rem; margin: 0.75rem 0; }
+.ic-ok { border: 2px solid #2e7d32; border-radius: 6px; padding: 0.5rem 0.8rem; margin: 0.75rem 0; }
+.ic-add { margin: 0.25rem 0; padding: 0.4rem 0.6rem; background: color-mix(in srgb, #2e7d32 15%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8em; }
+.ic-path { padding-left: 1.25rem; }
+.ic-path li { margin: 0.3rem 0; }
+.ic-primary { font: inherit; cursor: pointer; padding: 0.4rem 0.9rem; border-radius: 6px; border: 1px solid #1a4fb3; background: #1a4fb3; color: #fff; }
+.ic-primary:hover { background: #163f8f; }
+.ic-link { font: inherit; background: none; border: 0; padding: 0.4rem 0; text-decoration: underline; color: inherit; cursor: pointer; opacity: 0.8; }
+.ic button:focus-visible { outline: 3px solid #f5a300; outline-offset: 2px; }
+/* host pages (TutorialKit prose) style bare lists and headings; pin ours */
+.ic ul, .ic ol { margin: 0.5rem 0; }
+.ic-cards > li { list-style: none; margin: 0; }
+.ic-cards > li::marker { content: none; }
+.ic h3 { font-size: 1.05rem; line-height: 1.3; }
+.ic h4 { font-size: 0.95rem; line-height: 1.3; }
+.ic .ic-path { list-style: decimal; padding-left: 1.25rem; }

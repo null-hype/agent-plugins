@@ -1,0 +1,15 @@
+---
+type: lesson
+title: "Two passing changes, one failing rule"
+editor: false
+terminal: false
+previews: false
+---
+
+import IntegrationCheck from '../../../../../components/IntegrationCheck';
+
+Candidate A passes its check. Candidate B passes its check. Their proposed integration merges with no textual conflict, and fails a rule neither candidate broke alone. Evaluate it, open the disagreement, apply the repair, and re-evaluate.
+
+<IntegrationCheck client:load />
+
+**What this is.** A synthetic fixture with simulated revisions and environment names. The verdicts come from a small executable flow evaluator (`src/lib/integrationScenario.ts`, tested in `integrationScenario.spec.ts`), not from stored results. A passing check is not approval: the last button is a simulated human decision bound to one revision. Nothing here uses real container-use environments, GitButler, or landing.

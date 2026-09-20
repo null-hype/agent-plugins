@@ -1,0 +1,37 @@
+---
+type: lesson
+title: Grammar as Protocol
+editor: false
+terminal: false
+previews: false
+---
+
+**Formal grammars are not a stylistic preference. They are the protocol layer between human intent and agent execution.**
+
+In this tutorial the same constraint engine — built on [Pkl](https://pkl-lang.org/) — validates three different systems:
+
+- A German word that has no English translation
+- A German article that must be precise for an authorization rule to hold
+- An API request that carries an IDOR vulnerability when the grammar is wrong
+
+Every lesson follows the same pattern: a rule defined in Pkl, compiled to a JSON artifact, a runtime that catches the violation. The domain changes. The mechanism does not.
+
+```pkl
+module AuthorizationGrammar
+
+class ArticleRule {
+  phrase: String
+  governedCase: String
+  requiredArticle: String
+}
+
+authorizationAnchor = new ArticleRule {
+  phrase = "anhand ... Benutzer-ID"
+  governedCase = "Dative"
+  requiredArticle = "der"
+}
+```
+
+This rule governs a sentence in German and the authorization check in a live API. That equivalence is the point.
+
+Use the **→** arrow above to start.

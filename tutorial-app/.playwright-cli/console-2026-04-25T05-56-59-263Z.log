@@ -1,0 +1,13 @@
+[     559ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:4321/node_modules/.vite/deps/@astrojs_react_client__js.js?v=878a0ded:20103
+[     680ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/tutorial-app/part-1-chapter-1-lesson-1-solution.json:0
+[    1685ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/tutorial-app/part-1-chapter-1-lesson-1-solution.json:0
+[    2695ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/tutorial-app/part-1-chapter-1-lesson-1-solution.json:0
+[    2695ms] [ERROR] Failed to fetch part-1-chapter-1-lesson-1-solution.json after 3 attempts. @ http://localhost:4321/node_modules/@tutorialkit/runtime/dist/lesson-files.js?v=878a0ded:89
+[    2695ms] [ERROR] Error: Failed to fetch part-1-chapter-1-lesson-1-solution.json: 404 Not Found
+    at LessonFilesFetcher._fetchFiles (http://localhost:4321/node_modules/@tutorialkit/runtime/dist/lesson-files.js?v=878a0ded:82:27)
+    at async Promise.all (index 1)
+    at async _lessonTask.newTask.ignoreCancel (http://localhost:4321/node_modules/@tutorialkit/runtime/dist/store/index.js?v=878a0ded:111:49) @ http://localhost:4321/node_modules/@tutorialkit/runtime/dist/lesson-files.js?v=878a0ded:90
+[    3681ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/favicon.ico:0
+[    7385ms] [WARNING] The resource https://w-corp-staticblitz.com/fetch.worker.4c73681d.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://stackblitz.com/headless?version=1.5.1:0
+[   28671ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep @ https://astro.build/assets/integrations/spotlightjs.svg:0
+[   28672ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep @ https://astro.build/assets/integrations/storyblok.svg:0

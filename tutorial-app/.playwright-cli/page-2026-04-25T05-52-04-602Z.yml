@@ -1,0 +1,102 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - navigation [ref=e3]:
+      - generic:
+        - link:
+          - /url: /
+      - button "Open in StackBlitz" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Toggle Theme" [ref=e11] [cursor=pointer]
+    - generic [ref=e13]:
+      - generic [ref=e15]:
+        - button "Fingerspitzengefühl" [ref=e17] [cursor=pointer]:
+          - strong [ref=e19]: Fingerspitzengefühl
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Fingerspitzengefühl" [level=1] [ref=e22]
+            - paragraph [ref=e23]: This lesson resolves by preserving the German surface inside English.
+            - paragraph [ref=e24]:
+              - text: Start in
+              - code [ref=e25]: translation.en
+              - text: and replace the failed gloss. The squiggle stays until the English file itself becomes
+              - code [ref=e26]: Fingerspitzengefühl
+              - text: .
+            - heading "The Task" [level=3] [ref=e27]
+            - list [ref=e28]:
+              - listitem [ref=e29]:
+                - text: Edit
+                - code [ref=e30]: translation.en
+                - text: .
+              - listitem [ref=e31]: Hover the squiggle to inspect the structural-loss rule.
+              - listitem [ref=e32]: Read the static warm log in the preview. Each loss axis folds to the relevant rule region.
+              - listitem [ref=e33]:
+                - text: Type
+                - code [ref=e34]: Fingerspitzengefühl
+                - text: directly in the English file.
+              - listitem [ref=e35]:
+                - text: "When validation passes, the preview should say:"
+                - code [ref=e36]: you solved this by preserving the word, not paraphrasing it
+                - text: .
+            - heading "What you are seeing" [level=3] [ref=e37]
+            - list [ref=e38]:
+              - listitem [ref=e39]:
+                - code [ref=e40]: LoanwordRules.pkl
+                - text: is the authoring source for the structural-loss rule.
+              - listitem [ref=e41]:
+                - code [ref=e42]: loanword-runtime.json
+                - text: is the runtime artifact the browser uses for validation.
+              - listitem [ref=e43]:
+                - code [ref=e44]: warm-log-story.json
+                - text: is the static warm-log fixture rendered in Monaco.
+          - generic [ref=e45]:
+            - link "Schadenfreude" [ref=e47] [cursor=pointer]:
+              - /url: /tutorial-app/part-1/chapter-1/lesson-1
+              - generic [ref=e48]: Schadenfreude
+            - link "Authorization by Benutzer-ID" [ref=e50] [cursor=pointer]:
+              - /url: /tutorial-app/part-1/chapter-2/lesson-1
+              - generic [ref=e51]: Authorization by Benutzer-ID
+          - link "Powered by WebContainers" [ref=e52] [cursor=pointer]:
+            - /url: https://webcontainers.io/
+      - generic [ref=e56]:
+        - generic [ref=e58]:
+          - generic:
+            - generic:
+              - generic: Files
+            - generic:
+              - button "LoanwordRules.pkl" [ref=e59] [cursor=pointer]:
+                - generic [ref=e60]: LoanwordRules.pkl
+              - button "loanword-runtime.json" [ref=e61] [cursor=pointer]:
+                - generic [ref=e62]: loanword-runtime.json
+              - button "translation.en" [ref=e63] [cursor=pointer]:
+                - generic [ref=e64]: translation.en
+              - button "warm-log-story.json" [ref=e65] [cursor=pointer]:
+                - generic [ref=e66]: warm-log-story.json
+          - separator
+          - generic [ref=e67]:
+            - button "Solve" [disabled] [ref=e69]: Solve
+            - textbox [ref=e75]
+        - separator
+        - generic [ref=e78]:
+          - generic [ref=e80]: Preparing Environment
+          - list [ref=e82]:
+            - listitem [ref=e83]:
+              - generic [ref=e84]: npm install
+            - listitem [ref=e85]:
+              - generic [ref=e86]: npm run dev
+        - separator
+        - tablist [ref=e91]
+  - generic [ref=e95]:
+    - button "Menu" [ref=e96]:
+      - img [ref=e98]
+      - generic: Menu
+    - button "Inspect" [ref=e102]:
+      - img [ref=e104]
+      - generic: Inspect
+    - button "Audit" [ref=e106]:
+      - generic [ref=e107]:
+        - img [ref=e108]
+        - img [ref=e111]
+      - generic: Audit
+    - button "Settings" [ref=e114]:
+      - img [ref=e116]
+      - generic: Settings

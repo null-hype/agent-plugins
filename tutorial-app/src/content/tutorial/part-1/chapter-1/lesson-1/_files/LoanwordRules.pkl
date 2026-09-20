@@ -1,0 +1,45 @@
+module LoanwordRules
+
+class LossAxis {
+  name: String
+  title: String
+  message: String
+}
+
+class LoanwordRule {
+  sourceLexeme: String
+  canonicalEnglish: String
+  requiresVocabularyAdmission: Boolean
+  explanation: String
+  axes: Listing<LossAxis>
+}
+
+loanword = new LoanwordRule {
+  sourceLexeme = "Schadenfreude"
+  canonicalEnglish = "Schadenfreude"
+  requiresVocabularyAdmission = true
+  explanation =
+    "Schadenfreude carries a social register that vanishes when the word is flattened into a descriptive gloss."
+  axes = new Listing<LossAxis> {
+    new LossAxis {
+      name = "lexicalization"
+      title = "lexicalization"
+      message = "Malicious joy lexicalizes a summary and drops the portable loanword surface."
+    }
+    new LossAxis {
+      name = "gefuhl_register"
+      title = "Gefühl register"
+      message = "The felt social charge survives more densely in Schadenfreude than in an English paraphrase."
+    }
+    new LossAxis {
+      name = "spitzen_valence"
+      title = "Spitzen valence"
+      message = "The arc keeps this axis name: the word's sharpened social edge is blunted when English explains instead of preserves."
+    }
+    new LossAxis {
+      name = "lineage"
+      title = "lineage"
+      message = "The loanword's literary and cultural lineage disappears when the term becomes a descriptive gloss."
+    }
+  }
+}
