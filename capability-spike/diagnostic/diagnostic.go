@@ -13,6 +13,14 @@ const (
 	SeverityError Severity = "error"
 )
 
+// CodeTermUnresolved is the one new code CIT-149 adds alongside Ledger.pkl's
+// existing CAP_* codes: a reason's phrase does not match anything
+// GovernedVocabulary.pkl admits, so there is no factID to check access for
+// at all. This is deliberately distinct from CAP_NO_GRANT (see
+// resolver.Resolve): a phrase the supervisor never admitted is a different
+// failure than one it admitted but never granted.
+const CodeTermUnresolved = "CAP_TERM_UNRESOLVED"
+
 type Diagnostic struct {
 	Severity Severity `json:"severity"`
 	Code     string   `json:"code"`

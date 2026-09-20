@@ -18,8 +18,11 @@ jobs:
         with:
           verb: check
           workdir: .dagger/internal/devenv-base
-        env:
-          # Enables cross-run distributed build caching via Dagger Cloud.
+          # Enables cross-run distributed build caching + traces via Dagger Cloud.
           # Source of truth: pass://development/devenv-base/DAGGER_CLOUD_TOKEN
           # (mirrored into this repo's Actions secrets; rotate there first).
-          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+          # Must be passed as the action's own `cloud-token` input, not a step
+          # `env:` var — the action's composite script builds its own
+          # `DAGGER_CLOUD_TOKEN=${{ inputs.cloud-token }}` invocation, which
+          # overwrites (with empty) whatever step-level env is set.
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
