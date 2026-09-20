@@ -1096,6 +1096,7 @@ def main():
     p_apply.add_argument("--no-live", action="store_true", help="Disable automatic live refresh attempt even if LINEAR_API_KEY is present")
     p_apply.add_argument("--max-cache-age", type=float, default=24.0, help="Max allowed cache age in hours (default: 24.0)")
     p_apply.add_argument("--allow-stale", action="store_true", help="Allow stale cache without raising error")
+    p_apply.add_argument("--offline", action="store_true", help="Operate strictly offline on cached Linear state without live API requests")
 
     # Command: refresh-linear-state
     p_refresh = subparsers.add_parser("refresh-linear-state", help="Refresh cached Linear triage state from Linear live API")
@@ -1111,6 +1112,7 @@ def main():
     p_inv.add_argument("--grandfathered", type=int, default=20, help="Number of grandfathered CIT-110 contacts (default: 20)")
     p_inv.add_argument("--max-cache-age", type=float, default=24.0, help="Max allowed cache age in hours (default: 24.0)")
     p_inv.add_argument("--allow-stale", action="store_true", help="Allow stale cache without raising error")
+    p_inv.add_argument("--offline", action="store_true", help="Operate strictly offline on cached Linear state without live API requests")
 
     # Command: ingest (direct ingestion using generic proposal engine)
     p_ingest = subparsers.add_parser("ingest", help="Ingest recon file into CRM using generic proposal engine")
@@ -1292,7 +1294,8 @@ def main():
 
         # Check if live Linear refresh is requested or possible
         api_key = os.environ.get("LINEAR_API_KEY")
-        should_refresh = getattr(args, "refresh", False) or (api_key and not getattr(args, "no_live", False))
+        is_offline = getattr(args, "offline", False) or getattr(args, "no_live", False)
+        should_refresh = (getattr(args, "refresh", False) or (api_key and not is_offline)) and not is_offline
         if should_refresh:
             try:
                 print("Refreshing triage state directly from Linear live API for CIT-186...")
@@ -1300,9 +1303,13 @@ def main():
                 save_linear_triage_state(args.linear_state, live_state)
                 print(f"  [Linear Live Sync] Updated {args.linear_state} from Linear live API.")
             except Exception as e:
-                if getattr(args, "refresh", False):
-                    raise
-                print(f"  [Linear Live Sync] Notice: Live fetch skipped ({e}). Falling back to cached evidence.")
+                # Fail-closed by default: abort mutation unless --allow-stale or --offline is explicitly provided
+                if not getattr(args, "allow_stale", False) and not getattr(args, "offline", False):
+                    raise AuthoritativeLinearError(
+                        f"Linear live state fetch failed: {e}. State mutation aborted (fail-closed). "
+                        "Specify --allow-stale or --offline to authorize mutation using cached evidence."
+                    )
+                print(f"  [Linear Live Sync] Warning: Live fetch failed ({e}). Proceeding with cached evidence (--allow-stale/--offline specified).")
 
         meta = get_linear_state_metadata(args.linear_state)
         source = meta.get("source", "cached_snapshot")
@@ -1313,23 +1320,28 @@ def main():
         linear_state = load_linear_triage_state(
             args.linear_state,
             max_age_hours=getattr(args, "max_cache_age", 24.0),
-            allow_stale=getattr(args, "allow_stale", False),
+            allow_stale=getattr(args, "allow_stale", False) or getattr(args, "offline", False),
         )
 
         # Build decisions list
         decisions = []
         if getattr(args, "from_linear", False):
             # Derive decisions directly from authoritative Linear state
-            proposals_map = {}
+            proposals_by_id = {}
+            proposals_by_url = {}
             if os.path.exists(args.proposals):
                 with open(args.proposals, mode="r", encoding="utf-8") as f:
                     try:
                         props = json.load(f)
                         for p in props:
                             cand = p.get("candidate", {})
-                            cname = cand.get("name", cand.get("person", ""))
-                            if cname:
-                                proposals_map[normalize_person_name(cname)] = cand
+                            url = cand.get("profile_url", p.get("profile_url", ""))
+                            norm_u = normalize_profile_url(url)
+                            if norm_u:
+                                proposals_by_url[norm_u] = cand
+                            lid = p.get("linear_issue_id", cand.get("linear_issue_id", ""))
+                            if lid:
+                                proposals_by_id[lid] = cand
                     except Exception:
                         pass
 
@@ -1343,15 +1355,28 @@ def main():
                     person_from_info = title_clean.split("—")[0].strip() if "—" in title_clean else title_clean
                 role_from_info = info.get("role_organisation", title_clean)
                 url_from_info = info.get("profile_url", "")
+                norm_info_url = normalize_profile_url(url_from_info)
 
-                cand = proposals_map.get(
-                    normalize_person_name(person_from_info),
-                    {"name": person_from_info, "role_organisation": role_from_info, "profile_url": url_from_info},
-                )
+                # Bind candidate strictly through Linear issue ID or exact normalized URL — NEVER by name!
+                cand = None
+                if iid in proposals_by_id:
+                    cand = proposals_by_id[iid]
+                elif norm_info_url and norm_info_url in proposals_by_url:
+                    cand = proposals_by_url[norm_info_url]
+                else:
+                    cand = {
+                        "name": person_from_info,
+                        "person": person_from_info,
+                        "role_organisation": role_from_info,
+                        "profile_url": url_from_info,
+                    }
+
                 if not cand.get("profile_url") and url_from_info:
                     cand["profile_url"] = url_from_info
                 if not cand.get("name"):
                     cand["name"] = person_from_info
+                if not cand.get("person"):
+                    cand["person"] = person_from_info
 
                 if status in ("Todo", "Done") or status_type in ("unstarted", "completed"):
                     decisions.append({
@@ -1444,15 +1469,13 @@ def main():
 
             elif outcome == "reject":
                 # Save to rejection provenance idempotently
+                # Identity bound strictly through linear_id or exact normalized URL — NEVER by name!
                 already_rej = False
                 for r in rejections:
-                    if r.get("linear_issue_id") == linear_id:
+                    if linear_id and linear_id != "N/A" and r.get("linear_issue_id") == linear_id:
                         already_rej = True
                         break
                     if norm_url and normalize_profile_url(r.get("profile_url", "")) == norm_url:
-                        already_rej = True
-                        break
-                    if norm_name and normalize_person_name(r.get("person", "")) == norm_name:
                         already_rej = True
                         break
 
@@ -1472,24 +1495,32 @@ def main():
                     print(f"  - Reject: Recorded negative provenance for {person_name} ({linear_id})")
 
                 # Remove from active CRM if present
+                # Identity bound strictly through exact normalized URL or linear_id — NEVER by name!
                 crm_before = len(engine.records)
-                engine.records = [
-                    r for r in engine.records
-                    if (norm_name and normalize_person_name(r.get("person", "")) != norm_name)
-                    and (not norm_url or normalize_profile_url(r.get("profile_url", "")) != norm_url)
-                    and (linear_id not in r.get("priority_rationale", ""))
-                ]
+                def is_rejected_crm_match(rec):
+                    r_u = normalize_profile_url(rec.get("profile_url", ""))
+                    if norm_url and r_u == norm_url:
+                        return True
+                    if linear_id and linear_id != "N/A" and (linear_id in rec.get("priority_rationale", "") or linear_id in rec.get("relationship_warm_intro", "")):
+                        return True
+                    return False
+
+                engine.records = [r for r in engine.records if not is_rejected_crm_match(r)]
                 if len(engine.records) < crm_before:
-                    print(f"    (Removed {person_name} from active CRM)")
+                    print(f"    (Removed {person_name} from active CRM by URL/Linear ID match)")
 
             elif outcome == "research":
                 # Staged outside CRM idempotently
-                already_staged = any(
-                    r.get("linear_issue_id") == linear_id
-                    or (norm_url and normalize_profile_url(r.get("profile_url", "")) == norm_url)
-                    or (norm_name and normalize_person_name(r.get("person", "")) == norm_name)
-                    for r in research_records
-                )
+                # Identity bound strictly through linear_id or exact normalized URL — NEVER by name!
+                already_staged = False
+                for r in research_records:
+                    if linear_id and linear_id != "N/A" and r.get("linear_issue_id") == linear_id:
+                        already_staged = True
+                        break
+                    if norm_url and normalize_profile_url(r.get("profile_url", "")) == norm_url:
+                        already_staged = True
+                        break
+
                 if not already_staged:
                     research_entry = {
                         "linear_issue_id": linear_id,
@@ -1505,15 +1536,19 @@ def main():
                     print(f"  - Research: Staged {person_name} outside canonical CRM ({linear_id})")
 
                 # Remove from active CRM if present
+                # Identity bound strictly through exact normalized URL or linear_id — NEVER by name!
                 crm_before = len(engine.records)
-                engine.records = [
-                    r for r in engine.records
-                    if (norm_name and normalize_person_name(r.get("person", "")) != norm_name)
-                    and (not norm_url or normalize_profile_url(r.get("profile_url", "")) != norm_url)
-                    and (linear_id not in r.get("priority_rationale", ""))
-                ]
+                def is_research_crm_match(rec):
+                    r_u = normalize_profile_url(rec.get("profile_url", ""))
+                    if norm_url and r_u == norm_url:
+                        return True
+                    if linear_id and linear_id != "N/A" and (linear_id in rec.get("priority_rationale", "") or linear_id in rec.get("relationship_warm_intro", "")):
+                        return True
+                    return False
+
+                engine.records = [r for r in engine.records if not is_research_crm_match(r)]
                 if len(engine.records) < crm_before:
-                    print(f"    (Removed {person_name} from active CRM)")
+                    print(f"    (Removed {person_name} from active CRM by URL/Linear ID match)")
 
             elif outcome == "merge":
                 target_id = str(item.get("target_crm_id", "")).strip()
