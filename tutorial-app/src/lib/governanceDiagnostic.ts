@@ -27,6 +27,13 @@ export interface EvidenceLocation {
   role: EvidenceRole;
   uri: string;
   detail: string;
+  /**
+   * CIT-176: the immutable revision `uri` is read at, when the same path
+   * holds different content in a base, a candidate and an integration.
+   * Absent for evidence with no revision identity (everything above).
+   */
+  revision?: string;
+  line?: number;
 }
 
 /**
