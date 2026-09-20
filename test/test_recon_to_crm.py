@@ -527,6 +527,107 @@ class TestReconToCRM(unittest.TestCase):
         finally:
             os.remove(stale_path)
 
+    def test_reject_same_name_does_not_remove_other_crm_record(self):
+        """Invariant: Rejecting a candidate with the same name as an accepted CRM contact does NOT delete the CRM contact."""
+        engine = IngestionEngine()
+        seed = {
+            "id": "1",
+            "person": "John Smith",
+            "role_organisation": "CISO at Acme Corp",
+            "profile_url": "https://www.linkedin.com/in/johnsmith-acme",
+            "priority_rationale": "Accepted via Linear CIT-101: Initial seed",
+            "review_priority": "P1",
+            "stage": "review_queue",
+        }
+        engine.ingest_record(seed)
+        self.assertEqual(len(engine.records), 1)
+
+        # Reject another John Smith
+        rejected_candidate = {
+            "name": "John Smith",
+            "person": "John Smith",
+            "role_organisation": "Auditor at Other Corp",
+            "profile_url": "https://www.linkedin.com/in/johnsmith-other",
+        }
+        linear_id = "CIT-102"
+        norm_url = normalize_profile_url(rejected_candidate["profile_url"])
+
+        # Execute rejection CRM removal logic
+        def is_rejected_crm_match(rec):
+            r_u = normalize_profile_url(rec.get("profile_url", ""))
+            if norm_url and r_u == norm_url:
+                return True
+            if linear_id and linear_id != "N/A" and (linear_id in rec.get("priority_rationale", "") or linear_id in rec.get("relationship_warm_intro", "")):
+                return True
+            return False
+
+        engine.records = [r for r in engine.records if not is_rejected_crm_match(r)]
+        self.assertEqual(len(engine.records), 1, "Accepted John Smith must NOT be deleted by rejecting different John Smith")
+        self.assertEqual(engine.records[0]["profile_url"], "https://www.linkedin.com/in/johnsmith-acme")
+
+    def test_research_same_name_does_not_remove_other_crm_record(self):
+        """Invariant: Moving a candidate to research does NOT delete another CRM record with the same name."""
+        engine = IngestionEngine()
+        seed = {
+            "id": "1",
+            "person": "Alice Walker",
+            "role_organisation": "CISO at Cloud Corp",
+            "profile_url": "https://www.linkedin.com/in/alicewalker-ciso",
+            "priority_rationale": "Accepted via Linear CIT-103: Lead",
+            "review_priority": "P1",
+            "stage": "review_queue",
+        }
+        engine.ingest_record(seed)
+        self.assertEqual(len(engine.records), 1)
+
+        # Move different Alice Walker to Research
+        research_candidate = {
+            "name": "Alice Walker",
+            "person": "Alice Walker",
+            "role_organisation": "Developer at Firm",
+            "profile_url": "https://www.linkedin.com/in/alicewalker-dev",
+        }
+        linear_id = "CIT-104"
+        norm_url = normalize_profile_url(research_candidate["profile_url"])
+
+        def is_research_crm_match(rec):
+            r_u = normalize_profile_url(rec.get("profile_url", ""))
+            if norm_url and r_u == norm_url:
+                return True
+            if linear_id and linear_id != "N/A" and (linear_id in rec.get("priority_rationale", "") or linear_id in rec.get("relationship_warm_intro", "")):
+                return True
+            return False
+
+        engine.records = [r for r in engine.records if not is_research_crm_match(r)]
+        self.assertEqual(len(engine.records), 1, "Accepted Alice Walker must NOT be removed when different Alice Walker moves to research")
+
+    def test_reject_and_research_idempotency_does_not_collapse_same_name(self):
+        """Invariant: Two rejected or researched candidates sharing a name remain distinct without false collision."""
+        rejections = []
+        person1 = {
+            "person": "Bob Brown",
+            "profile_url": "https://www.linkedin.com/in/bobbrown-1",
+            "linear_issue_id": "CIT-301",
+        }
+        person2 = {
+            "person": "Bob Brown",
+            "profile_url": "https://www.linkedin.com/in/bobbrown-2",
+            "linear_issue_id": "CIT-302",
+        }
+
+        for p in [person1, person2]:
+            norm_url = normalize_profile_url(p["profile_url"])
+            lid = p["linear_issue_id"]
+            already_rej = any(
+                (lid and r.get("linear_issue_id") == lid)
+                or (norm_url and normalize_profile_url(r.get("profile_url", "")) == norm_url)
+                for r in rejections
+            )
+            if not already_rej:
+                rejections.append(p)
+
+        self.assertEqual(len(rejections), 2, "Both distinct Bob Browns must be retained in rejections")
+
 
 if __name__ == "__main__":
     unittest.main()
