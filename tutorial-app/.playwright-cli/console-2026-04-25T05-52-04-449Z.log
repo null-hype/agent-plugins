@@ -1,0 +1,12 @@
+[      91ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:4321/node_modules/.vite/deps/@astrojs_react_client__js.js?v=878a0ded:20103
+[     151ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/tutorial-app/part-1-chapter-1-lesson-2-solution.json:0
+[    1172ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/tutorial-app/part-1-chapter-1-lesson-2-solution.json:0
+[    2180ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/tutorial-app/part-1-chapter-1-lesson-2-solution.json:0
+[    2180ms] [ERROR] Failed to fetch part-1-chapter-1-lesson-2-solution.json after 3 attempts. @ http://localhost:4321/node_modules/@tutorialkit/runtime/dist/lesson-files.js?v=878a0ded:89
+[    2180ms] [ERROR] Error: Failed to fetch part-1-chapter-1-lesson-2-solution.json: 404 Not Found
+    at LessonFilesFetcher._fetchFiles (http://localhost:4321/node_modules/@tutorialkit/runtime/dist/lesson-files.js?v=878a0ded:82:27)
+    at async Promise.all (index 1)
+    at async _lessonTask.newTask.ignoreCancel (http://localhost:4321/node_modules/@tutorialkit/runtime/dist/store/index.js?v=878a0ded:111:49) @ http://localhost:4321/node_modules/@tutorialkit/runtime/dist/lesson-files.js?v=878a0ded:90
+[    5233ms] [WARNING] The resource https://w-corp-staticblitz.com/fetch.worker.4c73681d.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://stackblitz.com/headless?version=1.5.1:0
+[    6540ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ https://83qfohysxbf985oslyx71c65pcz9dj-tru4--4173--4c73681d.local-corp.webcontainer-api.io/__tk/file?path=%2Fwarm-log-story.json:0
+[    8823ms] [WARNING] The resource https://w-corp-staticblitz.com/fetch.worker.4c73681d.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://stackblitz.com/headless?version=1.5.1:0

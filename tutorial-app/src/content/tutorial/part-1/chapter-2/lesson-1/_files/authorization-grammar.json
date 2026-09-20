@@ -1,0 +1,24 @@
+{
+  "scenario": "opentrader-idor",
+  "sentence": {
+    "prefix": "Die API prüft die Berechtigung anhand ",
+    "suffix": " Benutzer-ID",
+    "placeholder": "_____",
+    "correctFill": "der"
+  },
+  "messages": {
+    "empty": "Fill the blank with the article required by the authorization grammar rule.",
+    "fill": "Use `der` so the authorization anchor satisfies the lesson rule for `Benutzer-ID`.",
+    "shape": "Keep the sentence shape `Die API prüft die Berechtigung anhand der Benutzer-ID`."
+  },
+  "peek": {
+    "title": "Peek: AuthorizationGrammar.pkl",
+    "source": "AuthorizationGrammar.pkl",
+    "explanation": "This lesson models the phrase `anhand ... Benutzer-ID` as a dative-governed authorization anchor that requires `der`.",
+    "snippet": "module AuthorizationGrammar\n\nclass ArticleRule {\n  phrase: String\n  governedCase: String\n  requiredArticle: String\n}\n\nauthorizationAnchor = new ArticleRule {\n  phrase = \"anhand ... Benutzer-ID\"\n  governedCase = \"Dative\"\n  requiredArticle = \"der\"\n}"
+  },
+  "preview": {
+    "invalidSummary": "idor(place_order) blocked",
+    "validSummary": "idor(place_order) -> anomaly"
+  }
+}

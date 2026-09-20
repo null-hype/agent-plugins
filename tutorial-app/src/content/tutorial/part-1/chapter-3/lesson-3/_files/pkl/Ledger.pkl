@@ -1,0 +1,36 @@
+/// Supervisor-owned gate. A worker fact proves it has a capability only
+/// by calling `checkAccess()` here -- it cannot read GrantState.pkl
+/// directly (it never imports it), so the worker cannot self-grant by
+/// editing state, only by asking this gate a question it doesn't control
+/// the answer to.
+///
+/// Rejection is a Pkl `throw()`, not a returned false: per CIT-96's
+/// already-solved lesson (see check-taint-trace-fail-closed.sh), a
+/// pkl:test `facts{}` block cannot catch a thrown error internally, so a
+/// rejected request fails the whole module's evaluation with this
+/// message as the diagnostic -- exactly the "useful compiler-like
+/// diagnostic" CIT-139 asks for. The Go side (worker/eval.go) drives
+/// `pkl test` as a subprocess and parses this message rather than
+/// string-matching arbitrary stderr.
+module ledger
+
+import "GrantState.pkl"
+
+/// Machine-parseable prefix so the Go side can extract `code` without
+/// guessing at prose. Format: "<code> fact=<factID> vault=<vault>: <message>"
+local function deny(code: String, factID: String, vault: String, message: String): Boolean =
+  throw("\(code) fact=\(factID) vault=\(vault): \(message)")
+
+/// Called from a worker-owned fact file. Returns `true` only if the
+/// supervisor has recorded an approved grant for exactly this
+/// (factID, vault) pair; otherwise throws a structured diagnostic.
+function checkAccess(factID: String, vault: String): Boolean =
+  let (grant = GrantState.approvedGrants.getOrNull(factID))
+  if (grant == null)
+    deny("CAP_NO_GRANT", factID, vault, "no grant has been recorded for this fact -- request pending supervisor review")
+  else if (!grant.approved)
+    deny("CAP_REJECTED", factID, vault, "supervisor explicitly rejected this request")
+  else if (grant.vault != vault)
+    deny("CAP_VAULT_MISMATCH", factID, vault, "supervisor approved this fact for vault \(grant.vault), not \(vault)")
+  else
+    true

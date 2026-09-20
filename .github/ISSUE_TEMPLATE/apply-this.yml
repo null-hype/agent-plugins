@@ -1,0 +1,24 @@
+name: Discuss applying this to an agent system
+description: The one direct way to reach the author about consulting, research collaboration or funding.
+title: "Apply: <your agent system, one line>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good reasons to open this: you run agents with access to secrets or
+        tools and want the approval-to-effect gap examined; you want a
+        governance check reproduced on your own capability set; you are
+        considering funding or hiring for this work. This is a public issue,
+        so do not include secrets or private details.
+  - type: textarea
+    id: system
+    attributes:
+      label: What agent system, and which capabilities (MCP servers, skills, plugins, connectors)?
+    validations:
+      required: true
+  - type: textarea
+    id: ask
+    attributes:
+      label: What would you like to discuss?
+    validations:
+      required: true

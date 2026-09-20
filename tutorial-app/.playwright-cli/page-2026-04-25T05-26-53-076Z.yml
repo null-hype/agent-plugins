@@ -1,0 +1,156 @@
+- generic [ref=e1]:
+  - iframe [ref=e127]:
+    - generic [active] [ref=f3e1]:
+      - main [ref=f3e2]:
+        - code [ref=f3e4]:
+          - generic [ref=f3e5]:
+            - textbox "Editor content" [ref=f3e6]
+            - textbox [ref=f3e7]
+            - generic [ref=f3e10]:
+              - generic [ref=f3e33]:
+                - generic [ref=f3e35] [cursor=pointer]: 
+                - generic [ref=f3e36]: "1"
+              - generic [ref=f3e38]: "2"
+              - generic [ref=f3e40]: "3"
+              - generic [ref=f3e42]: "4"
+              - generic [ref=f3e43]:
+                - generic [ref=f3e44] [cursor=pointer]: 
+                - generic [ref=f3e45]: "5"
+              - generic [ref=f3e47]: "6"
+              - generic [ref=f3e49]: "7"
+              - generic [ref=f3e51]: "8"
+              - generic [ref=f3e53]: "9"
+              - generic [ref=f3e55]: "10"
+              - generic [ref=f3e56]:
+                - generic [ref=f3e57] [cursor=pointer]: 
+                - generic [ref=f3e58]: "11"
+              - generic [ref=f3e60]: "12"
+              - generic [ref=f3e62]: "13"
+              - generic [ref=f3e64]: "14"
+              - generic [ref=f3e66]: "15"
+            - generic [ref=f3e24]:
+              - generic [ref=f3e104]: "#region trace otel.opentrader.place_order -> anomaly"
+              - generic [ref=f3e106]: "actor: alice"
+              - generic [ref=f3e108]: "objective: place an order under bob's user_id"
+              - generic [ref=f3e110]: "result: anomaly detected after authorization drift"
+              - generic [ref=f3e112]: "#region span http.request.validate -> ok"
+              - generic [ref=f3e114]: "service.name: OpenTrader API"
+              - generic [ref=f3e116]: "http.route: POST /orders"
+              - generic [ref=f3e118]: "enduser.id: alice"
+              - generic [ref=f3e120]: "request.body.user_id: bob"
+              - generic [ref=f3e122]: "#endregion"
+              - generic [ref=f3e124]: "#region span order.persisted -> ok"
+              - generic [ref=f3e126]: "action: alice submits order"
+              - generic [ref=f3e128]: "persistence.user_id: bob"
+              - generic [ref=f3e130]: "status: accepted before anomaly analysis"
+              - generic [ref=f3e132]: "#endregion"
+      - generic [ref=f3e32]:
+        - alert
+        - alert
+  - main [ref=e148]:
+    - navigation [ref=e149]:
+      - generic:
+        - link:
+          - /url: /
+      - button "Open in StackBlitz" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Toggle Theme" [ref=e11] [cursor=pointer]
+    - generic [ref=e153]:
+      - generic [ref=e155]:
+        - button "Fingerspitzengefühl" [ref=e157] [cursor=pointer]:
+          - strong [ref=e159]: Fingerspitzengefühl
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - heading "Fingerspitzengefühl" [level=1] [ref=e162]
+            - paragraph [ref=e163]: This lesson resolves by preserving the German surface inside English.
+            - paragraph [ref=e164]:
+              - text: Start in
+              - code [ref=e165]: translation.en
+              - text: and replace the failed gloss. The squiggle stays until the English file itself becomes
+              - code [ref=e166]: Fingerspitzengefühl
+              - text: .
+            - heading "The Task" [level=3] [ref=e167]
+            - list [ref=e168]:
+              - listitem [ref=e169]:
+                - text: Edit
+                - code [ref=e170]: translation.en
+                - text: .
+              - listitem [ref=e171]: Hover the squiggle to inspect the structural-loss rule.
+              - listitem [ref=e172]: Read the static warm log in the preview. Each loss axis folds to the relevant rule region.
+              - listitem [ref=e173]:
+                - text: Type
+                - code [ref=e174]: Fingerspitzengefühl
+                - text: directly in the English file.
+              - listitem [ref=e175]:
+                - text: "When validation passes, the preview should say:"
+                - code [ref=e176]: you solved this by preserving the word, not paraphrasing it
+                - text: .
+            - heading "What you are seeing" [level=3] [ref=e177]
+            - list [ref=e178]:
+              - listitem [ref=e179]:
+                - code [ref=e180]: LoanwordRules.pkl
+                - text: is the authoring source for the structural-loss rule.
+              - listitem [ref=e181]:
+                - code [ref=e182]: loanword-runtime.json
+                - text: is the runtime artifact the browser uses for validation.
+              - listitem [ref=e183]:
+                - code [ref=e184]: warm-log-story.json
+                - text: is the static warm-log fixture rendered in Monaco.
+          - generic [ref=e185]:
+            - link "Authorization by Benutzer-ID" [ref=e187] [cursor=pointer]:
+              - /url: /tutorial-app/part-2/chapter-1/lesson-1
+              - generic [ref=e188]: Authorization by Benutzer-ID
+            - link "Schadenfreude" [ref=e190] [cursor=pointer]:
+              - /url: /tutorial-app/part-2/chapter-2/lesson-2
+              - generic [ref=e191]: Schadenfreude
+          - link "Powered by WebContainers" [ref=e192] [cursor=pointer]:
+            - /url: https://webcontainers.io/
+      - generic [ref=e53]:
+        - generic [ref=e55]:
+          - generic:
+            - generic:
+              - generic: Files
+            - generic:
+              - button "LoanwordRules.pkl" [ref=e195] [cursor=pointer]:
+                - generic [ref=e57]: LoanwordRules.pkl
+              - button "loanword-runtime.json" [ref=e196] [cursor=pointer]:
+                - generic [ref=e59]: loanword-runtime.json
+              - button "translation.en" [pressed] [ref=e197] [cursor=pointer]:
+                - generic [ref=e61]: translation.en
+              - button "warm-log-story.json" [ref=e198] [cursor=pointer]:
+                - generic [ref=e63]: warm-log-story.json
+          - separator
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - generic [ref=e68]: translation.en
+              - button "Reset" [active] [ref=e213] [cursor=pointer]: Reset
+            - generic [ref=e74]:
+              - generic [ref=e215]:
+                - generic [ref=e216]: "1"
+                - generic [ref=e217]: "2"
+              - textbox "Editor" [ref=e81]:
+                - generic [ref=e220]: Fingerspitzengefühl
+        - separator
+        - generic [ref=e131]:
+          - generic [ref=e132]:
+            - button "Reload Preview"
+            - text: Warm Log
+          - button "Toggle Terminal" [ref=e133] [cursor=pointer]: Toggle Terminal
+        - separator
+        - tablist [ref=e98]
+  - generic [ref=e102]:
+    - button "Menu" [ref=e103]:
+      - img [ref=e105]
+      - generic: Menu
+    - button "Inspect" [ref=e109]:
+      - img [ref=e111]
+      - generic: Inspect
+    - button "Audit" [ref=e113]:
+      - generic [ref=e114]:
+        - img [ref=e115]
+        - img [ref=e222]
+      - generic: Audit
+    - button "Settings" [ref=e121]:
+      - img [ref=e123]
+      - generic: Settings
+  - generic [ref=e211]: Black Thursday - OpenTrader Purple Team / Lexical Irreducibles / Fingerspitzengefühl

@@ -1,0 +1,28 @@
+/// Repaired. The one line that changed is the assertion: `true` became a
+/// call to the supervisor's gate, which is the only edit that turns a
+/// green-for-no-reason result into a green-because-approved one.
+///
+/// Note what did *not* change. No grant was written. No observation was
+/// touched. `Reconcile.pkl`'s `boundary-bypassed` flag clears the moment
+/// this file asks the question, regardless of what the supervisor then
+/// answers -- because the flag was never about the answer. A rejected
+/// request routed through the gate is a governed outcome; an approved-
+/// looking one that never asked is not an outcome at all.
+///
+/// The fact this file asserts is now the same one
+/// `flight_booking_area51.pkl` asserts, against the same vault, and
+/// `pkl/GrantState.pkl` records an approval for that pair -- so this
+/// file's own `pkl test` result is green here too. It was green before.
+/// That was the problem.
+amends "pkl:test"
+
+import "../pkl/Ledger.pkl"
+
+local factID = "flight-booking:area51:vault-access"
+local requestedVault = "thepentagon.com"
+
+facts {
+  ["the truth is out there"] {
+    Ledger.checkAccess(factID, requestedVault)
+  }
+}

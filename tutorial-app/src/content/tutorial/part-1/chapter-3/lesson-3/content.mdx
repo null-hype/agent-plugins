@@ -1,0 +1,66 @@
+---
+type: lesson
+title: "When the supervisor says no"
+template: capability-check
+prepareCommands:
+  - npm install
+mainCommand: npm test
+terminal: true
+editor:
+  fileTree: true
+focus: /pkl/Ledger.pkl
+previews: false
+---
+
+The previous lesson walked a capability request that got approved. This one
+walks the same four steps for a request that doesn't -- and it isn't just a
+slower version of the same story. A rejection is a different terminal state,
+not a delay.
+
+**Same two axioms, open to the left:** `pkl/Ledger.pkl`'s
+`checkAccess(factID, vault)` (did the supervisor say yes) and
+`pkl/Inventory.pkl`'s `missingItems(requirement, observed)` (does the
+observed world actually have it). Here, both stay unresolved -- permanently.
+
+**`capabilityRejection.spec.ts`** (open it in the file tree) runs four
+rows through `toHaveVerdict`, each against its own frozen world -- no test
+here mutates state another test reads:
+
+1. A task declares what it needs -- `{ name: "site4.internal", items:
+   ["black-budget-vault-access"] }` -- using `Inventory.pkl`'s `VaultSpec`
+   shape.
+2. Before any request: the item isn't in inventory yet (`INV_MISSING`),
+   and no grant has been recorded (`CAP_NO_GRANT`).
+3. The capability gets requested. The supervisor says no.
+   `worker/area51_site4.pkl` is a real fixture -- `pkl test` on it, for
+   real, fails with `CAP_REJECTED`, against `pkl/GrantState.pkl` set to
+   exactly this state via a real `supervisor.Decide` call
+   (`capability-spike/supervisor/state.go`), the same function a real
+   supervisor pass uses. That file is intentionally git-ignored and gets
+   re-rendered by every local `go run .` / `go test ./...` in
+   `capability-spike/` -- it is not meant to persist between runs (see its
+   own header comment), so this lesson's TypeScript scenario below copies
+   the grant's value as of the moment that `pkl test` run was captured,
+   rather than re-reading that file live.
+4. Refreshing observed state and checking again changes nothing:
+   `missingItems` still reports `INV_MISSING`, because there was never a
+   grant to materialize anything from. Compare this to the previous
+   lesson, where approving the grant did clear `checkAccess` even before
+   the item showed up in inventory -- here neither axiom has anywhere left
+   to go.
+
+Same as the previous lesson, neither axiom can reach a live Pkl evaluator
+from the browser, so both are TypeScript replays --
+[`ledgerCheckAccess.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/ledgerCheckAccess.ts)
+and
+[`inventoryCheck.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/inventoryCheck.ts)
+-- typed against `inventory.pkl.ts`/`grant_state.pkl.ts`, both generated
+from the real Pkl modules by `@pkl-community/pkl-typescript`. This lesson's
+`template: capability-check` boots a real Node WebContainer, `npm install`s
+a real `vitest`, and `npm test` runs `capabilityRejection.spec.ts` for real
+in the terminal panel below the file tree.
+
+**Supporting files**, all real, all in the tree to the left: `pkl/Ledger.pkl`
+and `pkl/GrantState.pkl` (the approval axiom and its state), `pkl/Inventory.pkl`
+(the inventory axiom), and `worker/area51_site4.pkl` (the rejected fact
+under evaluation).
