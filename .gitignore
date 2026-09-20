@@ -6,3 +6,4 @@ digest.txt
 /build/
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+__pycache__/
