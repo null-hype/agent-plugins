@@ -12,10 +12,13 @@ Separation of Responsibilities:
 
 import argparse
 import csv
+import datetime
 import json
 import os
 import re
 import sys
+import urllib.error
+import urllib.request
 from typing import Dict, List, Optional, Tuple, Any
 
 # ==============================================================================
@@ -511,11 +514,9 @@ class IngestionEngine:
                 f"{existing.get('source_query_method', '')} / {new_query}"
             )
 
-        if incoming.get("review_priority") == "P1" and existing.get("review_priority") != "P1":
-            existing["review_priority"] = "P1"
-            existing["priority_rationale"] = (
-                f"{existing.get('priority_rationale', '')} Elevated via: {incoming.get('priority_rationale', '')}"
-            )
+        # Invariant (CIT-198): Exact URL is authority to append evidence/provenance only,
+        # NOT authority to change campaign decisions (priority or stage).
+        # Operational reprioritization must go back through Linear human triage.
 
     def ingest_record(self, record: Dict[str, str]):
         person = record.get("person", "")
@@ -728,12 +729,161 @@ class AuthoritativeLinearError(Exception):
     pass
 
 
-def load_linear_triage_state(path: str) -> Dict[str, Dict[str, Any]]:
-    """Load authoritative Linear triage state snapshot from disk."""
+def get_linear_state_metadata(path: str) -> Dict[str, Any]:
+    """Retrieve metadata from Linear triage state cache file."""
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Authoritative Linear state file not found: {path}")
+        return {}
+    try:
+        with open(path, mode="r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("_metadata", {})
+    except Exception:
+        return {}
+
+
+def save_linear_triage_state(path: str, state: Dict[str, Any]):
+    """Save Linear triage state dict with metadata to disk."""
+    with open(path, mode="w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+
+
+def fetch_live_linear_triage_state(
+    parent_id: str = "CIT-186",
+    api_key: Optional[str] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Fetch live triage child issues directly from Linear GraphQL API.
+    Linear live state is the ultimate authority; disk cache is evidence.
+    """
+    key = api_key or os.environ.get("LINEAR_API_KEY")
+    if not key:
+        raise AuthoritativeLinearError(
+            "LINEAR_API_KEY environment variable or --api-key required to query Linear live API directly."
+        )
+
+    query = """
+    query GetChildIssues($parentId: String!) {
+      issue(id: $parentId) {
+        id
+        identifier
+        children(first: 100) {
+          nodes {
+            id
+            identifier
+            title
+            description
+            url
+            updatedAt
+            state {
+              id
+              name
+              type
+            }
+          }
+        }
+      }
+    }
+    """
+    req_data = json.dumps({"query": query, "variables": {"parentId": parent_id}}).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.linear.app/graphql",
+        data=req_data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": key,
+            "User-Agent": "recon_to_crm/1.0",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            res = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        raise AuthoritativeLinearError(f"Failed to communicate with Linear GraphQL API: {e}")
+
+    if "errors" in res:
+        raise AuthoritativeLinearError(f"Linear GraphQL error: {res['errors']}")
+
+    issue_data = res.get("data", {}).get("issue")
+    if not issue_data:
+        raise AuthoritativeLinearError(f"Linear issue '{parent_id}' not found via live API.")
+
+    nodes = issue_data.get("children", {}).get("nodes", [])
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    state_dict = {
+        "_metadata": {
+            "version": "1.0",
+            "fetched_at": now_iso,
+            "source": "linear_live_api",
+            "parent_issue": parent_id,
+            "issue_count": len(nodes),
+        }
+    }
+
+    for node in nodes:
+        ident = node.get("identifier")
+        title = node.get("title", "")
+        desc = node.get("description", "")
+        title_clean = title.replace("[Triage]", "").strip()
+        person = title_clean.split("—")[0].strip() if "—" in title_clean else title_clean
+        role = title_clean.split("—")[1].strip() if "—" in title_clean else ""
+
+        profile_url = ""
+        url_match = re.search(r"https://[a-zA-Z0-9.\-_/]*linkedin\.com/in/[a-zA-Z0-9.\-_/]+", desc)
+        if url_match:
+            profile_url = url_match.group(0).rstrip(")")
+
+        state_obj = node.get("state", {})
+        state_dict[ident] = {
+            "id": ident,
+            "uuid": node.get("id"),
+            "title": title,
+            "person": person,
+            "role_organisation": role,
+            "profile_url": profile_url,
+            "status": state_obj.get("name"),
+            "statusType": state_obj.get("type"),
+            "linear_url": node.get("url"),
+            "updatedAt": node.get("updatedAt"),
+            "parentId": parent_id,
+        }
+
+    return state_dict
+
+
+def load_linear_triage_state(
+    path: str,
+    max_age_hours: Optional[float] = 24.0,
+    allow_stale: bool = False,
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Load authoritative Linear triage state snapshot from disk as cached evidence.
+    Validates cache freshness and schema metadata.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Linear triage state cache file not found: {path}")
     with open(path, mode="r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+
+    meta = data.get("_metadata", {})
+    fetched_at_str = meta.get("fetched_at")
+    if fetched_at_str and max_age_hours is not None and not allow_stale:
+        try:
+            clean_ts = fetched_at_str.replace("Z", "+00:00")
+            fetched_at = datetime.datetime.fromisoformat(clean_ts)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            age_hours = (now - fetched_at).total_seconds() / 3600.0
+            if age_hours > max_age_hours:
+                raise AuthoritativeLinearError(
+                    f"Linear triage state cache '{path}' is STALE (fetched {age_hours:.1f}h ago, max allowed is {max_age_hours}h). "
+                    f"Refresh cache from Linear live state via 'refresh-linear-state' or set LINEAR_API_KEY, or pass --allow-stale."
+                )
+        except (ValueError, TypeError):
+            pass
+
+    # Filter out _metadata so callers receive only issue objects
+    issues = {k: v for k, v in data.items() if not k.startswith("_")}
+    return issues
 
 
 def validate_decision_against_linear(
@@ -942,6 +1092,16 @@ def main():
     p_apply.add_argument("--crm", default="docs/launch/crm.csv", help="Path to canonical CRM CSV")
     p_apply.add_argument("--rejections", default="docs/launch/crm-rejections.csv", help="Path to rejections CSV")
     p_apply.add_argument("--research", default="docs/launch/crm-research.json", help="Path to CRM research staging JSON")
+    p_apply.add_argument("--refresh", action="store_true", help="Refresh cache from Linear live API before applying")
+    p_apply.add_argument("--no-live", action="store_true", help="Disable automatic live refresh attempt even if LINEAR_API_KEY is present")
+    p_apply.add_argument("--max-cache-age", type=float, default=24.0, help="Max allowed cache age in hours (default: 24.0)")
+    p_apply.add_argument("--allow-stale", action="store_true", help="Allow stale cache without raising error")
+
+    # Command: refresh-linear-state
+    p_refresh = subparsers.add_parser("refresh-linear-state", help="Refresh cached Linear triage state from Linear live API")
+    p_refresh.add_argument("--parent", default="CIT-186", help="Parent Linear issue identifier (default: CIT-186)")
+    p_refresh.add_argument("--out", default="docs/launch/linear-triage-state.json", help="Path to write state cache JSON")
+    p_refresh.add_argument("--api-key", default=None, help="Linear API key (or LINEAR_API_KEY env var)")
 
     # Command: validate-invariants
     p_inv = subparsers.add_parser("validate-invariants", help="Validate CIT-198 Linear authority invariants on CRM")
@@ -949,6 +1109,8 @@ def main():
     p_inv.add_argument("--linear-state", default="docs/launch/linear-triage-state.json", help="Path to authoritative Linear triage state JSON")
     p_inv.add_argument("--rejections", default="docs/launch/crm-rejections.csv", help="Path to rejections CSV")
     p_inv.add_argument("--grandfathered", type=int, default=20, help="Number of grandfathered CIT-110 contacts (default: 20)")
+    p_inv.add_argument("--max-cache-age", type=float, default=24.0, help="Max allowed cache age in hours (default: 24.0)")
+    p_inv.add_argument("--allow-stale", action="store_true", help="Allow stale cache without raising error")
 
     # Command: ingest (direct ingestion using generic proposal engine)
     p_ingest = subparsers.add_parser("ingest", help="Ingest recon file into CRM using generic proposal engine")
@@ -1128,8 +1290,31 @@ def main():
                 except Exception:
                     research_records = []
 
+        # Check if live Linear refresh is requested or possible
+        api_key = os.environ.get("LINEAR_API_KEY")
+        should_refresh = getattr(args, "refresh", False) or (api_key and not getattr(args, "no_live", False))
+        if should_refresh:
+            try:
+                print("Refreshing triage state directly from Linear live API for CIT-186...")
+                live_state = fetch_live_linear_triage_state(parent_id="CIT-186", api_key=api_key)
+                save_linear_triage_state(args.linear_state, live_state)
+                print(f"  [Linear Live Sync] Updated {args.linear_state} from Linear live API.")
+            except Exception as e:
+                if getattr(args, "refresh", False):
+                    raise
+                print(f"  [Linear Live Sync] Notice: Live fetch skipped ({e}). Falling back to cached evidence.")
+
+        meta = get_linear_state_metadata(args.linear_state)
+        source = meta.get("source", "cached_snapshot")
+        fetched_at = meta.get("fetched_at", "unknown")
+        print(f"  [Linear Cached Evidence] Using state from {args.linear_state} (source: {source}, fetched: {fetched_at})")
+
         # Load authoritative Linear state
-        linear_state = load_linear_triage_state(args.linear_state)
+        linear_state = load_linear_triage_state(
+            args.linear_state,
+            max_age_hours=getattr(args, "max_cache_age", 24.0),
+            allow_stale=getattr(args, "allow_stale", False),
+        )
 
         # Build decisions list
         decisions = []
@@ -1227,16 +1412,14 @@ def main():
             norm_name = normalize_person_name(person_name)
 
             if outcome == "accept":
-                # Check if candidate is ALREADY in CRM by exact normalized URL OR Linear ID OR Name (Idempotent)
+                # Check if candidate is ALREADY in CRM by exact normalized URL OR Linear ID (Idempotent)
+                # Invariant (CIT-198): No name-only fallback! Same-name different-URL candidates MUST NOT merge.
                 existing_match_idx = None
                 if norm_url and norm_url in engine.url_index:
                     existing_match_idx = engine.url_index[norm_url]
-                else:
+                elif linear_id and linear_id != "N/A":
                     for idx, r in enumerate(engine.records):
                         if linear_id in r.get("priority_rationale", "") or linear_id in r.get("relationship_warm_intro", ""):
-                            existing_match_idx = idx
-                            break
-                        if norm_name and normalize_person_name(r.get("person", "")) == norm_name:
                             existing_match_idx = idx
                             break
 
@@ -1333,19 +1516,23 @@ def main():
                     print(f"    (Removed {person_name} from active CRM)")
 
             elif outcome == "merge":
-                target_id = str(item.get("target_crm_id", ""))
+                target_id = str(item.get("target_crm_id", "")).strip()
                 target_idx = None
-                for idx, r in enumerate(engine.records):
-                    if r["id"] == target_id:
-                        target_idx = idx
-                        break
+                if target_id:
+                    for idx, r in enumerate(engine.records):
+                        if r["id"] == target_id:
+                            target_idx = idx
+                            break
+                elif norm_url and norm_url in engine.url_index:
+                    target_idx = engine.url_index[norm_url]
+
                 if target_idx is not None:
                     norm_rec = parse_cit184_record(candidate, 0)
                     engine.merge_evidence(target_idx, norm_rec)
                     merged_count += 1
-                    print(f"  - Merge: Merged evidence for {person_name} into CRM ID {target_id}")
+                    print(f"  - Merge: Merged evidence for {person_name} into CRM ID {engine.records[target_idx]['id']}")
                 else:
-                    print(f"Warning: Target CRM ID {target_id} not found for merge of {person_name}")
+                    print(f"Warning: Target CRM ID '{target_id}' or exact URL match not found for merge of {person_name}")
 
         # Renumber canonical records sequentially
         for idx, r in enumerate(engine.records, start=1):
@@ -1368,6 +1555,14 @@ def main():
         print(f"  - Total Staged Research Leads:   {len(research_records)}")
         print("--------------------------------------------------------------------------------\n")
 
+    elif args.command == "refresh-linear-state":
+        print(f"Fetching live triage state from Linear for parent {args.parent}...")
+        api_key = args.api_key or os.environ.get("LINEAR_API_KEY")
+        live_state = fetch_live_linear_triage_state(parent_id=args.parent, api_key=api_key)
+        save_linear_triage_state(args.out, live_state)
+        issue_count = len([k for k in live_state if not k.startswith("_")])
+        print(f"✅ Successfully refreshed {issue_count} issues from Linear live API to {args.out}.\n")
+
     elif args.command == "validate-invariants":
         crm_header, crm_records = load_csv(args.crm)
         if not crm_records:
@@ -1375,7 +1570,16 @@ def main():
             sys.exit(1)
 
         rej_header, rejections = load_csv(args.rejections)
-        linear_state = load_linear_triage_state(args.linear_state)
+        meta = get_linear_state_metadata(args.linear_state)
+        source = meta.get("source", "cached_snapshot")
+        fetched_at = meta.get("fetched_at", "unknown")
+        print(f"[Linear Cached Evidence] Validating against state from {args.linear_state} (source: {source}, fetched: {fetched_at})")
+
+        linear_state = load_linear_triage_state(
+            args.linear_state,
+            max_age_hours=getattr(args, "max_cache_age", 24.0),
+            allow_stale=getattr(args, "allow_stale", False),
+        )
 
         print(f"Validating CIT-198 Invariants:")
         print(f"  - Canonical CRM Contacts:  {len(crm_records)} ({args.crm})")
