@@ -6,4 +6,7 @@ digest.txt
 /build/
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+.playwright-mcp/
+.claude/
 __pycache__/
+docs/launch/triage-proposals.json

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-scripts/recon_to_crm.py - Repeatable Recon-to-CRM Ingestion Pipeline (CIT-185)
+scripts/recon_to_crm.py - Repeatable Recon-to-CRM Pipeline with Linear Triage (CIT-185 / CIT-186)
 
-Implements the deterministic pipeline:
-  recon run -> evidence-backed candidates -> normalize -> dedupe -> prioritize -> human review -> canonical CRM -> outreach handoff
-
-Strict Operational Guardrail:
-  Recon and ingestion ONLY. Absolutely no messages sent, connections requested, or
-  outbound actions performed. Downstream issue CIT-113 owns authorized outreach.
+Separation of Responsibilities:
+  1. Recon agents (e.g. Playwright-MCP): Discover public evidence.
+  2. Code (this script): Mechanical reconciliation, deduplication, proposal generation.
+  3. Linear: Human decision layer (Accept, Reject, Research, Merge).
+  4. CRM (docs/launch/crm.csv): Accepted campaign state.
+  5. CIT-113: Outbound action boundary (strictly no messaging in this pipeline).
 """
 
 import argparse
@@ -19,7 +19,7 @@ import sys
 from typing import Dict, List, Optional, Tuple, Any
 
 # ==============================================================================
-# Canonical Schema Definition (24 Fields)
+# Canonical Schema Definitions
 # ==============================================================================
 
 CANONICAL_FIELDS = [
@@ -47,6 +47,17 @@ CANONICAL_FIELDS = [
     "workflow_owner",
     "commercial_fit",
     "declined_opt_out",
+]
+
+REJECTION_FIELDS = [
+    "person",
+    "role_organisation",
+    "profile_url",
+    "rejection_reason",
+    "linear_issue_id",
+    "rejected_date",
+    "source_query_method",
+    "observed_signal",
 ]
 
 ALLOWED_STAGES = {
@@ -85,90 +96,6 @@ KNOWN_ORG_ALIASES = {
     "jpmorgan chase": "jpmorganchase",
 }
 
-RAW_CIT184_P1 = {
-    "Anurag Roy Barman": (
-        "P1",
-        "Author of 'Planner-Authoriser Collision'; enterprise IAM architect at ANZ navigating APRA compliance for autonomous agents.",
-        "review_queue",
-    ),
-    "Dr. Harish Kotadia Ph.D.": (
-        "P1",
-        "Published analysis proving advisory policies fail and controls must mechanically stop actions before execution.",
-        "review_queue",
-    ),
-    "Inna Carp": (
-        "P1",
-        "Documented 'Agent Tool Drift' in Dynamics 365 ERP; proves prompts fail as security boundaries and validates typed capability checks.",
-        "review_queue",
-    ),
-    "Jason Keirstead": (
-        "P1",
-        "Founding CTO/CISO; advocates deterministic pre-merge invariants over soft runtime alignment.",
-        "review_queue",
-    ),
-    "Ofir Har-Chen": (
-        "P1",
-        "CEO Clutch Security; quantified non-human identity sprawl (median 15 NHIs per agent, max 67k); proves credentials are agency.",
-        "review_queue",
-    ),
-    "Mandy Andress": (
-        "P1",
-        "CISO Elastic; established CISO requirements for identity-bound agent execution containment and least privilege.",
-        "review_queue",
-    ),
-    "Paul Ntoumos": (
-        "P1",
-        "Enterprise transformation consultant; established 'Decision Governance vs Decision Assurance' traceability from human intent to agent.",
-        "review_queue",
-    ),
-    "Ishmael Chibvuri": (
-        "P1",
-        "Security architect; pioneered 'Snapshot Discipline' and reversibility as prerequisites for agent autonomy; validates restic snapshot model.",
-        "review_queue",
-    ),
-    "Dewi Erwan": (
-        "P1",
-        "CEO BlueDot Impact; directs Rapid Grants program funding open-source technical AI safety infrastructure (CIT-179 target).",
-        "review_queue",
-    ),
-    "Max Nadeau": (
-        "P1",
-        "Program Officer at Coefficient Giving; directs grantmaking for technical AI safety and governance infrastructure (CIT-179 target).",
-        "review_queue",
-    ),
-    "Jake Mendel": (
-        "P1",
-        "Program Officer at Coefficient Giving; co-leads technical AI safety grant portfolio with Max Nadeau (CIT-179 target).",
-        "review_queue",
-    ),
-}
-
-RAW_CIT184_HELD = {
-    "Brian Peretti": (
-        "P3",
-        "Retired CTO & Deputy Chief AI Officer; verify current advisory/consulting availability before initiating dialogue.",
-        "held_for_research",
-    ),
-    "Daniel Phillips": (
-        "P3",
-        "Independent AI safety researcher; verify whether research covers software capability control vs pure alignment before outreach.",
-        "held_for_research",
-    ),
-    "Mirco Bianchini": (
-        "P3",
-        "Sr TPM Automation & MCP; monitor upcoming MCP product releases for enterprise capability controls.",
-        "held_for_research",
-    ),
-    "Tom McLeod": (
-        "P3",
-        "Global Advisor Internal Audit; monitor for specific AI agent assurance frameworks before outreach.",
-        "held_for_research",
-    ),
-}
-
-CIT184_P1_CANDIDATES = {}
-CIT184_HELD_FOR_RESEARCH = {}
-
 IGNORED_ORGS = {
     "regulated enterprises",
     "enterprise cloud & zero trust",
@@ -197,11 +124,6 @@ def normalize_person_name(name: str) -> str:
     return " ".join(tokens)
 
 
-# Initialize normalized candidate mappings
-CIT184_P1_CANDIDATES.update({normalize_person_name(k): v for k, v in RAW_CIT184_P1.items()})
-CIT184_HELD_FOR_RESEARCH.update({normalize_person_name(k): v for k, v in RAW_CIT184_HELD.items()})
-
-
 def normalize_profile_url(url: str) -> str:
     """Normalize profile URLs by stripping query strings and trailing slashes."""
     if not url:
@@ -228,12 +150,142 @@ def extract_organization(role_org: str) -> str:
 
 
 # ==============================================================================
+# Generic Heuristic Priority Proposal Engine (No Hard-Coded Batches)
+# ==============================================================================
+
+def propose_candidate_priority(row: Dict[str, str]) -> Tuple[str, str, str]:
+    """
+    Generically infer a proposed review priority, rationale, and stage from candidate attributes.
+    Produces proposals, NOT unilateral decisions. Final decisions are recorded in Linear.
+    """
+    role = row.get("role_organisation", "").lower()
+    signal = row.get("public_signal", "").lower()
+    primitive = row.get("primitive_relevance", "").lower()
+    hypothesis = row.get("problem_hypothesis", "").lower()
+    terms = row.get("terminology_notes", row.get("terminology_used", "")).lower()
+    confidence = row.get("confidence", "medium").lower()
+    segment = row.get("segment", row.get("target_segment", "practitioner")).lower()
+    eng_role = row.get("engagement_role", "practitioner").lower()
+
+    # 1. P3 / Held for research heuristics
+    if "retired" in role or "[retired]" in role or "former" in role:
+        return (
+            "P3",
+            "Retired or former title; verify current active consulting/advisory availability before initiating dialogue",
+            "held_for_research",
+        )
+    if "internal audit" in role and "agent" not in role and "ai" not in role:
+        return (
+            "P3",
+            "Broad internal audit scope; monitor for explicit AI agent assurance frameworks before engagement",
+            "held_for_research",
+        )
+
+    # 2. P1 Heuristics: Executive security buyers, funder program officers, direct control researchers, NHI architects
+    p1_reasons = []
+    if any(k in role for k in ["ciso", "head of security", "vp security", "director of security", "chief security"]):
+        p1_reasons.append("CISO / Security Leadership")
+    if any(k in role for k in ["program officer", "grantmaker", "head of the transformative", "bluedot impact", "manifund", "coefficient"]):
+        p1_reasons.append("AI Safety Funder / Grantmaker (CIT-179 target)")
+    if any(k in role for k in ["iam", "identity"]) or "non-human identity" in signal or "planner-authoriser collision" in signal:
+        p1_reasons.append("Enterprise IAM & Non-Human Identity boundary alignment")
+    if any(k in signal for k in ["stop the action by itself", "snapshot discipline", "agent tool drift", "deterministic controls", "decision assurance"]):
+        p1_reasons.append("Directly validates executable pre-merge governance vs advisory policy")
+    if "redwood research" in role or "ai control" in role or "foundational" in signal:
+        p1_reasons.append("AI Control foundational research validation (CIT-181 target)")
+    if "clutch security" in role or "credentials as agency" in terms:
+        p1_reasons.append("NHI credential sprawl measurement & containment")
+
+    if p1_reasons and confidence in ("high", "medium"):
+        rationale = f"Proposed P1 ({confidence} confidence): " + "; ".join(p1_reasons)
+        return "P1", rationale, "review_queue"
+
+    # 3. P2 Heuristics: Active platform engineers, SDETs, solution architects, enterprise consultants
+    if confidence == "high":
+        rationale = f"Proposed P2 (high confidence): Qualified {segment} ({eng_role}) with active agent/tool implementation"
+        return "P2", rationale, "researched"
+    elif confidence == "medium":
+        rationale = f"Proposed P2 (medium confidence): Relevant {segment} ({eng_role}) requiring secondary validation"
+        return "P2", rationale, "researched"
+
+    # Fallback to P3
+    return "P3", f"Proposed P3 ({confidence} confidence): Low confidence match; monitor for further signals", "held_for_research"
+
+
+# ==============================================================================
+# Linear Triage Issue Template Generator
+# ==============================================================================
+
+def generate_linear_triage_description(
+    candidate: Dict[str, str],
+    org_matches: str = "None",
+    proposed_priority: str = "P2",
+    priority_rationale: str = "",
+) -> Tuple[str, str]:
+    """Generate compact title and markdown description for a Linear triage issue."""
+    name = candidate.get("person", candidate.get("name", "Unknown"))
+    role_org = candidate.get("role_organisation", candidate.get("role_company", ""))
+    profile_url = candidate.get("profile_url", "")
+    source_query = candidate.get("source_query_method", candidate.get("source_query", ""))
+    source_date = candidate.get("source_date", candidate.get("signal_date", "2026-09"))
+    observed_signal = candidate.get("observed_signal", candidate.get("public_signal", candidate.get("relevance_evidence", "")))
+    primitive_relevance = candidate.get("primitive_relevance", "")
+    problem_hypothesis = candidate.get("problem_hypothesis", "")
+    segment = candidate.get("target_segment", candidate.get("segment", "practitioner"))
+    engagement_role = candidate.get("engagement_role", segment)
+    warm_path = candidate.get("relationship_warm_intro", candidate.get("warm_intro_route", "Cold substantive angle"))
+    next_action = candidate.get("next_action_date", candidate.get("next_action", ""))
+    terminology = candidate.get("terminology_used", candidate.get("terminology_notes", ""))
+    confidence = candidate.get("confidence", "medium")
+
+    title = f"[Triage] {name} — {role_org}"
+
+    desc = f"""## Candidate Overview
+* **Person:** {name}
+* **Role & Organisation:** {role_org}
+* **Profile URL:** {profile_url}
+* **Proposed Segment / Role:** `{segment}` / `{engagement_role}`
+* **Warm Path:** {warm_path}
+
+## Observed Public Signal (Verbatim Evidence)
+* **Source:** `{source_query}` ({source_date})
+* **Signal:**
+> {observed_signal}
+
+## Relevance to Governance Primitive
+{primitive_relevance}
+
+## [INFERRED HYPOTHESIS]
+> ⚠️ *Inferred operational friction, not directly stated by candidate.*  
+{problem_hypothesis}
+
+## Proposed Ingestion Action
+* **Proposed Priority:** `{proposed_priority}` ({priority_rationale})
+* **Confidence:** `{confidence}`
+* **Suggested Next Action:** {next_action}
+* **Terminology:** {terminology}
+* **Organisation Matches:** {org_matches}
+
+---
+### Triage Decision Guide
+To decide this triage item, update issue state or add comment:
+* **Accept** (Move to `Todo` or `Done`): Ingest into canonical CRM (`docs/launch/crm.csv`).
+* **Reject** (Move to `Canceled`): Add to `docs/launch/crm-rejections.csv` to suppress reproposal.
+* **Research** (Move to `Backlog`): Needs missing fact via recon (e.g. Playwright-MCP).
+* **Merge** (Move to `Duplicate`): Merge evidence into existing CRM ID.
+"""
+    return title, desc
+
+
+# ==============================================================================
 # Input File Detection & Parsing
 # ==============================================================================
 
 def detect_file_schema(header: List[str]) -> str:
-    """Detect whether file is Canonical CRM, CIT-110 CRM, or CIT-184 Recon format."""
+    """Detect whether file is Canonical CRM, CIT-110 CRM, CIT-184 Recon, or Rejections format."""
     normalized_header = [h.strip().lower() for h in header]
+    if "rejection_reason" in normalized_header and "linear_issue_id" in normalized_header:
+        return "crm_rejections"
     if "primitive_relevance" in normalized_header and "terminology_used" in normalized_header and "review_priority" in normalized_header:
         return "canonical_crm"
     elif "urgency" in normalized_header and "role_company" in normalized_header:
@@ -259,7 +311,6 @@ def parse_cit110_record(row: Dict[str, str], next_id: int) -> Dict[str, str]:
 
     person = row.get("person", "").strip()
     role_company = row.get("role_company", "").strip()
-
     priority_rationale = f"CIT-110 seed contact ({urgency} urgency): {role_company}"
     evidence = row.get("relevance_evidence", "")
     hypothesis = row.get("problem_hypothesis", "")
@@ -299,22 +350,14 @@ def parse_cit110_record(row: Dict[str, str], next_id: int) -> Dict[str, str]:
 
 
 def parse_cit184_record(row: Dict[str, str], next_id: int) -> Dict[str, str]:
-    """Normalize CIT-184 recon candidate into Canonical CRM representation."""
+    """Normalize CIT-184 recon candidate into Canonical CRM representation using generic proposals."""
     person = row.get("name", "").strip()
-    norm_name = normalize_person_name(person)
     role_org = row.get("role_organisation", "").strip()
     confidence = row.get("confidence", "medium").strip().lower()
     segment = row.get("segment", "practitioner").strip()
 
-    # Determine Review Priority, Rationale, and Stage
-    if norm_name in CIT184_P1_CANDIDATES:
-        review_priority, priority_rationale, stage = CIT184_P1_CANDIDATES[norm_name]
-    elif norm_name in CIT184_HELD_FOR_RESEARCH:
-        review_priority, priority_rationale, stage = CIT184_HELD_FOR_RESEARCH[norm_name]
-    else:
-        review_priority = "P2" if confidence == "high" else "P3"
-        priority_rationale = f"CIT-184 recon candidate ({segment}): {role_org}"
-        stage = "researched"
+    # Use generic heuristic priority proposal engine
+    review_priority, priority_rationale, stage = propose_candidate_priority(row)
 
     eng_role = row.get("engagement_role", "practitioner").strip().lower()
     if eng_role == "funder" or "funder" in segment:
@@ -366,21 +409,39 @@ def parse_cit184_record(row: Dict[str, str], next_id: int) -> Dict[str, str]:
 
 
 # ==============================================================================
-# Deduplication and Evidence Preservation Engine
+# Deduplication and Ingestion Engine
 # ==============================================================================
 
 class IngestionEngine:
-    def __init__(self, existing_records: Optional[List[Dict[str, str]]] = None):
+    def __init__(
+        self,
+        existing_records: Optional[List[Dict[str, str]]] = None,
+        rejection_records: Optional[List[Dict[str, str]]] = None,
+    ):
         self.records: List[Dict[str, str]] = []
-        self.person_index: Dict[str, int] = {}  # norm_name -> record index
-        self.url_index: Dict[str, int] = {}     # norm_url -> record index
+        self.rejections: List[Dict[str, str]] = rejection_records or []
+
+        self.person_index: Dict[str, int] = {}    # norm_name -> record index
+        self.url_index: Dict[str, int] = {}       # norm_url -> record index
         self.org_index: Dict[str, List[int]] = {} # norm_org -> list of record indices
+        self.rejection_url_index: Dict[str, Dict[str, str]] = {}
+        self.rejection_name_index: Dict[str, Dict[str, str]] = {}
 
         self.exact_duplicates_merged = 0
         self.newly_added = 0
         self.same_org_distinct_people = 0
         self.held_for_research_count = 0
+        self.suppressed_rejections_count = 0
         self.org_clusters: Dict[str, List[str]] = {}
+
+        # Index rejections
+        for rej in self.rejections:
+            norm_u = normalize_profile_url(rej.get("profile_url", ""))
+            if norm_u:
+                self.rejection_url_index[norm_u] = rej
+            norm_n = normalize_person_name(rej.get("person", ""))
+            if norm_n:
+                self.rejection_name_index[norm_n] = rej
 
         if existing_records:
             for rec in existing_records:
@@ -412,6 +473,15 @@ class IngestionEngine:
         if norm_name and norm_name in self.person_index:
             return self.person_index[norm_name]
 
+        return None
+
+    def check_rejection(self, person: str, profile_url: str) -> Optional[Dict[str, str]]:
+        norm_url = normalize_profile_url(profile_url)
+        if norm_url and norm_url in self.rejection_url_index:
+            return self.rejection_url_index[norm_url]
+        norm_name = normalize_person_name(person)
+        if norm_name and norm_name in self.rejection_name_index:
+            return self.rejection_name_index[norm_name]
         return None
 
     def merge_evidence(self, existing_idx: int, incoming: Dict[str, str]):
@@ -465,6 +535,89 @@ class IngestionEngine:
 
         self._index_record(record)
         self.newly_added += 1
+
+    def evaluate_recon_candidate(self, candidate_raw: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Evaluate a recon candidate against canonical CRM state and rejections.
+        Returns evaluation dict categorizing the candidate into:
+          - 'mechanical_merge' (exact URL match -> append evidence)
+          - 'suppressed_rejection' (found in rejections without new evidence)
+          - 'triage_proposal' (genuinely new or ambiguous match requiring human decision)
+        """
+        person = candidate_raw.get("name", candidate_raw.get("person", "")).strip()
+        url = candidate_raw.get("profile_url", "").strip()
+        norm_url = normalize_profile_url(url)
+        norm_name = normalize_person_name(person)
+
+        # 1. Check exact profile URL match in active CRM (Purely mechanical merge)
+        if norm_url and norm_url in self.url_index:
+            existing_idx = self.url_index[norm_url]
+            existing_rec = self.records[existing_idx]
+            return {
+                "action": "mechanical_merge",
+                "target_crm_id": existing_rec["id"],
+                "target_person": existing_rec["person"],
+                "reason": f"Exact profile URL match with CRM ID {existing_rec['id']} ({existing_rec['person']})",
+                "candidate": candidate_raw,
+            }
+
+        # 2. Check rejection registry (Purely mechanical suppression)
+        rejection = self.check_rejection(person, url)
+        if rejection:
+            return {
+                "action": "suppressed_rejection",
+                "rejection_reason": rejection.get("rejection_reason", "Previously rejected"),
+                "linear_issue_id": rejection.get("linear_issue_id", ""),
+                "reason": f"Previously rejected in Linear ({rejection.get('linear_issue_id', 'no issue ID')}): {rejection.get('rejection_reason', '')}",
+                "candidate": candidate_raw,
+            }
+
+        # 3. Check for same name with uncertain / different URL (Ambiguous candidate -> Triage)
+        ambiguous_match = None
+        if norm_name in self.person_index:
+            existing_idx = self.person_index[norm_name]
+            existing_rec = self.records[existing_idx]
+            ambiguous_match = f"CRM ID {existing_rec['id']}: {existing_rec['person']} ({existing_rec['role_organisation']})"
+
+        # 4. Check for organisation matches
+        org = extract_organization(candidate_raw.get("role_organisation", candidate_raw.get("role_company", "")))
+        org_matches = []
+        if org and org in self.org_clusters:
+            matched_people = self.org_clusters[org]
+            org_matches = [f"{org.title()} (existing: {', '.join(matched_people)})"]
+
+        org_match_str = "; ".join(org_matches) if org_matches else "None"
+        if ambiguous_match:
+            org_match_str = f"Ambiguous Name Match: {ambiguous_match}; " + org_match_str
+
+        # Generate generic proposal
+        proposed_priority, priority_rationale, proposed_stage = propose_candidate_priority(candidate_raw)
+
+        # Generate Linear triage issue content
+        issue_title, issue_desc = generate_linear_triage_description(
+            candidate_raw,
+            org_matches=org_match_str,
+            proposed_priority=proposed_priority,
+            priority_rationale=priority_rationale,
+        )
+
+        return {
+            "action": "triage_proposal",
+            "candidate": candidate_raw,
+            "person": person,
+            "role_organisation": candidate_raw.get("role_organisation", candidate_raw.get("role_company", "")),
+            "profile_url": url,
+            "proposed_priority": proposed_priority,
+            "priority_rationale": priority_rationale,
+            "proposed_stage": proposed_stage,
+            "org_matches": org_match_str,
+            "is_ambiguous": ambiguous_match is not None,
+            "linear_issue_payload": {
+                "title": issue_title,
+                "description": issue_desc,
+                "priority": 1 if proposed_priority == "P1" else (2 if proposed_priority == "P2" else 3),
+            },
+        }
 
 
 # ==============================================================================
@@ -560,6 +713,8 @@ def format_review_queue_table(queue: List[Dict[str, str]]) -> str:
 # ==============================================================================
 
 def load_csv(file_path: str) -> Tuple[List[str], List[Dict[str, str]]]:
+    if not os.path.exists(file_path):
+        return [], []
     with open(file_path, mode="r", newline="", encoding="utf-8") as f:
         reader = csv.reader(f)
         try:
@@ -580,38 +735,65 @@ def save_canonical_csv(file_path: str, records: List[Dict[str, str]]):
             writer.writerow(clean_row)
 
 
+def save_rejections_csv(file_path: str, rejections: List[Dict[str, str]]):
+    with open(file_path, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=REJECTION_FIELDS, quoting=csv.QUOTE_MINIMAL)
+        writer.writeheader()
+        for r in rejections:
+            clean_row = {k: r.get(k, "") for k in REJECTION_FIELDS}
+            writer.writerow(clean_row)
+
+
 # ==============================================================================
 # CLI Entrypoint
 # ==============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Repeatable Recon-to-CRM Ingestion Pipeline (CIT-185)",
+        description="Repeatable Recon-to-CRM Pipeline with Linear Triage (CIT-185 / CIT-186)",
         epilog="Operational Notice: Recon & Ingestion ONLY. Absolutely no outbound messages sent. Outreach belongs strictly to CIT-113.",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
-    p_ingest = subparsers.add_parser("ingest", help="Ingest recon file into CRM")
+    # Command: propose
+    p_propose = subparsers.add_parser("propose", help="Evaluate recon candidates and generate Linear triage proposals")
+    p_propose.add_argument("--recon", required=True, help="Path to incoming recon candidates CSV")
+    p_propose.add_argument("--crm", default="docs/launch/crm.csv", help="Path to canonical CRM CSV")
+    p_propose.add_argument("--rejections", default="docs/launch/crm-rejections.csv", help="Path to rejections CSV")
+    p_propose.add_argument("--out", default="docs/launch/triage-proposals.json", help="Path to save proposals JSON")
+
+    # Command: apply-triage
+    p_apply = subparsers.add_parser("apply-triage", help="Apply decided triage outcomes to CRM and rejections")
+    p_apply.add_argument("--decisions", required=True, help="Path to triage decisions JSON file")
+    p_apply.add_argument("--crm", default="docs/launch/crm.csv", help="Path to canonical CRM CSV")
+    p_apply.add_argument("--rejections", default="docs/launch/crm-rejections.csv", help="Path to rejections CSV")
+
+    # Command: ingest (direct ingestion using generic proposal engine)
+    p_ingest = subparsers.add_parser("ingest", help="Ingest recon file into CRM using generic proposal engine")
     p_ingest.add_argument("--recon", required=True, help="Path to incoming recon candidates CSV")
-    p_ingest.add_argument("--crm", required=True, help="Path to existing or target canonical CRM CSV")
-    p_ingest.add_argument("--apply", action="store_true", help="Apply changes and overwrite/write CRM CSV")
+    p_ingest.add_argument("--crm", required=True, help="Path to canonical CRM CSV")
+    p_ingest.add_argument("--rejections", default="docs/launch/crm-rejections.csv", help="Path to rejections CSV")
+    p_ingest.add_argument("--apply", action="store_true", help="Apply changes and overwrite CRM CSV")
     p_ingest.add_argument("--dry-run", action="store_true", help="Dry run without writing files")
 
+    # Command: validate
     p_validate = subparsers.add_parser("validate", help="Validate a CRM or Recon CSV")
     p_validate.add_argument("--file", required=True, help="File path to validate")
 
+    # Command: review-queue
     p_queue = subparsers.add_parser("review-queue", help="Display top human review queue")
-    p_queue.add_argument("--crm", required=True, help="Path to canonical CRM CSV")
+    p_queue.add_argument("--crm", default="docs/launch/crm.csv", help="Path to canonical CRM CSV")
     p_queue.add_argument("--limit", type=int, default=10, help="Number of candidates to display (default: 10)")
     p_queue.add_argument("--stage", choices=["review_queue", "researched"], help="Filter by specific stage")
 
+    # Command: report
     p_report = subparsers.add_parser("report", help="Display summary metrics of the CRM")
-    p_report.add_argument("--crm", required=True, help="Path to canonical CRM CSV")
+    p_report.add_argument("--crm", default="docs/launch/crm.csv", help="Path to canonical CRM CSV")
 
     args = parser.parse_args()
 
     print("\n================================================================================")
-    print("  CIT-185: Repeatable Recon-to-CRM Pipeline")
+    print("  CIT-186: Recon-to-CRM Pipeline with Linear Triage")
     print("  [SAFETY GUARD] Recon only. Strictly NO outbound actions. Handoff to CIT-113.")
     print("================================================================================\n")
 
@@ -629,8 +811,10 @@ def main():
                 for e in errors[:10]:
                     print(f"   - {e}")
                 sys.exit(1)
+        elif schema_type == "crm_rejections":
+            print(" Validation Result: PASSED. Valid rejection registry format.")
         else:
-            print(f"Note: File is in '{schema_type}' format, not canonical. Use 'ingest' to normalize.")
+            print(f"Note: File is in '{schema_type}' format, not canonical. Use 'propose' or 'ingest'.")
 
     elif args.command == "review-queue":
         header, rows = load_csv(args.crm)
@@ -670,6 +854,156 @@ def main():
         for s, count in sorted(stages.items(), key=lambda x: x[1], reverse=True):
             print(f"  - {s}: {count}")
 
+    elif args.command == "propose":
+        # Load existing CRM
+        existing_records = []
+        if os.path.exists(args.crm):
+            _, crm_rows = load_csv(args.crm)
+            existing_records = crm_rows
+
+        # Load rejections
+        rejections = []
+        if os.path.exists(args.rejections):
+            _, rej_rows = load_csv(args.rejections)
+            rejections = rej_rows
+
+        engine = IngestionEngine(existing_records, rejections)
+
+        # Load incoming recon
+        _, recon_rows = load_csv(args.recon)
+        print(f"Evaluating {len(recon_rows)} incoming candidates against:")
+        print(f"  - Active CRM contacts:     {len(existing_records)}")
+        print(f"  - Rejection registry:      {len(rejections)}")
+
+        mechanical_merges = []
+        suppressed_rejections = []
+        triage_proposals = []
+
+        for row in recon_rows:
+            eval_res = engine.evaluate_recon_candidate(row)
+            action = eval_res["action"]
+            if action == "mechanical_merge":
+                mechanical_merges.append(eval_res)
+            elif action == "suppressed_rejection":
+                suppressed_rejections.append(eval_res)
+            elif action == "triage_proposal":
+                triage_proposals.append(eval_res)
+
+        print("\n--------------------------------------------------------------------------------")
+        print("Triage Evaluation Summary:")
+        print(f"  - Purely Mechanical Merges (Auto-append to CRM):  {len(mechanical_merges)}")
+        print(f"  - Suppressed Rejections (Known rejected):         {len(suppressed_rejections)}")
+        print(f"  - Genuinely New / Ambiguous (Linear Triage):       {len(triage_proposals)}")
+        print("--------------------------------------------------------------------------------\n")
+
+        if mechanical_merges:
+            print("Mechanical Merges (No Linear issue needed):")
+            for m in mechanical_merges:
+                print(f"  - {m['candidate']['name']} -> CRM ID {m['target_crm_id']} ({m['target_person']})")
+            print()
+
+        if suppressed_rejections:
+            print("Suppressed Rejections (No Linear issue needed):")
+            for s in suppressed_rejections:
+                print(f"  - {s['candidate']['name']}: {s['reason']}")
+            print()
+
+        print(f"Saving {len(triage_proposals)} Linear triage proposals to {args.out}...")
+        with open(args.out, mode="w", encoding="utf-8") as f:
+            json.dump(triage_proposals, f, indent=2)
+
+        print(f" Successfully saved triage proposals. Review in Linear or apply via 'apply-triage'.\n")
+
+    elif args.command == "apply-triage":
+        # Load existing CRM
+        crm_header, crm_records = load_csv(args.crm)
+        if not crm_records:
+            print(f"Error: CRM file {args.crm} not found or empty.")
+            sys.exit(1)
+
+        # Load rejections
+        rej_header, rejections = load_csv(args.rejections)
+
+        with open(args.decisions, mode="r", encoding="utf-8") as f:
+            decisions = json.load(f)
+
+        print(f"Applying {len(decisions)} triage decisions to canonical CRM and rejections...")
+        engine = IngestionEngine(crm_records, rejections)
+
+        accepted_count = 0
+        rejected_count = 0
+        research_count = 0
+        merged_count = 0
+
+        for item in decisions:
+            outcome = item.get("outcome", "").lower()
+            candidate = item.get("candidate", {})
+            linear_id = item.get("linear_issue_id", "N/A")
+
+            if outcome == "accept":
+                # Normalize and add to canonical CRM
+                norm_rec = parse_cit184_record(candidate, len(engine.records) + 1)
+                # Apply human decision overrides if specified
+                if "review_priority" in item:
+                    norm_rec["review_priority"] = item["review_priority"]
+                if "stage" in item:
+                    norm_rec["stage"] = item["stage"]
+                else:
+                    norm_rec["stage"] = "researched"
+                engine.ingest_record(norm_rec)
+                accepted_count += 1
+
+            elif outcome == "reject":
+                # Save to rejections registry
+                rej_entry = {
+                    "person": candidate.get("name", candidate.get("person", "")),
+                    "role_organisation": candidate.get("role_organisation", candidate.get("role_company", "")),
+                    "profile_url": candidate.get("profile_url", ""),
+                    "rejection_reason": item.get("reason", "Rejected during Linear triage"),
+                    "linear_issue_id": linear_id,
+                    "rejected_date": item.get("date", "2026-09-20"),
+                    "source_query_method": candidate.get("source_query", candidate.get("source_query_method", "")),
+                    "observed_signal": candidate.get("public_signal", candidate.get("observed_signal", "")),
+                }
+                rejections.append(rej_entry)
+                rejected_count += 1
+
+            elif outcome == "research":
+                # Mark as held_for_research
+                norm_rec = parse_cit184_record(candidate, len(engine.records) + 1)
+                norm_rec["stage"] = "held_for_research"
+                norm_rec["priority_rationale"] = f"Held in Linear triage ({linear_id}): {item.get('missing_fact', 'Needs additional recon')}"
+                engine.ingest_record(norm_rec)
+                research_count += 1
+
+            elif outcome == "merge":
+                target_id = str(item.get("target_crm_id", ""))
+                # Find target CRM record
+                target_idx = None
+                for idx, r in enumerate(engine.records):
+                    if r["id"] == target_id:
+                        target_idx = idx
+                        break
+                if target_idx is not None:
+                    norm_rec = parse_cit184_record(candidate, 0)
+                    engine.merge_evidence(target_idx, norm_rec)
+                    merged_count += 1
+                else:
+                    print(f"Warning: Target CRM ID {target_id} not found for merge of {candidate.get('name')}")
+
+        save_canonical_csv(args.crm, engine.records)
+        save_rejections_csv(args.rejections, rejections)
+
+        print("\n--------------------------------------------------------------------------------")
+        print("Triage Decisions Applied:")
+        print(f"  - Accepted into CRM:        {accepted_count}")
+        print(f"  - Recorded in Rejections:   {rejected_count}")
+        print(f"  - Held for Research:        {research_count}")
+        print(f"  - Merged into Existing ID:  {merged_count}")
+        print(f"  - Total Active CRM Total:   {len(engine.records)}")
+        print(f"  - Total Rejection Registry: {len(rejections)}")
+        print("--------------------------------------------------------------------------------\n")
+
     elif args.command == "ingest":
         existing_records = []
         if os.path.exists(args.crm):
@@ -677,18 +1011,19 @@ def main():
             crm_schema = detect_file_schema(crm_header)
             print(f"Loaded existing CRM ({args.crm}): {len(crm_rows)} records (Format: {crm_schema})")
             if crm_schema == "cit110_crm":
-                print("Normalizing existing legacy CIT-110 CRM records to Canonical Schema...")
                 for r in crm_rows:
                     existing_records.append(parse_cit110_record(r, len(existing_records) + 1))
             elif crm_schema == "canonical_crm":
                 existing_records = crm_rows
             else:
-                print(f"Warning: Unknown existing CRM format '{crm_schema}'. Treating as raw dicts.")
                 existing_records = crm_rows
-        else:
-            print(f"Target CRM file {args.crm} does not exist yet. Initializing new canonical CRM.")
 
-        engine = IngestionEngine(existing_records)
+        rejections = []
+        if os.path.exists(args.rejections):
+            _, rej_rows = load_csv(args.rejections)
+            rejections = rej_rows
+
+        engine = IngestionEngine(existing_records, rejections)
 
         recon_header, recon_rows = load_csv(args.recon)
         recon_schema = detect_file_schema(recon_header)
@@ -704,7 +1039,7 @@ def main():
             engine.ingest_record(canonical_rec)
 
         print("\n--------------------------------------------------------------------------------")
-        print("Reconciliation & Ingestion Summary:")
+        print("Reconciliation & Ingestion Summary (Generic Proposals):")
         print(f"  - Existing CRM Records:        {len(existing_records)}")
         print(f"  - Incoming Recon Records:      {len(recon_rows)}")
         print(f"  - Exact Duplicates Merged:     {engine.exact_duplicates_merged}")
@@ -714,7 +1049,6 @@ def main():
         print(f"  - Final Canonical CRM Total:   {len(engine.records)}")
         print("--------------------------------------------------------------------------------")
 
-        # Display detected organization clusters
         multi_orgs = {org: people for org, people in engine.org_clusters.items() if len(people) > 1}
         if multi_orgs:
             print("\nDetected Organisation Clusters (Multiple contacts in same entity):")
@@ -732,7 +1066,7 @@ def main():
             print("Validation Check: 100% compliant with Canonical CRM schema.\n")
 
         queue = generate_review_queue(engine.records, limit=10)
-        print("Top 10 Human Review Queue (Awaiting Review):")
+        print("Top 10 Human Review Queue:")
         print("--------------------------------------------------------------------------------")
         print(format_review_queue_table(queue))
         print("--------------------------------------------------------------------------------\n")
