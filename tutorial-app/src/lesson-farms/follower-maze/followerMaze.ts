@@ -30,10 +30,25 @@ export interface Delivery {
   payload: string;
 }
 
-/** `arrivals` is in *arrival* order; `check` derives sequence order itself. */
+/**
+ * CIT-229: what a typed reason promises about one message. A status reason may
+ * name its recipients (`status|20 -> [10]`); one that does not (`recipients:
+ * null`) promises nothing, so whatever the monitor saw for it is permitted.
+ */
+export interface DeclaredEffect {
+  sequence: number;
+  recipients: readonly number[] | null;
+}
+
+/**
+ * `arrivals` is in *arrival* order; `check` derives sequence order itself.
+ * `declared` is set only for worlds built from typed reasons: then the
+ * obligations are the declared effects, not the sequence-ordered routing.
+ */
 export interface FollowerMazeWorld {
   connectedUsers: readonly number[];
   arrivals: readonly FollowerMazeEvent[];
+  declared?: readonly DeclaredEffect[];
 }
 
 export interface Witness {
@@ -108,7 +123,55 @@ function route(world: FollowerMazeWorld, events: readonly FollowerMazeEvent[]): 
 
 /** The obligations entailed by the corpus rules: events applied in sequence order. */
 export function requiredDeliveries(world: FollowerMazeWorld): Delivery[] {
+  if (world.declared) return declaredDeliveries(world, world.declared);
   return route(world, [...world.arrivals].sort((a, b) => a.sequence - b.sequence));
+}
+
+/**
+ * The obligations of a world built from typed reasons: a Follow notifies the
+ * followed user (a protocol rule), an Unfollow nobody, and a Status exactly the
+ * recipients its reason declared -- a Status that declared nothing owes nothing.
+ * Nothing here depends on the order the events arrived in.
+ */
+function declaredDeliveries(world: FollowerMazeWorld, declared: readonly DeclaredEffect[]): Delivery[] {
+  const connected = new Set(world.connectedUsers);
+  return [...world.arrivals]
+    .sort((a, b) => a.sequence - b.sequence)
+    .flatMap((event): Delivery[] => {
+      if (event.kind === 'F' && event.toUser !== null && connected.has(event.toUser)) {
+        return [{ user: event.toUser, sequence: event.sequence, payload: event.payload }];
+      }
+      if (event.kind !== 'S') return [];
+      const recipients = declared.find((effect) => effect.sequence === event.sequence)?.recipients ?? [];
+      return recipients.filter((user) => connected.has(user)).map((user) => ({ user, sequence: event.sequence, payload: event.payload }));
+    })
+    .sort(byUserThenSequence);
+}
+
+/** Statuses whose reasons declared no effect: their deliveries are permitted, not forbidden. */
+export const unconstrained = (world: FollowerMazeWorld): ReadonlySet<number> =>
+  new Set((world.declared ?? []).filter((effect) => effect.recipients === null).map((effect) => effect.sequence));
+
+/**
+ * Is this arrival order *legal* for the declared reasons? Legal means: applying
+ * the events in the order they arrived delivers each status to exactly the
+ * recipients its reason declared. Statuses that declared nothing constrain
+ * nothing, so bare reasons make every order legal. This is a property of the
+ * reasons and the order alone -- no implementation is consulted.
+ */
+export function isLegalOrder(world: FollowerMazeWorld): boolean {
+  const connected = new Set(world.connectedUsers);
+  let state = EMPTY;
+  for (const event of world.arrivals) {
+    const before = state.out.length;
+    state = apply(connected, state, event);
+    const declared = world.declared?.find((effect) => effect.sequence === event.sequence)?.recipients;
+    if (event.kind !== 'S' || !declared) continue;
+    const got = state.out.slice(before).map((delivery) => delivery.user).sort((a, b) => a - b);
+    const want = declared.filter((user) => connected.has(user)).sort((a, b) => a - b);
+    if (got.join() !== want.join()) return false;
+  }
+  return true;
 }
 
 /**
@@ -207,6 +270,7 @@ const deliveryFact = (d: Pick<Delivery, 'user' | 'sequence'>) => `delivery:user=
  */
 export function check(world: FollowerMazeWorld, witness: Witness): FollowerMazeFlag[] {
   const required = requiredDeliveries(world);
+  const open = unconstrained(world);
   const payloadOf = (sequence: number) => world.arrivals.find((event) => event.sequence === sequence)?.payload ?? '';
   const flags: FollowerMazeFlag[] = [];
 
@@ -221,7 +285,7 @@ export function check(world: FollowerMazeWorld, witness: Witness): FollowerMazeF
   }
 
   for (const got of witness.deliveries) {
-    if (!required.some((want) => sameDelivery(got, want))) {
+    if (!required.some((want) => sameDelivery(got, want)) && !open.has(got.sequence)) {
       flags.push({
         kind: FM.forbiddenDelivery,
         factID: deliveryFact(got),

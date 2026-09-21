@@ -13,6 +13,7 @@ import {
 	type LessonAction,
 } from '../lesson-farms/follower-maze/followerMazeLog';
 import { WITNESS_MODELS, type WitnessModelId } from '../lesson-farms/follower-maze/followerMaze';
+import { BARE_REASONS, TIGHT_REASONS } from '../lesson-farms/follower-maze/followerMazeReasons';
 import arrivalOrderLog from '../lesson-farms/follower-maze/fixtures/permutations.arrival-order.jsonl?raw';
 import reorderBufferLog from '../lesson-farms/follower-maze/fixtures/permutations.reorder-buffer.jsonl?raw';
 
@@ -64,7 +65,6 @@ function Workbench({ model, height }: { model: WitnessModelId; height: number })
 	const [state, dispatch] = useReducer(reduceLesson, initialLessonState);
 	const [choice, setChoice] = useState<WitnessModelId>(model);
 	const board = useMemo(() => boardFor(state), [state]);
-	const fixtures = useMemo(() => ({ '/reason-log.jsonl': toJsonl(board.records) }), [board]);
 	const act = (action: LessonAction) => () => dispatch(action);
 	// The repair the lesson can actually offer: swap the model, then rerun the
 	// same family in place (solve keeps the arrival orderings; evaluate reruns them).
@@ -92,7 +92,7 @@ function Workbench({ model, height }: { model: WitnessModelId; height: number })
 			</div>
 			<FollowerMazeStatus board={board} />
 			<Channels board={board} onSelect={(name) => dispatch({ type: 'select', name })}>
-				<OtelWarmLogPreview fixtures={fixtures} height={height} />
+				<OtelWarmLogPreview records={board.records} editable={board.editable} onEdit={(text) => dispatch({ type: 'write', text })} height={height} />
 			</Channels>
 			<RepairRow board={board} witness={state.witness} onSwitchModel={switchModel} />
 		</>
@@ -124,11 +124,16 @@ const lensTexts = (canvasElement: HTMLElement) =>
 
 const lensCount = (canvasElement: HTMLElement) => frameDoc(canvasElement).querySelectorAll('.codelens-decoration').length;
 
-// The text of the editor's rendered lines (Monaco swaps spaces for nbsp).
-const editorLines = (canvasElement: HTMLElement) =>
-	Array.from(frameDoc(canvasElement).querySelectorAll('.monaco-editor .view-lines .view-line')).map((line) =>
-		(line.textContent ?? '').replace(/ /g, ' '),
-	);
+// The document's lines, from the editor's model: the rendered lines wrap at a half-width
+// pane, and a wrapped row is not a line of the log.
+const editorLines = (canvasElement: HTMLElement) => {
+	const monaco = (canvasElement.querySelector('iframe')?.contentWindow as unknown as {
+		monaco?: { editor: { getModels(): { getValue(): string }[] } };
+	} | null)?.monaco;
+	const model = monaco?.editor.getModels()[0];
+	if (!model) throw new Error('the editor has no model yet');
+	return model.getValue().split('\n');
+};
 
 // The page rebuilds the editor whenever the lesson hands it a new log, so every
 // step waits for a line that only that step's document contains.
@@ -151,6 +156,17 @@ const lensesRendered = (canvasElement: HTMLElement, expected: number) =>
 		},
 		{ timeout: 15000 },
 	);
+
+// The learner's typing, as the editor sees it: replace the model's text, which fires the
+// same content-change event a keystroke does (the page cannot tell them apart).
+const typeReasons = (canvasElement: HTMLElement, text: string) => {
+	const monaco = (canvasElement.querySelector('iframe')?.contentWindow as unknown as {
+		monaco?: { editor: { getModels(): { setValue(text: string): void }[] } };
+	} | null)?.monaco;
+	const model = monaco?.editor.getModels()[0];
+	if (!model) throw new Error('the editor has no model yet');
+	model.setValue(text);
+};
 
 // Monaco listens for the full pointer sequence, not a bare click().
 function activate(doc: Document, element: HTMLElement) {
@@ -189,10 +205,27 @@ export const Walkthrough: Story = {
 
 		const monitor = () => canvas.getByTestId('monitor-channel');
 
-		await step('1 · render: events entered in the input channel, monitor empty, diagnostic silent', async () => {
-			// The input is the editor itself: the four events as entered, one per line.
-			await pageShows(canvasElement, '1|F|10|20');
-			await pageShows(canvasElement, '4|S|20');
+		await step('0 · write: the learner types the reasons; bare reasons permit all 24 orders, effects prune to 4', async () => {
+			// An empty, editable input: the learner plays the agent and makes the claims.
+			await expect(monitor()).toHaveTextContent('awaiting reasons');
+			await expect(canvas.getByTestId('legal-worlds')).toHaveTextContent('write the reasons first');
+			await waitFor(() => expect(canvas.getByRole('button', { name: 'Send events to the implementation' })).toBeEnabled());
+			await waitFor(() => typeReasons(canvasElement, BARE_REASONS), { timeout: 15000 });
+			await pageShows(canvasElement, 'PROTON_PASS_AGENT_REASON=status|20');
+			// Static channel: each bare status declares no effect (a linter over the typed input).
+			await expectMarkers(canvasElement, 2);
+			await expect(markers(canvasElement).every((marker) => marker.severity === 4)).toBe(true);
+			await expect(canvas.getByTestId('legal-worlds')).toHaveTextContent('24 of 24 arrival orders legal');
+			typeReasons(canvasElement, TIGHT_REASONS);
+			await pageShows(canvasElement, 'status|20 -> [10]');
+			await expectMarkers(canvasElement, 0);
+			await expect(canvas.getByTestId('legal-worlds')).toHaveTextContent('4 of 24 arrival orders legal');
+		});
+
+		await step('1 · render: the reasons entered in the input channel, monitor empty, diagnostic silent', async () => {
+			// The input is the editor itself: the four reasons as typed, one per line.
+			await pageShows(canvasElement, 'PROTON_PASS_AGENT_REASON=follow|10|20');
+			await pageShows(canvasElement, 'status|20 -> []');
 			await expect(monitor()).toHaveTextContent('awaiting send');
 			// What the implementation emitted is the monitor's, never a line of the editor.
 			await expect(editorLines(canvasElement).join('\n')).not.toContain('<- seq');
@@ -215,7 +248,7 @@ export const Walkthrough: Story = {
 			await userEvent.click(canvas.getByRole('button', { name: 'Evaluate' }));
 			const warning = 'This ordering passes, but this model fails 20 of the other 23. Test all 24 orderings.';
 			await pageShows(canvasElement, '-> pass');
-			await pageShows(canvasElement, warning); // a line of the editor, not a marker message
+			await pageShows(canvasElement, warning); // a line of the editor (a comment: the log's, not the learner's), not a marker message
 			await expectMarkers(canvasElement, 1);
 			const [marker] = markers(canvasElement);
 			await expect(marker.severity).toBe(4); // MarkerSeverity.Warning: not an error, the baseline did pass
@@ -295,10 +328,10 @@ export const Walkthrough: Story = {
 			// holds its expected position as a dashed placeholder.
 			const text = doc.querySelector('.evidence-widget')!.textContent!;
 			await expect(text).toMatch(/row\s+expected\s+\| actual/);
-			await expect(text).toMatch(/1\/2\s+10 <- seq 2\s+\| - - missing - -\s+\[missing\]/);
+			await expect(text).toMatch(/1\/2\s+10 <- seq 2\s+\| -- missing --\s+\[missing\]/);
 			await expect(text).toMatch(/2\/2\s+20 <- seq 1\s+\| 20 <- seq 1\s+\[ok\]/);
 			// Each pair is one line of the widget: none wraps, so the columns stay aligned.
-			const pairRows = Array.from(doc.querySelectorAll<HTMLElement>('.evidence-widget div')).filter((row) => /expected\|actual/.test(row.textContent ?? ''));
+			const pairRows = Array.from(doc.querySelectorAll<HTMLElement>('.evidence-widget div')).filter((row) => /\(vs\)/.test(row.textContent ?? ''));
 			await expect(pairRows).toHaveLength(3);
 			await expect(new Set(pairRows.map((row) => row.getBoundingClientRect().height)).size).toBe(1);
 
@@ -364,6 +397,8 @@ export const SequenceAwareWalkthrough: Story = {
 	play: async ({ canvasElement, step }) => {
 		const canvas = within(canvasElement);
 		await step('solve, evaluate baseline: green and no warning', async () => {
+			await waitFor(() => typeReasons(canvasElement, TIGHT_REASONS), { timeout: 15000 });
+			await pageShows(canvasElement, 'status|20 -> []');
 			await userEvent.click(canvas.getByRole('button', { name: 'Send events to the implementation' }));
 			await waitFor(() => expect(canvas.getByTestId('monitor-channel')).toHaveTextContent('10 <- seq 2'));
 			await userEvent.click(canvas.getByRole('button', { name: 'Evaluate' }));

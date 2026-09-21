@@ -6,7 +6,7 @@ import { MONO as MONO_FONT, OUTCOME_STYLE } from './FollowerMazeBoardState';
  * CIT-227: the two interaction channels the CIT-199 pre-cog board separates,
  * restored for Follower Maze.
  *
- *   input      -- what enters the system: the events, as lines of the warm-log editor
+ *   input      -- what enters the system: the reasons the learner types into the warm-log editor
  *   monitor    -- what the current implementation actually emitted for them (this file)
  *   diagnostic -- markers on the warm-log editor: expected trace vs the monitor's trace
  *
@@ -31,7 +31,7 @@ const rows: React.CSSProperties = { listStyle: 'none', margin: 0, padding: '6px 
 function ExecutionThread({ board, onSelect }: { board: Board; onSelect?: (name: string) => void }) {
 	return (
 		<ol data-testid="family-grid" aria-label="executions" style={{ listStyle: 'none', margin: 0, padding: '6px 10px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
-			{board.cases.map(({ name, category, emitted }) => {
+			{board.cases.map(({ name, category, emitted, legal }) => {
 				const outcome = category ?? 'unevaluated';
 				return (
 					<li key={name}>
@@ -40,7 +40,8 @@ function ExecutionThread({ board, onSelect }: { board: Board; onSelect?: (name: 
 							data-testid={`chip-${name}`}
 							data-outcome={outcome}
 							aria-pressed={board.thread.name === name}
-							aria-label={`${name}: ${category ?? 'not evaluated'}`}
+							aria-label={`${name}: ${category ?? 'not evaluated'}${legal ? '' : ', illegal order'}`}
+							title={legal ? 'legal for the declared reasons' : 'not legal for the declared reasons'}
 							onClick={() => onSelect?.(name)}
 							style={{
 								...OUTCOME_STYLE[outcome],
@@ -56,7 +57,7 @@ function ExecutionThread({ board, onSelect }: { board: Board; onSelect?: (name: 
 								gap: 8,
 							}}
 						>
-							<b>{name}</b>
+							<b>{name}{legal ? '' : '*'}</b>
 							<span>{emitted ?? 'awaiting send'}</span>
 							<span>{category ?? '·'}</span>
 						</button>
@@ -73,12 +74,14 @@ export function MonitorChannel({ board, onSelect }: { board: Board; onSelect?: (
 	return (
 		<section aria-label="monitor" data-testid="monitor-channel" style={{ ...pane, display: 'flex', flexDirection: 'column' }}>
 			<div style={title}>
-				monitor · {family ? `${board.cases.length} runs of the same four messages, one per arrival order` : `what ${thread.model ?? 'the implementation'} emitted`}
+				monitor · {family ? `${board.cases.length} runs of the same four messages, one per arrival order (* = not a legal order for the declared reasons)` : `what ${thread.model ?? 'the implementation'} emitted`}
 			</div>
 			{family ? (
 				<ExecutionThread board={board} onSelect={onSelect} />
 			) : thread.steps === null ? (
-				<div style={{ ...rows, color: '#5f5b4f' }}>awaiting send: nothing has run yet</div>
+				<div style={{ ...rows, color: '#5f5b4f' }}>
+					{board.reasons.ok ? 'awaiting send: nothing has run yet' : 'awaiting reasons: write the four messages first'}
+				</div>
 			) : (
 				<ol style={rows}>
 					{thread.steps.map(({ event, emitted, held }, index) => (
