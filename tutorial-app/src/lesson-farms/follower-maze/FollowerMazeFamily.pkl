@@ -1,0 +1,51 @@
+/// Evaluates `FollowerMaze.pkl`'s `check` over every arrival ordering in
+/// `fixtures/arrivals/` for the witnesses passed in as the external property
+/// `witnesses` (JSON: `{ "<model>": { "<arrival>": [{user, sequence, payload}] } }`).
+/// followerMaze.spec.ts supplies the witnesses from the two TS models and
+/// diffs this module's output against the TS `check`.
+///
+///   pkl eval -f json -p witnesses='{...}' FollowerMazeFamily.pkl
+module followerMazeFamily
+
+import "pkl:json"
+import "FollowerMaze.pkl" as fm
+
+local parser = new json.Parser {}
+local worldJson = parser.parse(read("fixtures/world.json").text)
+local witnessesJson = parser.parse(read("prop:witnesses"))
+
+local function eventOf(sequence: Int): fm.Event =
+  let (e = worldJson.events.toList().find((candidate) -> candidate.sequence == sequence))
+    new fm.Event {
+      sequence = e.sequence
+      kind = e.kind
+      fromUser = e.fromUser
+      toUser = e.toUser
+      payload = e.payload
+    }
+
+local function worldFor(arrival: List<Int>): fm.World = new fm.World {
+  connectedUsers = worldJson.connectedUsers
+  arrivals = new Listing { for (sequence in arrival) { eventOf(sequence) } }
+}
+
+local function witnessFor(delivered: List): fm.Witness = new fm.Witness {
+  deliveries = new Listing {
+    for (d in delivered) { new fm.Delivery { user = d.user; sequence = d.sequence; payload = d.payload } }
+  }
+}
+
+/// model -> arrival ("4231") -> [{kind, factID, detail}]
+flags: Mapping<String, Mapping<String, List<Map<String, String>>>> = new {
+  for (model, byArrival in witnessesJson.toMap()) {
+    [model] {
+      for (name, deliveries in byArrival.toMap()) {
+        [name] =
+          fm.check(
+            worldFor(parser.parse(read("fixtures/arrivals/\(name).json").text).arrival.toList()),
+            witnessFor(deliveries.toList())
+          ).map((f) -> Map("kind", f.kind, "factID", f.factID, "detail", f.detail))
+      }
+    }
+  }
+}

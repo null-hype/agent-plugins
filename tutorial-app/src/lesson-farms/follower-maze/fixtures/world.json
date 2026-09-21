@@ -1,0 +1,9 @@
+{
+  "connectedUsers": [10, 20],
+  "events": [
+    { "sequence": 1, "kind": "F", "fromUser": 10, "toUser": 20, "payload": "1|F|10|20" },
+    { "sequence": 2, "kind": "S", "fromUser": 20, "toUser": null, "payload": "2|S|20" },
+    { "sequence": 3, "kind": "U", "fromUser": 10, "toUser": 20, "payload": "3|U|10|20" },
+    { "sequence": 4, "kind": "S", "fromUser": 20, "toUser": null, "payload": "4|S|20" }
+  ]
+}

@@ -62,13 +62,32 @@ function withoutVendoringHeader(source: string): string {
   return lines.slice(i).join('\n');
 }
 
+/**
+ * CIT-203 registered `followerMaze.orderedRouting` in the closed AxiomId union,
+ * `axioms` and `worldRef()`. Lesson 5's copies of those two files are
+ * deliberately pinned to the registry as it was before that: the follower-maze
+ * module lives under src/lesson-farms/ and a WebContainer has no such
+ * directory to import it from. This strips exactly those registration lines
+ * from src/lib's copy so the comparison still catches every other drift -- and
+ * the seam cost is recorded here rather than absorbed silently.
+ */
+const REGISTRY_FILES = ['axioms.ts', 'toHaveVerdict.ts'];
+function withoutFollowerMaze(source: string): string {
+  return source
+    .replace(" | 'followerMaze.orderedRouting'", '')
+    .split('\n')
+    .filter((line) => !/followerMaze/i.test(line))
+    .join('\n');
+}
+
 describe('chapter-3/lesson-5 vendors src/lib without drifting from it', () => {
   it.each(VENDORED)('%s is identical to src/lib/%s', (name) => {
     const vendored = readFileSync(`${LESSON_5_FILES}/${name}`, 'utf8');
     const source = readFileSync(`src/lib/${name}`, 'utf8');
 
     expect(vendored.startsWith('// Vendored from ')).toBe(true);
-    expect(withoutVendoringHeader(vendored)).toBe(withoutVendoringHeader(source));
+    const expected = withoutVendoringHeader(source);
+    expect(withoutVendoringHeader(vendored)).toBe(REGISTRY_FILES.includes(name) ? withoutFollowerMaze(expected) : expected);
   });
 
   it('the solution restores the same stated reason src/lib holds', () => {
