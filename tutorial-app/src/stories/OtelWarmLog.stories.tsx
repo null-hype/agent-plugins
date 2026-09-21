@@ -1,11 +1,17 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { waitFor } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import OtelWarmLogPreview from './OtelWarmLogPreview';
+import RuleTraceBridge from '../components/RuleTraceBridge';
+import LoanwordArcBridge from '../components/LoanwordArcBridge';
+import { deriveLoanwordState, deriveRuleTraceState, loadLesson } from './lessonFixtures';
+import {
+	resetTutorialStore,
+	seedTutorialStore,
+	setDocuments,
+} from '../../.storybook/tutorialkit-store';
 
-// The lessons' own fixtures, so each story shows what that lesson renders.
-import traceStory from '../content/tutorial/part-1/chapter-2/lesson-1/_files/trace-story.json?raw';
-import warmLogStory from '../content/tutorial/part-1/chapter-1/lesson-1/_files/warm-log-story.json?raw';
+// The reason-log lesson's fixture: no lesson-state message, just the page.
 import reasonLog from '../content/tutorial/part-1/chapter-3/lesson-4/_files/reason-log.jsonl?raw';
 
 const meta = {
@@ -18,8 +24,11 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const traceFixtures = { '/trace-story.json': traceStory };
-const warmLogFixtures = { '/warm-log-story.json': warmLogStory };
+// Each lesson is read from src/content: its frontmatter, starter `_files` and
+// `_solution`. The only stubbed boundary below the bridge is the page's file
+// fetch (`fixtures`), which is what the WebContainer's /__tk/file serves.
+const traceLesson = loadLesson('part-1/chapter-2/lesson-1');
+const loanwordLesson = loadLesson('part-1/chapter-1/lesson-1');
 
 const editorReady = (canvasElement: HTMLElement) =>
 	waitFor(
@@ -32,55 +41,137 @@ const editorReady = (canvasElement: HTMLElement) =>
 		{ timeout: 15000 },
 	);
 
+// What the Monaco editor inside the page currently shows.
+const pageText = (canvasElement: HTMLElement) =>
+	(
+		canvasElement.querySelector('iframe')?.contentDocument?.querySelector('.monaco-editor .view-lines')
+			?.textContent ?? ''
+	).replace(/ /g, ' ');
+
+// The page's first region title is the lesson state: which title it renders
+// depends on the payload it received, so this fails if the derivation drifts.
+// Expected titles are written out on purpose -- they are the oracle.
+const expectPageShows = (canvasElement: HTMLElement, title: string) =>
+	waitFor(
+		() => {
+			const text = pageText(canvasElement);
+			if (!text.includes(title)) throw new Error(`page does not show "${title}"; it shows: ${text.slice(0, 200)}`);
+		},
+		{ timeout: 15000 },
+	);
+
+const TRACE_BLOCKED = 'trace otel.opentrader.place_order blocked';
+const TRACE_ANOMALY = 'trace otel.opentrader.place_order -> anomaly';
+const LOANWORD_LOSS = 'trace lexeme.schadenfreude.translation -> loss';
+const LOANWORD_PENDING = 'loanword(Schadenfreude) -> pending admission';
+const LOANWORD_ADMITTED = 'loanword(Schadenfreude) -> admitted';
+
+// -- Tier 1: payload derived by the lesson's protocol library ---------------
+
 // Chapter 2, lesson 1: the trace stays blocked until the rule is solved...
 export const TraceBlocked: Story = {
 	args: {
-		fixtures: traceFixtures,
-		payload: {
-			previewMode: 'blocked-until-valid',
-			scenario: 'opentrader-idor',
-			solved: false,
-			storyFile: '/trace-story.json',
-		},
+		fixtures: traceLesson.files,
+		payload: deriveRuleTraceState(traceLesson, traceLesson.files),
 	},
-	play: ({ canvasElement }) => editorReady(canvasElement),
+	play: async ({ canvasElement }) => {
+		await editorReady(canvasElement);
+		await expectPageShows(canvasElement, TRACE_BLOCKED);
+		await expect(pageText(canvasElement)).not.toContain('anomaly');
+	},
 };
 
 // ...then replays the OpenTrader IDOR trace, anomaly span folded.
 export const TraceSolved: Story = {
 	args: {
-		...TraceBlocked.args,
-		payload: { ...TraceBlocked.args!.payload, solved: true },
+		fixtures: traceLesson.solved,
+		payload: deriveRuleTraceState(traceLesson, traceLesson.solved),
 	},
-	play: ({ canvasElement }) => editorReady(canvasElement),
+	play: async ({ canvasElement }) => {
+		await editorReady(canvasElement);
+		await expectPageShows(canvasElement, TRACE_ANOMALY);
+	},
 };
+
+const loanwordSource = 'tk-loanword-arc-bridge' as const;
+
+// validateLoanwordLesson is async, so its result arrives through a loader.
+const loanwordStory = (files: typeof loanwordLesson.files, title: string): Story => ({
+	args: { fixtures: files, source: loanwordSource },
+	loaders: [async () => ({ payload: await deriveLoanwordState(loanwordLesson, files) })],
+	render: (args, { loaded }) => <OtelWarmLogPreview {...args} payload={loaded.payload} />,
+	play: async ({ canvasElement }) => {
+		await editorReady(canvasElement);
+		await expectPageShows(canvasElement, title);
+	},
+});
 
 // Chapter 1, lesson 1: a static warm log that walks the loanword states.
-export const LoanwordParaphraseLoss: Story = {
-	args: {
-		fixtures: warmLogFixtures,
-		source: 'tk-loanword-arc-bridge',
-		payload: {
-			previewMode: 'static-log-with-completion',
-			previewState: 'paraphrase-loss',
-			scenario: 'schadenfreude-admission',
-			solved: false,
-			storyFile: '/warm-log-story.json',
-		},
-	},
-	play: ({ canvasElement }) => editorReady(canvasElement),
+export const LoanwordParaphraseLoss = loanwordStory(loanwordLesson.files, LOANWORD_LOSS);
+
+export const LoanwordCompleted = loanwordStory(loanwordLesson.solved, LOANWORD_ADMITTED);
+
+// -- Tier 2: the real bridge component drives the page ----------------------
+
+// The bridges find the preview by its TutorialKit container class and post
+// `lesson-state` to it themselves, so no payload is passed to the preview.
+const withBridge = (bridge: React.ReactNode): Story['render'] => (args) => (
+	<>
+		{bridge}
+		<div className="previews-container">
+			<OtelWarmLogPreview {...args} />
+		</div>
+	</>
+);
+
+const seedFrom = (lesson: typeof traceLesson) => () => {
+	seedTutorialStore({ data: lesson.data, files: lesson.files, focus: lesson.focus });
+	return resetTutorialStore;
 };
 
-export const LoanwordCompleted: Story = {
-	args: {
-		...LoanwordParaphraseLoss.args,
-		payload: {
-			...LoanwordParaphraseLoss.args!.payload,
-			previewState: 'completed',
-			solved: true,
-		},
+// RuleTraceBridge reads /exercise.de and /authorization-grammar.json from the
+// store, builds the state with ruleTraceProtocol, and posts it. Solve writes
+// the lesson's `_solution` into the store, as TutorialKit does.
+export const TraceViaBridge: Story = {
+	args: { fixtures: traceLesson.solved },
+	render: withBridge(<RuleTraceBridge />),
+	beforeEach: seedFrom(traceLesson),
+	play: async ({ canvasElement, step }) => {
+		await step('starter file: trace blocked', async () => {
+			await editorReady(canvasElement);
+			await expectPageShows(canvasElement, TRACE_BLOCKED);
+		});
+		await step('Solve: trace opens on the anomaly', async () => {
+			setDocuments({ '/exercise.de': traceLesson.solved['/exercise.de'] });
+			await expectPageShows(canvasElement, TRACE_ANOMALY);
+		});
 	},
-	play: ({ canvasElement }) => editorReady(canvasElement),
+};
+
+// LoanwordArcBridge validates through loanwordArcProtocol against two files
+// (translation.en, then PersonalVocabulary.pkl): the lesson's two gates.
+export const LoanwordViaBridge: Story = {
+	args: { fixtures: loanwordLesson.solved, source: loanwordSource },
+	render: withBridge(<LoanwordArcBridge />),
+	beforeEach: seedFrom(loanwordLesson),
+	play: async ({ canvasElement, step }) => {
+		const feedback = within(canvasElement).getByRole('status');
+		await step('paraphrase: source form required', async () => {
+			await editorReady(canvasElement);
+			await waitFor(() => expect(feedback).toHaveTextContent('requires the source form'));
+			await expectPageShows(canvasElement, LOANWORD_LOSS);
+		});
+		await step('source form preserved: vocabulary gate still blocks', async () => {
+			setDocuments({ '/translation.en': loanwordLesson.solved['/translation.en'] });
+			await waitFor(() => expect(feedback).toHaveTextContent('pass the second check'));
+			await expectPageShows(canvasElement, LOANWORD_PENDING);
+		});
+		await step('vocabulary admits the word: accepted', async () => {
+			setDocuments({ '/PersonalVocabulary.pkl': loanwordLesson.solved['/PersonalVocabulary.pkl'] });
+			await waitFor(() => expect(feedback).toHaveTextContent('Accepted by this lesson'));
+			await expectPageShows(canvasElement, LOANWORD_ADMITTED);
+		});
+	},
 };
 
 // Chapter 3, lesson 4: no lesson-state message at all. The page loads
