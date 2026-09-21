@@ -1,0 +1,6 @@
+{
+  "name": "follower-maze-lesson",
+  "private": true,
+  "scripts": { "dev": "node server.cjs" },
+  "dependencies": { "monaco-editor": "0.55.1" }
+}

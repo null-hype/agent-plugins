@@ -1,0 +1,10 @@
+{
+  "lesson": {
+    "witness": "arrival-order",
+    "arrivals": "family",
+    "evaluated": true,
+    "selected": null,
+    "text": "PROTON_PASS_AGENT_REASON=follow|10|20\nPROTON_PASS_AGENT_REASON=status|20 -> [10]\nPROTON_PASS_AGENT_REASON=unfollow|10|20\nPROTON_PASS_AGENT_REASON=status|20 -> []"
+  },
+  "evidenceLine": null
+}

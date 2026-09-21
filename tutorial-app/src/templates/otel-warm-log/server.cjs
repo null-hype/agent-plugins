@@ -428,6 +428,7 @@ function renderPage() {
 
             editor.setPosition({ column: 1, lineNumber });
             toggleEvidenceWidget(editor, lineNumber, related);
+            window.parent.postMessage({ type: 'warm-log-evidence', line: evidenceWidgetLine }, '*');
           });
 
           monaco.languages.registerCodeLensProvider(languageId, {
@@ -879,7 +880,11 @@ function renderPage() {
         const message = event.data;
 
         if (message && message.type === 'warm-log-records') {
-          applyRecords(message).catch(() => {});
+          applyRecords(message).then(() => {
+            if (Number.isInteger(message.evidenceLine) && reasonRelatedByLine[message.evidenceLine]) {
+              toggleEvidenceWidget(editor, message.evidenceLine, reasonRelatedByLine[message.evidenceLine]);
+            }
+          }).catch(() => {});
           return;
         }
 

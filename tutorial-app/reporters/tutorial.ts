@@ -45,6 +45,7 @@ type ClassifiedAttachment =
   | { kind: 'file'; path: string; body: Buffer }
   | { kind: 'beforeFile'; path: string; body: Buffer }
   | { kind: 'prose'; body: Buffer }
+  | { kind: 'meta'; body: Buffer }
   | { kind: 'screenshot'; body: Buffer }
   | { kind: 'ignore' };
 
@@ -78,6 +79,7 @@ export function classifyAttachment(name: string, contentType: string, body: Buff
   if (name.startsWith(BEFORE_FILE_PREFIX)) {
     return { kind: 'beforeFile', path: name.slice(BEFORE_FILE_PREFIX.length), body };
   }
+  if (name === 'meta') return { kind: 'meta', body };
   if (name === PROSE_NAME) {
     return { kind: 'prose', body };
   }
@@ -110,6 +112,7 @@ export function groupAttachmentsByStepIndex(attachments: readonly RawAttachment[
 }
 
 interface StepAttachments {
+  meta: Record<string, unknown>;
   /** State at the start of the step (`tutorial:<n>:before/file/<path>`): becomes `_files`. */
   beforeFiles: Record<string, Buffer>;
   /** State at the end of the step (`tutorial:<n>:file/<path>`), merged onto the previous step's end state. */
@@ -121,17 +124,26 @@ interface StepAttachments {
 export function reduceStepAttachments(classified: readonly ClassifiedAttachment[]): StepAttachments {
   const beforeFiles: Record<string, Buffer> = {};
   const files: Record<string, Buffer> = {};
+  let meta: Record<string, unknown> = {};
   let prose: string | null = null;
   let screenshot: Buffer | null = null;
 
   for (const item of classified) {
-    if (item.kind === 'file') files[item.path] = item.body;
+    if (item.kind === 'meta') {
+      const value = JSON.parse(item.body.toString('utf8'));
+      const allowed = ['template', 'prepareCommands', 'mainCommand', 'previews', 'terminal', 'editor', 'focus', 'filesystem'];
+      if (!value || Array.isArray(value) || typeof value !== 'object' || Object.keys(value).some((key) => !allowed.includes(key))) {
+        throw new Error('tutorial meta must be an object containing only runtime/display configuration');
+      }
+      meta = { ...meta, ...value };
+    }
+    else if (item.kind === 'file') files[item.path] = item.body;
     else if (item.kind === 'beforeFile') beforeFiles[item.path] = item.body;
     else if (item.kind === 'prose') prose = item.body.toString('utf8');
     else if (item.kind === 'screenshot') screenshot = item.body;
   }
 
-  return { beforeFiles, files, prose, screenshot };
+  return { beforeFiles, files, prose, screenshot, meta };
 }
 
 function writeFrontmatter(filePath: string, frontmatter: Record<string, unknown>, body = ''): void {
@@ -190,6 +202,7 @@ export function diffFileSets(
 }
 
 interface PlannedLesson {
+  meta: Record<string, unknown>;
   stepIndex: number;
   title: string;
   before: Record<string, Buffer>;
@@ -218,7 +231,7 @@ export function planLessons(steps: readonly TestStep[], attachmentsByStep: Map<n
 
   steps.forEach((step, i) => {
     const stepIndex = i + 1;
-    const { beforeFiles, files, prose, screenshot } = reduceStepAttachments(attachmentsByStep.get(stepIndex) ?? []);
+    const { beforeFiles, files, prose, screenshot, meta } = reduceStepAttachments(attachmentsByStep.get(stepIndex) ?? []);
     const after = { ...previousAfter, ...files };
 
     if (i > 0) {
@@ -235,7 +248,7 @@ export function planLessons(steps: readonly TestStep[], attachmentsByStep: Map<n
       .sort()
       .find((file) => file in beforeFiles && !beforeFiles[file].equals(files[file]));
 
-    lessons.push({ stepIndex, title: step.title, before: beforeFiles, after, focus, prose, screenshot });
+    lessons.push({ stepIndex, title: step.title, before: beforeFiles, after, focus, prose, screenshot, meta });
     previousAfter = after;
   });
 
@@ -275,6 +288,7 @@ export function compileTutorialTest(
         terminal: false,
         editor: { fileTree: true },
         previews: false,
+        ...lesson.meta,
       },
       lessonBody(lesson.prose, lesson.screenshot !== null),
     );

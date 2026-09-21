@@ -141,6 +141,30 @@ describe('compileTutorialTest', () => {
 
   const steps = () => [step({ title: 'reason does not compile' }), step({ title: 'decision is typed' })];
 
+  it('allows runtime metadata and lets explicit focus override the inferred file', () => {
+    const dir = tmp();
+    const attachments = continuousAttachments();
+    attachments.push(attachment('tutorial:1:meta', 'application/json', JSON.stringify({ template: 'follower-maze', focus: '/decision.ts', previews: [[4173, 'Follower Maze']], editor: false })));
+    compileTutorialTest(test, passed(steps(), attachments), dir);
+    const content = readFileSync(path.join(dir, 'area51-booking/1-reason-does-not-compile/content.mdx'), 'utf8');
+    expect(content).toContain('template: follower-maze');
+    expect(content).toContain('focus: /decision.ts');
+    expect(content).not.toContain('focus: /reason.txt');
+    expect(content).toContain('editor: false');
+    // No metadata leaks into the following lesson.
+    expect(readFileSync(path.join(dir, 'area51-booking/2-decision-is-typed/content.mdx'), 'utf8')).toContain('template: default');
+  });
+
+  it('rejects metadata that changes lesson identity before touching existing output', () => {
+    const dir = tmp();
+    compileTutorialTest(test, passed(steps(), continuousAttachments()), dir);
+    const before = readTree(dir);
+    const attachments = continuousAttachments();
+    attachments.push(attachment('tutorial:1:meta', 'application/json', '{"title":"replacement"}'));
+    expect(() => compileTutorialTest(test, passed(steps(), attachments), dir)).toThrow('runtime/display');
+    expect(readTree(dir)).toEqual(before);
+  });
+
   it('writes one lesson per top-level step, with _files from the declared start state and _solution from the end state', () => {
     const dir = tmp();
     compileTutorialTest(test, passed(steps(), continuousAttachments()), dir);

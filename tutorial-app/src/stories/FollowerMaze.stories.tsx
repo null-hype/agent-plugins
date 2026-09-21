@@ -1,18 +1,9 @@
-import React, { useMemo, useReducer, useState } from 'react';
+import Workbench from '../lesson-farms/follower-maze/Workbench';
+import { evaluatedFamily } from '../lesson-farms/follower-maze/scenarios';
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import OtelWarmLogPreview from './OtelWarmLogPreview';
-import FollowerMazeStatus from '../lesson-farms/follower-maze/FollowerMazeStatus';
-import { Channels } from '../lesson-farms/follower-maze/FollowerMazeChannels';
-import { RepairRow } from '../lesson-farms/follower-maze/FollowerMazeBoardState';
-import {
-	boardFor,
-	initialLessonState,
-	reduceLesson,
-	toJsonl,
-	type LessonAction,
-} from '../lesson-farms/follower-maze/followerMazeLog';
-import { WITNESS_MODELS, type WitnessModelId } from '../lesson-farms/follower-maze/followerMaze';
 import { BARE_REASONS, TIGHT_REASONS } from '../lesson-farms/follower-maze/followerMazeReasons';
 import arrivalOrderLog from '../lesson-farms/follower-maze/fixtures/permutations.arrival-order.jsonl?raw';
 import reorderBufferLog from '../lesson-farms/follower-maze/fixtures/permutations.reorder-buffer.jsonl?raw';
@@ -61,44 +52,6 @@ type Story = StoryObj<typeof meta>;
 // -- the lesson, as a learner drives it ---------------------------------------
 
 // `model` is the witness model the learner starts with; the selector changes it.
-function Workbench({ model, height }: { model: WitnessModelId; height: number }) {
-	const [state, dispatch] = useReducer(reduceLesson, initialLessonState);
-	const [choice, setChoice] = useState<WitnessModelId>(model);
-	const board = useMemo(() => boardFor(state), [state]);
-	const act = (action: LessonAction) => () => dispatch(action);
-	// The repair the lesson can actually offer: swap the model, then rerun the
-	// same family in place (solve keeps the arrival orderings; evaluate reruns them).
-	const switchModel = (next: WitnessModelId) => {
-		setChoice(next);
-		dispatch({ type: 'solve', model: next });
-		dispatch({ type: 'evaluate' });
-	};
-	return (
-		<>
-			<div role="toolbar" aria-label="lesson actions" style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-				<label>
-					Witness model{' '}
-					<select value={choice} onChange={(event) => setChoice(event.target.value as WitnessModelId)}>
-						{Object.keys(WITNESS_MODELS).map((id) => (
-							<option key={id} value={id}>
-								{id}
-							</option>
-						))}
-					</select>
-				</label>
-				<button onClick={act({ type: 'solve', model: choice })}>Send events to the implementation</button>
-				<button onClick={act({ type: 'evaluate' })}>Evaluate</button>
-				<button onClick={act({ type: 'transform' })}>Transform arrival order</button>
-			</div>
-			<FollowerMazeStatus board={board} />
-			<Channels board={board} onSelect={(name) => dispatch({ type: 'select', name })}>
-				<OtelWarmLogPreview records={board.records} editable={board.editable} onEdit={(text) => dispatch({ type: 'write', text })} height={height} />
-			</Channels>
-			<RepairRow board={board} witness={state.witness} onSwitchModel={switchModel} />
-		</>
-	);
-}
-
 // -- helpers over the real Monaco page inside the preview frame ----------------
 
 const frameDoc = (canvasElement: HTMLElement) => canvasElement.querySelector('iframe')!.contentDocument!;
@@ -413,3 +366,5 @@ export const SequenceAwareWalkthrough: Story = {
 		});
 	},
 };
+
+export const EvidenceLesson: Story = { render: () => <Workbench initial={evaluatedFamily()} height={TALL} /> };

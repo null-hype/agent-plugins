@@ -8,7 +8,7 @@ import { defineConfig } from '@playwright/test';
 // Astro app involved, no live network either way.
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'area51-booking.spec.ts',
+  testMatch: ['area51-booking.spec.ts', 'follower-maze.spec.ts'],
   outputDir: '../test-results/tutorial-compile',
   timeout: 60_000,
   expect: { timeout: 5_000 },

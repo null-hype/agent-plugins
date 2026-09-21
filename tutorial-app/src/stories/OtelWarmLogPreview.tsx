@@ -11,6 +11,8 @@ export type LessonStatePayload = {
 };
 
 type Props = {
+ evidenceLine?: number | null;
+ onEvidence?: (line: number | null) => void;
 	// Omit to show the page's own boot state (what a reason-log lesson shows).
 	payload?: LessonStatePayload;
 	source?: 'tk-rule-trace-bridge' | 'tk-loanword-arc-bridge';
@@ -56,13 +58,17 @@ export default function OtelWarmLogPreview({
 	records,
 	editable = false,
 	onEdit,
+ evidenceLine,
+ onEvidence,
 }: Props) {
 	const frameRef = useRef<HTMLIFrameElement>(null);
 	const readyRef = useRef(false);
 	const revisionRef = useRef(0);
 	const srcDoc = useMemo(() => buildSrcDoc(fixtures), [fixtures]);
 
-	const onEditRef = useRef(onEdit);
+	const onEvidenceRef = useRef(onEvidence);
+ onEvidenceRef.current = onEvidence;
+ const onEditRef = useRef(onEdit);
 	onEditRef.current = onEdit;
 
 	// The number of the last edit the parent has taken; set together with the parent's own
@@ -70,7 +76,7 @@ export default function OtelWarmLogPreview({
 	const [editSeq, setEditSeq] = useState(0);
 	const sendRecords = () => {
 		if (!records || !readyRef.current) return;
-		frameRef.current?.contentWindow?.postMessage({ type: 'warm-log-records', records, editable, seq: editSeq }, '*');
+		frameRef.current?.contentWindow?.postMessage({ type: 'warm-log-records', records, editable, evidenceLine, seq: editSeq }, '*');
 	};
 
 	const send = () => {
@@ -87,6 +93,7 @@ export default function OtelWarmLogPreview({
 	useEffect(() => {
 		readyRef.current = false;
 		const onMessage = (event: MessageEvent) => {
+ if (event.source === frameRef.current?.contentWindow && event.data?.type === 'warm-log-evidence') { onEvidenceRef.current?.(event.data.line); return; }
 			if (event.source === frameRef.current?.contentWindow && event.data?.type === 'warm-log-edit') {
 				setEditSeq(event.data.seq);
 				onEditRef.current?.(event.data.text);
@@ -105,7 +112,7 @@ export default function OtelWarmLogPreview({
 	}, [srcDoc]);
 
 	// Re-post when a control changes the payload after the page is ready.
-	useEffect(send, [payload, source, records, editable, editSeq]);
+	useEffect(send, [payload, source, records, editable, editSeq, evidenceLine]);
 
 	return (
 		<iframe

@@ -9,7 +9,8 @@
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "compile-tutorial": "playwright test --config=playwright.tutorial-compile.config.ts"
+    "compile-tutorial": "playwright test --config=playwright.tutorial-compile.config.ts",
+    "build:follower-maze": "vite build --config scripts/build-follower-maze.ts"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",

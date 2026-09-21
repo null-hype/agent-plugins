@@ -1,0 +1,23 @@
+---
+type: lesson
+title: Select a failing run and open its evidence
+template: follower-maze
+focus: /workbench.json
+terminal: false
+editor: false
+previews:
+  - - 4173
+    - Follower Maze
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+filesystem:
+  watch:
+    - /workbench.json
+---
+
+import FollowerMazeControls from "../../../../../components/FollowerMazeControls";
+
+<FollowerMazeControls client:load />
+
+The family has already been evaluated: 4 runs pass, 20 fail. In the preview, click **4231** in the monitor. It emitted only `20 <- seq 1`. Then click the diagnostic CodeLens above `[4,2,3,1]` in the log. Compare the expected and actual deliveries: `10 <- seq 2` is missing. Inspect the fact, observation, axiom, and three repair choices. Reset restores the evaluated family with no counterexample selected and no evidence open.
