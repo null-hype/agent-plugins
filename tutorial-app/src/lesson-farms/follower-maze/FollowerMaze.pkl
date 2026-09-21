@@ -1,0 +1,155 @@
+/// CIT-203: the Follower Maze `orderedRouting` proposition, written as Pkl in
+/// the same style as capability-spike/pkl/Reconcile.pkl: typed inputs, and a
+/// `check(...)` that returns zero or more `Flag`s instead of comparing against
+/// a stored answer.
+///
+/// There is deliberately no `canonicalDeliveries` field and no reference
+/// implementation here. `check` derives what the corpus rules entail from the
+/// events in *sequence* order and compares that with an arbitrary `Witness`.
+///
+/// `followerMaze.ts` states the same proposition in TypeScript;
+/// `followerMaze.spec.ts` evaluates `FollowerMazeFamily.pkl` and the TS `check`
+/// over all 24 arrival orderings and diffs the flags, so the two cannot drift.
+/// Keep the flag order (missing, forbidden, out-of-order, payload-mutated) and
+/// the detail strings identical to the TS side.
+module followerMaze
+
+class Event {
+  sequence: Int
+  kind: "F" | "U" | "S"
+  fromUser: Int
+  toUser: Int?
+  /// The wire form, e.g. `1|F|10|20` -- what a delivery must carry verbatim.
+  payload: String
+}
+
+class Delivery {
+  user: Int
+  sequence: Int
+  payload: String
+}
+
+class World {
+  connectedUsers: Listing<Int>
+  /// In *arrival* order. `check` sorts by `sequence` itself.
+  arrivals: Listing<Event>
+}
+
+class Witness {
+  deliveries: Listing<Delivery>
+}
+
+class Flag {
+  kind: String
+  factID: String
+  detail: String
+}
+
+const MISSING_DELIVERY = "fm-missing-delivery"
+const FORBIDDEN_DELIVERY = "fm-forbidden-delivery"
+const OUT_OF_ORDER = "fm-out-of-order"
+const PAYLOAD_MUTATED = "fm-payload-mutated"
+
+local class RouterState {
+  followers: Map<Int, Set<Int>>
+  sent: List<Delivery>
+}
+
+local function followersOf(state: RouterState, user: Int): Set<Int> = state.followers.getOrNull(user) ?? Set()
+
+/// The one protocol transition: a Follow notifies only the followed user, an
+/// Unfollow notifies nobody, a Status Update notifies every current follower
+/// of its sender. Only users connected in the world receive anything.
+local function apply(connected: Set<Int>, state: RouterState, event: Event): RouterState =
+  if (event.kind == "F")
+    new RouterState {
+      followers = state.followers.put(event.toUser!!, followersOf(state, event.toUser!!).add(event.fromUser))
+      sent =
+        if (connected.contains(event.toUser!!))
+          state.sent + List(new Delivery { user = event.toUser!!; sequence = event.sequence; payload = event.payload })
+        else state.sent
+    }
+  else if (event.kind == "U")
+    new RouterState {
+      followers = state.followers.put(event.toUser!!, followersOf(state, event.toUser!!).filter((u) -> u != event.fromUser))
+      sent = state.sent
+    }
+  else
+    new RouterState {
+      followers = state.followers
+      sent =
+        state.sent +
+        followersOf(state, event.fromUser)
+          .toList()
+          .sortBy((u) -> u)
+          .filter((u) -> connected.contains(u))
+          .map((u) -> new Delivery { user = u; sequence = event.sequence; payload = event.payload })
+    }
+
+/// Per-client trace order: (user, sequence). Sequences are small; the base
+/// only has to exceed any sequence in a world.
+local function traceKey(d: Delivery): Int = d.user * 1000000 + d.sequence
+
+function requiredDeliveries(world: World): List<Delivery> =
+  world.arrivals
+    .toList()
+    .sortBy((e) -> e.sequence)
+    .fold(new RouterState { followers = Map(); sent = List() }, (state, e) -> apply(world.connectedUsers.toList().toSet(), state, e))
+    .sent
+    .sortBy((d) -> traceKey(d))
+
+local function arrow(d: Delivery): String = "\(d.user) <- seq \(d.sequence)"
+
+local function deliveryFact(d: Delivery): String = "delivery:user=\(d.user),seq=\(d.sequence)"
+
+local function sameDelivery(a: Delivery, b: Delivery): Boolean = a.user == b.user && a.sequence == b.sequence
+
+local function payloadOf(world: World, sequence: Int): String =
+  world.arrivals.toList().findOrNull((e) -> e.sequence == sequence)?.payload ?? ""
+
+function check(world: World, witness: Witness): List<Flag> = let (required = requiredDeliveries(world))
+  let (given = witness.deliveries.toList())
+  missingFlags(required, given) +
+  forbiddenFlags(required, given) +
+  outOfOrderFlags(given) +
+  payloadFlags(world, required, given)
+
+local function missingFlags(required: List<Delivery>, given: List<Delivery>): List<Flag> =
+  required
+    .filter((want) -> !given.any((got) -> sameDelivery(got, want)))
+    .map((want) -> new Flag {
+      kind = MISSING_DELIVERY
+      factID = deliveryFact(want)
+      detail = "required delivery \(arrow(want)) (\(want.payload)) is absent from the witness"
+    })
+
+local function forbiddenFlags(required: List<Delivery>, given: List<Delivery>): List<Flag> =
+  given
+    .filter((got) -> !required.any((want) -> sameDelivery(got, want)))
+    .map((got) -> new Flag {
+      kind = FORBIDDEN_DELIVERY
+      factID = deliveryFact(got)
+      detail = "witness delivered \(arrow(got)) (\(got.payload)), which the protocol does not entail"
+    })
+
+/// A delivery is out of order when its client already received a higher
+/// sequence earlier in the witness's own listing.
+local function outOfOrderFlags(given: List<Delivery>): List<Flag> =
+  given
+    .mapIndexed((i, got) -> Pair(got, given.take(i).filter((earlier) -> earlier.user == got.user).map((earlier) -> earlier.sequence)))
+    .filter((p) -> !p.second.isEmpty && p.first.sequence < p.second.max)
+    .map((p) -> new Flag {
+      kind = OUT_OF_ORDER
+      factID = deliveryFact(p.first)
+      detail = "user \(p.first.user) received seq \(p.first.sequence) after seq \(p.second.max)"
+    })
+
+local function payloadFlags(world: World, required: List<Delivery>, given: List<Delivery>): List<Flag> =
+  required
+    .map((want) -> Pair(want, given.findOrNull((got) -> sameDelivery(got, want))))
+    .filter((p) -> p.second != null && p.second.payload != payloadOf(world, p.first.sequence))
+    .map((p) -> new Flag {
+      kind = PAYLOAD_MUTATED
+      factID = deliveryFact(p.first)
+      detail = "\(arrow(p.first)) carried \"\(p.second.payload)\" but the event payload is \"\(payloadOf(world, p.first.sequence))\""
+    })

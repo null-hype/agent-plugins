@@ -4,13 +4,14 @@ import type { FactFile, Observation } from './reconcile.pkl';
 import { checkAccess } from './ledgerCheckAccess';
 import { missingItems } from './inventoryCheck';
 import { check } from './reconcileCheck';
+import { followerMazeAxiom } from '../lesson-farms/follower-maze/followerMaze';
 
 export interface Verdict {
   code: string;
   message: string;
 }
 
-export type AxiomId = 'ledger.checkAccess' | 'inventory.missingItems' | 'reconcile.check';
+export type AxiomId = 'ledger.checkAccess' | 'inventory.missingItems' | 'reconcile.check' | 'followerMaze.orderedRouting';
 
 export interface LedgerWorld {
   vault: string;
@@ -67,4 +68,5 @@ export const axioms: Record<AxiomId, (fact: string, world: any) => Verdict> = {
     }
     return { code: flags[0].kind, message: flags.map((flag) => flag.detail).join('; ') };
   },
+  'followerMaze.orderedRouting': followerMazeAxiom,
 };

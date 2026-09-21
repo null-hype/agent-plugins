@@ -442,12 +442,17 @@ function renderPage() {
                 }
 
                 const relatedCount = (reasonRelatedByLine[lineNumber] || []).length;
+                // CIT-226: the prefix follows severity (a warning is not a
+                // failure), and a record may carry a plain-language
+                // "lensTitle" in place of its technical code. Records
+                // without one render exactly as before.
+                const lensPrefix = diagnostic.severity === 'warning' ? '⚠ ' : '✗ ';
 
                 lenses.push({
                   range: new monaco.Range(lineNumber, 1, lineNumber, 1),
                   command: {
                     id: PEEK_EVIDENCE_COMMAND,
-                    title: '✗ ' + diagnostic.code + ' · ' + relatedCount + ' related',
+                    title: lensPrefix + (diagnostic.lensTitle || diagnostic.code) + ' · ' + relatedCount + ' related',
                     arguments: [lineNumber],
                   },
                 });
