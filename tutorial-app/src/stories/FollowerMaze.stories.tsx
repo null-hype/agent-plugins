@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import OtelWarmLogPreview from './OtelWarmLogPreview';
 import FollowerMazeStatus from '../lesson-farms/follower-maze/FollowerMazeStatus';
-import { FamilyGrid, RepairRow } from '../lesson-farms/follower-maze/FollowerMazeBoardState';
+import { Channels } from '../lesson-farms/follower-maze/FollowerMazeChannels';
+import { RepairRow } from '../lesson-farms/follower-maze/FollowerMazeBoardState';
 import {
 	boardFor,
 	initialLessonState,
@@ -27,7 +28,13 @@ import reorderBufferLog from '../lesson-farms/follower-maze/fixtures/permutation
  * (FollowerMazeBoardState -- CIT-226). The expected-vs-actual pairing lives in the
  * evidence widget's own rows.
  *
- * Frames 1-4 are two-to-five-line states, and they are rendered by the warm
+ * CIT-227: the interaction is NOT a warm-log document. Input (events sent) and
+ * monitor (what the implementation emitted) are their own channels, as in the
+ * CIT-199 pre-cog board; the warm log is the diagnostic channel only, reconciling
+ * the monitor against the protocol. Each of the 24 orderings is an alternate
+ * execution of the same thread; the grid chips select which one the channels show.
+ *
+ * (Earlier text, superseded for frames 1-2:) Frames 1-4 were rendered by the warm
  * log too rather than as cards. Reason: the lesson's wire format
  * (`1|F|10|20`) is already a newline-delimited stream, the "green here rules out
  * nothing" band is a Warning marker on the baseline verdict line, and one
@@ -79,13 +86,14 @@ function Workbench({ model, height }: { model: WitnessModelId; height: number })
 						))}
 					</select>
 				</label>
-				<button onClick={act({ type: 'solve', model: choice })}>Run solve()</button>
+				<button onClick={act({ type: 'solve', model: choice })}>Send events to the implementation</button>
 				<button onClick={act({ type: 'evaluate' })}>Evaluate</button>
 				<button onClick={act({ type: 'transform' })}>Transform arrival order</button>
 			</div>
 			<FollowerMazeStatus board={board} />
-			<FamilyGrid board={board} />
-			<OtelWarmLogPreview fixtures={fixtures} height={height} />
+			<Channels board={board} onSelect={(name) => dispatch({ type: 'select', name })}>
+				<OtelWarmLogPreview fixtures={fixtures} height={height} />
+			</Channels>
 			<RepairRow board={board} witness={state.witness} onSwitchModel={switchModel} />
 		</>
 	);
@@ -179,17 +187,27 @@ export const Walkthrough: Story = {
 		const badge = () => canvas.getByTestId('axiom-badge');
 		const footer = () => canvas.getByTestId('counter-footer');
 
-		await step('1 · render: world and required pane filled, witness pane empty', async () => {
-			await pageShows(canvasElement, 'witness awaiting solve()');
-			await pageShows(canvasElement, 'required 10 <- seq 2');
+		const monitor = () => canvas.getByTestId('monitor-channel');
+
+		await step('1 · render: events entered in the input channel, monitor empty, diagnostic silent', async () => {
+			// The input is the editor itself: the four events as entered, one per line.
+			await pageShows(canvasElement, '1|F|10|20');
+			await pageShows(canvasElement, '4|S|20');
+			await expect(monitor()).toHaveTextContent('awaiting send');
+			// What the implementation emitted is the monitor's, never a line of the editor.
+			await expect(editorLines(canvasElement).join('\n')).not.toContain('<- seq');
 			await expect(badge()).toHaveTextContent('followerMaze.orderedRouting · 1 world');
 			await expectMarkers(canvasElement, 0);
 		});
 
-		await step("2 · witness: the learner's solve() output appears, unevaluated", async () => {
-			await userEvent.click(canvas.getByRole('button', { name: 'Run solve()' }));
-			await pageShows(canvasElement, 'witness 10 <- seq 2');
-			await expect(editorLines(canvasElement).join('\n')).not.toContain('awaiting solve()');
+		await step('2 · send: the monitor shows what the implementation emitted, still unreconciled', async () => {
+			await userEvent.click(canvas.getByRole('button', { name: 'Send events to the implementation' }));
+			await waitFor(() => expect(monitor()).toHaveTextContent('20 <- seq 1'));
+			await expect(canvas.getByTestId('monitor-1')).toHaveTextContent('on 1|F|10|20 → 20 <- seq 1');
+			await expect(canvas.getByTestId('monitor-2')).toHaveTextContent('on 2|S|20 → 10 <- seq 2');
+			await expect(canvas.getByTestId('monitor-3')).toHaveTextContent('no delivery');
+			await expect(monitor()).not.toHaveTextContent('awaiting send');
+			await expectMarkers(canvasElement, 0);
 			await expectMarkers(canvasElement, 0);
 		});
 
@@ -216,6 +234,7 @@ export const Walkthrough: Story = {
 			await pageShows(canvasElement, '[4,2,3,1]');
 			await waitFor(() => expect(editorLines(canvasElement)).toHaveLength(24));
 			await expectMarkers(canvasElement, 0);
+			await expect(canvas.getByTestId('chip-1234')).toHaveTextContent('20 <- seq 1, 10 <- seq 2'); // the monitor becomes one row per run
 			await expect(badge()).toHaveTextContent('followerMaze.orderedRouting · 24 worlds');
 			await expect(footer()).toHaveTextContent('not evaluated');
 		});
@@ -252,7 +271,12 @@ export const Walkthrough: Story = {
 			await expect(canvas.getByTestId('repair-row')).toBeVisible();
 		});
 
-		await step('6 · open a failing world: [4,2,3,1] pairs expected with actual, missing delivery in place', async () => {
+		await step('6 · open a failing world: [4,2,3,1] enters the channels, its divergence shows in the diagnostic', async () => {
+			// The chip selects an execution: the same four events, sent in a different order (its editor line is the input).
+			await userEvent.click(canvas.getByTestId('chip-4231'));
+			await expect(canvas.getByTestId('chip-4231')).toHaveAttribute('aria-pressed', 'true');
+			await expect(canvas.getByTestId('chip-4231')).toHaveTextContent('20 <- seq 1'); // the run delivered seq 1 and nothing else
+			await expect(canvas.getByTestId('chip-4231')).not.toHaveTextContent('10 <- seq 2'); // seq 2 goes nowhere: 20 has no followers yet
 			const doc = frameDoc(canvasElement);
 			activate(doc, lensAbove(doc, '[4,2,3,1]'));
 			await waitFor(() => {
@@ -290,6 +314,8 @@ export const Walkthrough: Story = {
 			await userEvent.click(within(canvas.getByTestId('repair-row')).getByRole('button', { name: /reorder-buffer/ }));
 			await waitFor(() => expect(footer()).toHaveTextContent('24 pass · 0 missing · 0 forbidden · 0 both'));
 			await expect(canvas.getByRole('combobox')).toHaveValue('reorder-buffer');
+			// The same conversation, rerun: [4,2,3,1] is still selected and the monitor now shows the fix.
+			await expect(canvas.getByTestId('chip-4231')).toHaveTextContent('20 <- seq 1, 10 <- seq 2');
 			await expect(canvas.getByTestId('chip-4231')).toHaveAttribute('data-outcome', 'pass');
 			await expect(canvas.getAllByTestId(/^chip-/).filter((chip) => chip.dataset.outcome !== 'pass')).toHaveLength(0);
 			await expectMarkers(canvasElement, 0);
@@ -299,6 +325,13 @@ export const Walkthrough: Story = {
 			await expect(canvas.queryByTestId('repair-row')).toBeNull();
 		});
 	},
+};
+
+// The Workbench with no play(): open it with `viewMode=story` and drive it by hand
+// (or with playwright-cli) to stop at any storyboard frame. Storybook cannot start a
+// play() at step N, so a frame is reached by replaying the learner's actions.
+export const Playground: Story = {
+	render: () => <Workbench model="arrival-order" height={TALL} />,
 };
 
 // -- the family as a standalone document, for each witness model ----------------
@@ -331,8 +364,8 @@ export const SequenceAwareWalkthrough: Story = {
 	play: async ({ canvasElement, step }) => {
 		const canvas = within(canvasElement);
 		await step('solve, evaluate baseline: green and no warning', async () => {
-			await userEvent.click(canvas.getByRole('button', { name: 'Run solve()' }));
-			await pageShows(canvasElement, 'witness 10 <- seq 2');
+			await userEvent.click(canvas.getByRole('button', { name: 'Send events to the implementation' }));
+			await waitFor(() => expect(canvas.getByTestId('monitor-channel')).toHaveTextContent('10 <- seq 2'));
 			await userEvent.click(canvas.getByRole('button', { name: 'Evaluate' }));
 			await pageShows(canvasElement, '-> pass');
 			await expectMarkers(canvasElement, 0);

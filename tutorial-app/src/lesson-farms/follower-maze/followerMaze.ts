@@ -112,14 +112,32 @@ export function requiredDeliveries(world: FollowerMazeWorld): Delivery[] {
 }
 
 /**
+ * One execution of the message thread: an event went in, these deliveries came
+ * out (possibly none, and `held` says why). This is the *observation* channel:
+ * what the implementation emitted, in emission order, before any comparison with
+ * what the protocol entails.
+ */
+export interface ThreadStep {
+  event: FollowerMazeEvent;
+  emitted: Delivery[];
+  held?: string;
+}
+
+/**
  * Two candidate models a learner's solve() might implement. They are witnesses,
  * not references: `check` never calls either.
  *
  * arrival-order: the plausible wrong model -- handle each event the moment it
  * arrives.
  */
-export function arrivalOrderWitness(world: FollowerMazeWorld): Witness {
-  return { deliveries: route(world, world.arrivals) };
+export function arrivalOrderThread(world: FollowerMazeWorld): ThreadStep[] {
+  const connected = new Set(world.connectedUsers);
+  let state = EMPTY;
+  return world.arrivals.map((event) => {
+    const before = state.out.length;
+    state = apply(connected, state, event);
+    return { event, emitted: state.out.slice(before) };
+  });
 }
 
 /**
@@ -128,21 +146,38 @@ export function arrivalOrderWitness(world: FollowerMazeWorld): Witness {
  * sort, so passing 24/24 is a real observation and not the reference agreeing
  * with itself.
  */
-export function reorderBufferWitness(world: FollowerMazeWorld): Witness {
+export function reorderBufferThread(world: FollowerMazeWorld): ThreadStep[] {
   const connected = new Set(world.connectedUsers);
   const pending = new Map<number, FollowerMazeEvent>();
   let state = EMPTY;
   let next = Math.min(...world.arrivals.map((event) => event.sequence));
-  for (const event of world.arrivals) {
+  return world.arrivals.map((event) => {
+    const before = state.out.length;
     pending.set(event.sequence, event);
     for (let ready = pending.get(next); ready; ready = pending.get(next)) {
       state = apply(connected, state, ready);
       pending.delete(next);
       next += 1;
     }
-  }
-  return { deliveries: state.out.slice().sort(byUserThenSequence) };
+    return {
+      event,
+      emitted: state.out.slice(before),
+      ...(pending.has(event.sequence) ? { held: `held: waiting for seq ${next}` } : {}),
+    };
+  });
 }
+
+const witnessOf = (thread: readonly ThreadStep[]): Witness => ({
+  deliveries: thread.flatMap((step) => step.emitted).sort(byUserThenSequence),
+});
+
+export const arrivalOrderWitness = (world: FollowerMazeWorld): Witness => witnessOf(arrivalOrderThread(world));
+export const reorderBufferWitness = (world: FollowerMazeWorld): Witness => witnessOf(reorderBufferThread(world));
+
+export const THREAD_MODELS = {
+  'arrival-order': arrivalOrderThread,
+  'reorder-buffer': reorderBufferThread,
+} as const;
 
 export const WITNESS_MODELS = {
   'arrival-order': arrivalOrderWitness,
