@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pre-cog Workbench — Follower Maze</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container-lowest": "#060f16",
+            "on-secondary": "#00315c",
+            "error-container": "#93000a",
+            "secondary": "#a2c9ff",
+            "background": "#0b141c",
+            "tertiary-container": "#bb8bfe",
+            "secondary-container": "#0071c7",
+            "outline-variant": "#3e4a3c",
+            "on-primary-fixed-variant": "#005317",
+            "surface-variant": "#2d363e",
+            "tertiary-fixed": "#eddcff",
+            "surface": "#0b141c",
+            "on-secondary-container": "#f0f4ff",
+            "on-tertiary": "#430882",
+            "on-primary-fixed": "#002105",
+            "secondary-fixed": "#d3e4ff",
+            "on-surface": "#dae3ee",
+            "on-tertiary-fixed": "#290055",
+            "on-primary": "#00390d",
+            "on-error-container": "#ffdad6",
+            "on-background": "#dae3ee",
+            "tertiary-fixed-dim": "#d8baff",
+            "on-tertiary-fixed-variant": "#5b2b9a",
+            "on-tertiary-container": "#4c188b",
+            "on-error": "#690005",
+            "surface-tint": "#67df70",
+            "surface-bright": "#313a43",
+            "error": "#ffb4ab",
+            "tertiary": "#d8baff",
+            "primary-fixed": "#83fc89",
+            "surface-dim": "#0b141c",
+            "on-secondary-fixed-variant": "#004882",
+            "secondary-fixed-dim": "#a2c9ff",
+            "on-secondary-fixed": "#001c38",
+            "on-surface-variant": "#bdcab8",
+            "outline": "#879484",
+            "primary-fixed-dim": "#67df70",
+            "inverse-on-surface": "#29313a",
+            "surface-container-highest": "#2d363e",
+            "surface-container": "#182028",
+            "inverse-surface": "#dae3ee",
+            "primary-container": "#3fb950",
+            "surface-container-high": "#222b33",
+            "surface-container-low": "#141c24",
+            "on-primary-container": "#004311",
+            "inverse-primary": "#006e21",
+            "primary": "#67df70"
+          },
+          borderRadius: {
+            DEFAULT: "0.125rem",
+            lg: "0.25rem",
+            xl: "0.5rem",
+            full: "0.75rem"
+          },
+          spacing: {
+            "space-xl": "1.5rem",
+            "margin-mobile": "0.5rem",
+            "gutter": "0.5rem",
+            "space-sm": "0.5rem",
+            "space-md": "0.75rem",
+            "margin": "0.75rem",
+            "gutter-dense": "0.25rem",
+            "space-lg": "1rem",
+            "space-xs": "0.25rem"
+          },
+          fontFamily: {
+            "body-lg": ["Geist"],
+            "code-lg": ["JetBrains Mono"],
+            "code-sm": ["JetBrains Mono"],
+            "label-sm": ["JetBrains Mono"],
+            "label-md": ["JetBrains Mono"],
+            "headline-lg-mobile": ["Geist"],
+            "code-md": ["JetBrains Mono"],
+            "headline-sm": ["Geist"],
+            "headline-md": ["Geist"],
+            "body-md": ["Geist"],
+            "headline-lg": ["Geist"],
+            "body-sm": ["Geist"]
+          },
+          fontSize: {
+            "body-lg": ["0.9375rem", { lineHeight: "1.5rem", fontWeight: "400" }],
+            "code-lg": ["0.875rem", { lineHeight: "1.375rem", fontWeight: "400" }],
+            "code-sm": ["0.6875rem", { lineHeight: "1rem", letterSpacing: "0.02em", fontWeight: "500" }],
+            "label-sm": ["0.6875rem", { lineHeight: "0.875rem", letterSpacing: "0.05em", fontWeight: "500" }],
+            "label-md": ["0.75rem", { lineHeight: "1rem", letterSpacing: "0.04em", fontWeight: "500" }],
+            "headline-lg-mobile": ["1.375rem", { lineHeight: "1.75rem", letterSpacing: "-0.015em", fontWeight: "600" }],
+            "code-md": ["0.8125rem", { lineHeight: "1.25rem", fontWeight: "400" }],
+            "headline-sm": ["1rem", { lineHeight: "1.5rem", letterSpacing: "-0.01em", fontWeight: "600" }],
+            "headline-md": ["1.25rem", { lineHeight: "1.75rem", letterSpacing: "-0.015em", fontWeight: "600" }],
+            "body-md": ["0.8125rem", { lineHeight: "1.25rem", fontWeight: "400" }],
+            "headline-lg": ["1.75rem", { lineHeight: "2.25rem", letterSpacing: "-0.02em", fontWeight: "600" }],
+            "body-sm": ["0.75rem", { lineHeight: "1rem", fontWeight: "400" }]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    /* Custom IDE styling helpers */
+    .wavy-error {
+      background: linear-gradient(135deg, transparent, transparent 45%, #f85149 50%, transparent 55%, transparent 100%);
+      background-size: 5px 3px;
+      background-repeat: repeat-x;
+      background-position: bottom;
+      padding-bottom: 2px;
+    }
+    .wavy-amber {
+      background: linear-gradient(135deg, transparent, transparent 45%, #d29922 50%, transparent 55%, transparent 100%);
+      background-size: 5px 3px;
+      background-repeat: repeat-x;
+      background-position: bottom;
+      padding-bottom: 2px;
+    }
+    /* Thin subtle scrollbar for IDE */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b141c;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8b949e;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-hidden h-screen flex flex-col font-body-md text-body-md select-none">
+<!-- ========================================== -->
+<!-- SHARED COMPONENT 1: TopNavBar               -->
+<!-- ========================================== -->
+<header class="flex justify-between items-center w-full px-space-md h-10 border-b border-outline-variant bg-surface-container-low select-none z-30 shrink-0">
+<!-- Left branding & quick search -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="text-headline-sm font-headline-sm font-bold text-on-surface tracking-tight">Pre-cog Workbench</span>
+<span class="text-on-surface-variant font-label-md text-label-md px-1 opacity-40">/</span>
+<span class="font-code-md text-code-md text-on-surface font-medium flex items-center gap-1.5">
+          Follower Maze
+          <span class="text-outline-variant">›</span>
+<span class="text-primary font-semibold">Ordered Routing</span>
+</span>
+</div>
+<!-- Persistent Verified Axiom Pill -->
+<div class="flex items-center gap-1.5 px-space-sm py-0.5 rounded bg-[#3fb950]/15 border border-[#3fb950]/40 text-[#3fb950] font-label-sm text-label-sm">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#3fb950] shadow-[0_0_6px_#3fb950]"></span>
+<span>axiom: followerMaze.orderedRouting</span>
+</div>
+<!-- Quick Command Input -->
+<div class="relative hidden xl:flex items-center">
+<span class="material-symbols-outlined absolute left-2 text-[#8b949e] text-[15px]">search</span>
+<input class="bg-surface-container-lowest border border-[#30363d] rounded text-on-surface placeholder-[#8b949e] text-code-sm font-code-sm pl-7 pr-8 py-0.5 focus:border-[#58a6ff] focus:ring-0 focus:outline-none w-56" placeholder="Search axioms, logs, symbols..." type="text"/>
+<kbd class="absolute right-2 font-code-sm text-[10px] text-[#8b949e] border border-[#30363d] px-1 rounded">⌘K</kbd>
+</div>
+</div>
+<!-- Center Navigation Links (Exact from Shared Components JSON) -->
+<nav class="hidden lg:flex items-center gap-space-lg h-full">
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-on-surface py-1 transition-colors duration-150 active:bg-surface-container-highest" href="#">Predictions</a>
+<a class="text-primary border-b border-primary font-label-md text-label-md py-1 transition-colors duration-150 active:bg-surface-container-highest" href="#">Proof Engine</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-on-surface py-1 transition-colors duration-150 active:bg-surface-container-highest" href="#">Pass Agent</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-on-surface py-1 transition-colors duration-150 active:bg-surface-container-highest" href="#">Telemetry</a>
+</nav>
+<!-- Right Actions & System Profile -->
+<div class="flex items-center gap-space-sm">
+<!-- Telemetry Quick Pills -->
+<div class="hidden md:flex items-center gap-2 border-r border-[#30363d] pr-space-md">
+<div class="flex items-center gap-1 px-1.5 py-0.5 bg-surface-container-high rounded border border-[#30363d] font-code-sm text-code-sm text-on-surface-variant">
+<span class="text-on-surface-variant">Pass Rate:</span>
+<span class="text-[#f85149] font-semibold">16.7%</span>
+<span class="text-outline text-[10px]">(4/24)</span>
+</div>
+<div class="flex items-center gap-1 px-1.5 py-0.5 bg-surface-container-high rounded border border-[#30363d] font-code-sm text-code-sm text-on-surface-variant">
+<span class="text-on-surface-variant">Events:</span>
+<span class="text-on-surface font-semibold">4</span>
+</div>
+</div>
+<!-- Action Buttons -->
+<button class="flex items-center gap-1 px-space-sm py-1 rounded bg-[#21262d] border border-[#30363d] text-on-surface hover:bg-[#30363d] text-code-sm font-code-sm transition-colors">
+<span class="material-symbols-outlined text-[15px]">call_split</span>
+<span>Branch</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1 rounded bg-[#238636] border border-[#2ea043] text-white hover:bg-[#2ea043] text-code-sm font-code-sm font-medium transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[15px]">play_arrow</span>
+<span>Deploy Rule</span>
+</button>
+<!-- Trailing Action Icons (terminal, bug_report, settings) -->
+<div class="flex items-center gap-1 border-l border-[#30363d] pl-space-xs ml-1">
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors" title="Terminal Log">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors" title="Bug Report">
+<span class="material-symbols-outlined text-[18px]">bug_report</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors" title="Settings">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+</button>
+</div>
+<div class="w-6 h-6 rounded bg-surface-container-high border border-outline-variant flex items-center justify-center text-primary font-code-sm text-[11px] font-bold" title="Operator system avatar">
+        OP
+      </div>
+</div>
+</header>
+<!-- ========================================== -->
+<!-- STORYBOARD FRAME STRIP / STEPPER           -->
+<!-- ========================================== -->
+<section class="h-9 w-full bg-surface-container-lowest border-b border-outline-variant px-space-md flex items-center justify-between overflow-x-auto shrink-0 select-none">
+<div class="flex items-center gap-1 text-code-sm">
+<span class="text-on-surface-variant font-medium pr-1 text-label-sm uppercase tracking-wider">Frames:</span>
+<!-- Frame 1 -->
+<button class="flex items-center gap-1 px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-transparent font-code-sm transition-colors">
+<span class="text-[10px] text-outline">1</span>
+<span>Render World</span>
+</button>
+<span class="text-outline-variant">›</span>
+<!-- Frame 2 -->
+<button class="flex items-center gap-1 px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-transparent font-code-sm transition-colors">
+<span class="text-[10px] text-outline">2</span>
+<span>Witness Solve</span>
+</button>
+<span class="text-outline-variant">›</span>
+<!-- Frame 3 -->
+<button class="flex items-center gap-1 px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-transparent font-code-sm transition-colors">
+<span class="text-[10px] text-outline">3</span>
+<span>Baseline Coincidence</span>
+</button>
+<span class="text-outline-variant">›</span>
+<!-- Frame 4 -->
+<button class="flex items-center gap-1 px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-transparent font-code-sm transition-colors">
+<span class="text-[10px] text-outline">4</span>
+<span>Transform 24-Family</span>
+</button>
+<span class="text-outline-variant">›</span>
+<!-- Frame 5 -->
+<button class="flex items-center gap-1 px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-transparent font-code-sm transition-colors">
+<span class="text-[10px] text-outline">5</span>
+<span>Evaluate Permutations</span>
+</button>
+<span class="text-outline-variant">›</span>
+<!-- Frame 6: Active Frame -->
+<button class="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-surface-container-high border border-[#58a6ff]/60 text-secondary font-code-sm shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-[#58a6ff] animate-pulse"></span>
+<span class="font-medium">Frame 6: Inline Evidence Widget on [4,2,3,1]</span>
+</button>
+</div>
+<!-- Counter Readout -->
+<div class="flex items-center gap-3 font-code-sm text-code-sm shrink-0 pl-4 border-l border-outline-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#3fb950]"></span>
+<span class="text-on-surface font-semibold">4</span>
+<span class="text-on-surface-variant text-[11px]">pass</span>
+</div>
+<span class="text-outline-variant">·</span>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#f85149]"></span>
+<span class="text-on-surface font-semibold">12</span>
+<span class="text-on-surface-variant text-[11px]">missing</span>
+</div>
+<span class="text-outline-variant">·</span>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#d29922]"></span>
+<span class="text-on-surface font-semibold">4</span>
+<span class="text-on-surface-variant text-[11px]">forbidden</span>
+</div>
+<span class="text-outline-variant">·</span>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#da3633]"></span>
+<span class="text-on-surface font-semibold">4</span>
+<span class="text-on-surface-variant text-[11px]">both</span>
+</div>
+</div>
+</section>
+<!-- ========================================== -->
+<!-- MAIN WORKBENCH: SIDEBAR + SPLIT PANES      -->
+<!-- ========================================== -->
+<div class="flex-1 flex overflow-hidden">
+<!-- ========================================== -->
+<!-- SHARED COMPONENT 2: SideNavBar             -->
+<!-- ========================================== -->
+<aside class="flex flex-col justify-between h-[calc(100vh-2.5rem)] w-56 border-r border-outline-variant bg-surface-container select-none shrink-0 z-20">
+<!-- Top Section -->
+<div>
+<!-- Node Context Header -->
+<div class="p-space-sm border-b border-outline-variant bg-surface-container-low/40">
+<div class="flex items-center gap-2">
+<div class="w-5 h-5 rounded bg-[#238636]/20 border border-[#2ea043] flex items-center justify-center text-[#3fb950]" title="Production US-East node status icon">
+<span class="material-symbols-outlined text-[13px]">hub</span>
+</div>
+<div class="leading-tight overflow-hidden">
+<div class="text-label-md font-label-md font-bold text-on-surface truncate">prod/us-east</div>
+<div class="text-[10px] text-on-surface-variant font-code-sm truncate">Deterministic v2.4.1</div>
+</div>
+</div>
+</div>
+<!-- Primary CTA: "New Proof" -->
+<div class="p-space-xs">
+<button class="w-full flex items-center justify-center gap-1.5 px-space-sm py-1 rounded bg-surface-container-high border border-outline-variant text-on-surface hover:border-[#58a6ff] hover:text-secondary text-code-sm font-code-sm transition-colors">
+<span class="material-symbols-outlined text-[15px]">add_circle</span>
+<span>New Proof</span>
+</button>
+</div>
+<!-- Navigation Tab Items (5 tabs) -->
+<nav class="flex flex-col gap-0.5 mt-1">
+<!-- Tab 1: Pre-cog Board (Active) -->
+<a class="flex items-center gap-space-xs text-primary bg-surface-container-high border-l-2 border-primary px-space-sm py-space-xs text-label-sm font-label-sm transition-colors duration-100 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[17px]">radar</span>
+<span>Pre-cog Board</span>
+</a>
+<!-- Tab 2: Proof Tree -->
+<a class="flex items-center gap-space-xs text-on-surface-variant px-space-sm py-space-xs text-label-sm font-label-sm hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[17px]">account_tree</span>
+<span>Proof Tree</span>
+</a>
+<!-- Tab 3: Telemetry Stream -->
+<a class="flex items-center gap-space-xs text-on-surface-variant px-space-sm py-space-xs text-label-sm font-label-sm hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[17px]">monitoring</span>
+<span>Telemetry Stream</span>
+</a>
+<!-- Tab 4: Axiom Registry -->
+<a class="flex items-center gap-space-xs text-on-surface-variant px-space-sm py-space-xs text-label-sm font-label-sm hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[17px]">shield</span>
+<span>Axiom Registry</span>
+</a>
+<!-- Tab 5: Audit Log -->
+<a class="flex items-center gap-space-xs text-on-surface-variant px-space-sm py-space-xs text-label-sm font-label-sm hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[17px]">history</span>
+<span>Audit Log</span>
+</a>
+</nav>
+</div>
+<!-- Footer Section: Docs, Settings -->
+<div class="border-t border-outline-variant p-space-xs bg-surface-container-low/30">
+<a class="flex items-center gap-space-xs text-on-surface-variant px-space-sm py-1 text-label-sm font-label-sm hover:text-on-surface hover:bg-surface-container-high rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">help</span>
+<span>Docs</span>
+</a>
+<a class="flex items-center gap-space-xs text-on-surface-variant px-space-sm py-1 text-label-sm font-label-sm hover:text-on-surface hover:bg-surface-container-high rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- ========================================================================= -->
+<!-- LEFT SPLIT: Monaco-style Permutation Stream Editor                        -->
+<!-- ========================================================================= -->
+<section class="flex-1 flex flex-col bg-surface border-r border-[#30363d] overflow-hidden min-w-[500px]">
+<!-- Monaco Tab Header Ribbon -->
+<div class="h-9 bg-surface-container-low flex items-center justify-between border-b border-[#30363d] px-2 shrink-0">
+<div class="flex items-center h-full">
+<div class="flex items-center gap-2 h-full px-3 bg-surface border-r border-t-2 border-r-[#30363d] border-t-primary font-code-sm text-code-sm text-on-surface">
+<span class="text-blue-400 font-semibold">TS</span>
+<span>permutations.fm.ts</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#f85149]" title="Diagnostic violations detected"></span>
+<button class="hover:bg-surface-variant rounded p-0.5 text-on-surface-variant ml-1">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</div>
+<div class="flex items-center gap-2 h-full px-3 text-on-surface-variant hover:bg-surface-container font-code-sm text-code-sm cursor-pointer border-r border-[#30363d]/50">
+<span class="text-yellow-400 font-semibold">JS</span>
+<span>followermaze.witness.mjs</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-code-sm text-on-surface-variant">
+<span class="text-[11px]">World: <code class="text-secondary font-mono">{10, 20}</code></span>
+<span class="text-outline-variant">|</span>
+<span class="text-[11px] text-[#3fb950] font-mono">4 PASS</span>
+<span class="text-[11px] text-[#f85149] font-mono">20 FAIL</span>
+</div>
+</div>
+<!-- Monaco Editor Surface -->
+<div class="flex-1 overflow-y-auto font-code-sm text-code-sm bg-surface flex">
+<!-- Editor Left Gutter: Folding & Line Numbers -->
+<div class="w-12 bg-surface-container-low border-r border-[#30363d] select-none text-right pr-2 text-outline py-2 font-code-sm leading-6 shrink-0">
+<div>1</div>
+<div>2</div>
+<div>3</div>
+<div>4</div>
+<div>5</div>
+<div>6</div>
+<div>7</div>
+<div>8</div>
+<div>9</div>
+<div>10</div>
+<div>11</div>
+<div>12</div>
+<div>13</div>
+<div>14</div>
+<div>15</div>
+<div>16</div>
+<div>17</div>
+<div>18</div>
+<div>19</div>
+<div>20</div>
+<div>21</div>
+<div>22</div>
+<div>23</div>
+<div>24</div>
+</div>
+<!-- Monaco Editor Buffer Lines -->
+<div class="flex-1 p-2 leading-6 overflow-x-hidden">
+<!-- Line 1: Passing [1, 2, 3, 4] -->
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded">
+<div class="flex items-center gap-2">
+<span class="text-outline text-[11px]">▾</span>
+<span class="text-primary font-semibold">[1, 2, 3, 4]</span>
+<span class="text-on-surface-variant">// 1|F|10|20 → 2|S|20 → 3|U|10|20 → 4|S|20</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="text-[#3fb950] font-semibold text-[11px] flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px]">check_circle</span> PASS
+              </span>
+<span class="text-[10px] px-1 bg-[#3fb950]/15 text-[#3fb950] rounded border border-[#3fb950]/30">deterministic</span>
+</div>
+</div>
+<!-- Line 2: Missing Delivery [1, 3, 2, 4] with CodeLens -->
+<div class="pt-1">
+<div class="text-[10px] text-[#f85149] font-code-sm pl-4 flex items-center gap-1.5 opacity-90">
+<span class="material-symbols-outlined text-[12px]">error</span>
+<span>✗ fm-missing-delivery · 1 related observation</span>
+<button class="text-secondary hover:underline ml-2">Inspect trace</button>
+</div>
+<div class="flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded">
+<div class="flex items-center gap-2">
+<span class="text-outline text-[11px]">▸</span>
+<span class="wavy-error text-[#f85149] font-semibold">[1, 3, 2, 4]</span>
+<span class="text-on-surface-variant">// Follow → Unfollow precedes Broadcast 2</span>
+</div>
+<span class="text-[10px] px-1 bg-[#f85149]/15 text-[#f85149] rounded border border-[#f85149]/30">missing seq=2</span>
+</div>
+</div>
+<!-- Line 3: Passing [3, 4, 1, 2] -->
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded mt-1">
+<div class="flex items-center gap-2">
+<span class="text-outline text-[11px]">▾</span>
+<span class="text-primary font-semibold">[3, 4, 1, 2]</span>
+<span class="text-on-surface-variant">// Valid reorder: late follow arrives before seq 2</span>
+</div>
+<span class="text-[#3fb950] font-semibold text-[11px] flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px]">check_circle</span> PASS
+            </span>
+</div>
+<!-- Line 4: Forbidden Delivery [1, 2, 4, 3] with CodeLens -->
+<div class="pt-1">
+<div class="text-[10px] text-[#d29922] font-code-sm pl-4 flex items-center gap-1.5 opacity-90">
+<span class="material-symbols-outlined text-[12px]">warning</span>
+<span>✗ fm-forbidden-delivery · 1 related observation</span>
+</div>
+<div class="flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded">
+<div class="flex items-center gap-2">
+<span class="text-outline text-[11px]">▸</span>
+<span class="wavy-amber text-[#d29922] font-semibold">[1, 2, 4, 3]</span>
+<span class="text-on-surface-variant">// Event 4 dispatched before Unfollow registered</span>
+</div>
+<span class="text-[10px] px-1 bg-[#d29922]/15 text-[#d29922] rounded border border-[#d29922]/30">forbidden seq=4</span>
+</div>
+</div>
+<!-- Line 5: Both Violations [1, 4, 3, 2] with Double Error Marker -->
+<div class="pt-1">
+<div class="text-[10px] text-[#f85149] font-code-sm pl-4 flex items-center gap-1.5 opacity-90">
+<span class="material-symbols-outlined text-[12px]">error</span>
+<span>✗ fm-missing-delivery · 2 related (missing + forbidden)</span>
+</div>
+<div class="flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded">
+<div class="flex items-center gap-2">
+<span class="text-outline text-[11px]">▸</span>
+<span class="wavy-error text-[#f85149] font-semibold">[1, 4, 3, 2]</span>
+<span class="text-on-surface-variant">// Total state inversion across user 10 and 20</span>
+</div>
+<span class="text-[10px] px-1 bg-[#da3633]/20 text-[#f85149] rounded border border-[#da3633]">dual violation</span>
+</div>
+</div>
+<!-- Line 6: Line [4, 2, 3, 1] — THE PRIMARY COUNTEREXAMPLE -->
+<div class="mt-2 relative">
+<!-- Simulated Hover CodeLens Tooltip Floating Above -->
+<div class="mb-1 p-2 bg-[#161b22] border border-[#30363d] rounded text-[11px] shadow-[0_8px_24px_rgba(1,4,9,0.85)] max-w-lg z-20">
+<div class="flex items-center justify-between border-b border-[#30363d] pb-1 mb-1">
+<span class="font-bold text-[#f85149] flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">error</span>
+                  fm-missing-delivery
+                </span>
+<span class="text-[10px] text-outline font-mono">seq=2 · user=10</span>
+</div>
+<div class="text-on-surface-variant space-y-0.5 font-code-sm">
+<p><span class="text-secondary font-semibold">observation</span> <span class="text-outline">(followermaze-log.jsonl:2)</span>: event <code class="text-on-surface bg-surface-container px-1 rounded">2|S|20</code> not routed to user 10</p>
+<p><span class="text-[#3fb950] font-semibold">axiom</span> <span class="text-outline">(followerMaze.orderedRouting)</span>: ordering errors surface as routing errors because follow-state is temporal</p>
+</div>
+</div>
+<!-- CodeLens Line Indicator -->
+<div class="text-[10px] text-[#f85149] font-code-sm pl-4 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[12px]">error</span>
+<span class="font-semibold">✗ fm-missing-delivery · 1 related observation</span>
+<span class="text-outline">|</span>
+<span class="text-secondary">Counterexample selected</span>
+</div>
+<!-- The Row Itself with highlighted focus border -->
+<div class="flex items-center justify-between bg-surface-container-high px-2 py-0.5 rounded border-l-2 border-[#f85149]">
+<div class="flex items-center gap-2">
+<span class="text-[#58a6ff] text-[11px]">▼</span>
+<span class="wavy-error text-[#f85149] font-bold">[4, 2, 3, 1]</span>
+<span class="text-on-surface">// Event 4 &amp; 2 executed prior to Follow (seq 1) registration</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-[10px] px-1 bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/40 font-mono">CRITICAL</span>
+</div>
+</div>
+<!-- ================================================================= -->
+<!-- EXPANDED INLINE EVIDENCE WIDGET (.evidence-widget)                -->
+<!-- ================================================================= -->
+<div class="evidence-widget mt-1 mb-2 bg-[#161b22] border border-[#30363d] rounded p-space-md text-code-sm shadow-lg">
+<!-- Widget Banner -->
+<div class="flex items-center justify-between border-b border-[#30363d] pb-space-xs mb-space-sm">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-[#f85149]/15 border border-[#f85149]/40 text-[#f85149] text-[10px] font-bold">
+                    fm-missing-delivery (seq=2, user=10)
+                  </span>
+<span class="text-on-surface-variant text-[11px]">Severity: <span class="text-[#f85149] font-semibold">CRITICAL / Counterexample</span></span>
+</div>
+<div class="text-outline text-[11px]">permutation #17/24</div>
+</div>
+<!-- Mismatch Delta Table -->
+<div class="grid grid-cols-3 gap-2 bg-[#0d1117] p-space-sm rounded border border-[#30363d] mb-space-md text-[11px]">
+<!-- Column 1 -->
+<div class="border-r border-[#30363d] pr-2">
+<div class="text-outline text-[10px] uppercase font-bold tracking-wider mb-1">Arrival Order</div>
+<div class="font-mono text-on-surface space-y-0.5">
+<div>1. <span class="text-secondary">4|S|20</span> <span class="text-outline text-[10px]">(seq 4)</span></div>
+<div>2. <span class="text-secondary">2|S|20</span> <span class="text-outline text-[10px]">(seq 2)</span></div>
+<div>3. <span class="text-secondary">3|U|10|20</span> <span class="text-outline text-[10px]">(seq 3)</span></div>
+<div>4. <span class="text-secondary">1|F|10|20</span> <span class="text-outline text-[10px]">(seq 1)</span></div>
+</div>
+</div>
+<!-- Column 2 -->
+<div class="border-r border-[#30363d] pr-2">
+<div class="text-outline text-[10px] uppercase font-bold tracking-wider mb-1">Expected Causal State</div>
+<div class="font-mono text-[#3fb950] space-y-0.5">
+<div>User 10 follows User 20</div>
+<div>User 10 receives seq 2</div>
+<div>User 10 receives seq 4</div>
+<div class="text-outline text-[10px]">(Reordered buffer active)</div>
+</div>
+</div>
+<!-- Column 3 -->
+<div>
+<div class="text-outline text-[10px] uppercase font-bold tracking-wider mb-1">Observed Delivery</div>
+<div class="font-mono text-[#f85149] space-y-0.5">
+<div>Follower set empty at seq 2</div>
+<div>Broadcast 2 dropped for 10</div>
+<div class="text-[#d29922]">Late follow accepted</div>
+<div class="font-semibold underline">Mismatch on client 10</div>
+</div>
+</div>
+</div>
+<!-- Supervisor Repair Choices Buttons -->
+<div class="flex items-center justify-between pt-1">
+<span class="text-[11px] text-on-surface-variant font-medium">Supervisor Repair Action:</span>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-space-sm py-1 rounded bg-[#21262d] border border-[#30363d] text-on-surface hover:bg-[#30363d] text-code-sm transition-colors">
+<span class="material-symbols-outlined text-[14px] text-secondary">public</span>
+<span>change world</span>
+</button>
+<button class="flex items-center gap-1.5 px-space-sm py-1 rounded bg-[#21262d] border border-[#30363d] text-on-surface hover:bg-[#30363d] text-code-sm transition-colors">
+<span class="material-symbols-outlined text-[14px] text-[#d29922]">schema</span>
+<span>change model</span>
+</button>
+<button class="flex items-center gap-1.5 px-space-sm py-1 rounded bg-[#238636] border border-[#2ea043] text-white hover:bg-[#2ea043] text-code-sm font-medium transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+<span>change axiom</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Other Permutations Condensed for authentic editor density -->
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded">
+<span class="text-primary font-semibold">[4, 1, 2, 3]</span>
+<span class="text-[#3fb950] font-semibold text-[11px]">PASS</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded">
+<span class="text-primary font-semibold">[4, 3, 1, 2]</span>
+<span class="text-[#3fb950] font-semibold text-[11px]">PASS</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[2, 1, 3, 4]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[2, 3, 4, 1]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[2, 4, 1, 3]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[2, 4, 3, 1]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-amber text-[#d29922]">[3, 1, 2, 4]</span>
+<span class="text-outline text-[11px]">✗ forbidden delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[4, 3, 2, 1]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[3, 2, 4, 1]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-amber text-[#d29922]">[3, 1, 4, 2]</span>
+<span class="text-outline text-[11px]">✗ forbidden delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[4, 1, 3, 2]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[4, 2, 1, 3]</span>
+<span class="text-outline text-[11px]">✗ missing delivery (1 related)</span>
+</div>
+<div class="group flex items-center justify-between hover:bg-surface-container-high/40 px-1 rounded opacity-70">
+<span class="wavy-error text-[#f85149]">[2, 1, 4, 3]</span>
+<span class="text-outline text-[11px]">✗ dual violation (2 related)</span>
+</div>
+</div>
+<!-- Monaco Minimap Simulation -->
+<div class="w-16 bg-[#060f16] border-l border-[#30363d] select-none p-1 shrink-0 hidden md:block">
+<div class="w-full h-2 bg-[#3fb950]/50 rounded-sm mb-1"></div>
+<div class="w-full h-1 bg-[#f85149]/50 rounded-sm mb-1"></div>
+<div class="w-full h-1 bg-[#3fb950]/50 rounded-sm mb-1"></div>
+<div class="w-full h-1 bg-[#d29922]/50 rounded-sm mb-1"></div>
+<div class="w-full h-1 bg-[#da3633]/50 rounded-sm mb-1"></div>
+<!-- Viewport Box Overlay -->
+<div class="w-full h-20 bg-secondary/10 border border-secondary/40 rounded-sm my-1 relative">
+<div class="absolute inset-x-0 top-3 h-2 bg-[#f85149]/70"></div>
+</div>
+<div class="w-full h-1 bg-[#3fb950]/50 rounded-sm mb-1"></div>
+<div class="w-full h-1 bg-[#f85149]/50 rounded-sm mb-1"></div>
+<div class="w-full h-1 bg-[#f85149]/50 rounded-sm mb-1"></div>
+<div class="w-full h-1 bg-[#d29922]/50 rounded-sm mb-1"></div>
+</div>
+</div>
+<!-- Editor Bottom Status Gutter -->
+<div class="h-6 bg-surface-container-low border-t border-[#30363d] px-3 flex items-center justify-between text-code-sm text-[11px] text-on-surface-variant">
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[13px]">done_all</span> UTF-8
+          </span>
+<span>TypeScript 5.3</span>
+<span>Space: 2</span>
+</div>
+<div class="flex items-center gap-2">
+<span>Ln 6, Col 1</span>
+<span>Permutation Set: 24 Elements</span>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- RIGHT SPLIT: Expected vs Witness Traces & Trace Graphs                    -->
+<!-- ========================================================================= -->
+<section class="flex-1 flex flex-col bg-surface overflow-hidden">
+<!-- Split View Header -->
+<div class="h-9 bg-surface-container-low flex items-center justify-between border-b border-[#30363d] px-3 shrink-0">
+<div class="flex items-center gap-2 font-code-sm text-code-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">compare_arrows</span>
+<span class="font-semibold text-on-surface">Dual Trace Execution Inspector</span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant font-normal">Permutation [4, 2, 3, 1] Target</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[#3fb950]"></span>
+<span class="font-code-sm text-[11px] text-on-surface">Causal Model Sync: ACTIVE</span>
+</div>
+</div>
+<!-- Critical 1-in-6 Baseline Coincidence Warning Banner -->
+<div class="px-space-md py-2 bg-[#d29922]/10 border-b border-[#d29922]/40 text-[#d29922] font-code-sm text-code-sm flex items-start gap-2 shrink-0">
+<span class="material-symbols-outlined text-[18px] text-[#d29922] shrink-0 mt-0.5">warning</span>
+<div>
+<span class="font-semibold">⚠️ Green here rules out nothing (1-in-6 coincidence)</span> — passing baseline <code class="text-on-surface bg-[#0b141c] px-1 py-0.5 rounded border border-[#30363d]">[1,2,3,4]</code> is insufficient proof without permutation stress-test.
+        </div>
+</div>
+<!-- Expected vs Witness Dual Trace Panes -->
+<div class="flex-1 flex flex-col overflow-y-auto">
+<!-- Two Column Trace Comparison -->
+<div class="grid grid-cols-2 divide-x divide-[#30363d] border-b border-[#30363d] min-h-[170px]">
+<!-- Column 1: Required Trace (Axiom Standard) -->
+<div class="p-space-md bg-surface-container-lowest/60">
+<div class="flex items-center justify-between mb-2">
+<span class="font-code-sm text-code-sm font-semibold text-[#3fb950] flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">verified_user</span>
+                Required Trace (Axiom Standard)
+              </span>
+<span class="text-[10px] text-outline uppercase font-mono">Preserved Invariant</span>
+</div>
+<div class="space-y-1.5 font-code-sm text-code-sm">
+<div class="p-1.5 rounded bg-surface-container-low border border-[#3fb950]/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-[#3fb950] font-mono">01</span>
+<span>Deliver <code class="text-secondary font-mono">seq 1</code> (Follow) to <code class="text-on-surface">Client 20</code></span>
+</div>
+<span class="text-[#3fb950] text-[10px] font-semibold">VERIFIED</span>
+</div>
+<div class="p-1.5 rounded bg-surface-container-low border border-[#3fb950]/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-[#3fb950] font-mono">02</span>
+<span>Deliver <code class="text-secondary font-mono">seq 2</code> (Broadcast) to <code class="text-on-surface">Client 10</code></span>
+</div>
+<span class="text-[#3fb950] text-[10px] font-semibold">VERIFIED</span>
+</div>
+<div class="p-1.5 rounded bg-surface-container-low border border-[#30363d] flex items-center justify-between text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="text-outline font-mono">03</span>
+<span>Unfollow <code class="text-secondary font-mono">seq 3</code> (10 unfollows 20)</span>
+</div>
+<span class="text-outline text-[10px]">INERT</span>
+</div>
+</div>
+</div>
+<!-- Column 2: Learner Witness Trace (solve() output) -->
+<div class="p-space-md bg-[#161b22]/40">
+<div class="flex items-center justify-between mb-2">
+<span class="font-code-sm text-code-sm font-semibold text-[#f85149] flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">bug_report</span>
+                Learner Witness Trace (solve() under [4,2,3,1])
+              </span>
+<span class="text-[10px] text-[#f85149] uppercase font-mono">Missing Delivery</span>
+</div>
+<div class="space-y-1.5 font-code-sm text-code-sm">
+<div class="p-1.5 rounded bg-[#0d1117] border border-[#30363d] flex items-center justify-between text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="text-outline font-mono">T0</span>
+<span>Arrival: <code class="text-secondary font-mono">4|S|20</code> (broadcast before follow)</span>
+</div>
+<span class="text-outline text-[10px]">DROP 10</span>
+</div>
+<div class="p-1.5 rounded bg-[#f85149]/10 border border-[#f85149]/40 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-[#f85149] font-mono">T1</span>
+<span>Arrival: <code class="text-[#f85149] font-mono">2|S|20</code> → User 10 missing delivery!</span>
+</div>
+<span class="text-[#f85149] text-[10px] font-bold">ERROR</span>
+</div>
+<div class="p-1.5 rounded bg-[#0d1117] border border-[#30363d] flex items-center justify-between text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="text-outline font-mono">T2</span>
+<span>Arrival: <code class="text-secondary font-mono">3|U|10|20</code> (noop)</span>
+</div>
+<span class="text-outline text-[10px]">ACK</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Causal DAG / Sequence Timeline Diagram -->
+<div class="p-space-md border-b border-[#30363d] bg-surface">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-code-sm text-code-sm font-semibold text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-secondary">account_tree</span>
+              Causal DAG &amp; Message Reordering Timeline
+            </span>
+<div class="text-[11px] text-outline font-code-sm">Evaluation: Permutation [4, 2, 3, 1]</div>
+</div>
+<!-- Timeline SVG/Canvas Canvas Replacement (Strict Micro-Contrast Styling) -->
+<div class="bg-[#060f16] border border-[#30363d] rounded p-space-md relative overflow-hidden">
+<!-- Nodes Stream -->
+<div class="grid grid-cols-4 gap-4 text-center font-code-sm text-code-sm">
+<!-- Step 1 -->
+<div class="flex flex-col items-center">
+<div class="text-[10px] text-outline mb-1">t = 0ms</div>
+<div class="w-full py-1.5 px-2 bg-surface-container rounded border border-[#30363d] text-secondary font-mono text-[11px]">
+                  Event 4|S|20
+                </div>
+<div class="h-6 w-0.5 bg-[#30363d] my-1"></div>
+<span class="text-[10px] text-on-surface-variant">Follower Set: ∅</span>
+</div>
+<!-- Step 2 (Fault Point) -->
+<div class="flex flex-col items-center">
+<div class="text-[10px] text-outline mb-1">t = 12ms</div>
+<div class="w-full py-1.5 px-2 bg-[#f85149]/20 rounded border border-[#f85149] text-[#f85149] font-mono text-[11px] font-bold">
+                  Event 2|S|20 ⚡
+                </div>
+<div class="h-6 w-0.5 bg-[#f85149] my-1"></div>
+<span class="text-[10px] text-[#f85149] font-medium">User 10 Not Registered</span>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center">
+<div class="text-[10px] text-outline mb-1">t = 24ms</div>
+<div class="w-full py-1.5 px-2 bg-surface-container rounded border border-[#30363d] text-on-surface font-mono text-[11px]">
+                  Event 3|U|10|20
+                </div>
+<div class="h-6 w-0.5 bg-[#30363d] my-1"></div>
+<span class="text-[10px] text-on-surface-variant">Premature Unfollow</span>
+</div>
+<!-- Step 4 -->
+<div class="flex flex-col items-center">
+<div class="text-[10px] text-outline mb-1">t = 36ms</div>
+<div class="w-full py-1.5 px-2 bg-surface-container rounded border border-[#3fb950]/50 text-[#3fb950] font-mono text-[11px]">
+                  Event 1|F|10|20
+                </div>
+<div class="h-6 w-0.5 bg-[#30363d] my-1"></div>
+<span class="text-[10px] text-[#d29922]">Late Follow Arrives</span>
+</div>
+</div>
+<!-- Annotation Bar Below DAG -->
+<div class="mt-space-md pt-2 border-t border-[#30363d] flex items-center justify-between text-[11px] font-code-sm text-on-surface-variant">
+<span class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[13px]">info</span>
+                Causal Inversion: Event 1 (registration) is delayed past broadcast horizons 4 and 2.
+              </span>
+<span class="text-[#f85149] font-mono font-medium">State Delta: client-10 undelivered count = 1</span>
+</div>
+</div>
+</div>
+<!-- Live Execution Log Terminal & Pass Agent Monitor -->
+<div class="flex-1 bg-surface-container-lowest p-space-md flex flex-col font-code-sm text-code-sm min-h-[140px]">
+<div class="flex items-center justify-between border-b border-[#30363d] pb-1 mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary">terminal</span>
+<span class="text-on-surface font-semibold">Pass Agent Monitor Log</span>
+<span class="px-1 py-0.2 rounded bg-surface-container-high text-outline text-[10px]">stdout</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-[#f85149] flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#f85149]"></span> QUARANTINE: ACTIVE
+              </span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto space-y-1 text-[11px] text-on-surface-variant leading-5">
+<div class="text-outline">[09:41:22.014] <span class="text-secondary">agent:pass</span>: generating symmetric group S_4 permutation matrix (N=24)...</div>
+<div class="text-outline">[09:41:22.029] <span class="text-secondary">agent:pass</span>: feeding world connected {10, 20} into deterministic witness harness...</div>
+<div class="text-outline">[09:41:22.081] <span class="text-[#3fb950]">agent:pass</span>: permutation [1,2,3,4] PASSED (baseline verification satisfied)</div>
+<div class="text-outline">[09:41:22.082] <span class="text-[#d29922]">agent:pass</span>: WARN: baseline pass has coincidence factor P=0.166667</div>
+<div class="text-outline">[09:41:22.112] <span class="text-[#f85149]">agent:pass</span>: permutation [4,2,3,1] FAILED: missing delivery for user 10 on seq 2</div>
+<div class="text-outline">[09:41:22.115] <span class="text-[#da3633]">agent:pass</span>: violation flagged: axiom `followerMaze.orderedRouting` unsatisfied</div>
+<div class="text-outline">[09:41:22.120] <span class="text-secondary">agent:pass</span>: counterexample isolated: saving snapshot to /quarantine/fm-counterexample-4231.precog</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+    // Frame toggle click feedback simulation
+    document.querySelectorAll('section button').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const text = button.innerText;
+        console.log(`Pre-cog Frame Context switched: ${text}`);
+      });
+    });
+  </script>
+</body></html>
