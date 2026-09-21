@@ -1,5 +1,5 @@
 import React from 'react';
-import { badgeText, counterText, type Board } from './followerMazeLog';
+import { badgeText, counterText, legalText, type Board } from './followerMazeLog';
 
 /**
  * The persistent frame elements from the CIT-203 storyboard: the axiom badge
@@ -27,6 +27,7 @@ export default function FollowerMazeStatus({ board }: { board: Board }) {
 			<span data-testid="axiom-badge" style={{ color: failed ? '#b3261e' : '#1a7f37', fontWeight: 600 }}>
 				{badgeText(board)}
 			</span>
+			<span data-testid="legal-worlds">{legalText(board)}</span>
 			<span data-testid="counter-footer">{counterText(board.tally)}</span>
 		</div>
 	);

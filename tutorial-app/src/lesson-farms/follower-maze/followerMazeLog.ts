@@ -21,7 +21,9 @@ import {
   check,
   flagLabel,
   followerMazeAxiom,
+  isLegalOrder,
   requiredDeliveries,
+  unconstrained,
   type Delivery,
   type FollowerMazeEvent,
   type FollowerMazeFlag,
@@ -30,6 +32,7 @@ import {
   type Witness,
   type WitnessModelId,
 } from './followerMaze';
+import { parseReasons, reasonWorld, type ParsedReasons } from './followerMazeReasons';
 
 // -- worlds: the base world plus one arrival fixture per ordering -------------
 
@@ -37,10 +40,15 @@ const eventsBySequence = new Map<number, FollowerMazeEvent>(
   (worldJson.events as FollowerMazeEvent[]).map((event) => [event.sequence, event]),
 );
 
-export const worldFor = (arrival: readonly number[]): FollowerMazeWorld => ({
-  connectedUsers: worldJson.connectedUsers,
-  arrivals: arrival.map((sequence) => eventsBySequence.get(sequence)!),
-});
+/**
+ * The world for one arrival order. With typed `reasons` it is built from them
+ * (and carries their declared effects); without, it is the fixed CIT-203 world
+ * whose obligations are the sequence-ordered routing.
+ */
+export const worldFor = (arrival: readonly number[], reasons?: ParsedReasons): FollowerMazeWorld =>
+  reasons
+    ? reasonWorld(reasons.reasons, arrival)
+    : { connectedUsers: worldJson.connectedUsers, arrivals: arrival.map((sequence) => eventsBySequence.get(sequence)!) };
 
 const arrivalFixtures = import.meta.glob<{ arrival: number[] }>('./fixtures/arrivals/*.json', {
   eager: true,
@@ -60,7 +68,14 @@ const BASELINE_NAME = BASELINE.join('');
 export interface WarmLogRecord {
   raw: string;
   /** `lensTitle` is the plain-language CodeLens text the warm log shows instead of the technical code. */
-  diagnostic: { severity: 'error' | 'warning'; code: string; message: string; lensTitle?: string } | null;
+  diagnostic: {
+    severity: 'error' | 'warning';
+    code: string;
+    message: string;
+    lensTitle?: string;
+    /** Which channel raised it: a check on the typed input alone, or the reconciliation against the monitor. */
+    source?: 'static' | 'reconcile';
+  } | null;
   related: EvidenceLocation[];
   evaluationId: string | null;
   axiomId: string;
@@ -81,9 +96,9 @@ const plain = (raw: string): WarmLogRecord => ({
   flags: [],
 });
 
-const CELL = 15; // the widest placeholder; keeps a pair on one line of the 600px evidence widget
-const MISSING_CELL = '- - missing - -';
-const NOT_DUE_CELL = '- - not due - -';
+const CELL = 13; // the widest placeholder; keeps a pair on one line of the evidence widget, even in a half-width pane
+const MISSING_CELL = '-- missing --';
+const NOT_DUE_CELL = '-- not due --';
 
 /**
  * Expected against actual, one row per delivery, aligned by (user, seq): a
@@ -100,7 +115,8 @@ export function pairedRows(world: FollowerMazeWorld, witness: Witness): string[]
     const state = !actual ? 'missing' : actual.payload === expected.payload ? 'ok' : 'payload differs';
     return { expected: arrow(expected), actual: actual ? arrow(actual) : MISSING_CELL, state };
   });
-  for (const extra of witness.deliveries.filter((d) => !required.some((expected) => same(expected, d)))) {
+  const open = unconstrained(world);
+  for (const extra of witness.deliveries.filter((d) => !required.some((expected) => same(expected, d)) && !open.has(d.sequence))) {
     rows.push({ expected: NOT_DUE_CELL, actual: arrow(extra), state: 'forbidden' });
   }
   return [
@@ -144,7 +160,7 @@ export function flagsToGovernance(
         uri: `fixtures/arrivals/${name}.json`,
         detail: `arrival [${arrival}] over connected ${users(world)}: ${wire(world)} (change world: conceptual, the orderings are the question)`,
       },
-      ...pairedRows(world, witness).map((detail) => ({ role: 'observation' as const, uri: 'expected|actual', detail })),
+      ...pairedRows(world, witness).map((detail) => ({ role: 'observation' as const, uri: 'vs', detail })),
       ...flags.map((flag) => ({
         role: 'observation' as const,
         uri: `witness/${model}`,
@@ -166,9 +182,9 @@ export interface FamilyOutcome {
 }
 
 /** Run one witness model over every arrival ordering. */
-export function evaluateFamily(model: WitnessModelId): FamilyOutcome[] {
+export function evaluateFamily(model: WitnessModelId, reasons?: ParsedReasons): FamilyOutcome[] {
   return FAMILY.map(({ name, arrival }) => {
-    const world = worldFor(arrival);
+    const world = worldFor(arrival, reasons);
     return { name, flags: check(world, WITNESS_MODELS[model](world)) };
   });
 }
@@ -211,6 +227,7 @@ function caseRecord(
     raw,
     diagnostic: {
       severity: 'error',
+      source: 'reconcile',
       code: governance.code,
       message: governance.message,
       lensTitle: `${category === 'both' ? 'both: ' : ''}${flags.map(describeFlag).join(', ')}`,
@@ -223,8 +240,8 @@ function caseRecord(
 }
 
 /** The 24-line permutation log: one record per arrival ordering. */
-export function familyRecords(model: WitnessModelId, evaluated = true): WarmLogRecord[] {
-  return FAMILY.map(({ name, arrival }) => caseRecord(name, worldFor(arrival), model, evaluated));
+export function familyRecords(model: WitnessModelId, evaluated = true, reasons?: ParsedReasons): WarmLogRecord[] {
+  return FAMILY.map(({ name, arrival }) => caseRecord(name, worldFor(arrival, reasons), model, evaluated));
 }
 
 export const toJsonl = (records: readonly WarmLogRecord[]): string =>
@@ -238,27 +255,34 @@ export interface LessonState {
   evaluated: boolean;
   /** The arrival ordering shown in the input and monitor channels; null means the first. */
   selected: string | null;
+  /** The reasons as the learner has typed them: the input channel. */
+  text: string;
 }
 
 export type LessonAction =
+  | { type: 'write'; text: string }
   | { type: 'select'; name: string }
   | { type: 'solve'; model: WitnessModelId }
   | { type: 'evaluate' }
   | { type: 'transform' };
 
-export const initialLessonState: LessonState = { witness: null, arrivals: 'baseline', evaluated: false, selected: null };
+export const initialLessonState: LessonState = { witness: null, arrivals: 'baseline', evaluated: false, selected: null, text: '' };
 
 export function reduceLesson(state: LessonState, action: LessonAction): LessonState {
   switch (action.type) {
+    case 'write':
+      // Different reasons are a different claim: whatever was sent or judged no longer applies.
+      return { ...initialLessonState, text: action.text };
     case 'solve':
-      return { ...state, witness: action.model, evaluated: false };
+      // Reasons with a static error cannot be sent to an implementation.
+      return parseReasons(state.text).ok ? { ...state, witness: action.model, evaluated: false } : state;
     case 'evaluate':
       // Nothing to evaluate until solve() has produced a witness.
       return state.witness ? { ...state, evaluated: true } : state;
     case 'transform':
       // The same four events under every arrival order: a new world, so any
       // earlier verdict no longer applies.
-      return { ...state, arrivals: 'family', evaluated: false };
+      return parseReasons(state.text).ok ? { ...state, arrivals: 'family', evaluated: false } : state;
     case 'select':
       return state.arrivals === 'family' && FAMILY.some((c) => c.name === action.name) ? { ...state, selected: action.name } : state;
   }
@@ -271,17 +295,18 @@ export function reduceLesson(state: LessonState, action: LessonAction): LessonSt
  * really is fooled by it. It becomes its own line of the log, right under the
  * pass it qualifies, so it reads without hovering anything.
  */
-function baselineWarning(model: WitnessModelId): WarmLogRecord | null {
-  const outcomes = evaluateFamily(model);
+function baselineWarning(model: WitnessModelId, reasons: ParsedReasons): WarmLogRecord | null {
+  const outcomes = evaluateFamily(model, reasons);
   const passing = outcomes.filter((outcome) => outcome.flags.length === 0);
   if (passing.length === outcomes.length) return null;
   const others = outcomes.length - 1;
   const failing = outcomes.length - passing.length;
   const message = `This ordering passes, but this model fails ${failing} of the other ${others}. Test all ${outcomes.length} orderings.`;
   return {
-    ...plain(message),
+    ...plain(`# ${message}`),
     diagnostic: {
       severity: 'warning',
+      source: 'reconcile',
       code: 'lesson-baseline-nondiscriminating',
       message,
       lensTitle: `passes here, fails ${failing} of the other ${others}`,
@@ -302,12 +327,18 @@ function baselineWarning(model: WitnessModelId): WarmLogRecord | null {
  * line -- and, once evaluated, where the diagnostic lands. What the implementation
  * emitted is the monitor's (`threadFor` / `board.thread`), never a line here.
  */
-function baselineRecords(state: LessonState): WarmLogRecord[] {
-  const world = worldFor(BASELINE);
-  const entered = world.arrivals.map((event) => plain(event.payload));
-  if (!state.witness || !state.evaluated) return entered;
-  const verdict = caseRecord(BASELINE_NAME, world, state.witness, true, 'evaluate ');
-  const warning = verdict.diagnostic ? null : baselineWarning(state.witness);
+function baselineRecords(state: LessonState, reasons: ParsedReasons): WarmLogRecord[] {
+  // One record per line the learner typed, so a line's markers sit on that line.
+  const entered: WarmLogRecord[] = state.text === '' ? [] : state.text.split('\n').map((raw, index) => {
+    const issue = reasons.issues.find((candidate) => candidate.line === index + 1);
+    return issue
+      ? { ...plain(raw), diagnostic: { severity: issue.severity, source: 'static', code: issue.code, message: issue.message } }
+      : plain(raw);
+  });
+  if (!reasons.ok || !state.witness || !state.evaluated) return entered;
+  const world = worldFor(BASELINE, reasons);
+  const verdict = caseRecord(BASELINE_NAME, world, state.witness, true, '# evaluate ');
+  const warning = verdict.diagnostic ? null : baselineWarning(state.witness, reasons);
   return [...entered, verdict, ...(warning ? [warning] : [])];
 }
 
@@ -337,12 +368,18 @@ export interface Board {
   thread: Thread;
   records: WarmLogRecord[];
   /** One entry per arrival ordering once the family is on the board; `category` is null until evaluated. */
-  cases: { name: string; category: Category | null; emitted: string | null }[];
+  cases: { name: string; category: Category | null; emitted: string | null; legal: boolean }[];
   /** Distinct axioms the log's evaluations cite. More than one means the transfer failed. */
   axiomIds: string[];
   /** Arrival orderings (worlds) the proposition is currently applied across. */
   worlds: number;
   tally: Tally;
+  /** The typed input, parsed: the static diagnostics are its `issues`. */
+  reasons: ParsedReasons;
+  /** The input channel is typed into only before the family is on the board. */
+  editable: boolean;
+  /** How many of the arrival orders are legal for the declared reasons; null until the reasons parse. */
+  legal: { count: number; total: number } | null;
 }
 
 /** `20 <- seq 1, 10 <- seq 2`: everything a thread emitted, in emission order. */
@@ -350,12 +387,11 @@ export const emittedText = (steps: readonly ThreadStep[]): string =>
   steps.flatMap((step) => step.emitted).map(arrow).join(', ') || 'nothing';
 
 export function boardFor(state: LessonState): Board {
-  const records =
-    state.arrivals === 'family' && state.witness
-      ? familyRecords(state.witness, state.evaluated)
-      : state.arrivals === 'family'
-        ? familyRecords('arrival-order', false)
-        : baselineRecords(state);
+  const reasons = parseReasons(state.text);
+  const family = state.arrivals === 'family' && reasons.ok;
+  const records = family
+    ? familyRecords(state.witness ?? 'arrival-order', state.witness !== null && state.evaluated, reasons)
+    : baselineRecords(state, reasons);
 
   const tally: Tally = { evaluated: 0, pass: 0, missing: 0, forbidden: 0, both: 0, other: 0 };
   for (const record of records) {
@@ -364,22 +400,25 @@ export function boardFor(state: LessonState): Board {
     tally[outcomeCategory(record.flags)] += 1;
   }
 
-  const cases =
-    state.arrivals === 'family'
-      ? FAMILY.map(({ name, arrival }, index) => ({
-          name,
-          category: records[index].evaluationId === null ? null : outcomeCategory(records[index].flags),
-          // What the current implementation emitted for this arrival order; null until solve() has run.
-          emitted: state.witness ? emittedText(THREAD_MODELS[state.witness](worldFor(arrival))) : null,
-        }))
-      : [];
+  // Legality is a property of the reasons and the arrival order alone.
+  const legalNames = new Set(reasons.ok ? FAMILY.filter(({ arrival }) => isLegalOrder(worldFor(arrival, reasons))).map(({ name }) => name) : []);
 
-  const name = state.arrivals === 'family' ? (state.selected ?? FAMILY[0].name) : BASELINE_NAME;
-  const world = worldFor(FAMILY.find((c) => c.name === name)!.arrival);
+  const cases = family
+    ? FAMILY.map(({ name, arrival }, index) => ({
+        name,
+        category: records[index].evaluationId === null ? null : outcomeCategory(records[index].flags),
+        // What the current implementation emitted for this arrival order; null until solve() has run.
+        emitted: state.witness ? emittedText(THREAD_MODELS[state.witness](worldFor(arrival, reasons))) : null,
+        legal: legalNames.has(name),
+      }))
+    : [];
+
+  const name = family ? (state.selected ?? FAMILY[0].name) : BASELINE_NAME;
+  const world = reasons.ok ? worldFor(FAMILY.find((c) => c.name === name)!.arrival, reasons) : null;
   const thread: Thread = {
     name,
-    arrival: [...world.arrivals],
-    steps: state.witness ? THREAD_MODELS[state.witness](world) : null,
+    arrival: world ? [...world.arrivals] : [],
+    steps: world && state.witness ? THREAD_MODELS[state.witness](world) : null,
     model: state.witness,
   };
 
@@ -387,9 +426,13 @@ export function boardFor(state: LessonState): Board {
     thread,
     records,
     cases,
-    axiomIds: [...new Set(records.map((record) => record.axiomId))],
-    worlds: state.arrivals === 'family' ? FAMILY.length : 1,
+    // Before anything is typed there are no records, but the proposition is still the one axiom.
+    axiomIds: [...new Set(records.length ? records.map((record) => record.axiomId) : [ORDERED_ROUTING])],
+    worlds: family ? FAMILY.length : 1,
     tally,
+    reasons,
+    editable: !family,
+    legal: reasons.ok ? { count: legalNames.size, total: FAMILY.length } : null,
   };
 }
 
@@ -402,3 +445,6 @@ export const badgeText = ({ axiomIds, worlds }: Board): string =>
   axiomIds.length === 1
     ? `${axiomIds[0]} · ${worlds} ${worlds === 1 ? 'world' : 'worlds'}`
     : `${axiomIds.length} axioms: ${axiomIds.join(', ')} — the transfer failed`;
+
+export const legalText = ({ legal }: Board): string =>
+  legal ? `${legal.count} of ${legal.total} arrival orders legal` : 'legal worlds: write the reasons first';
