@@ -6,6 +6,7 @@ import '../../lib/toHaveVerdict';
 import {
   FM,
   ORDERED_ROUTING,
+  THREAD_MODELS,
   WITNESS_MODELS,
   arrivalOrderWitness,
   check,
@@ -30,6 +31,10 @@ import {
   worldFor,
   type LessonAction,
 } from './followerMazeLog';
+import { BARE_REASONS, TIGHT_REASONS, parseReasons } from './followerMazeReasons';
+
+/** The learner has typed the four reasons with both status effects declared. */
+const written = reduceLesson(initialLessonState, { type: 'write', text: TIGHT_REASONS });
 
 const here = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 
@@ -219,14 +224,46 @@ describe('follower maze: the diagnostic carries the copy the review asked for', 
 });
 
 describe('follower maze: the lesson board', () => {
-  const drive = (...actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, initialLessonState));
+  const drive = (...actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, written));
   const solve: LessonAction = { type: 'solve', model: 'arrival-order' };
 
-  it('starts with the world and required pane filled and no witness', () => {
+  it('starts with the events entered as the editor lines, nothing observed, no diagnostic (CIT-227)', () => {
     const board = drive();
-    expect(board.records.map((r) => r.raw)).toContain('witness awaiting solve()');
-    expect(board.records.some((r) => r.raw === 'required 10 <- seq 2')).toBe(true);
+    expect(board.thread.arrival.map((e) => e.sequence)).toEqual([1, 2, 3, 4]);
+    expect(board.thread.steps).toBeNull();
+    // the log is the input channel: the four events as entered, and nothing the implementation emitted
+    expect(board.records.map((r) => r.raw)).toEqual(TIGHT_REASONS.split('\n'));
+    expect(board.records.some((r) => r.diagnostic)).toBe(false);
     expect(counterText(board.tally)).toBe('not evaluated');
+  });
+
+  it('solve puts the emitted deliveries in the monitor, in emission order, without touching the log', () => {
+    const board = drive(solve);
+    expect(board.thread.steps!.map((s) => s.emitted.map((d) => d.sequence))).toEqual([[1], [2], [], []]);
+    expect(board.records.map((r) => r.raw)).toEqual(TIGHT_REASONS.split('\n')); // emitted deliveries are not log lines
+    expect(board.records.every((r) => r.diagnostic === null)).toBe(true);
+  });
+
+  it('selecting an ordering is an alternate execution of the same thread; the reorder buffer holds early events', () => {
+    const board = drive({ type: 'solve', model: 'reorder-buffer' }, { type: 'transform' }, { type: 'select', name: '4231' });
+    expect(board.thread.name).toBe('4231');
+    expect(board.thread.arrival.map((e) => e.sequence)).toEqual([4, 2, 3, 1]);
+    expect(board.thread.steps!.map((s) => s.held ?? null)).toEqual([
+      'held: waiting for seq 1', 'held: waiting for seq 1', 'held: waiting for seq 1', null,
+    ]);
+    expect(board.thread.steps![3].emitted.map((d) => d.sequence)).toEqual([1, 2]);
+    // selecting outside the family (the baseline stage) is a no-op
+    expect(reduceLesson(initialLessonState, { type: 'select', name: '4231' })).toBe(initialLessonState);
+  });
+
+  it('the monitor thread and the witness never disagree', () => {
+    for (const model of Object.keys(WITNESS_MODELS) as (keyof typeof WITNESS_MODELS)[]) {
+      for (const { arrival } of FAMILY) {
+        const world = worldFor(arrival);
+        const emitted = THREAD_MODELS[model](world).flatMap((s) => s.emitted).map((d) => `${d.user}:${d.sequence}`).sort();
+        expect(emitted).toEqual(WITNESS_MODELS[model](world).deliveries.map((d) => `${d.user}:${d.sequence}`).sort());
+      }
+    }
   });
 
   it('cannot evaluate before solve() has produced a witness', () => {
@@ -235,13 +272,13 @@ describe('follower maze: the lesson board', () => {
 
   it('a green baseline is followed by a visible warning derived from the family, not a constant', () => {
     const board = drive(solve, { type: 'evaluate' });
-    const at = board.records.findIndex((r) => r.raw.startsWith('evaluate'));
+    const at = board.records.findIndex((r) => r.raw.startsWith('# evaluate'));
     expect(board.records[at].raw).toMatch(/-> pass$/);
     expect(board.records[at].diagnostic).toBeNull();
     // The warning is the next line of the log: text on screen, not only a marker message.
     const warning = board.records[at + 1];
     const sentence = 'This ordering passes, but this model fails 20 of the other 23. Test all 24 orderings.';
-    expect(warning.raw).toBe(sentence);
+    expect(warning.raw).toBe(`# ${sentence}`);
     expect(warning.diagnostic).toMatchObject({
       severity: 'warning',
       code: 'lesson-baseline-nondiscriminating',
@@ -281,20 +318,20 @@ describe('follower maze: the failing world is a comparison, not prose (CIT-226)'
     familyRecords(model).find((r) => r.raw.startsWith(`[${name.split('').join(',')}]`))!;
 
   it('pairs expected with actual, the missing delivery holding its expected position', () => {
-    const rows = record('4231').related.filter((entry) => entry.uri === 'expected|actual').map((entry) => entry.detail);
+    const rows = record('4231').related.filter((entry) => entry.uri === 'vs').map((entry) => entry.detail);
     expect(rows).toHaveLength(3);
     expect(rows[0]).toMatch(/^row\s+expected\s+\| actual$/);
-    expect(rows[1]).toMatch(/^1\/2\s+10 <- seq 2\s+\| - - missing - -\s+\[missing\]$/);
+    expect(rows[1]).toMatch(/^1\/2\s+10 <- seq 2\s+\| -- missing --\s+\[missing\]$/);
     expect(rows[2]).toMatch(/^2\/2\s+20 <- seq 1\s+\| 20 <- seq 1\s+\[ok\]$/);
-    // one line of the 600px evidence widget (~80 mono chars, less its 'observation (expected|actual): ' prefix)
-    expect(rows.every((row) => row.length + 'observation (expected|actual): '.length <= 80)).toBe(true);
+    // one line of the 600px evidence widget (~80 mono chars, less its 'observation (vs): ' prefix)
+    expect(rows.every((row) => row.length + 'observation (vs): '.length <= 80)).toBe(true);
   });
 
   it('mirrors it for a forbidden delivery: nothing due, something delivered', () => {
     const world = worldFor([1, 2, 4, 3]);
     const rows = pairedRows(world, WITNESS_MODELS['arrival-order'](world));
     expect(rows).toHaveLength(4); // header + 2 required + 1 forbidden
-    expect(rows[3]).toMatch(/^3\/3\s+- - not due - -\s+\| 10 <- seq 4\s+\[forbidden\]$/);
+    expect(rows[3]).toMatch(/^3\/3\s+-- not due --\s+\| 10 <- seq 4\s+\[forbidden\]$/);
   });
 
   it('a correct witness pairs every row ok', () => {
@@ -325,7 +362,7 @@ describe('follower maze: the failing world is a comparison, not prose (CIT-226)'
   });
 
   it('the grid data: 24 cases, unlabelled until evaluated, the table once evaluated', () => {
-    const drive = (...actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, initialLessonState));
+    const drive = (...actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, written));
     const solve: LessonAction = { type: 'solve', model: 'arrival-order' };
     expect(drive(solve).cases).toEqual([]);
     expect(drive(solve, { type: 'transform' }).cases.every((c) => c.category === null)).toBe(true);
@@ -338,12 +375,75 @@ describe('follower maze: the failing world is a comparison, not prose (CIT-226)'
   it('changing the model in place reruns the same family: 4231 flips from missing to pass', () => {
     const before = [{ type: 'solve', model: 'arrival-order' }, { type: 'transform' }, { type: 'evaluate' }] as LessonAction[];
     const after = [...before, { type: 'solve', model: 'reorder-buffer' }, { type: 'evaluate' }] as LessonAction[];
-    const at = (actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, initialLessonState));
+    const at = (actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, written));
     expect(at(before).cases.find((c) => c.name === '4231')!.category).toBe('missing');
     const rerun = at(after);
     expect(rerun.cases.find((c) => c.name === '4231')!.category).toBe('pass');
     expect(counterText(rerun.tally)).toBe('24 pass · 0 missing · 0 forbidden · 0 both');
     expect(rerun.worlds).toBe(24); // same family, not a new one
     expect(rerun.axiomIds).toEqual([ORDERED_ROUTING]);
+  });
+});
+
+describe('follower maze: typed reasons and legal worlds (CIT-229)', () => {
+  const at = (text: string, ...actions: LessonAction[]) =>
+    boardFor(actions.reduce(reduceLesson, reduceLesson(initialLessonState, { type: 'write', text })));
+
+  it('parses each line into a typed record with line identity, kind, users and optional effect', () => {
+    const { reasons, ok } = parseReasons(TIGHT_REASONS);
+    expect(ok).toBe(true);
+    expect(reasons.map(({ line, kind, fromUser, toUser, effect }) => ({ line, kind, fromUser, toUser, effect }))).toEqual([
+      { line: 1, kind: 'follow', fromUser: 10, toUser: 20, effect: null },
+      { line: 2, kind: 'status', fromUser: 20, toUser: null, effect: [10] },
+      { line: 3, kind: 'unfollow', fromUser: 10, toUser: 20, effect: null },
+      { line: 4, kind: 'status', fromUser: 20, toUser: null, effect: [] },
+    ]);
+  });
+
+  it('bare reasons make all 24 arrival orders legal; declaring both effects prunes to the 4 that pass', () => {
+    expect(at(BARE_REASONS).legal).toEqual({ count: 24, total: 24 });
+    expect(at(TIGHT_REASONS).legal).toEqual({ count: 4, total: 24 });
+    // one effect declared prunes part of the way
+    const half = BARE_REASONS.replace('status|20\nPROTON_PASS_AGENT_REASON=unfollow', 'status|20 -> [10]\nPROTON_PASS_AGENT_REASON=unfollow');
+    const count = at(half).legal!.count;
+    expect(count).toBeGreaterThan(4);
+    expect(count).toBeLessThan(24);
+  });
+
+  it('the legal orders are exactly the four the arrival-order model passes when effects are declared', () => {
+    const board = at(TIGHT_REASONS, { type: 'solve', model: 'arrival-order' }, { type: 'transform' }, { type: 'evaluate' });
+    const legal = board.cases.filter((c) => c.legal).map((c) => c.name);
+    expect(legal).toEqual(['1234', '3412', '4123', '4312']);
+    expect(board.cases.filter((c) => c.category === 'pass').map((c) => c.name)).toEqual(legal);
+    expect(counterText(board.tally)).toBe('4 pass · 12 missing · 4 forbidden · 4 both');
+  });
+
+  it('bare reasons promise nothing, so nothing can fail: 24 of 24 pass under the wrong model too', () => {
+    const board = at(BARE_REASONS, { type: 'solve', model: 'arrival-order' }, { type: 'transform' }, { type: 'evaluate' });
+    expect(counterText(board.tally)).toBe('24 pass · 0 missing · 0 forbidden · 0 both');
+  });
+
+  it('static diagnostics (input only) and reconciliation diagnostics come from different sources', () => {
+    // static: a disconnected user, and each unconstrained status, on the typed line itself
+    const bad = at(TIGHT_REASONS.replace('follow|10|20', 'follow|10|30'));
+    expect(bad.records[0].diagnostic).toMatchObject({ severity: 'error', source: 'static', code: 'reason-disconnected-user' });
+    expect(bad.reasons.ok).toBe(false);
+    const bare = at(BARE_REASONS);
+    expect(bare.records.filter((r) => r.diagnostic).map((r) => [r.diagnostic!.source, r.diagnostic!.code])).toEqual([
+      ['static', 'reason-unconstrained'],
+      ['static', 'reason-unconstrained'],
+    ]);
+    // dynamic: only after evaluation, from the monitor's trace
+    const family = at(TIGHT_REASONS, { type: 'solve', model: 'arrival-order' }, { type: 'transform' }, { type: 'evaluate' });
+    expect(new Set(family.records.filter((r) => r.diagnostic).map((r) => r.diagnostic!.source))).toEqual(new Set(['reconcile']));
+  });
+
+  it('reasons with a static error cannot be sent or transformed; rewriting them resets the run', () => {
+    const bad = TIGHT_REASONS.replace('follow|10|20', 'follow|10|30');
+    const stuck = at(bad, { type: 'solve', model: 'arrival-order' }, { type: 'transform' });
+    expect(stuck.thread.steps).toBeNull();
+    expect(stuck.worlds).toBe(1);
+    const sent = reduceLesson(written, { type: 'solve', model: 'arrival-order' });
+    expect(reduceLesson(sent, { type: 'write', text: BARE_REASONS })).toMatchObject({ witness: null, evaluated: false, arrivals: 'baseline' });
   });
 });

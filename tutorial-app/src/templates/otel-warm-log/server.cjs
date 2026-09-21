@@ -818,6 +818,8 @@ function renderPage() {
                   : window.monaco.MarkerSeverity.Warning,
               message: record.diagnostic.message,
               code: record.diagnostic.code,
+              // CIT-229: which channel raised it (static input check vs reconciliation).
+              source: record.diagnostic.source,
             });
 
             // CIT-152: "related" is reasonDiagnosticToGovernance's own
@@ -830,13 +832,56 @@ function renderPage() {
           }
         });
 
-        model.setValue(lines.join('\\n'));
+        // CIT-229: an editable log is echoed back by the parent, so only replace
+        // the text when it really differs, and keep the caret where the learner left it.
+        const nextText = lines.join('\\n');
+        if (model.getValue() !== nextText) {
+          const position = editor.getPosition();
+          applyingRecords = true;
+          model.setValue(nextText);
+          applyingRecords = false;
+          if (position && editor.getOption(window.monaco.editor.EditorOption.readOnly) === false) {
+            editor.setPosition(position);
+          }
+        }
         window.monaco.editor.setModelMarkers(model, REASON_LOG_MARKER_OWNER, markers);
+      }
+
+      // CIT-229: a lesson may hand the page its records directly and make the
+      // log editable. Edits go back to the parent as text; the parent answers
+      // with the next records (same text, new markers).
+      let applyingRecords = false;
+      let editListening = false;
+
+      // Each edit is numbered; the parent echoes the number of the last edit its records
+      // were computed from. An answer to an edit older than the newest is stale: drop it
+      // (a newer one follows) rather than overwrite what the learner typed since.
+      let editSeq = 0;
+
+      async function applyRecords(message) {
+        if (message.editable === true && typeof message.seq === 'number' && message.seq < editSeq) {
+          return;
+        }
+        await renderReasonLog(message.records || []);
+        editor.updateOptions({ readOnly: message.editable !== true });
+        if (!editListening) {
+          editListening = true;
+          model.onDidChangeContent(() => {
+            if (applyingRecords) return;
+            editSeq += 1;
+            window.parent.postMessage({ type: 'warm-log-edit', source: 'tk-warm-log-preview', text: model.getValue(), seq: editSeq }, '*');
+          });
+        }
       }
 
       function onMessage(event) {
         if (event.source !== window.parent) return;
         const message = event.data;
+
+        if (message && message.type === 'warm-log-records') {
+          applyRecords(message).catch(() => {});
+          return;
+        }
 
         if (
           !message ||

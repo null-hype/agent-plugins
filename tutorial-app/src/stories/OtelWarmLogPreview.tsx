@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import pageHtml from 'virtual:otel-warm-log-page';
 
 // What RuleTraceBridge / LoanwordArcBridge post to the preview frame.
@@ -17,6 +17,11 @@ type Props = {
 	// Files the page fetches from TutorialKit's /__tk/file endpoint, by path.
 	fixtures?: Record<string, string>;
 	height?: number;
+	// CIT-229: hand the page its records directly (no reload) and optionally let
+	// the learner type into it; each edit comes back as the document's full text.
+	records?: readonly object[];
+	editable?: boolean;
+	onEdit?: (text: string) => void;
 };
 
 const FILE_ENDPOINT = '/__tk/file?path=';
@@ -48,13 +53,28 @@ export default function OtelWarmLogPreview({
 	source = 'tk-rule-trace-bridge',
 	fixtures = NO_FIXTURES,
 	height = 420,
+	records,
+	editable = false,
+	onEdit,
 }: Props) {
 	const frameRef = useRef<HTMLIFrameElement>(null);
 	const readyRef = useRef(false);
 	const revisionRef = useRef(0);
 	const srcDoc = useMemo(() => buildSrcDoc(fixtures), [fixtures]);
 
+	const onEditRef = useRef(onEdit);
+	onEditRef.current = onEdit;
+
+	// The number of the last edit the parent has taken; set together with the parent's own
+	// state update, so `records` always belong to it.
+	const [editSeq, setEditSeq] = useState(0);
+	const sendRecords = () => {
+		if (!records || !readyRef.current) return;
+		frameRef.current?.contentWindow?.postMessage({ type: 'warm-log-records', records, editable, seq: editSeq }, '*');
+	};
+
 	const send = () => {
+		sendRecords();
 		if (!payload || !readyRef.current) return;
 		revisionRef.current += 1;
 		frameRef.current?.contentWindow?.postMessage(
@@ -67,6 +87,11 @@ export default function OtelWarmLogPreview({
 	useEffect(() => {
 		readyRef.current = false;
 		const onMessage = (event: MessageEvent) => {
+			if (event.source === frameRef.current?.contentWindow && event.data?.type === 'warm-log-edit') {
+				setEditSeq(event.data.seq);
+				onEditRef.current?.(event.data.text);
+				return;
+			}
 			if (
 				event.source === frameRef.current?.contentWindow &&
 				event.data?.type === 'lesson-preview-ready'
@@ -80,7 +105,7 @@ export default function OtelWarmLogPreview({
 	}, [srcDoc]);
 
 	// Re-post when a control changes the payload after the page is ready.
-	useEffect(send, [payload, source]);
+	useEffect(send, [payload, source, records, editable, editSeq]);
 
 	return (
 		<iframe
