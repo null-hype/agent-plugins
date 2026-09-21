@@ -1,0 +1,14 @@
+---
+type: lesson
+title: decision is typed
+template: default
+focus: /decision.ts
+terminal: false
+editor:
+  fileTree: true
+previews: false
+---
+
+`decision.ts` starts as `let decision: any;` -- untyped, so nothing here stops a bad value from reaching `run booking` downstream. Add the type annotation and the badge flips: the decision is now `'approve' | 'deny'`, not `any`.
+
+![Frame](./frame.png)

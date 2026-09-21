@@ -16,7 +16,10 @@ import { configDefaults, defineConfig } from 'vitest/config';
 // can't interleave.
 export default defineConfig({
   test: {
-    include: ['src/**/*.spec.ts'],
+    // reporters/ (CIT-235's tutorial-compile reporter) is outside src/ and
+    // outside tests/, so it doesn't hit the collision this file's include
+    // scoping exists to avoid.
+    include: ['src/**/*.spec.ts', 'reporters/**/*.spec.ts'],
     exclude: [...configDefaults.exclude, '**/_files/**', '**/_solution/**'],
     globalSetup: ['./vitest-global-setup.ts'],
     fileParallelism: false,
