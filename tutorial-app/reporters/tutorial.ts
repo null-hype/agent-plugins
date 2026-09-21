@@ -43,11 +43,13 @@ type RawAttachment = { name: string; contentType: string; body?: Buffer; path?: 
 
 type ClassifiedAttachment =
   | { kind: 'file'; path: string; body: Buffer }
+  | { kind: 'beforeFile'; path: string; body: Buffer }
   | { kind: 'prose'; body: Buffer }
   | { kind: 'screenshot'; body: Buffer }
   | { kind: 'ignore' };
 
 const FILE_PREFIX = 'file/';
+const BEFORE_FILE_PREFIX = 'before/file/';
 const PROSE_NAME = 'prose';
 
 // Playwright 1.59.1's reporter API *declares* TestStep.attachments (see
@@ -72,6 +74,9 @@ function readAttachmentBody(attachment: RawAttachment): Buffer {
 export function classifyAttachment(name: string, contentType: string, body: Buffer): ClassifiedAttachment {
   if (name.startsWith(FILE_PREFIX)) {
     return { kind: 'file', path: name.slice(FILE_PREFIX.length), body };
+  }
+  if (name.startsWith(BEFORE_FILE_PREFIX)) {
+    return { kind: 'beforeFile', path: name.slice(BEFORE_FILE_PREFIX.length), body };
   }
   if (name === PROSE_NAME) {
     return { kind: 'prose', body };
@@ -105,23 +110,28 @@ export function groupAttachmentsByStepIndex(attachments: readonly RawAttachment[
 }
 
 interface StepAttachments {
+  /** State at the start of the step (`tutorial:<n>:before/file/<path>`): becomes `_files`. */
+  beforeFiles: Record<string, Buffer>;
+  /** State at the end of the step (`tutorial:<n>:file/<path>`), merged onto the previous step's end state. */
   files: Record<string, Buffer>;
   prose: string | null;
   screenshot: Buffer | null;
 }
 
 export function reduceStepAttachments(classified: readonly ClassifiedAttachment[]): StepAttachments {
+  const beforeFiles: Record<string, Buffer> = {};
   const files: Record<string, Buffer> = {};
   let prose: string | null = null;
   let screenshot: Buffer | null = null;
 
   for (const item of classified) {
     if (item.kind === 'file') files[item.path] = item.body;
+    else if (item.kind === 'beforeFile') beforeFiles[item.path] = item.body;
     else if (item.kind === 'prose') prose = item.body.toString('utf8');
     else if (item.kind === 'screenshot') screenshot = item.body;
   }
 
-  return { files, prose, screenshot };
+  return { beforeFiles, files, prose, screenshot };
 }
 
 function writeFrontmatter(filePath: string, frontmatter: Record<string, unknown>, body = ''): void {
@@ -145,13 +155,100 @@ function lessonBody(prose: string | null, hasScreenshot: boolean): string {
   return parts.length > 0 ? `\n${parts.join('\n\n')}\n` : '\n';
 }
 
+/**
+ * Thrown when a step's declared starting state disagrees with the previous
+ * step's end state. The lessons are a chain -- Solve on lesson n-1 must land
+ * exactly where lesson n starts -- so a gap means the storyboard (or the
+ * story args it navigates to) has two sources of truth that drifted apart.
+ */
+export class ContinuityError extends Error {
+  constructor(public readonly problems: string[]) {
+    super(`tutorial state continuity broken:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
+    this.name = 'ContinuityError';
+  }
+}
+
+const excerpt = (body: Buffer) => JSON.stringify(body.toString('utf8').slice(0, 60));
+
+/** Human-readable differences between two file sets; empty when identical. */
+export function diffFileSets(
+  expected: Record<string, Buffer>,
+  actual: Record<string, Buffer>,
+  labels: { expected: string; actual: string },
+): string[] {
+  const problems: string[] = [];
+  for (const file of [...new Set([...Object.keys(expected), ...Object.keys(actual)])].sort()) {
+    const inExpected = file in expected;
+    const inActual = file in actual;
+    if (inExpected && !inActual) problems.push(`${file}: in ${labels.expected} but missing from ${labels.actual}`);
+    else if (!inExpected && inActual) problems.push(`${file}: in ${labels.actual} but missing from ${labels.expected}`);
+    else if (!expected[file].equals(actual[file])) {
+      problems.push(`${file}: differs -- ${labels.expected} ${excerpt(expected[file])} vs ${labels.actual} ${excerpt(actual[file])}`);
+    }
+  }
+  return problems;
+}
+
+interface PlannedLesson {
+  stepIndex: number;
+  title: string;
+  before: Record<string, Buffer>;
+  after: Record<string, Buffer>;
+  focus: string | undefined;
+  prose: string | null;
+  screenshot: Buffer | null;
+}
+
+/**
+ * Pure planning pass: resolves every lesson's before/after and enforces
+ * continuity, touching no disk, so a broken storyboard leaves the existing
+ * output untouched instead of half-rewriting it.
+ *
+ * `after(n)` is `after(n-1)` merged with step n's `file/` attachments (the
+ * contract's "cumulative"). `before(n)` is whatever the test attached under
+ * `before/file/` at the start of step n -- never inferred from `after(n-1)`,
+ * because inferring it is exactly the assumption this check exists to
+ * replace. A step with no `before/` attachments therefore declares an empty
+ * start, which is only continuous for the first step.
+ */
+export function planLessons(steps: readonly TestStep[], attachmentsByStep: Map<number, ClassifiedAttachment[]>): PlannedLesson[] {
+  const problems: string[] = [];
+  const lessons: PlannedLesson[] = [];
+  let previousAfter: Record<string, Buffer> = {};
+
+  steps.forEach((step, i) => {
+    const stepIndex = i + 1;
+    const { beforeFiles, files, prose, screenshot } = reduceStepAttachments(attachmentsByStep.get(stepIndex) ?? []);
+    const after = { ...previousAfter, ...files };
+
+    if (i > 0) {
+      const previous = steps[i - 1];
+      const labels = { expected: `end of step ${stepIndex - 1} ("${previous.title}")`, actual: `start of step ${stepIndex} ("${step.title}")` };
+      problems.push(...diffFileSets(previousAfter, beforeFiles, labels));
+    }
+
+    // Focus a file this step changes *and that already exists at the start*:
+    // TutorialKit can only open what is in `_files`, so a file the step
+    // merely introduces (it appears on Solve) must not be the focus target --
+    // that opened an empty editor before. No such file -> no `focus`.
+    const focus = Object.keys(files)
+      .sort()
+      .find((file) => file in beforeFiles && !beforeFiles[file].equals(files[file]));
+
+    lessons.push({ stepIndex, title: step.title, before: beforeFiles, after, focus, prose, screenshot });
+    previousAfter = after;
+  });
+
+  if (problems.length > 0) throw new ContinuityError(problems);
+  return lessons;
+}
+
 export function compileTutorialTest(
   test: Pick<TestCase, 'title' | 'tags'>,
   result: Pick<TestResult, 'status' | 'steps' | 'attachments'>,
   outDir: string,
 ): void {
-  const steps = topLevelSteps(result);
-  const attachmentsByStep = groupAttachmentsByStepIndex(result.attachments);
+  const lessons = planLessons(topLevelSteps(result), groupAttachmentsByStepIndex(result.attachments));
   const chapterDir = path.join(outDir, slugify(test.title));
 
   // Every compile starts from a clean slate: a stale lesson left behind by
@@ -161,41 +258,32 @@ export function compileTutorialTest(
 
   writeFrontmatter(path.join(chapterDir, 'meta.md'), { type: 'chapter', title: test.title });
 
-  let cumulativeFiles: Record<string, Buffer> = {};
+  for (const lesson of lessons) {
+    const lessonDir = path.join(chapterDir, `${lesson.stepIndex}-${slugify(lesson.title)}`);
+    writeFileTree(path.join(lessonDir, '_files'), lesson.before);
+    writeFileTree(path.join(lessonDir, '_solution'), lesson.after);
 
-  steps.forEach((step, i) => {
-    const stepIndex = i + 1;
-    const { files: stepFiles, prose, screenshot } = reduceStepAttachments(attachmentsByStep.get(stepIndex) ?? []);
-    const filesBefore = cumulativeFiles;
-    const filesAfter = { ...cumulativeFiles, ...stepFiles };
+    if (lesson.screenshot) writeFileSync(path.join(lessonDir, 'frame.png'), lesson.screenshot);
 
-    const lessonDir = path.join(chapterDir, `${stepIndex}-${slugify(step.title)}`);
-    writeFileTree(path.join(lessonDir, '_files'), filesBefore);
-    writeFileTree(path.join(lessonDir, '_solution'), filesAfter);
-
-    if (screenshot) writeFileSync(path.join(lessonDir, 'frame.png'), screenshot);
-
-    const focus = Object.keys(stepFiles)[0];
     writeFrontmatter(
       path.join(lessonDir, 'content.mdx'),
       {
         type: 'lesson',
-        title: step.title,
+        title: lesson.title,
         template: 'default',
-        ...(focus ? { focus: `/${focus}` } : {}),
+        ...(lesson.focus ? { focus: `/${lesson.focus}` } : {}),
         terminal: false,
         editor: { fileTree: true },
         previews: false,
       },
-      lessonBody(prose, screenshot !== null),
+      lessonBody(lesson.prose, lesson.screenshot !== null),
     );
-
-    cumulativeFiles = filesAfter;
-  });
+  }
 }
 
 export default class TutorialReporter implements Reporter {
   private readonly outDir: string;
+  private brokenStoryboards = 0;
 
   constructor(options: TutorialReporterOptions) {
     if (!options?.outDir) {
@@ -220,7 +308,21 @@ export default class TutorialReporter implements Reporter {
       return;
     }
 
-    compileTutorialTest(test, result, this.outDir);
+    try {
+      compileTutorialTest(test, result, this.outDir);
+    } catch (error) {
+      if (!(error instanceof ContinuityError)) throw error;
+      this.brokenStoryboards += 1;
+      console.error(`[tutorial-reporter] refusing to compile "${test.title}": ${error.message}`);
+      return;
+    }
     console.log(`[tutorial-reporter] compiled ${steps.length} lesson(s) from "${test.title}" into ${this.outDir}`);
+  }
+
+  // A continuity break is a real failure, not a warning: the test itself
+  // passed, but the storyboard it describes is not a valid lesson chain, so
+  // the run must exit non-zero rather than look green with stale output.
+  onEnd(): { status: 'failed' } | undefined {
+    return this.brokenStoryboards > 0 ? { status: 'failed' } : undefined;
   }
 }

@@ -30,6 +30,11 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
 
 - **Tag `@tutorial`**: everything else is ignored (`isTutorialTest` in
   `tutorial.ts`).
+- **State continuity is enforced.** For every step `n > 1`, the files
+  declared under `before/` must equal the cumulative end state of step
+  `n-1`, path for path and byte for byte. Otherwise the reporter refuses to
+  compile (see below). Step 1 has no predecessor, so its `before/` is
+  unchecked; a step with no `before/` attachments declares an empty start.
 - **Passed tests only.** A failing test is a broken storyboard: the
   reporter warns to the console and writes nothing.
 - **Top-level steps only**: `category === 'test.step'` with no `.parent`.
@@ -38,8 +43,12 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
 - **Step titles are stable and human.** They become lesson titles and
   slugs.
 - **Attachments, indexed by step:**
-  - `tutorial:<n>:file/<path>` -- file state at the end of step `<n>`
-    (1-based), cumulative across steps.
+  - `tutorial:<n>:before/file/<path>` -- file state at the *start* of step
+    `<n>` (1-based). Becomes the lesson's `_files`. Attach the full set of
+    files the page shows, after the story has loaded.
+  - `tutorial:<n>:file/<path>` -- file state at the *end* of step `<n>`,
+    merged onto the previous step's end state (cumulative). Becomes
+    `_solution`.
   - `tutorial:<n>:prose` -- that step's lesson body markdown.
   - any `tutorial:<n>:*` attachment whose `contentType` starts with
     `image/` -- that step's `frame.png`.
@@ -83,15 +92,48 @@ to the test file -- it just stops being load-bearing.
    title>`).
 3. `groupAttachmentsByStepIndex(result.attachments)` once, then per step
    `i` (0-based, `stepIndex = i + 1`):
-   - `_files/` = the running cumulative file set *before* this step.
-   - `_solution/` = that set merged with this step's own file
-     attachments.
+   - `_files/` = the step's own `before/file/*` attachments.
+   - `_solution/` = the previous step's end state merged with this step's
+     `file/*` attachments.
    - `frame.png` if a screenshot attachment was found.
    - `content.mdx`: `type: lesson`, `title: <step title>`, `template:
-     default` (see below), `focus: /<first new file>` when this step
-     introduced one, plus the step's prose and (if present) a `![Frame](./frame.png)`
+     default` (see below), `focus: /<file>` for the first file (alphabetical) this step
+     changes that also exists in `_files` -- omitted when the step only
+     introduces new files, plus the step's prose and (if present) a `![Frame](./frame.png)`
      reference.
-   - the cumulative set becomes next step's `_files`.
+
+Planning (resolving every lesson's before/after and checking continuity)
+happens in a pure pass before anything is written, so a broken storyboard
+leaves the previous output untouched.
+
+## State continuity (CIT-236)
+
+Attachments used to capture only each step's *end* state, so a file a step
+introduced never existed in that lesson's `_files`, and the start state had
+two sources of truth: story args (what the page shows) and the previous
+step's attachments (what `_files` held). They agreed only because the test
+and the component both hardcoded the same reason string.
+
+Now the test scrapes the file set from the page at the start of each step
+(`readFiles(page)` in `tests/area51-booking.spec.ts`, after `page.goto` to
+that step's story) and again at the end. The story args stay as the review
+surface for each starting state; the reporter compares what the page actually
+started with against where the previous step ended:
+
+```
+[tutorial-reporter] refusing to compile "area51 booking": tutorial state continuity broken:
+  - reason.txt: differs -- end of step 1 ("reason does not compile") "...#A51-7" vs start of step 2 ("decision is typed") "...#A51-8"
+```
+
+A continuity failure writes nothing, leaves any existing output as it was,
+and makes `onEnd` return `{ status: 'failed' }`, so `npm run compile-tutorial`
+exits non-zero even though the Playwright test itself passed. Verified live
+by changing the component's `VALID_REASON` (exit 1, output byte-identical to
+before) and in `tutorial.spec.ts`.
+
+Not covered: continuity is about *files*. A step can't delete a file (the
+cumulative end state only grows), and nothing checks that `prose` still
+matches the files.
 
 `template: default` (`src/templates/default`, a `sleep infinity` no-op) is
 used for every generated lesson rather than something that actually boots
@@ -144,6 +186,15 @@ every other lesson under `src/content/tutorial/`) so `npm run dev` can
 render it without a separate build step. Re-run `npm run compile-tutorial`
 after editing the test or the component and commit the result.
 
+Caveat: the committed `frame.png`s are byte-identical only on the machine
+that made them (same Chromium build and font rendering). Regenerating on
+another machine or in CI will produce binary diffs. Regenerate from one
+pinned environment, or stop committing frames -- undecided.
+
+The "files" are DOM scrapes (`inputValue` of the textarea, `innerText` of
+`<code>`). Nothing compiles `decision.ts` and "does not compile" is a length
+check, so the lessons say what the page displays, not anything about types.
+
 Unit tests for the reporter's pure logic (`slugify`, `topLevelSteps`,
 `classifyAttachment`, `groupAttachmentsByStepIndex`,
 `compileTutorialTest`, including the failing-test-produces-no-output case)
@@ -174,7 +225,10 @@ test` (vitest).
   reporter follows CIT-235's pseudocode rather than the hand-authored
   convention.
 - **`focus` is a heuristic**, not part of the original contract: the first
-  file a step's attachments introduce, if any. Good enough for a
-  single-new-file-per-step test like this one; a step that introduces
-  multiple files would need a real answer before this goes past spike
-  stage.
+  file (alphabetically) a step changes that exists at the start of the
+  step. Lesson 3 only *introduces* `booking-confirmation.txt`, so it has no
+  `focus` and TutorialKit opens with an empty editor. A step that changes
+  several files would need a real answer before this goes past spike stage.
+- **`before/` attachments added (CIT-236).** The sketch had only end-state
+  `file/` attachments; the start state is now declared and checked -- see
+  "State continuity".

@@ -31,17 +31,48 @@ async function stableScreenshot(page: import('@playwright/test').Page) {
   return page.screenshot();
 }
 
+// The one place "what files does the UI show" is read. Called at the start
+// of a step (after the story loads, so it reflects the story's args) and
+// again at the end, so a lesson's `_files` and `_solution` come from the same
+// scraper rather than from hand-written strings. Note these are DOM scrapes:
+// nothing here parses or type-checks `decision.ts`, and "does not compile"
+// is a length check in the component -- the lessons show what the page
+// says, they don't prove anything about types.
+async function readFiles(page: import('@playwright/test').Page): Promise<Record<string, string>> {
+  const files: Record<string, string> = {
+    'reason.txt': await page.getByTestId('reason-input').inputValue(),
+    'decision.ts': (await page.getByTestId('decision-code').innerText()).trim(),
+  };
+  const confirmation = page.getByTestId('confirmation');
+  if ((await confirmation.count()) > 0) files['booking-confirmation.txt'] = (await confirmation.innerText()).trim();
+  return files;
+}
+
 type TestInfo = Parameters<Parameters<typeof test>[2]>[1];
 
 // index is this step's 1-based position -- see the file-header comment on
 // why it has to be baked into the attachment name itself.
+//
+// `before/file/<path>` is state at the START of the step (becomes the
+// lesson's `_files`); `file/<path>` is state at the END (`_solution`). The
+// reporter fails the compile unless every step's start equals the previous
+// step's end -- see reporters/README.md.
 function attachTutorial(
   testInfo: TestInfo,
   index: number,
-  name: 'prose' | 'frame' | `file/${string}`,
+  name: 'prose' | 'frame' | `file/${string}` | `before/file/${string}`,
   options: Parameters<TestInfo['attach']>[1],
 ) {
   return testInfo.attach(`tutorial:${index}:${name}`, options);
+}
+
+async function attachFiles(testInfo: TestInfo, index: number, phase: 'before' | 'after', page: import('@playwright/test').Page) {
+  for (const [file, body] of Object.entries(await readFiles(page))) {
+    await attachTutorial(testInfo, index, phase === 'before' ? `before/file/${file}` : `file/${file}`, {
+      body,
+      contentType: 'text/plain',
+    });
+  }
 }
 
 test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
@@ -49,13 +80,12 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
     await page.goto(`/iframe.html?id=${STORY.step1}&viewMode=story`);
 
     await expect(page.getByRole('alert')).toHaveText(/reason does not compile/);
+    await attachFiles(testInfo, 1, 'before', page);
 
-    const reasonInput = page.getByTestId('reason-input');
-    await reasonInput.fill(VALID_REASON);
+    await page.getByTestId('reason-input').fill(VALID_REASON);
     await expect(page.getByRole('alert')).toHaveCount(0);
 
-    const reasonText = await reasonInput.inputValue();
-    await attachTutorial(testInfo, 1, 'file/reason.txt', { body: reasonText, contentType: 'text/plain' });
+    await attachFiles(testInfo, 1, 'after', page);
     await attachTutorial(testInfo, 1, 'prose', {
       body:
         "`reason.txt` starts empty, so the check under it reads it as not compiling -- the red squiggle is that check " +
@@ -70,17 +100,17 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
     await page.goto(`/iframe.html?id=${STORY.step2}&viewMode=story`);
 
     await expect(page.getByTestId('decision-badge')).toHaveText('untyped');
+    await attachFiles(testInfo, 2, 'before', page);
 
     await page.getByTestId('type-decision-button').click();
     await expect(page.getByTestId('decision-badge')).toHaveText('typed');
 
-    const decisionText = (await page.getByTestId('decision-code').innerText()).trim();
-    await attachTutorial(testInfo, 2, 'file/decision.ts', { body: decisionText, contentType: 'text/plain' });
+    await attachFiles(testInfo, 2, 'after', page);
     await attachTutorial(testInfo, 2, 'prose', {
       body:
         "`decision.ts` starts as `let decision: any;` -- untyped, so nothing here stops a bad value from reaching " +
-        "`run booking` downstream. Add the type annotation and the badge flips: the decision is now `'approve' | " +
-        "'deny'`, not `any`.",
+        "`run booking` downstream. Add the type annotation and the badge flips: the line now reads `'approve' | " +
+        "'deny'` instead of `any`. (This demo only displays the annotation; nothing here type-checks it.)",
       contentType: 'text/markdown',
     });
     await attachTutorial(testInfo, 2, 'frame', { body: await stableScreenshot(page), contentType: 'image/png' });
@@ -92,13 +122,12 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
     await expect(page.getByTestId('run-blocked')).toHaveCount(0);
     const runButton = page.getByTestId('run-button');
     await expect(runButton).toBeVisible();
+    await attachFiles(testInfo, 3, 'before', page);
 
     await runButton.click();
-    const confirmation = page.getByTestId('confirmation');
-    await expect(confirmation).toBeVisible();
+    await expect(page.getByTestId('confirmation')).toBeVisible();
 
-    const confirmationText = (await confirmation.innerText()).trim();
-    await attachTutorial(testInfo, 3, 'file/booking-confirmation.txt', { body: confirmationText, contentType: 'text/plain' });
+    await attachFiles(testInfo, 3, 'after', page);
     await attachTutorial(testInfo, 3, 'prose', {
       body:
         'With `reason.txt` compiling and `decision.ts` typed, the ▶ is no longer blocked -- both checks upstream of it ' +

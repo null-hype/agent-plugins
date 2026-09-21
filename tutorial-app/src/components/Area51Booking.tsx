@@ -28,6 +28,10 @@ export default function Area51Booking({ reasonState, decisionState }: Area51Book
   const [confirmed, setConfirmed] = useState(false);
 
   const reasonValid = reason.trim().length >= 10;
+  // `runnable` means the two checks upstream pass -- it is NOT "allowed".
+  // The next storyboard frame adds a monitor that can still reject a runnable
+  // booking, so don't let this (or the CONFIRMED text below) harden into
+  // "runnable implies permitted".
   const runnable = reasonValid && decisionTyped;
 
   return (

@@ -1,9 +1,10 @@
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TestCase, TestResult, TestStep } from '@playwright/test/reporter';
 import {
+  ContinuityError,
   classifyAttachment,
   compileTutorialTest,
   groupAttachmentsByStepIndex,
@@ -64,6 +65,7 @@ describe('classifyAttachment', () => {
   it('routes tutorial:file/, tutorial:prose, and image attachments; ignores everything else', () => {
     const body = Buffer.from('hi');
     expect(classifyAttachment('file/reason.txt', 'text/plain', body)).toMatchObject({ kind: 'file', path: 'reason.txt' });
+    expect(classifyAttachment('before/file/reason.txt', 'text/plain', body)).toMatchObject({ kind: 'beforeFile', path: 'reason.txt' });
     expect(classifyAttachment('prose', 'text/markdown', body)).toMatchObject({ kind: 'prose' });
     expect(classifyAttachment('frame', 'image/png', body)).toMatchObject({ kind: 'screenshot' });
     expect(classifyAttachment('unrelated', 'application/zip', body)).toMatchObject({ kind: 'ignore' });
@@ -94,31 +96,54 @@ describe('groupAttachmentsByStepIndex / reduceStepAttachments', () => {
   });
 });
 
+/** Every file under `root`, relative path -> bytes, so whole trees can be compared. */
+function readTree(root: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir).sort()) {
+      const full = path.join(dir, name);
+      if (statSync(full).isDirectory()) walk(full);
+      else out[path.relative(root, full)] = readFileSync(full).toString('base64');
+    }
+  };
+  walk(root);
+  return out;
+}
+
+const test: Pick<TestCase, 'title' | 'tags'> = { title: 'area51 booking', tags: ['@tutorial'] };
+const passed = (steps: TestStep[], attachments: ReturnType<typeof attachment>[]) =>
+  ({ status: 'passed', steps, attachments }) as Pick<TestResult, 'status' | 'steps' | 'attachments'>;
+
+// A continuous two-step storyboard: step 2 starts exactly where step 1 ended.
+const continuousAttachments = () => [
+  attachment('tutorial:1:before/file/reason.txt', 'text/plain', ''),
+  attachment('tutorial:1:before/file/decision.ts', 'text/plain', 'let decision: any;'),
+  attachment('tutorial:1:file/reason.txt', 'text/plain', 'a valid reason'),
+  attachment('tutorial:1:file/decision.ts', 'text/plain', 'let decision: any;'),
+  attachment('tutorial:1:prose', 'text/markdown', 'Fix the reason.'),
+  attachment('tutorial:2:before/file/reason.txt', 'text/plain', 'a valid reason'),
+  attachment('tutorial:2:before/file/decision.ts', 'text/plain', 'let decision: any;'),
+  attachment('tutorial:2:file/reason.txt', 'text/plain', 'a valid reason'),
+  attachment('tutorial:2:file/decision.ts', 'text/plain', "let decision: 'approve' | 'deny';"),
+];
+
 describe('compileTutorialTest', () => {
-  let dir: string;
+  const dirs: string[] = [];
+  const tmp = () => {
+    const d = mkdtempSync(path.join(tmpdir(), 'tutorial-reporter-'));
+    dirs.push(d);
+    return d;
+  };
 
   afterEach(() => {
-    if (dir) rmSync(dir, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
   });
 
-  it('writes one lesson per top-level step, with cumulative _files/_solution', () => {
-    dir = mkdtempSync(path.join(tmpdir(), 'tutorial-reporter-'));
+  const steps = () => [step({ title: 'reason does not compile' }), step({ title: 'decision is typed' })];
 
-    const s1 = step({ title: 'reason does not compile' });
-    const s2 = step({ title: 'decision is typed' });
-
-    const test: Pick<TestCase, 'title' | 'tags'> = { title: 'area51 booking', tags: ['@tutorial'] };
-    const result: Pick<TestResult, 'status' | 'steps' | 'attachments'> = {
-      status: 'passed',
-      steps: [s1, s2],
-      attachments: [
-        attachment('tutorial:1:file/reason.txt', 'text/plain', 'a valid reason'),
-        attachment('tutorial:1:prose', 'text/markdown', 'Fix the reason.'),
-        attachment('tutorial:2:file/decision.ts', 'text/plain', "let decision: 'approve' | 'deny';"),
-      ],
-    };
-
-    compileTutorialTest(test, result, dir);
+  it('writes one lesson per top-level step, with _files from the declared start state and _solution from the end state', () => {
+    const dir = tmp();
+    compileTutorialTest(test, passed(steps(), continuousAttachments()), dir);
 
     const chapterDir = path.join(dir, 'area51-booking');
     expect(readdirSync(chapterDir).sort()).toEqual(['1-reason-does-not-compile', '2-decision-is-typed', 'meta.md'].sort());
@@ -127,40 +152,80 @@ describe('compileTutorialTest', () => {
     expect(meta).toContain('type: chapter');
     expect(meta).toContain('title: area51 booking');
 
-    // Lesson 1: _files is the empty starting state, _solution has reason.txt.
+    // Lesson 1 starts with the files the prose talks about, not an empty dir.
     const lesson1 = path.join(chapterDir, '1-reason-does-not-compile');
-    expect(readdirSync(path.join(lesson1, '_files'))).toEqual([]);
+    expect(readFileSync(path.join(lesson1, '_files', 'reason.txt'), 'utf8')).toBe('');
+    expect(readFileSync(path.join(lesson1, '_files', 'decision.ts'), 'utf8')).toBe('let decision: any;');
     expect(readFileSync(path.join(lesson1, '_solution', 'reason.txt'), 'utf8')).toBe('a valid reason');
     expect(readFileSync(path.join(lesson1, 'content.mdx'), 'utf8')).toContain('Fix the reason.');
+    // ...and focus points at a file that now exists in _files, the one this step changes.
+    expect(readFileSync(path.join(lesson1, 'content.mdx'), 'utf8')).toContain('focus: /reason.txt');
 
-    // Lesson 2: _files carries lesson 1's solved state forward; _solution adds decision.ts.
+    // Lesson 2: Solve *changes* decision.ts (any -> typed), it doesn't add it.
     const lesson2 = path.join(chapterDir, '2-decision-is-typed');
-    expect(readFileSync(path.join(lesson2, '_files', 'reason.txt'), 'utf8')).toBe('a valid reason');
-    expect(readFileSync(path.join(lesson2, '_solution', 'reason.txt'), 'utf8')).toBe('a valid reason');
+    expect(readFileSync(path.join(lesson2, '_files', 'decision.ts'), 'utf8')).toBe('let decision: any;');
     expect(readFileSync(path.join(lesson2, '_solution', 'decision.ts'), 'utf8')).toBe("let decision: 'approve' | 'deny';");
+    expect(readFileSync(path.join(lesson2, 'content.mdx'), 'utf8')).toContain('focus: /decision.ts');
   });
 
-  it('is byte-identical across repeated compiles of the same test result', () => {
-    dir = mkdtempSync(path.join(tmpdir(), 'tutorial-reporter-'));
-    const other = mkdtempSync(path.join(tmpdir(), 'tutorial-reporter-'));
+  it('omits focus when a step only introduces a file, since it is absent from _files', () => {
+    const dir = tmp();
+    const attachments = [
+      attachment('tutorial:1:before/file/a.txt', 'text/plain', 'a'),
+      attachment('tutorial:1:file/a.txt', 'text/plain', 'a'),
+      attachment('tutorial:1:file/new.txt', 'text/plain', 'new'),
+    ];
+    compileTutorialTest(test, passed([step({ title: 'adds a file' })], attachments), dir);
+    expect(readFileSync(path.join(dir, 'area51-booking', '1-adds-a-file', 'content.mdx'), 'utf8')).not.toContain('focus:');
+  });
 
-    const s1 = step({ title: 'runnable appears' });
-    const test: Pick<TestCase, 'title' | 'tags'> = { title: 'area51 booking', tags: ['@tutorial'] };
-    const result: Pick<TestResult, 'status' | 'steps' | 'attachments'> = {
-      status: 'passed',
-      steps: [s1],
-      attachments: [attachment('tutorial:1:file/booking-confirmation.txt', 'text/plain', 'CONFIRMED: area51 booking')],
-    };
+  it('is byte-identical across repeated compiles: the whole output tree, not one directory', () => {
+    const a = tmp();
+    const b = tmp();
+    compileTutorialTest(test, passed(steps(), [...continuousAttachments(), attachment('tutorial:1:frame', 'image/png', 'png-1')]), a);
+    compileTutorialTest(test, passed(steps(), [...continuousAttachments(), attachment('tutorial:1:frame', 'image/png', 'png-1')]), b);
 
-    compileTutorialTest(test, result, dir);
-    compileTutorialTest(test, result, other);
+    const treeA = readTree(a);
+    expect(Object.keys(treeA).length).toBeGreaterThan(8); // meta + content x2 + _files/_solution + frame
+    expect(treeA).toEqual(readTree(b));
+  });
 
-    const readTree = (root: string) =>
-      readdirSync(path.join(root, 'area51-booking', '1-runnable-appears', '_solution')).map((name) =>
-        readFileSync(path.join(root, 'area51-booking', '1-runnable-appears', '_solution', name)),
-      );
+  it('fails the compile and writes nothing when a step starts somewhere the previous step did not end', () => {
+    const dir = tmp();
+    const broken = continuousAttachments().map((a) =>
+      // step 2 starts from a *different* reason than step 1 ended with -- the drift CIT-236 exists to catch.
+      a.name === 'tutorial:2:before/file/reason.txt' ? attachment(a.name, a.contentType, 'some other reason') : a,
+    );
 
-    expect(readTree(dir)).toEqual(readTree(other));
-    rmSync(other, { recursive: true, force: true });
+    let thrown: unknown;
+    try {
+      compileTutorialTest(test, passed(steps(), broken), dir);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ContinuityError);
+    expect((thrown as ContinuityError).problems).toHaveLength(1);
+    expect((thrown as ContinuityError).message).toContain('reason.txt: differs');
+    expect((thrown as ContinuityError).message).toContain('end of step 1');
+    expect((thrown as ContinuityError).message).toContain('start of step 2');
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it('leaves previously compiled output untouched when the new storyboard is discontinuous', () => {
+    const dir = tmp();
+    compileTutorialTest(test, passed(steps(), continuousAttachments()), dir);
+    const before = readTree(dir);
+
+    const dropped = continuousAttachments().filter((a) => a.name !== 'tutorial:2:before/file/decision.ts');
+    expect(() => compileTutorialTest(test, passed(steps(), dropped), dir)).toThrow(/decision\.ts: in end of step 1.*missing from start of step 2/);
+    expect(readTree(dir)).toEqual(before);
+  });
+
+  it('treats a missing before/ declaration as an empty start, which is only continuous for step 1', () => {
+    const dir = tmp();
+    const noBefore = continuousAttachments().filter((a) => !a.name.includes(':before/'));
+    expect(() => compileTutorialTest(test, passed(steps(), noBefore), dir)).toThrow(ContinuityError);
+    expect(existsSync(path.join(dir, 'area51-booking'))).toBe(false);
   });
 });
