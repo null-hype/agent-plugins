@@ -9,7 +9,7 @@ import type { Board, Category } from './followerMazeLog';
  * no evidence. Those stay in the warm log's marker, hover, lens and widget.
  */
 
-const OUTCOME_STYLE: Record<Category | 'unevaluated', { background: string; color: string }> = {
+export const OUTCOME_STYLE: Record<Category | 'unevaluated', { background: string; color: string }> = {
   unevaluated: { background: '#f6f3ea', color: '#5f5b4f' },
   pass: { background: '#dff3e4', color: '#1a7f37' },
   missing: { background: '#fbe3e1', color: '#b3261e' },
@@ -18,40 +18,7 @@ const OUTCOME_STYLE: Record<Category | 'unevaluated', { background: string; colo
   other: { background: '#e5e5e5', color: '#333' },
 };
 
-const MONO = '12px "Roboto Mono", Menlo, Consolas, monospace';
-
-/**
- * Storyboard frame 5: a 6x4 grid, one chip per arrival ordering. The category
- * is spelled out on every chip, not only coloured, so the four outcomes are
- * distinguishable without relying on hue.
- */
-export function FamilyGrid({ board }: { board: Board }) {
-  if (board.cases.length === 0) return null;
-  return (
-    <div
-      role="group"
-      aria-label="arrival orderings"
-      data-testid="family-grid"
-      style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4, margin: '8px 0', font: MONO }}
-    >
-      {board.cases.map(({ name, category }) => {
-        const outcome = category ?? 'unevaluated';
-        return (
-          <span
-            key={name}
-            data-testid={`chip-${name}`}
-            data-outcome={outcome}
-            aria-label={`${name}: ${category ?? 'not evaluated'}`}
-            style={{ ...OUTCOME_STYLE[outcome], padding: '4px 6px', border: '1px solid #d8d4c8', display: 'flex', justifyContent: 'space-between' }}
-          >
-            <b>{name}</b>
-            <span>{category ?? '·'}</span>
-          </span>
-        );
-      })}
-    </div>
-  );
-}
+export const MONO = '12px "Roboto Mono", Menlo, Consolas, monospace';
 
 /**
  * Storyboard frame 6's terminal repair row. The three repairs are not the same
