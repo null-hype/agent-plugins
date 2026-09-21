@@ -1,6 +1,7 @@
 import { appendFileSync } from 'node:fs';
 import { expect } from 'vitest';
 import { axioms, type AxiomId } from './axioms';
+import { followerMazeWorldRef } from '../lesson-farms/follower-maze/followerMaze';
 
 function worldRef(axiomId: AxiomId, world: any): string {
   switch (axiomId) {
@@ -22,6 +23,8 @@ function worldRef(axiomId: AxiomId, world: any): string {
       const factFileRef = world.factFiles.map((f: { path: string }) => f.path).sort().join('|');
       return `grants=[${grantRef}] observations=[${observationRef}] factFiles=[${factFileRef}]`;
     }
+    case 'followerMaze.orderedRouting':
+      return followerMazeWorldRef(world);
   }
 }
 
