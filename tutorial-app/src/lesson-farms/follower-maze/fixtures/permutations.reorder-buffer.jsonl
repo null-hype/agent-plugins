@@ -1,24 +1,24 @@
-{"raw":"[1,2,3,4]  1|F|10|20 2|S|20 3|U|10|20 4|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1234","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[1,2,4,3]  1|F|10|20 2|S|20 4|S|20 3|U|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1243","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[1,3,2,4]  1|F|10|20 3|U|10|20 2|S|20 4|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1324","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[1,3,4,2]  1|F|10|20 3|U|10|20 4|S|20 2|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1342","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[1,4,2,3]  1|F|10|20 4|S|20 2|S|20 3|U|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1423","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[1,4,3,2]  1|F|10|20 4|S|20 3|U|10|20 2|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1432","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[2,1,3,4]  2|S|20 1|F|10|20 3|U|10|20 4|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2134","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[2,1,4,3]  2|S|20 1|F|10|20 4|S|20 3|U|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2143","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[2,3,1,4]  2|S|20 3|U|10|20 1|F|10|20 4|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2314","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[2,3,4,1]  2|S|20 3|U|10|20 4|S|20 1|F|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2341","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[2,4,1,3]  2|S|20 4|S|20 1|F|10|20 3|U|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2413","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[2,4,3,1]  2|S|20 4|S|20 3|U|10|20 1|F|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2431","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[3,1,2,4]  3|U|10|20 1|F|10|20 2|S|20 4|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3124","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[3,1,4,2]  3|U|10|20 1|F|10|20 4|S|20 2|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3142","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[3,2,1,4]  3|U|10|20 2|S|20 1|F|10|20 4|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3214","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[3,2,4,1]  3|U|10|20 2|S|20 4|S|20 1|F|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3241","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[3,4,1,2]  3|U|10|20 4|S|20 1|F|10|20 2|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3412","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[3,4,2,1]  3|U|10|20 4|S|20 2|S|20 1|F|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3421","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[4,1,2,3]  4|S|20 1|F|10|20 2|S|20 3|U|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4123","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[4,1,3,2]  4|S|20 1|F|10|20 3|U|10|20 2|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4132","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[4,2,1,3]  4|S|20 2|S|20 1|F|10|20 3|U|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4213","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[4,2,3,1]  4|S|20 2|S|20 3|U|10|20 1|F|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4231","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[4,3,1,2]  4|S|20 3|U|10|20 1|F|10|20 2|S|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4312","axiomId":"followerMaze.orderedRouting","flags":[]}
-{"raw":"[4,3,2,1]  4|S|20 3|U|10|20 2|S|20 1|F|10|20","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4321","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[1,2,3,4]  1|F|10|20 2|S|20 3|U|10|20 4|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1234","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[1,2,4,3]  1|F|10|20 2|S|20 4|S|20 3|U|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1243","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[1,3,2,4]  1|F|10|20 3|U|10|20 2|S|20 4|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1324","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[1,3,4,2]  1|F|10|20 3|U|10|20 4|S|20 2|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1342","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[1,4,2,3]  1|F|10|20 4|S|20 2|S|20 3|U|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1423","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[1,4,3,2]  1|F|10|20 4|S|20 3|U|10|20 2|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-1432","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[2,1,3,4]  2|S|20 1|F|10|20 3|U|10|20 4|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2134","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[2,1,4,3]  2|S|20 1|F|10|20 4|S|20 3|U|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2143","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[2,3,1,4]  2|S|20 3|U|10|20 1|F|10|20 4|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2314","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[2,3,4,1]  2|S|20 3|U|10|20 4|S|20 1|F|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2341","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[2,4,1,3]  2|S|20 4|S|20 1|F|10|20 3|U|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2413","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[2,4,3,1]  2|S|20 4|S|20 3|U|10|20 1|F|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-2431","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[3,1,2,4]  3|U|10|20 1|F|10|20 2|S|20 4|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3124","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[3,1,4,2]  3|U|10|20 1|F|10|20 4|S|20 2|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3142","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[3,2,1,4]  3|U|10|20 2|S|20 1|F|10|20 4|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3214","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[3,2,4,1]  3|U|10|20 2|S|20 4|S|20 1|F|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3241","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[3,4,1,2]  3|U|10|20 4|S|20 1|F|10|20 2|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3412","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[3,4,2,1]  3|U|10|20 4|S|20 2|S|20 1|F|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-3421","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[4,1,2,3]  4|S|20 1|F|10|20 2|S|20 3|U|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4123","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[4,1,3,2]  4|S|20 1|F|10|20 3|U|10|20 2|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4132","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[4,2,1,3]  4|S|20 2|S|20 1|F|10|20 3|U|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4213","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[4,2,3,1]  4|S|20 2|S|20 3|U|10|20 1|F|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4231","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[4,3,1,2]  4|S|20 3|U|10|20 1|F|10|20 2|S|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4312","axiomId":"followerMaze.orderedRouting","flags":[]}
+{"raw":"[4,3,2,1]  4|S|20 3|U|10|20 2|S|20 1|F|10|20  -> pass","diagnostic":null,"related":[],"evaluationId":"followerMaze.orderedRouting:arrival-4321","axiomId":"followerMaze.orderedRouting","flags":[]}
