@@ -24,6 +24,7 @@ import {
   familyRecords,
   initialLessonState,
   outcomeCategory,
+  pairedRows,
   reduceLesson,
   toJsonl,
   worldFor,
@@ -232,17 +233,29 @@ describe('follower maze: the lesson board', () => {
     expect(reduceLesson(initialLessonState, { type: 'evaluate' })).toBe(initialLessonState);
   });
 
-  it('a green baseline carries a warning derived from the family, not a constant', () => {
+  it('a green baseline is followed by a visible warning derived from the family, not a constant', () => {
     const board = drive(solve, { type: 'evaluate' });
-    const verdict = board.records.find((r) => r.raw.startsWith('evaluate'))!;
-    expect(verdict.raw).toContain('PASS');
-    expect(verdict.diagnostic).toMatchObject({ severity: 'warning', code: 'lesson-baseline-nondiscriminating' });
-    expect(verdict.diagnostic!.message).toContain('4 of 24');
+    const at = board.records.findIndex((r) => r.raw.startsWith('evaluate'));
+    expect(board.records[at].raw).toMatch(/-> pass$/);
+    expect(board.records[at].diagnostic).toBeNull();
+    // The warning is the next line of the log: text on screen, not only a marker message.
+    const warning = board.records[at + 1];
+    const sentence = 'This ordering passes, but this model fails 20 of the other 23. Test all 24 orderings.';
+    expect(warning.raw).toBe(sentence);
+    expect(warning.diagnostic).toMatchObject({
+      severity: 'warning',
+      code: 'lesson-baseline-nondiscriminating',
+      message: sentence,
+      lensTitle: 'passes here, fails 20 of the other 23',
+    });
+    expect(warning.evaluationId).toBeNull(); // not an evaluation: the counter still says 1 pass
+    expect(counterText(board.tally)).toBe('1 pass · 0 missing · 0 forbidden · 0 both');
   });
 
   it('a witness that passes the whole family gets no baseline warning', () => {
     const board = drive({ type: 'solve', model: 'reorder-buffer' }, { type: 'evaluate' });
-    expect(board.records.find((r) => r.raw.startsWith('evaluate'))!.diagnostic).toBeNull();
+    expect(board.records.some((r) => r.diagnostic)).toBe(false);
+    expect(board.records.at(-1)!.raw).toMatch(/-> pass$/);
   });
 
   it('transform resets evaluation; evaluating the family fills the counter footer', () => {
@@ -260,5 +273,77 @@ describe('follower maze: the lesson board', () => {
     const board = drive(solve, { type: 'transform' });
     board.axiomIds.push('somethingElse.entirely');
     expect(badgeText(board)).toContain('the transfer failed');
+  });
+});
+
+describe('follower maze: the failing world is a comparison, not prose (CIT-226)', () => {
+  const record = (name: string, model: keyof typeof WITNESS_MODELS = 'arrival-order') =>
+    familyRecords(model).find((r) => r.raw.startsWith(`[${name.split('').join(',')}]`))!;
+
+  it('pairs expected with actual, the missing delivery holding its expected position', () => {
+    const rows = record('4231').related.filter((entry) => entry.uri === 'expected|actual').map((entry) => entry.detail);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatch(/^row\s+expected\s+\| actual$/);
+    expect(rows[1]).toMatch(/^1\/2\s+10 <- seq 2\s+\| - - missing - -\s+\[missing\]$/);
+    expect(rows[2]).toMatch(/^2\/2\s+20 <- seq 1\s+\| 20 <- seq 1\s+\[ok\]$/);
+    // one line of the 600px evidence widget (~80 mono chars, less its 'observation (expected|actual): ' prefix)
+    expect(rows.every((row) => row.length + 'observation (expected|actual): '.length <= 80)).toBe(true);
+  });
+
+  it('mirrors it for a forbidden delivery: nothing due, something delivered', () => {
+    const world = worldFor([1, 2, 4, 3]);
+    const rows = pairedRows(world, WITNESS_MODELS['arrival-order'](world));
+    expect(rows).toHaveLength(4); // header + 2 required + 1 forbidden
+    expect(rows[3]).toMatch(/^3\/3\s+- - not due - -\s+\| 10 <- seq 4\s+\[forbidden\]$/);
+  });
+
+  it('a correct witness pairs every row ok', () => {
+    const world = worldFor([4, 2, 3, 1]);
+    expect(pairedRows(world, reorderBufferWitness(world)).slice(1).every((row) => row.endsWith('[ok]'))).toBe(true);
+  });
+
+  it('every evaluated row names its outcome, so pass is not the same text as unevaluated', () => {
+    const unevaluated = familyRecords('arrival-order', false).map((r) => r.raw);
+    expect(unevaluated.some((raw) => raw.includes('->'))).toBe(false);
+    for (const [category, names] of Object.entries(EXPECTED)) {
+      for (const name of names) expect(record(name).raw).toMatch(new RegExp(`-> ${category}$`));
+    }
+  });
+
+  it('lens titles say the outcome in words: "both" is not filed under its first code', () => {
+    expect(record('1432').diagnostic!.lensTitle).toBe('both: missing 10 <- seq 2, forbidden 10 <- seq 4');
+    expect(record('1243').diagnostic!.lensTitle).toBe('forbidden 10 <- seq 4');
+    expect(record('4231').diagnostic!.lensTitle).toBe('missing 10 <- seq 2');
+    expect(familyRecords('arrival-order').every((r) => !r.diagnostic || !r.diagnostic.lensTitle!.includes('fm-'))).toBe(true);
+  });
+
+  it('separates the repair the learner can make from the conceptual ones', () => {
+    const text = (role: string) => record('4231').related.filter((e) => e.role === role).map((e) => e.detail).join('\n');
+    expect(text('observation')).toContain('(change model: available');
+    expect(text('fact')).toContain('(change world: conceptual');
+    expect(text('axiom')).toContain('(change axiom: conceptual');
+  });
+
+  it('the grid data: 24 cases, unlabelled until evaluated, the table once evaluated', () => {
+    const drive = (...actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, initialLessonState));
+    const solve: LessonAction = { type: 'solve', model: 'arrival-order' };
+    expect(drive(solve).cases).toEqual([]);
+    expect(drive(solve, { type: 'transform' }).cases.every((c) => c.category === null)).toBe(true);
+    const evaluated = drive(solve, { type: 'transform' }, { type: 'evaluate' }).cases;
+    for (const [category, names] of Object.entries(EXPECTED)) {
+      expect(evaluated.filter((c) => c.category === category).map((c) => c.name)).toEqual(names);
+    }
+  });
+
+  it('changing the model in place reruns the same family: 4231 flips from missing to pass', () => {
+    const before = [{ type: 'solve', model: 'arrival-order' }, { type: 'transform' }, { type: 'evaluate' }] as LessonAction[];
+    const after = [...before, { type: 'solve', model: 'reorder-buffer' }, { type: 'evaluate' }] as LessonAction[];
+    const at = (actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, initialLessonState));
+    expect(at(before).cases.find((c) => c.name === '4231')!.category).toBe('missing');
+    const rerun = at(after);
+    expect(rerun.cases.find((c) => c.name === '4231')!.category).toBe('pass');
+    expect(counterText(rerun.tally)).toBe('24 pass · 0 missing · 0 forbidden · 0 both');
+    expect(rerun.worlds).toBe(24); // same family, not a new one
+    expect(rerun.axiomIds).toEqual([ORDERED_ROUTING]);
   });
 });

@@ -1,8 +1,9 @@
-import React, { useMemo, useReducer } from 'react';
+import React, { useMemo, useReducer, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import OtelWarmLogPreview from './OtelWarmLogPreview';
 import FollowerMazeStatus from '../lesson-farms/follower-maze/FollowerMazeStatus';
+import { FamilyGrid, RepairRow } from '../lesson-farms/follower-maze/FollowerMazeBoardState';
 import {
 	boardFor,
 	initialLessonState,
@@ -10,7 +11,7 @@ import {
 	toJsonl,
 	type LessonAction,
 } from '../lesson-farms/follower-maze/followerMazeLog';
-import type { WitnessModelId } from '../lesson-farms/follower-maze/followerMaze';
+import { WITNESS_MODELS, type WitnessModelId } from '../lesson-farms/follower-maze/followerMaze';
 import arrivalOrderLog from '../lesson-farms/follower-maze/fixtures/permutations.arrival-order.jsonl?raw';
 import reorderBufferLog from '../lesson-farms/follower-maze/fixtures/permutations.reorder-buffer.jsonl?raw';
 
@@ -20,9 +21,11 @@ import reorderBufferLog from '../lesson-farms/follower-maze/fixtures/permutation
  * Every diagnostic here -- squiggle, hover, CodeLens, evidence widget -- is
  * drawn by templates/otel-warm-log's own Monaco marker path. This file adds no
  * diagnostic-rendering surface: the lesson hands the page `{raw, diagnostic,
- * related}` records (followerMazeLog.ts) and a status strip shows the axiom
- * badge and counter footer, which are board *state* derived from those same
- * records.
+ * related}` records (followerMazeLog.ts). Three small pieces show board *state*
+ * derived from those same records and never a diagnostic: the axiom badge and
+ * counter footer (FollowerMazeStatus), the 6x4 outcome grid, and the repair row
+ * (FollowerMazeBoardState -- CIT-226). The expected-vs-actual pairing lives in the
+ * evidence widget's own rows.
  *
  * Frames 1-4 are two-to-five-line states, and they are rendered by the warm
  * log too rather than as cards. Reason: the lesson's wire format
@@ -49,20 +52,41 @@ type Story = StoryObj<typeof meta>;
 
 // -- the lesson, as a learner drives it ---------------------------------------
 
+// `model` is the witness model the learner starts with; the selector changes it.
 function Workbench({ model, height }: { model: WitnessModelId; height: number }) {
 	const [state, dispatch] = useReducer(reduceLesson, initialLessonState);
+	const [choice, setChoice] = useState<WitnessModelId>(model);
 	const board = useMemo(() => boardFor(state), [state]);
 	const fixtures = useMemo(() => ({ '/reason-log.jsonl': toJsonl(board.records) }), [board]);
 	const act = (action: LessonAction) => () => dispatch(action);
+	// The repair the lesson can actually offer: swap the model, then rerun the
+	// same family in place (solve keeps the arrival orderings; evaluate reruns them).
+	const switchModel = (next: WitnessModelId) => {
+		setChoice(next);
+		dispatch({ type: 'solve', model: next });
+		dispatch({ type: 'evaluate' });
+	};
 	return (
 		<>
 			<div role="toolbar" aria-label="lesson actions" style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-				<button onClick={act({ type: 'solve', model })}>Run solve()</button>
+				<label>
+					Witness model{' '}
+					<select value={choice} onChange={(event) => setChoice(event.target.value as WitnessModelId)}>
+						{Object.keys(WITNESS_MODELS).map((id) => (
+							<option key={id} value={id}>
+								{id}
+							</option>
+						))}
+					</select>
+				</label>
+				<button onClick={act({ type: 'solve', model: choice })}>Run solve()</button>
 				<button onClick={act({ type: 'evaluate' })}>Evaluate</button>
 				<button onClick={act({ type: 'transform' })}>Transform arrival order</button>
 			</div>
 			<FollowerMazeStatus board={board} />
+			<FamilyGrid board={board} />
 			<OtelWarmLogPreview fixtures={fixtures} height={height} />
+			<RepairRow board={board} witness={state.witness} onSwitchModel={switchModel} />
 		</>
 	);
 }
@@ -85,6 +109,10 @@ const markers = (canvasElement: HTMLElement) => {
 
 const expectMarkers = (canvasElement: HTMLElement, count: number) =>
 	waitFor(() => expect(markers(canvasElement)).toHaveLength(count), { timeout: 15000 });
+
+// What the CodeLens rows say on screen, i.e. what a learner reads without hovering.
+const lensTexts = (canvasElement: HTMLElement) =>
+	Array.from(frameDoc(canvasElement).querySelectorAll('.codelens-decoration')).map((lens) => lens.textContent ?? '');
 
 const lensCount = (canvasElement: HTMLElement) => frameDoc(canvasElement).querySelectorAll('.codelens-decoration').length;
 
@@ -165,15 +193,21 @@ export const Walkthrough: Story = {
 			await expectMarkers(canvasElement, 0);
 		});
 
-		await step('3 · evaluate baseline: green, with a warning that green rules out nothing', async () => {
+		await step('3 · evaluate baseline: green, with the warning beside it, readable without hovering', async () => {
 			await userEvent.click(canvas.getByRole('button', { name: 'Evaluate' }));
-			await pageShows(canvasElement, 'PASS');
+			const warning = 'This ordering passes, but this model fails 20 of the other 23. Test all 24 orderings.';
+			await pageShows(canvasElement, '-> pass');
+			await pageShows(canvasElement, warning); // a line of the editor, not a marker message
 			await expectMarkers(canvasElement, 1);
 			const [marker] = markers(canvasElement);
 			await expect(marker.severity).toBe(4); // MarkerSeverity.Warning: not an error, the baseline did pass
-			await expect(marker.message).toContain('green here rules out nothing');
-			await expect(marker.message).toContain('4 of 24');
+			await expect(marker.message).toBe(warning);
 			await lensesRendered(canvasElement, 1);
+			// The lens says it in words and is marked as a warning, not as a failure.
+			const [lens] = lensTexts(canvasElement);
+			await expect(lens).toContain('⚠ passes here, fails 20 of the other 23');
+			await expect(lens).not.toContain('✗');
+			await expect(lens).not.toContain('lesson-baseline-nondiscriminating');
 			await expect(footer()).toHaveTextContent('1 pass · 0 missing · 0 forbidden · 0 both');
 		});
 
@@ -186,20 +220,39 @@ export const Walkthrough: Story = {
 			await expect(footer()).toHaveTextContent('not evaluated');
 		});
 
-		await step('5 · evaluate family: 20 of 24 orderings fail, by the description table', async () => {
+		await step('5 · evaluate family: four outcomes told apart in the grid, the log and the lenses', async () => {
 			await userEvent.click(canvas.getByRole('button', { name: 'Evaluate' }));
 			await lensesRendered(canvasElement, 20);
 			const found = markers(canvasElement);
 			await expectMarkers(canvasElement, 20);
 			await expect(found.every((marker) => marker.severity === 8)).toBe(true); // MarkerSeverity.Error
-			const codes = found.map((marker) => (typeof marker.code === 'string' ? marker.code : marker.code?.value));
-			await expect(codes.filter((code) => code === 'fm-missing-delivery')).toHaveLength(16); // 12 missing + 4 both
-			await expect(codes.filter((code) => code === 'fm-forbidden-delivery')).toHaveLength(4);
 			await expect(footer()).toHaveTextContent('4 pass · 12 missing · 4 forbidden · 4 both');
 			await expect(badge()).toHaveTextContent('followerMaze.orderedRouting · 24 worlds');
+
+			// The grid: 24 chips, each spelling out its outcome, in the table's counts.
+			const chips = canvas.getAllByTestId(/^chip-/);
+			await expect(chips).toHaveLength(24);
+			const outcomes = (outcome: string) => chips.filter((chip) => chip.dataset.outcome === outcome);
+			await expect([outcomes('pass'), outcomes('missing'), outcomes('forbidden'), outcomes('both')].map((c) => c.length)).toEqual([4, 12, 4, 4]);
+			await expect(canvas.getByTestId('chip-1234')).toHaveTextContent('pass');
+			await expect(canvas.getByTestId('chip-1324')).toHaveTextContent('missing');
+			await expect(canvas.getByTestId('chip-1243')).toHaveTextContent('forbidden');
+			await expect(canvas.getByTestId('chip-1432')).toHaveTextContent('both');
+
+			// The log: every row now names its outcome, so a pass no longer looks unevaluated.
+			const lines = editorLines(canvasElement);
+			for (const [name, label] of [['[1,2,3,4]', 'pass'], ['[1,3,2,4]', 'missing'], ['[1,2,4,3]', 'forbidden'], ['[1,4,3,2]', 'both']]) {
+				await expect(lines.find((line) => line.startsWith(name))).toMatch(new RegExp(`-> ${label}$`));
+			}
+			// The lenses: a "both" row says both, instead of surfacing as its first code.
+			const lenses = lensTexts(canvasElement);
+			await expect(lenses.filter((text) => text.includes('both: missing 10 <- seq 2, forbidden 10 <- seq 4'))).toHaveLength(4);
+			await expect(lenses.filter((text) => text.includes('forbidden 10 <- seq 4') && !text.includes('both'))).toHaveLength(4);
+			await expect(lenses.some((text) => text.includes('fm-'))).toBe(false);
+			await expect(canvas.getByTestId('repair-row')).toBeVisible();
 		});
 
-		await step('6 · open a failing world: [4,2,3,1] shows the diagnostic, its evidence and the repairs', async () => {
+		await step('6 · open a failing world: [4,2,3,1] pairs expected with actual, missing delivery in place', async () => {
 			const doc = frameDoc(canvasElement);
 			activate(doc, lensAbove(doc, '[4,2,3,1]'));
 			await waitFor(() => {
@@ -214,6 +267,36 @@ export const Walkthrough: Story = {
 					if (!text.includes(needle)) throw new Error(`evidence widget missing "${needle}"`);
 				}
 			});
+			// Expected and actual side by side; the delivery the witness never made
+			// holds its expected position as a dashed placeholder.
+			const text = doc.querySelector('.evidence-widget')!.textContent!;
+			await expect(text).toMatch(/row\s+expected\s+\| actual/);
+			await expect(text).toMatch(/1\/2\s+10 <- seq 2\s+\| - - missing - -\s+\[missing\]/);
+			await expect(text).toMatch(/2\/2\s+20 <- seq 1\s+\| 20 <- seq 1\s+\[ok\]/);
+			// Each pair is one line of the widget: none wraps, so the columns stay aligned.
+			const pairRows = Array.from(doc.querySelectorAll<HTMLElement>('.evidence-widget div')).filter((row) => /expected\|actual/.test(row.textContent ?? ''));
+			await expect(pairRows).toHaveLength(3);
+			await expect(new Set(pairRows.map((row) => row.getBoundingClientRect().height)).size).toBe(1);
+
+			// The repair row tells the action from the conceptual repairs.
+			const repairs = within(canvas.getByTestId('repair-row'));
+			await expect(repairs.getByRole('button', { name: /reorder-buffer/ })).toBeEnabled();
+			await expect(repairs.getAllByRole('button')).toHaveLength(1);
+			await expect(repairs.getByText(/change world/).closest('li')).toHaveTextContent('conceptual, not available here');
+			await expect(repairs.getByText(/change axiom/).closest('li')).toHaveTextContent('conceptual, not available here');
+		});
+
+		await step('7 · change model, in place: the same family reruns and [4,2,3,1] now passes', async () => {
+			await userEvent.click(within(canvas.getByTestId('repair-row')).getByRole('button', { name: /reorder-buffer/ }));
+			await waitFor(() => expect(footer()).toHaveTextContent('24 pass · 0 missing · 0 forbidden · 0 both'));
+			await expect(canvas.getByRole('combobox')).toHaveValue('reorder-buffer');
+			await expect(canvas.getByTestId('chip-4231')).toHaveAttribute('data-outcome', 'pass');
+			await expect(canvas.getAllByTestId(/^chip-/).filter((chip) => chip.dataset.outcome !== 'pass')).toHaveLength(0);
+			await expectMarkers(canvasElement, 0);
+			await pageShows(canvasElement, '[4,2,3,1]');
+			await waitFor(() => expect(editorLines(canvasElement).find((line) => line.startsWith('[4,2,3,1]'))).toMatch(/-> pass$/));
+			await expect(badge()).toHaveTextContent('followerMaze.orderedRouting · 24 worlds'); // one axiom throughout
+			await expect(canvas.queryByTestId('repair-row')).toBeNull();
 		});
 	},
 };
@@ -251,7 +334,7 @@ export const SequenceAwareWalkthrough: Story = {
 			await userEvent.click(canvas.getByRole('button', { name: 'Run solve()' }));
 			await pageShows(canvasElement, 'witness 10 <- seq 2');
 			await userEvent.click(canvas.getByRole('button', { name: 'Evaluate' }));
-			await pageShows(canvasElement, 'PASS');
+			await pageShows(canvasElement, '-> pass');
 			await expectMarkers(canvasElement, 0);
 		});
 		await step('transform, evaluate family: 24 of 24', async () => {

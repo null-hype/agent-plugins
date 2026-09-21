@@ -57,7 +57,8 @@ const BASELINE_NAME = BASELINE.join('');
 
 export interface WarmLogRecord {
   raw: string;
-  diagnostic: { severity: 'error' | 'warning'; code: string; message: string } | null;
+  /** `lensTitle` is the plain-language CodeLens text the warm log shows instead of the technical code. */
+  diagnostic: { severity: 'error' | 'warning'; code: string; message: string; lensTitle?: string } | null;
   related: EvidenceLocation[];
   evaluationId: string | null;
   axiomId: string;
@@ -77,6 +78,41 @@ const plain = (raw: string): WarmLogRecord => ({
   axiomId: ORDERED_ROUTING,
   flags: [],
 });
+
+const CELL = 15; // the widest placeholder; keeps a pair on one line of the 600px evidence widget
+const MISSING_CELL = '- - missing - -';
+const NOT_DUE_CELL = '- - not due - -';
+
+/**
+ * Expected against actual, one row per delivery, aligned by (user, seq): a
+ * delivery the witness never made sits in the actual column at its expected
+ * position as a dashed placeholder, and one it should not have made sits in
+ * the expected column as the mirror image. This is text in the evidence
+ * widget's own rows, so it adds no rendering surface.
+ */
+export function pairedRows(world: FollowerMazeWorld, witness: Witness): string[] {
+  const same = (a: Delivery, b: Delivery) => a.user === b.user && a.sequence === b.sequence;
+  const required = requiredDeliveries(world);
+  const rows = required.map((expected) => {
+    const actual = witness.deliveries.find((delivery) => same(delivery, expected));
+    const state = !actual ? 'missing' : actual.payload === expected.payload ? 'ok' : 'payload differs';
+    return { expected: arrow(expected), actual: actual ? arrow(actual) : MISSING_CELL, state };
+  });
+  for (const extra of witness.deliveries.filter((d) => !required.some((expected) => same(expected, d)))) {
+    rows.push({ expected: NOT_DUE_CELL, actual: arrow(extra), state: 'forbidden' });
+  }
+  return [
+    `row  ${'expected'.padEnd(CELL)} | actual`,
+    ...rows.map((row, index) => `${index + 1}/${rows.length}  ${row.expected.padEnd(CELL)} | ${row.actual}  [${row.state}]`),
+  ];
+}
+
+/** `fm-missing-delivery(seq=2,user=10)` as a learner reads it: `missing 10 <- seq 2`. */
+function describeFlag(flag: FollowerMazeFlag): string {
+  const where = /user=(\d+),seq=(\d+)/.exec(flag.factID);
+  const what = flag.kind.replace(/^fm-/, '').replace(/-delivery$/, '');
+  return where ? `${what} ${where[1]} <- seq ${where[2]}` : what;
+}
 
 /**
  * The diagnostic for a failing world, in the IR CIT-152 defined. The three
@@ -104,17 +140,18 @@ export function flagsToGovernance(
       {
         role: 'fact',
         uri: `fixtures/arrivals/${name}.json`,
-        detail: `arrival [${arrival}] over connected ${users(world)}: ${wire(world)} (change world)`,
+        detail: `arrival [${arrival}] over connected ${users(world)}: ${wire(world)} (change world: conceptual, the orderings are the question)`,
       },
+      ...pairedRows(world, witness).map((detail) => ({ role: 'observation' as const, uri: 'expected|actual', detail })),
       ...flags.map((flag) => ({
         role: 'observation' as const,
         uri: `witness/${model}`,
-        detail: `${flagLabel(flag)}: ${flag.detail} (change model)`,
+        detail: `${flagLabel(flag)}: ${flag.detail} (change model: available, switch the witness model and re-evaluate)`,
       })),
       {
         role: 'axiom',
         uri: ORDERED_ROUTING,
-        detail: `${ORDERED_ROUTING_RATIONALE} (change axiom)`,
+        detail: `${ORDERED_ROUTING_RATIONALE} (change axiom: conceptual, not editable in this lesson)`,
       },
     ],
     evaluationId,
@@ -134,7 +171,9 @@ export function evaluateFamily(model: WitnessModelId): FamilyOutcome[] {
   });
 }
 
-export function outcomeCategory(flags: readonly string[]): 'pass' | 'missing' | 'forbidden' | 'both' | 'other' {
+export type Category = 'pass' | 'missing' | 'forbidden' | 'both' | 'other';
+
+export function outcomeCategory(flags: readonly string[]): Category {
   const has = (code: string) => flags.some((flag) => flag.startsWith(code));
   if (flags.length === 0) return 'pass';
   const missing = has('fm-missing-delivery');
@@ -152,18 +191,28 @@ function caseRecord(
   rawPrefix = '',
 ): WarmLogRecord {
   const arrival = world.arrivals.map((event) => event.sequence).join(',');
-  const raw = `${rawPrefix}[${arrival}]  ${wire(world)}`;
-  if (!evaluated) return plain(raw);
+  const line = `${rawPrefix}[${arrival}]  ${wire(world)}`;
+  if (!evaluated) return plain(line);
 
   const witness = WITNESS_MODELS[model](world);
   const flags = check(world, witness);
   const evaluationId = `${ORDERED_ROUTING}:arrival-${name}`;
+  // Every evaluated row names its outcome in the text itself, so a passing row
+  // no longer looks like an unevaluated one and the four outcomes are told apart
+  // without opening anything.
+  const category = outcomeCategory(flags.map(flagLabel));
+  const raw = `${line}  -> ${category}`;
   if (flags.length === 0) return { ...plain(raw), evaluationId };
 
   const governance = flagsToGovernance(name, world, witness, model, flags);
   return {
     raw,
-    diagnostic: { severity: 'error', code: governance.code, message: governance.message },
+    diagnostic: {
+      severity: 'error',
+      code: governance.code,
+      message: governance.message,
+      lensTitle: `${category === 'both' ? 'both: ' : ''}${flags.map(describeFlag).join(', ')}`,
+    },
     related: governance.related,
     evaluationId,
     axiomId: ORDERED_ROUTING,
@@ -211,25 +260,30 @@ export function reduceLesson(state: LessonState, action: LessonAction): LessonSt
 /**
  * Passing the baseline says little when the wrong model passes it too. The
  * warning is derived from the family (how many orderings the *same* witness
- * model passes), not written as a constant -- and only appears when the model
- * really is fooled by it.
+ * model fails), not written as a constant -- and only appears when the model
+ * really is fooled by it. It becomes its own line of the log, right under the
+ * pass it qualifies, so it reads without hovering anything.
  */
-function baselineWarning(
-  model: WitnessModelId,
-): { severity: 'warning'; code: string; message: string; related: EvidenceLocation[] } | null {
+function baselineWarning(model: WitnessModelId): WarmLogRecord | null {
   const outcomes = evaluateFamily(model);
   const passing = outcomes.filter((outcome) => outcome.flags.length === 0);
   if (passing.length === outcomes.length) return null;
-  const share = `${passing.length} of ${outcomes.length}`;
+  const others = outcomes.length - 1;
+  const failing = outcomes.length - passing.length;
+  const message = `This ordering passes, but this model fails ${failing} of the other ${others}. Test all ${outcomes.length} orderings.`;
   return {
-    severity: 'warning',
-    code: 'lesson-baseline-nondiscriminating',
-    message: `green here rules out nothing: the ${model} model also passes ${share} orderings of these four events`,
+    ...plain(message),
+    diagnostic: {
+      severity: 'warning',
+      code: 'lesson-baseline-nondiscriminating',
+      message,
+      lensTitle: `passes here, fails ${failing} of the other ${others}`,
+    },
     related: [
       {
         role: 'observation',
         uri: `witness/${model}`,
-        detail: `${model} passes ${share} arrival orderings: ${passing.map((outcome) => outcome.name).join(' ')}`,
+        detail: `${model} passes ${passing.length} of ${outcomes.length} arrival orderings: ${passing.map((outcome) => outcome.name).join(' ')}`,
       },
       { role: 'axiom', uri: ORDERED_ROUTING, detail: ORDERED_ROUTING_RATIONALE },
     ],
@@ -250,13 +304,9 @@ function baselineRecords(state: LessonState): WarmLogRecord[] {
   if (!state.evaluated) return records;
 
   const verdict = caseRecord(BASELINE_NAME, world, state.witness, true, 'evaluate ');
+  records.push(verdict);
   const warning = verdict.diagnostic ? null : baselineWarning(state.witness);
-  if (warning) {
-    const { related, ...diagnostic } = warning;
-    records.push({ ...verdict, raw: `${verdict.raw}  PASS`, diagnostic, related });
-  } else {
-    records.push({ ...verdict, raw: verdict.diagnostic ? verdict.raw : `${verdict.raw}  PASS` });
-  }
+  if (warning) records.push(warning);
   return records;
 }
 
@@ -271,6 +321,8 @@ export interface Tally {
 
 export interface Board {
   records: WarmLogRecord[];
+  /** One entry per arrival ordering once the family is on the board; `category` is null until evaluated. */
+  cases: { name: string; category: Category | null }[];
   /** Distinct axioms the log's evaluations cite. More than one means the transfer failed. */
   axiomIds: string[];
   /** Arrival orderings (worlds) the proposition is currently applied across. */
@@ -293,8 +345,17 @@ export function boardFor(state: LessonState): Board {
     tally[outcomeCategory(record.flags)] += 1;
   }
 
+  const cases =
+    state.arrivals === 'family'
+      ? FAMILY.map(({ name }, index) => ({
+          name,
+          category: records[index].evaluationId === null ? null : outcomeCategory(records[index].flags),
+        }))
+      : [];
+
   return {
     records,
+    cases,
     axiomIds: [...new Set(records.map((record) => record.axiomId))],
     worlds: state.arrivals === 'family' ? FAMILY.length : 1,
     tally,
