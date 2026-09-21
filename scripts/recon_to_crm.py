@@ -1467,6 +1467,15 @@ def main():
                     accepted_count += 1
                     print(f"  - Accept: Ingested {person_name} as CRM ID {next_id} (Authorized by {linear_id})")
 
+                # Remove from research staging if previously held for research
+                research_records = [
+                    r for r in research_records
+                    if not (
+                        (linear_id and linear_id != "N/A" and r.get("linear_issue_id") == linear_id)
+                        or (norm_url and normalize_profile_url(r.get("profile_url", "")) == norm_url)
+                    )
+                ]
+
             elif outcome == "reject":
                 # Save to rejection provenance idempotently
                 # Identity bound strictly through linear_id or exact normalized URL — NEVER by name!
@@ -1508,6 +1517,15 @@ def main():
                 engine.records = [r for r in engine.records if not is_rejected_crm_match(r)]
                 if len(engine.records) < crm_before:
                     print(f"    (Removed {person_name} from active CRM by URL/Linear ID match)")
+
+                # Remove from research staging if previously held for research
+                research_records = [
+                    r for r in research_records
+                    if not (
+                        (linear_id and linear_id != "N/A" and r.get("linear_issue_id") == linear_id)
+                        or (norm_url and normalize_profile_url(r.get("profile_url", "")) == norm_url)
+                    )
+                ]
 
             elif outcome == "research":
                 # Staged outside CRM idempotently
