@@ -1,10 +1,10 @@
 {
   "_metadata": {
     "version": "1.0",
-    "fetched_at": "2026-09-20T08:00:00Z",
-    "source": "linear_live_api",
-    "parent_issue": "CIT-186",
-    "issue_count": 11
+    "fetched_at": "2026-09-21T03:39:00Z",
+    "source": "linear_mcp_api",
+    "parent_issue": "CIT-225",
+    "issue_count": 18
   },
   "CIT-197": {
     "id": "CIT-197",
@@ -26,11 +26,11 @@
     "person": "Brian Peretti",
     "role_organisation": "\\[Retired\\] CTO and Deputy Chief AI Officer",
     "profile_url": "https://www.linkedin.com/in/brianperetti/",
-    "status": "Backlog",
-    "statusType": "backlog",
+    "status": "Todo",
+    "statusType": "unstarted",
     "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-196/triage-brian-peretti-retired-cto-and-deputy-chief-ai-officer",
-    "updatedAt": "2026-09-20T07:30:21.730Z",
-    "parentId": "CIT-186"
+    "updatedAt": "2026-09-21T03:35:42.333Z",
+    "parentId": "CIT-225"
   },
   "CIT-189": {
     "id": "CIT-189",
@@ -148,5 +148,96 @@
     "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-188/triage-ishmael-chibvuri-senior-security-architect-enterprise-cloud-and",
     "updatedAt": "2026-09-20T07:28:09.422Z",
     "parentId": "CIT-186"
+  },
+  "CIT-206": {
+    "id": "CIT-206",
+    "uuid": "49149f05-23cd-4990-8bd5-749611e72df6",
+    "title": "[Triage] Maycon Belfort \u2014 Senior Maximo Consultant & IBM Champion",
+    "person": "Maycon Belfort",
+    "role_organisation": "Senior Maximo Consultant & IBM Champion",
+    "profile_url": "https://www.linkedin.com/in/mayconbelfort/",
+    "status": "Todo",
+    "statusType": "unstarted",
+    "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-206/triage-maycon-belfort-senior-maximo-consultant-and-ibm-champion",
+    "updatedAt": "2026-09-21T03:36:36.677Z",
+    "parentId": "CIT-225"
+  },
+  "CIT-207": {
+    "id": "CIT-207",
+    "uuid": "a8d7d750-0a66-4a16-b98b-00e2d918b046",
+    "title": "[Triage] Utsav Maheswari \u2014 Product Leader - AI Platforms & Agent Infrastructure",
+    "person": "Utsav Maheswari",
+    "role_organisation": "Product Leader - AI Platforms & Agent Infrastructure",
+    "profile_url": "https://www.linkedin.com/in/utsavmaheswari/",
+    "status": "Canceled",
+    "statusType": "canceled",
+    "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-207/triage-utsav-maheswari-product-leader-ai-platforms-and-agent",
+    "updatedAt": "2026-09-21T03:36:51.508Z",
+    "parentId": "CIT-225"
+  },
+  "CIT-210": {
+    "id": "CIT-210",
+    "uuid": "ba325334-25f3-418f-803b-bda81037f152",
+    "title": "[Triage] Konrad Brodecki \u2014 Agentic AI Engineer & Senior Software Engineer",
+    "person": "Konrad Brodecki",
+    "role_organisation": "Agentic AI Engineer & Senior Software Engineer",
+    "profile_url": "https://www.linkedin.com/in/brodecki/",
+    "status": "Canceled",
+    "statusType": "canceled",
+    "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-210/triage-konrad-brodecki-agentic-ai-engineer-and-senior-software",
+    "updatedAt": "2026-09-21T03:37:05.961Z",
+    "parentId": "CIT-225"
+  },
+  "CIT-213": {
+    "id": "CIT-213",
+    "uuid": "6a2d4c07-a658-4101-a9a0-b0e00c754d04",
+    "title": "[Triage] Paul Ntoumos \u2014 Senior Business Analyst & Transformation Consultant",
+    "person": "Paul Ntoumos",
+    "role_organisation": "Senior Business Analyst & Transformation Consultant",
+    "profile_url": "https://www.linkedin.com/in/paul-ntoumos-2a24343/",
+    "status": "Canceled",
+    "statusType": "canceled",
+    "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-213/triage-paul-ntoumos-senior-business-analyst-and-transformation",
+    "updatedAt": "2026-09-21T03:37:21.674Z",
+    "parentId": "CIT-225"
+  },
+  "CIT-215": {
+    "id": "CIT-215",
+    "uuid": "a2573355-db6b-47e1-9cb2-42044e423585",
+    "title": "[Triage] Daniel Phillips \u2014 AI Safety Researcher",
+    "person": "Daniel Phillips",
+    "role_organisation": "AI Safety Researcher",
+    "profile_url": "https://www.linkedin.com/in/daniel-phillips-9b16191bb/",
+    "status": "Todo",
+    "statusType": "unstarted",
+    "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-215/triage-daniel-phillips-ai-safety-researcher",
+    "updatedAt": "2026-09-21T03:37:38.335Z",
+    "parentId": "CIT-225"
+  },
+  "CIT-217": {
+    "id": "CIT-217",
+    "uuid": "e5c8bbaa-8abf-410f-8dca-421e93c19559",
+    "title": "[Triage] Saurabh Vashisht \u2014 DevSecOps & Cloud Security Engineer",
+    "person": "Saurabh Vashisht",
+    "role_organisation": "DevSecOps & Cloud Security Engineer",
+    "profile_url": "https://www.linkedin.com/in/saurabh-vashisht-0a40b614b/",
+    "status": "Canceled",
+    "statusType": "canceled",
+    "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-217/triage-saurabh-vashisht-devsecops-and-cloud-security-engineer",
+    "updatedAt": "2026-09-21T03:37:55.165Z",
+    "parentId": "CIT-225"
+  },
+  "CIT-224": {
+    "id": "CIT-224",
+    "uuid": "deac60e1-b19c-4a6e-8e02-c17c5208356e",
+    "title": "[Triage] Matthew Stults \u2014 Technical AI Safety Researcher, BlueDot Grant Recipient",
+    "person": "Matthew Stults",
+    "role_organisation": "Technical AI Safety Researcher, BlueDot Grant Recipient",
+    "profile_url": "https://www.linkedin.com/in/matthew-stults-62763a4b/",
+    "status": "Canceled",
+    "statusType": "canceled",
+    "linear_url": "https://linear.app/citizen6librarian6refrain4/issue/CIT-224/triage-matthew-stults-technical-ai-safety-researcher-bluedot-grant",
+    "updatedAt": "2026-09-21T03:38:13.869Z",
+    "parentId": "CIT-225"
   }
 }

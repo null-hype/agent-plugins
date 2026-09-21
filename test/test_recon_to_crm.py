@@ -207,14 +207,20 @@ class TestReconToCRM(unittest.TestCase):
     def test_canonical_dataset_validation(self):
         header, rows = load_csv("docs/launch/crm.csv")
         self.assertEqual(detect_file_schema(header), "canonical_crm")
-        self.assertEqual(len(rows), 22)
+        self.assertEqual(len(rows), 25)
         is_valid, errors = validate_canonical_dataset(rows)
         self.assertTrue(is_valid, f"Validation errors: {errors}")
 
         rej_header, rej_rows = load_csv("docs/launch/crm-rejections.csv")
         self.assertEqual(detect_file_schema(rej_header), "crm_rejections")
-        self.assertEqual(len(rej_rows), 1)
-        self.assertEqual(rej_rows[0]["person"], "Tom McLeod")
+        self.assertEqual(len(rej_rows), 6)
+        rej_names = [r["person"] for r in rej_rows]
+        self.assertIn("Tom McLeod", rej_names)
+        self.assertIn("Utsav Maheswari", rej_names)
+        self.assertIn("Konrad Brodecki", rej_names)
+        self.assertIn("Paul Ntoumos", rej_names)
+        self.assertIn("Saurabh Vashisht", rej_names)
+        self.assertIn("Matthew Stults", rej_names)
 
     def test_linear_invariants_hold_on_canonical_state(self):
         """Validate CIT-198 invariants on current canonical repo files."""
@@ -252,8 +258,15 @@ class TestReconToCRM(unittest.TestCase):
         crm_names = [r["person"].lower() for r in crm_records]
         crm_urls = [normalize_profile_url(r.get("profile_url", "")) for r in crm_records if r.get("profile_url")]
 
-        self.assertNotIn("brian peretti", crm_names, "Brian Peretti (Research/Backlog) must not be in canonical CRM")
-        self.assertNotIn("https://www.linkedin.com/in/brianperetti", crm_urls)
+        linear_state = load_linear_triage_state("docs/launch/linear-triage-state.json")
+        for iid, info in linear_state.items():
+            if info.get("status") == "Backlog" or info.get("statusType") == "backlog":
+                person = info.get("person", "").lower()
+                url = normalize_profile_url(info.get("profile_url", ""))
+                if person:
+                    self.assertNotIn(person, crm_names, f"{person} (Research/Backlog) must not be in canonical CRM")
+                if url:
+                    self.assertNotIn(url, crm_urls, f"{url} (Research/Backlog) must not be in canonical CRM")
 
     def test_reject_candidate_absent_from_crm_and_present_in_rejections(self):
         """Invariant: Rejected candidates must be absent from CRM and recorded in rejections registry."""
@@ -265,6 +278,16 @@ class TestReconToCRM(unittest.TestCase):
 
         self.assertNotIn("tom mcleod", crm_names, "Tom McLeod (Rejected) must not be in CRM")
         self.assertIn("tom mcleod", rej_names, "Tom McLeod must be present in rejection registry")
+        self.assertNotIn("utsav maheswari", crm_names)
+        self.assertIn("utsav maheswari", rej_names)
+        self.assertNotIn("konrad brodecki", crm_names)
+        self.assertIn("konrad brodecki", rej_names)
+        self.assertNotIn("paul ntoumos", crm_names)
+        self.assertIn("paul ntoumos", rej_names)
+        self.assertNotIn("saurabh vashisht", crm_names)
+        self.assertIn("saurabh vashisht", rej_names)
+        self.assertNotIn("matthew stults", crm_names)
+        self.assertIn("matthew stults", rej_names)
 
     def test_accept_candidate_present_exactly_once(self):
         """Invariant: Every Accept decision corresponds to exactly one canonical CRM record."""
@@ -277,6 +300,18 @@ class TestReconToCRM(unittest.TestCase):
         anurag_matches = [r for r in crm_records if "anurag roy barman" in r["person"].lower()]
         self.assertEqual(len(anurag_matches), 1, "Anurag Roy Barman must appear exactly once in CRM")
         self.assertEqual(anurag_matches[0]["id"], "22")
+
+        peretti_matches = [r for r in crm_records if "brian peretti" in r["person"].lower()]
+        self.assertEqual(len(peretti_matches), 1, "Brian Peretti must appear exactly once in CRM")
+        self.assertEqual(peretti_matches[0]["id"], "23")
+
+        belfort_matches = [r for r in crm_records if "maycon belfort" in r["person"].lower()]
+        self.assertEqual(len(belfort_matches), 1, "Maycon Belfort must appear exactly once in CRM")
+        self.assertEqual(belfort_matches[0]["id"], "24")
+
+        phillips_matches = [r for r in crm_records if "daniel phillips" in r["person"].lower()]
+        self.assertEqual(len(phillips_matches), 1, "Daniel Phillips must appear exactly once in CRM")
+        self.assertEqual(phillips_matches[0]["id"], "25")
 
     def test_merge_does_not_create_second_identity(self):
         """Invariant: Merging evidence into an existing contact updates provenance without creating a new record."""

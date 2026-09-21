@@ -1,16 +1,1 @@
-[
-  {
-    "linear_issue_id": "CIT-196",
-    "person": "Brian Peretti",
-    "role_organisation": "[Retired] CTO and Deputy Chief AI Officer",
-    "profile_url": "https://www.linkedin.com/in/brianperetti/",
-    "source_query_method": "(\"AI control\" OR \"agent safety\" OR \"AI governance\") AND (director OR head OR lead)",
-    "source_date": "2026-09-08",
-    "target_segment": "practitioner",
-    "engagement_role": "connector",
-    "observed_signal": "Post & Article: 'The Problem with AI Companies Controlling Themselves... who holds the keys to the control room?'",
-    "missing_fact": "Verify whether he is actively consulting or available for advisory engagement post-retirement before initiating direct outreach",
-    "staged_date": "2026-09-20",
-    "stage": "held_for_research"
-  }
-]
+[]
