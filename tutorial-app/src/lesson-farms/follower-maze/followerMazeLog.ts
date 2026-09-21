@@ -16,6 +16,7 @@ import worldJson from './fixtures/world.json';
 import {
   ORDERED_ROUTING,
   ORDERED_ROUTING_RATIONALE,
+  THREAD_MODELS,
   WITNESS_MODELS,
   check,
   flagLabel,
@@ -25,6 +26,7 @@ import {
   type FollowerMazeEvent,
   type FollowerMazeFlag,
   type FollowerMazeWorld,
+  type ThreadStep,
   type Witness,
   type WitnessModelId,
 } from './followerMaze';
@@ -234,14 +236,17 @@ export interface LessonState {
   witness: WitnessModelId | null;
   arrivals: 'baseline' | 'family';
   evaluated: boolean;
+  /** The arrival ordering shown in the input and monitor channels; null means the first. */
+  selected: string | null;
 }
 
 export type LessonAction =
+  | { type: 'select'; name: string }
   | { type: 'solve'; model: WitnessModelId }
   | { type: 'evaluate' }
   | { type: 'transform' };
 
-export const initialLessonState: LessonState = { witness: null, arrivals: 'baseline', evaluated: false };
+export const initialLessonState: LessonState = { witness: null, arrivals: 'baseline', evaluated: false, selected: null };
 
 export function reduceLesson(state: LessonState, action: LessonAction): LessonState {
   switch (action.type) {
@@ -254,6 +259,8 @@ export function reduceLesson(state: LessonState, action: LessonAction): LessonSt
       // The same four events under every arrival order: a new world, so any
       // earlier verdict no longer applies.
       return { ...state, arrivals: 'family', evaluated: false };
+    case 'select':
+      return state.arrivals === 'family' && FAMILY.some((c) => c.name === action.name) ? { ...state, selected: action.name } : state;
   }
 }
 
@@ -290,24 +297,18 @@ function baselineWarning(model: WitnessModelId): WarmLogRecord | null {
   };
 }
 
+/**
+ * The baseline's log is the *input* channel -- the four events as entered, one per
+ * line -- and, once evaluated, where the diagnostic lands. What the implementation
+ * emitted is the monitor's (`threadFor` / `board.thread`), never a line here.
+ */
 function baselineRecords(state: LessonState): WarmLogRecord[] {
   const world = worldFor(BASELINE);
-  const records = [
-    plain(`world connected ${users(world)}`),
-    plain(`arrival [${BASELINE.join(',')}]  ${wire(world)}`),
-    ...requiredDeliveries(world).map((delivery) => plain(`required ${arrow(delivery)}`)),
-  ];
-
-  if (!state.witness) return [...records, plain('witness awaiting solve()')];
-
-  records.push(...WITNESS_MODELS[state.witness](world).deliveries.map((delivery) => plain(`witness ${arrow(delivery)}`)));
-  if (!state.evaluated) return records;
-
+  const entered = world.arrivals.map((event) => plain(event.payload));
+  if (!state.witness || !state.evaluated) return entered;
   const verdict = caseRecord(BASELINE_NAME, world, state.witness, true, 'evaluate ');
-  records.push(verdict);
   const warning = verdict.diagnostic ? null : baselineWarning(state.witness);
-  if (warning) records.push(warning);
-  return records;
+  return [...entered, verdict, ...(warning ? [warning] : [])];
 }
 
 export interface Tally {
@@ -319,16 +320,34 @@ export interface Tally {
   other: number;
 }
 
+/**
+ * One execution of the message thread under one arrival order: the events as
+ * entered (input) and, once the learner has run solve(), what the current
+ * implementation emitted for them (monitor). No verdict lives here.
+ */
+export interface Thread {
+  name: string;
+  arrival: FollowerMazeEvent[];
+  /** null until solve() has run; the family view's other 23 orderings are alternate executions of this same thread. */
+  steps: ThreadStep[] | null;
+  model: WitnessModelId | null;
+}
+
 export interface Board {
+  thread: Thread;
   records: WarmLogRecord[];
   /** One entry per arrival ordering once the family is on the board; `category` is null until evaluated. */
-  cases: { name: string; category: Category | null }[];
+  cases: { name: string; category: Category | null; emitted: string | null }[];
   /** Distinct axioms the log's evaluations cite. More than one means the transfer failed. */
   axiomIds: string[];
   /** Arrival orderings (worlds) the proposition is currently applied across. */
   worlds: number;
   tally: Tally;
 }
+
+/** `20 <- seq 1, 10 <- seq 2`: everything a thread emitted, in emission order. */
+export const emittedText = (steps: readonly ThreadStep[]): string =>
+  steps.flatMap((step) => step.emitted).map(arrow).join(', ') || 'nothing';
 
 export function boardFor(state: LessonState): Board {
   const records =
@@ -347,13 +366,25 @@ export function boardFor(state: LessonState): Board {
 
   const cases =
     state.arrivals === 'family'
-      ? FAMILY.map(({ name }, index) => ({
+      ? FAMILY.map(({ name, arrival }, index) => ({
           name,
           category: records[index].evaluationId === null ? null : outcomeCategory(records[index].flags),
+          // What the current implementation emitted for this arrival order; null until solve() has run.
+          emitted: state.witness ? emittedText(THREAD_MODELS[state.witness](worldFor(arrival))) : null,
         }))
       : [];
 
+  const name = state.arrivals === 'family' ? (state.selected ?? FAMILY[0].name) : BASELINE_NAME;
+  const world = worldFor(FAMILY.find((c) => c.name === name)!.arrival);
+  const thread: Thread = {
+    name,
+    arrival: [...world.arrivals],
+    steps: state.witness ? THREAD_MODELS[state.witness](world) : null,
+    model: state.witness,
+  };
+
   return {
+    thread,
     records,
     cases,
     axiomIds: [...new Set(records.map((record) => record.axiomId))],

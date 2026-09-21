@@ -6,6 +6,7 @@ import '../../lib/toHaveVerdict';
 import {
   FM,
   ORDERED_ROUTING,
+  THREAD_MODELS,
   WITNESS_MODELS,
   arrivalOrderWitness,
   check,
@@ -222,11 +223,43 @@ describe('follower maze: the lesson board', () => {
   const drive = (...actions: LessonAction[]) => boardFor(actions.reduce(reduceLesson, initialLessonState));
   const solve: LessonAction = { type: 'solve', model: 'arrival-order' };
 
-  it('starts with the world and required pane filled and no witness', () => {
+  it('starts with the events entered as the editor lines, nothing observed, no diagnostic (CIT-227)', () => {
     const board = drive();
-    expect(board.records.map((r) => r.raw)).toContain('witness awaiting solve()');
-    expect(board.records.some((r) => r.raw === 'required 10 <- seq 2')).toBe(true);
+    expect(board.thread.arrival.map((e) => e.sequence)).toEqual([1, 2, 3, 4]);
+    expect(board.thread.steps).toBeNull();
+    // the log is the input channel: the four events as entered, and nothing the implementation emitted
+    expect(board.records.map((r) => r.raw)).toEqual(['1|F|10|20', '2|S|20', '3|U|10|20', '4|S|20']);
+    expect(board.records.some((r) => r.diagnostic)).toBe(false);
     expect(counterText(board.tally)).toBe('not evaluated');
+  });
+
+  it('solve puts the emitted deliveries in the monitor, in emission order, without touching the log', () => {
+    const board = drive(solve);
+    expect(board.thread.steps!.map((s) => s.emitted.map((d) => d.sequence))).toEqual([[1], [2], [], []]);
+    expect(board.records.map((r) => r.raw)).toEqual(['1|F|10|20', '2|S|20', '3|U|10|20', '4|S|20']); // emitted deliveries are not log lines
+    expect(board.records.every((r) => r.diagnostic === null)).toBe(true);
+  });
+
+  it('selecting an ordering is an alternate execution of the same thread; the reorder buffer holds early events', () => {
+    const board = drive({ type: 'solve', model: 'reorder-buffer' }, { type: 'transform' }, { type: 'select', name: '4231' });
+    expect(board.thread.name).toBe('4231');
+    expect(board.thread.arrival.map((e) => e.sequence)).toEqual([4, 2, 3, 1]);
+    expect(board.thread.steps!.map((s) => s.held ?? null)).toEqual([
+      'held: waiting for seq 1', 'held: waiting for seq 1', 'held: waiting for seq 1', null,
+    ]);
+    expect(board.thread.steps![3].emitted.map((d) => d.sequence)).toEqual([1, 2]);
+    // selecting outside the family (the baseline stage) is a no-op
+    expect(reduceLesson(initialLessonState, { type: 'select', name: '4231' })).toBe(initialLessonState);
+  });
+
+  it('the monitor thread and the witness never disagree', () => {
+    for (const model of Object.keys(WITNESS_MODELS) as (keyof typeof WITNESS_MODELS)[]) {
+      for (const { arrival } of FAMILY) {
+        const world = worldFor(arrival);
+        const emitted = THREAD_MODELS[model](world).flatMap((s) => s.emitted).map((d) => `${d.user}:${d.sequence}`).sort();
+        expect(emitted).toEqual(WITNESS_MODELS[model](world).deliveries.map((d) => `${d.user}:${d.sequence}`).sort());
+      }
+    }
   });
 
   it('cannot evaluate before solve() has produced a witness', () => {
