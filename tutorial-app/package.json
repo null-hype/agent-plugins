@@ -8,7 +8,8 @@
     "preview": "astro preview",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "compile-tutorial": "playwright test --config=playwright.tutorial-compile.config.ts",
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
