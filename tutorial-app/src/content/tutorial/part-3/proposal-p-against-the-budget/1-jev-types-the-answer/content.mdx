@@ -1,0 +1,46 @@
+---
+type: lesson
+title: Jev types the answer
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
+
+# Jev types the answer
+
+**How to watch this part.** It is one ACP session, replayed. Each lesson is one
+turn: the incoming message is already on screen in the **Client** preview, whose
+last line names who acts next. **Solve** replays that recorded reply; **Next**
+brings in the following incoming message. You observe: nothing in this replay is
+an action you take. The raw ACP envelopes are the editor's `acp-trace.json`.
+
+The question is fixed for the whole part, and every later check evaluates the
+same objects it names:
+
+> Does proposal P (airfare 890 + ground 400) fit within limit rule v1 (1200)?
+
+The worker's reason, "fits, roughly 1.2k all in", is free text, so the **Type** channel
+reads `malformed`. Solve replays Jev's typed answer: `YES · 0.94`, and **Type**
+becomes `well-formed`. That verdict means the answer is well formed. It says
+nothing about whether the answer is right.
+
+**Simulated.** Jev's entire response, `YES` and `0.94` alike, is a labelled
+stub, not a recorded Jev answer. It shows how the interface exposes a confident
+answer; it doesn't claim a particular agent gave it.
+
+**Scripted, not captured.** Every frame in this part is authored by a Playwright
+storyboard (`tests/budget-authority.tutorial.spec.ts`), and the Client preview
+says so above the log. What that storyboard computes for real: the git merge in
+turn 2 (a real `git merge` in a scratch repository; the tree id shown is its
+output) and both budget evaluations (turns 3 and 5).

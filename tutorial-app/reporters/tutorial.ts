@@ -44,6 +44,7 @@ type RawAttachment = { name: string; contentType: string; body?: Buffer; path?: 
 type ClassifiedAttachment =
   | { kind: 'file'; path: string; body: Buffer }
   | { kind: 'beforeFile'; path: string; body: Buffer }
+  | { kind: 'incomingFile'; path: string; body: Buffer }
   | { kind: 'prose'; body: Buffer }
   | { kind: 'meta'; body: Buffer }
   | { kind: 'screenshot'; body: Buffer }
@@ -51,6 +52,7 @@ type ClassifiedAttachment =
 
 const FILE_PREFIX = 'file/';
 const BEFORE_FILE_PREFIX = 'before/file/';
+const INCOMING_FILE_PREFIX = 'incoming/file/';
 const PROSE_NAME = 'prose';
 
 // Playwright 1.59.1's reporter API *declares* TestStep.attachments (see
@@ -78,6 +80,9 @@ export function classifyAttachment(name: string, contentType: string, body: Buff
   }
   if (name.startsWith(BEFORE_FILE_PREFIX)) {
     return { kind: 'beforeFile', path: name.slice(BEFORE_FILE_PREFIX.length), body };
+  }
+  if (name.startsWith(INCOMING_FILE_PREFIX)) {
+    return { kind: 'incomingFile', path: name.slice(INCOMING_FILE_PREFIX.length), body };
   }
   if (name === 'meta') return { kind: 'meta', body };
   if (name === PROSE_NAME) {
@@ -115,6 +120,12 @@ interface StepAttachments {
   meta: Record<string, unknown>;
   /** State at the start of the step (`tutorial:<n>:before/file/<path>`): becomes `_files`. */
   beforeFiles: Record<string, Buffer>;
+  /**
+   * The incoming turn (`tutorial:<n>:incoming/file/<path>`): what changes
+   * between the end of step n-1 and the start of step n -- the message that
+   * arrives when the viewer presses Next. Declared, so it is never a silent gap.
+   */
+  incomingFiles: Record<string, Buffer>;
   /** State at the end of the step (`tutorial:<n>:file/<path>`), merged onto the previous step's end state. */
   files: Record<string, Buffer>;
   prose: string | null;
@@ -123,6 +134,7 @@ interface StepAttachments {
 
 export function reduceStepAttachments(classified: readonly ClassifiedAttachment[]): StepAttachments {
   const beforeFiles: Record<string, Buffer> = {};
+  const incomingFiles: Record<string, Buffer> = {};
   const files: Record<string, Buffer> = {};
   let meta: Record<string, unknown> = {};
   let prose: string | null = null;
@@ -139,11 +151,12 @@ export function reduceStepAttachments(classified: readonly ClassifiedAttachment[
     }
     else if (item.kind === 'file') files[item.path] = item.body;
     else if (item.kind === 'beforeFile') beforeFiles[item.path] = item.body;
+    else if (item.kind === 'incomingFile') incomingFiles[item.path] = item.body;
     else if (item.kind === 'prose') prose = item.body.toString('utf8');
     else if (item.kind === 'screenshot') screenshot = item.body;
   }
 
-  return { beforeFiles, files, prose, screenshot, meta };
+  return { beforeFiles, incomingFiles, files, prose, screenshot, meta };
 }
 
 function writeFrontmatter(filePath: string, frontmatter: Record<string, unknown>, body = ''): void {
@@ -217,12 +230,14 @@ interface PlannedLesson {
  * continuity, touching no disk, so a broken storyboard leaves the existing
  * output untouched instead of half-rewriting it.
  *
- * `after(n)` is `after(n-1)` merged with step n's `file/` attachments (the
- * contract's "cumulative"). `before(n)` is whatever the test attached under
- * `before/file/` at the start of step n -- never inferred from `after(n-1)`,
- * because inferring it is exactly the assumption this check exists to
- * replace. A step with no `before/` attachments therefore declares an empty
- * start, which is only continuous for the first step.
+ * `after(n)` is `after(n-1)` merged with step n's `incoming/file/` and then
+ * its `file/` attachments (the contract's "cumulative"). `before(n)` is
+ * whatever the test attached under `before/file/` at the start of step n --
+ * never inferred from `after(n-1)`, because inferring it is exactly the
+ * assumption this check exists to replace. It must equal `after(n-1)`
+ * merged with step n's declared incoming turn, and nothing else. A step with
+ * no `before/` attachments therefore declares an empty start, which is only
+ * continuous for the first step.
  */
 export function planLessons(steps: readonly TestStep[], attachmentsByStep: Map<number, ClassifiedAttachment[]>): PlannedLesson[] {
   const problems: string[] = [];
@@ -231,13 +246,25 @@ export function planLessons(steps: readonly TestStep[], attachmentsByStep: Map<n
 
   steps.forEach((step, i) => {
     const stepIndex = i + 1;
-    const { beforeFiles, files, prose, screenshot, meta } = reduceStepAttachments(attachmentsByStep.get(stepIndex) ?? []);
-    const after = { ...previousAfter, ...files };
+    const { beforeFiles, incomingFiles, files, prose, screenshot, meta } = reduceStepAttachments(
+      attachmentsByStep.get(stepIndex) ?? [],
+    );
+    const expectedStart = { ...previousAfter, ...incomingFiles };
+    const after = { ...expectedStart, ...files };
+    const incoming = Object.keys(incomingFiles).length > 0 ? ' plus its declared incoming turn' : '';
 
     if (i > 0) {
       const previous = steps[i - 1];
-      const labels = { expected: `end of step ${stepIndex - 1} ("${previous.title}")`, actual: `start of step ${stepIndex} ("${step.title}")` };
-      problems.push(...diffFileSets(previousAfter, beforeFiles, labels));
+      const labels = {
+        expected: `end of step ${stepIndex - 1} ("${previous.title}")${incoming}`,
+        actual: `start of step ${stepIndex} ("${step.title}")`,
+      };
+      problems.push(...diffFileSets(expectedStart, beforeFiles, labels));
+    } else {
+      // Step 1 has no predecessor, so its start is otherwise unchecked; an
+      // incoming turn it declares must still be part of that start.
+      const declared = Object.fromEntries(Object.keys(incomingFiles).map((file) => [file, beforeFiles[file]]).filter(([, body]) => body));
+      problems.push(...diffFileSets(incomingFiles, declared, { expected: `incoming turn of step 1 ("${step.title}")`, actual: 'its start' }));
     }
 
     // Focus a file this step changes *and that already exists at the start*:

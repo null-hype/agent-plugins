@@ -1,0 +1,27 @@
+---
+type: lesson
+title: Git merges the two branches
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
+
+# Git merges the two branches
+
+The worker's two changes arrive as branches: `airfare 890` and `ground 400`.
+Solve replays the merge. **Proposal P** appears with both lines and its tree id,
+and **Merge** reads `clean · 0 conflicts`.
+
+**Budget** still reads `not evaluated`. A clean merge means the two changes
+combine without conflict. It doesn't mean the combination fits the budget.

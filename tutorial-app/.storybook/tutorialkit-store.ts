@@ -10,8 +10,8 @@ import { atom } from 'nanostores';
 //   setSelectedFile(path)        -> switches the current document
 //   lessonFullyLoaded            -> ReadableAtom<boolean> (CIT-245)
 //   hasSolution()/solve()/reset() -> the real store's own names and effect
-//     (CIT-245: AcpTraceBridge calls these directly, since `editor: false`
-//     collapses TutorialKit's own Solve button to zero size)
+//     (stories call these to stand in for TutorialKit's own Solve/Reset
+//     controls, which AcpTraceBridge no longer duplicates -- CIT-251)
 //
 // Stories seed it from a lesson's real files and frontmatter; nothing here
 // derives lesson state.
