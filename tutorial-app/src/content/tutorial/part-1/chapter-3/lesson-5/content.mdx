@@ -1,15 +1,14 @@
 ---
 type: lesson
 title: "The wrong-way peninsula"
-template: capability-check
+template: capability-check-warm-log
 prepareCommands:
   - npm install
-mainCommand: npx vitest
+mainCommand: npm run dev
 terminal: true
-editor:
-  fileTree: true
-focus: /statedReason.ts
-previews: false
+editor: false
+previews:
+  - [4173, "Warm Log"]
 i18n:
   solveButtonText: "Show the repair"
   resetButtonText: "Undo"
@@ -127,123 +126,19 @@ cannot reach a Pkl evaluator, so what runs in the terminal below is
 [`reconcileCheck.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/reconcileCheck.ts),
 a TypeScript replay of it and of
 [`reconcile/reconcile.go`](https://github.com/null-hype/agent-plugins/blob/0ba6b9b94602f0da3d2c12d1ee766c7218c246c8/capability-spike/reconcile/reconcile.go)
-— same three inputs, same order of work, same detail strings. The first
-test in `frameCheck.spec.ts` is what keeps that honest: it asserts the
-replay reproduces `Reconcile.test.pkl-expected.pcf`'s four pinned
-diagnostics exactly, in order.
+— same three inputs, same order of work, same detail strings.
 
-## Two rows are red. They want different repairs.
+## One blank Warm Log
 
-`npx vitest` is running below. Seven rows, two failing.
+The editor is hidden in this lesson. The Warm Log on the right is the
+only input surface, and it starts completely blank.
 
-### `reason-mismatch` — change the **model**
+Type `area51:site4:black-budget-vault-access` into the Warm Log. The
+text is saved directly into the lesson workspace, Vitest reruns, and the
+single exercise test passes only when that exact value is present.
 
-`statedReason.ts` is open. It holds what the agent exports as
-`PROTON_PASS_AGENT_REASON`, and
-[`runtime.RecordMaterialization`](https://github.com/null-hype/agent-plugins/blob/0ba6b9b94602f0da3d2c12d1ee766c7218c246c8/capability-spike/runtime/proton.go)
-carries it into the observation ledger verbatim.
-
-Read the value before you change it. It is
-`area51:site4:black-budget-vault-access` — a real fact ID, currently
-recorded in `pkl/GrantState.pkl`, correctly shaped, and not this
-operation's fact. Every check you could run on the string *by itself*
-passes. This is the peninsula: locally coherent, globally wrong.
-
-Three repairs would turn the row green. Two are wrong:
-
-- Rewrite the observation's `reason` in `protonObservations.ts` — that is
-  editing the record of what happened so it agrees with the claim. The
-  ledger passes the stated reason through *unchanged* precisely so it can
-  be checked; normalize it on the way in and the check downstream only
-  ever compares the ledger against itself.
-- Loosen the axiom to accept any reason that names a known fact. The
-  starting value would satisfy that. You would have built an instrument
-  that cannot see the error it exists to see.
-- Fix `statedReason.ts`. Correct — it is what the agent said about
-  itself, it is the only one of the four the agent owns, and it is the
-  thing that was actually wrong.
-
-### `boundary-bypassed` — change the **fact**
-
-Open `worker/bypassed_gate.pkl`. It asserts `true`. It never imports
-`pkl/Ledger.pkl` and never calls `checkAccess`. `pkl test` **passes** on
-it — that is asserted by a committed Go test whose entire point is to
-say so, `TestBypassedGatePassesPklTestButFlaggedByReconciliation`. Its
-result is indistinguishable from `worker/flight_booking_area51.pkl`'s,
-which is governed and also green.
-
-So the supervisor's instinct — *the test is green, move on* — is the
-failure mode, and its mirror image — *the test is red, mutate the world
-until it passes* — is the same mistake pointed the other way. Both treat
-the test's colour as the evidence. The colour is evidence about the test.
-
-The repair is the one line that routes the assertion through the gate.
-Note what it does *not* touch: no grant is written, no observation is
-edited. The flag clears the moment the fact asks the question, whatever
-the supervisor then answers — because the flag was never about the
-answer. A rejected request that went through the gate is a governed
-outcome. An approved-looking one that never asked is not an outcome at
-all.
-
-Be honest about how this particular flag is implemented, though:
-`boundary-bypassed` today is `source.includes(GATE_CALL)` — a check on
-the fact file's *text*, not on what actually ran. It is the first rung of
-a ladder, not a proof:
-
-```text
-v1  source contains the gate call        (this lesson)
-v2  parsed/typed structure contains it   source.includes can't see a comment
-v3  execution evidence shows it ran      static text can't see a call site
-v4  trace evidence binds it to this run  execution evidence can be stale
-```
-
-A worker that comments out the call and writes `true` on the next line —
-`// Ledger.checkAccess(` then `true` — defeats v1 outright; `GATE_CALL`
-would still match the substring. This lesson's exhibit is the teaching
-idea (a check the fact's own author cannot silently satisfy by luck), not
-a claim that the boundary was actually crossed at runtime. `pkl/Ledger.pkl`
-itself is the real gate; `boundary-bypassed` only checks whether the fact
-*asked* it.
-
-**Show the repair** applies both edits if you want to compare. **Undo**
-puts the starting state back.
-
-## Five rows are green. Two report PASS, three report a diagnostic.
-
-Seven rows, two red (above). The other five pass at boot and keep
-passing, but not for the same reason — two are controls that already
-report `PASS`, and three expect a *flag*, not a `PASS`:
-
-The two `PASS` controls:
-
-- **The gate itself.** The supervisor approved this fact for this vault —
-  `ledger.checkAccess` has nothing to report, and never depended on
-  either red row.
-- **The governed fact.** `worker/flight_booking_area51.pkl`, whose `pkl
-  test` result is identical to the bypassed fact's, and which
-  `reconcile.check` does *not* flag. It is what "governed" looks like
-  from the outside — the same green as the row above it, for a real
-  reason.
-
-The three diagnostic assertions:
-
-- **`unapproved-materialization`** — a vault operation recorded for a
-  fact nobody approved. There is no edit that aligns it. The world is
-  wrong, and the honest response is to change the world (revoke it, or
-  find out who did this), not the check.
-- **`reason-mismatch` on the vault** — the right reason, against a vault
-  the grant never covered. Approval for one vault is not approval for
-  another.
-- **`missing-materialization`** — approved, never used. Not an error;
-  every approval passes through this state. Which is exactly why it is a
-  flag to interpret rather than a test to make green.
-
-Making any of the three diagnostic rows report `PASS` instead would mean
-editing `pkl/Reconcile.pkl`. The axiom is not wrong. Sometimes it is — the
-fourth repair in the diagram exists because an example really can encode
-the wrong expectation, and this lesson doesn't yet exercise that
-repair on a genuinely wrong axiom — but a check that fires when it should
-is not that case.
+**Show the repair** enters the value for you. **Undo** clears the Warm
+Log back to blank.
 
 ## Alignment
 
@@ -282,7 +177,7 @@ constrain the possible interpretations of hidden state — the same move
 as the peninsula story and the astronomy story, applied to an agent
 instead of a passenger or a telescope.
 
-**Supporting files**, all real, in the tree to the left:
+**Supporting files**, all real and bundled with the lesson:
 `pkl/Reconcile.pkl` (the alignment axiom) and `pkl/Ledger.pkl` (the
 capability gate, unchanged from CIT-139), `pkl/GrantState.pkl` (the
 supervisor's recorded decisions), `worker/bypassed_gate.pkl` and

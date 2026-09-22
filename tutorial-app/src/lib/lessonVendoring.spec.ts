@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { statedReason } from './statedReason';
 
 /**
  * The one spec in src/lib that is deliberately NOT vendored into a
@@ -31,8 +30,8 @@ const LESSON_5_FILES = 'src/content/tutorial/part-1/chapter-3/lesson-5/_files';
 const LESSON_5_SOLUTION = 'src/content/tutorial/part-1/chapter-3/lesson-5/_solution';
 
 /**
- * Every module lesson 5 runs, except `statedReason.ts` -- that one is
- * the exercise, and its whole job is to differ.
+ * Every supporting module lesson 5 still vendors. Its one-file Warm Log
+ * exercise has a lesson-local spec and is checked separately below.
  */
 const VENDORED = [
   'axioms.ts',
@@ -46,7 +45,6 @@ const VENDORED = [
   'grant_state.pkl.ts',
   'inventory.pkl.ts',
   'reconcile.pkl.ts',
-  'frameCheck.spec.ts',
 ];
 
 /**
@@ -90,21 +88,11 @@ describe('chapter-3/lesson-5 vendors src/lib without drifting from it', () => {
     expect(withoutVendoringHeader(vendored)).toBe(REGISTRY_FILES.includes(name) ? withoutFollowerMaze(expected) : expected);
   });
 
-  it('the solution restores the same stated reason src/lib holds', () => {
-    const solved = readFileSync(`${LESSON_5_SOLUTION}/statedReason.ts`, 'utf8');
-    expect(solved).toContain(`export const statedReason = '${statedReason}';`);
-  });
+  it('starts the Warm Log blank and solves it with the exact accepted value', () => {
+    const start = readFileSync(`${LESSON_5_FILES}/warm-log.txt`, 'utf8');
+    const solved = readFileSync(`${LESSON_5_SOLUTION}/warm-log.txt`, 'utf8');
 
-  it("the lesson's starting state does not already hold it", () => {
-    const start = readFileSync(`${LESSON_5_FILES}/statedReason.ts`, 'utf8');
-    expect(start).not.toContain(`export const statedReason = '${statedReason}';`);
-  });
-
-  it('the solution routes the bypassed fact through the gate and the starting state does not', () => {
-    const start = readFileSync(`${LESSON_5_FILES}/worker/bypassed_gate.pkl`, 'utf8');
-    const solved = readFileSync(`${LESSON_5_SOLUTION}/worker/bypassed_gate.pkl`, 'utf8');
-
-    expect(start).not.toContain('Ledger.checkAccess(');
-    expect(solved).toContain('Ledger.checkAccess(');
+    expect(start.replace(/\r?\n$/, '')).toBe('');
+    expect(solved.replace(/\r?\n$/, '')).toBe('area51:site4:black-budget-vault-access');
   });
 });

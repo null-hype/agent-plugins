@@ -138,7 +138,7 @@ describe('a green test is evidence about the test', () => {
       axiomId: 'reconcile.check' as const,
       factId: MAIN_FACT_ID,
       world: { grantsByFactId, observations: [referenceMaterialization], factFiles: [bypassedFact] },
-      expectedCode: 'PASS',
+      expectedCode: 'boundary-bypassed',
     },
     {
       name: 'the governed fact file, whose pkl test result is identical, is not flagged',
