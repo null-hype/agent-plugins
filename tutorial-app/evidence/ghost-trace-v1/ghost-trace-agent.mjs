@@ -77,8 +77,15 @@ function pairedRows(caseWorld, witness) {
   return rows;
 }
 
-/** Duplicate of followerMazeLog.ts's `flagsToGovernance`, shaping real `check()` flags. */
-function flagsToGovernance(name, caseWorld, witness, model) {
+/**
+ * Duplicate of followerMazeLog.ts's `flagsToGovernance`, shaping a real
+ * `followerMazeAxiom()` verdict (whether `check()` raised flags or not) into
+ * a `GovernanceDiagnostic`. `followerMazeAxiom` already returns `{code:
+ * 'PASS', message}` when there are no flags and `{code: flags[0].kind,
+ * message}` otherwise, so one function covers both this lesson's failing
+ * turn and lesson 2's passing one -- only `severity` differs between them.
+ */
+function toGovernanceDiagnostic(name, caseWorld, witness, model) {
   const verdict = followerMazeAxiom(name, { world: caseWorld, witness });
   const arrival = caseWorld.arrivals.map((event) => event.sequence).join(',');
   const wire = caseWorld.arrivals.map((event) => event.payload).join(' ');
@@ -86,7 +93,7 @@ function flagsToGovernance(name, caseWorld, witness, model) {
 
   return {
     code: verdict.code,
-    severity: 'error',
+    severity: verdict.code === 'PASS' ? 'info' : 'error',
     message: verdict.message,
     subject: { role: 'fact', uri: `fixtures/arrivals/${name}.json`, detail: `arrival [${arrival}]` },
     related: [
@@ -113,40 +120,13 @@ if (flags.length === 0) {
   throw new Error('expected the arrival-order witness to miss a delivery for arrival 4231; check() returned no flags');
 }
 
-const diagnostic = flagsToGovernance(ARRIVAL_NAME, world, witness, 'arrival-order');
+const diagnostic = toGovernanceDiagnostic(ARRIVAL_NAME, world, witness, 'arrival-order');
 
 // CIT-247 lesson-2: the same arrival, a different real witness
 // (`reorderBufferWitness` -- hold each event until every lower sequence has
 // applied, then release in order). Verified live before writing this file:
 // `check()` returns no flags for this witness on this arrival, i.e. it
-// really does deliver what arrival-order missed. Shaped with the same glue
-// as the first diagnostic, at `severity: 'info'` since `flagsToGovernance`
-// only names a real flag's kind and this witness raises none -- the PASS
-// case needs its own code/message, not an absent flags[0].
-function passingGovernance(name, caseWorld, passingWitness, model) {
-  const verdict = followerMazeAxiom(name, { world: caseWorld, witness: passingWitness });
-  const arrival = caseWorld.arrivals.map((event) => event.sequence).join(',');
-  const wire = caseWorld.arrivals.map((event) => event.payload).join(' ');
-  const users = [...caseWorld.connectedUsers].sort((a, b) => a - b).join(', ');
-
-  return {
-    code: verdict.code,
-    severity: 'info',
-    message: verdict.message,
-    subject: { role: 'fact', uri: `fixtures/arrivals/${name}.json`, detail: `arrival [${arrival}]` },
-    related: [
-      { role: 'fact', uri: `fixtures/arrivals/${name}.json`, detail: `arrival [${arrival}] over connected {${users}}: ${wire}` },
-      ...pairedRows(caseWorld, passingWitness).map((row) => ({
-        role: 'observation',
-        uri: `witness/${model}`,
-        detail: `expected ${row.expected} | actual ${row.actual} [${row.state}]`,
-      })),
-      { role: 'axiom', uri: ORDERED_ROUTING, detail: ORDERED_ROUTING_RATIONALE },
-    ],
-    evaluationId: `${ORDERED_ROUTING}:arrival-${name}`,
-  };
-}
-
+// really does deliver what arrival-order missed.
 const secondWitness = reorderBufferWitness(world);
 const secondFlags = check(world, secondWitness);
 
@@ -154,7 +134,7 @@ if (secondFlags.length !== 0) {
   throw new Error('expected the reorder-buffer witness to pass arrival 4231; check() returned flags');
 }
 
-const secondDiagnostic = passingGovernance(ARRIVAL_NAME, world, secondWitness, 'reorder-buffer');
+const secondDiagnostic = toGovernanceDiagnostic(ARRIVAL_NAME, world, secondWitness, 'reorder-buffer');
 
 class GhostTraceAgent {
   turn = 0;

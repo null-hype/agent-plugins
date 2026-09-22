@@ -52,7 +52,15 @@ export interface AcpDiagnostic {
 }
 
 // Ref: Pkl class `acpDiagnosticMeta.EvidenceLocation`.
-// Mirrors `EvidenceLocation` in governanceDiagnostic.ts.
+// Mirrors `EvidenceLocation` in governanceDiagnostic.ts, with one generated-
+// type difference worth naming rather than hiding: TypeScript's own
+// `EvidenceLocation` declares `revision`/`line` genuinely optional
+// (`revision?: string`), but `pkl-typescript` has no notation that
+// generates an optional TS property from a nullable Pkl one -- `String?`
+// here always generates a required `revision: string|null`. Harmless in
+// practice (this type is `import type`-only and erased before the fixtures'
+// actual JSON is ever read), but real: fixtures omit these keys entirely
+// rather than setting them to `null`.
 export interface EvidenceLocation {
   role: EvidenceRole
 
