@@ -1,0 +1,121 @@
+{
+  "scenario": "budget-authority-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_budget-01",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Does proposal P (airfare 890 + ground 400) fit within limit rule v1 (1200)?"
+            }
+          ],
+          "_meta": {
+            "pins": [
+              {
+                "id": "question",
+                "label": "Question",
+                "text": "Does proposal P (airfare 890 + ground 400) fit within limit rule v1 (1200)?"
+              },
+              {
+                "id": "limit-v1",
+                "label": "Limit rule v1",
+                "text": "budget ≤ 1200"
+              }
+            ],
+            "verdict": {
+              "channel": "type",
+              "status": "malformed",
+              "text": "malformed · worker reason \"fits, roughly 1.2k all in\" is free text, not a typed decision"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "budget-authority-v1#0",
+        "capturedAt": "n/a (scripted)",
+        "scripted": "CIT-251 storyboard"
+      }
+    },
+    {
+      "actor": "agent",
+      "speaker": "jev",
+      "action": "type the answer",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "stopReason": "end_turn",
+          "_meta": {
+            "pins": [
+              {
+                "id": "jev-answer",
+                "label": "Jev's answer",
+                "text": "YES · 0.94 (to the question above)",
+                "simulated": "stub, not a recorded Jev answer"
+              }
+            ],
+            "verdict": {
+              "channel": "type",
+              "status": "well-formed",
+              "text": "well-formed · {answer: YES, confidence: 0.94} (simulated)"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "budget-authority-v1#1",
+        "capturedAt": "n/a (scripted)",
+        "scripted": "CIT-251 storyboard"
+      }
+    },
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_budget-01",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Merge branch airfare and branch ground into proposal P."
+            }
+          ],
+          "_meta": {
+            "pins": [
+              {
+                "id": "branch-airfare",
+                "label": "Branch airfare",
+                "text": "airfare 890"
+              },
+              {
+                "id": "branch-ground",
+                "label": "Branch ground",
+                "text": "ground 400"
+              }
+            ]
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "budget-authority-v1#2",
+        "capturedAt": "n/a (scripted)",
+        "scripted": "CIT-251 storyboard"
+      }
+    }
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "git",
+    "action": "merge"
+  }
+}

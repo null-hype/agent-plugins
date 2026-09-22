@@ -113,6 +113,37 @@ function monacoLoaderScript() {
       }`;
 }
 
+// CIT-251: the strip above the log. Hidden unless the fixture carries a
+// scripted marker, pins or verdicts, so ghost-trace lessons look as before.
+// Only the Budget channel uses pass/fail colour; Type, Merge and Authority
+// share one neutral style so none of them reads as an approval.
+function traceViewStyles() {
+  return `<style>
+      main.client { display: flex; flex-direction: column; }
+      main.client #monaco-root { flex: 1 1 auto; min-height: 72px; height: auto; }
+      #trace-view { flex: 0 1 auto; overflow: auto; font: 11.5px/1.35 system-ui, sans-serif; color: #2b2a26; padding: 6px 8px; border-bottom: 1px solid #d8d4c8; background: #faf7ef; }
+      #trace-view[hidden] { display: none; }
+      #trace-view .scripted { font-weight: 600; color: #6b5d2e; margin-bottom: 4px; }
+      #trace-view h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; margin: 0; color: #6f6a5c; }
+      #trace-view ul { list-style: none; margin: 0; padding: 0; }
+      #trace-view .pins ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); column-gap: 12px; }
+      #trace-view .pins li { margin: 0; padding-left: 4px; border-left: 3px solid transparent; }
+      #trace-view .pins .label { font-weight: 600; }
+      #trace-view .pins .text, #trace-view .entry { font-family: "Roboto Mono", Menlo, Consolas, monospace; }
+      #trace-view .tag { display: inline-block; margin-left: 5px; padding: 0 4px; border-radius: 3px; border: 1px solid #b9b2a0; color: #5b5646; font: 10.5px system-ui, sans-serif; }
+      #trace-view .channels { display: grid; gap: 3px; margin-top: 6px; }
+      #trace-view .channel { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: start; gap: 6px; }
+      #trace-view .channel h2 { padding-top: 3px; }
+      #trace-view .entry { padding: 2px 5px; margin: 0 0 2px; border-radius: 3px; border-left: 3px solid transparent; color: #2b2a26; background: #f0ede4; }
+      #trace-view .entry.older { opacity: .8; }
+      #trace-view .entry[data-channel="budget"][data-status="fail"] { color: #8c1d18; background: #fde8e6; }
+      #trace-view .entry[data-channel="budget"][data-status="pass"] { color: #17572a; background: #e4f4e8; }
+      #trace-view .entry .caption { display: block; font-family: system-ui, sans-serif; font-weight: 600; }
+      #trace-view .empty { color: #8a8575; font-style: italic; padding: 2px 0; }
+      #trace-view .latest { border-left-color: #3b6fd4; }
+    </style>`;
+}
+
 // CIT-247: one Monaco line per frame -- the same {raw, diagnostic, related}
 // rendering contract the otel-warm-log template already draws real markers/
 // hover/CodeLens/an evidence widget for (see that template's
@@ -124,8 +155,9 @@ function monacoLoaderScript() {
 // logic itself.
 function renderClientPage() {
   return `${sharedHead('ACP Trace: Client')}
+  ${traceViewStyles()}
   <body>
-    <main><div id="monaco-root"></div></main>
+    <main class="client"><section id="trace-view" aria-label="Trace view" hidden></section><div id="monaco-root"></div></main>
     <script>
       ${monacoLoaderScript()}
 
@@ -225,6 +257,14 @@ function renderClientPage() {
         });
       }
 
+      // CIT-251: the newest turn (and the pending line naming who acts next)
+      // is what a viewer needs; in a short preview pane it would otherwise sit
+      // below the fold. Re-run on layout changes too: the strip above the log
+      // grows after a render, shrinking the editor after the first reveal.
+      function revealNewest() {
+        if (editor && model) editor.revealLine(model.getLineCount());
+      }
+
       async function ensureEditor() {
         if (editor) return;
         const monaco = await loadMonaco();
@@ -246,30 +286,52 @@ function renderClientPage() {
           theme: 'vs',
           wordWrap: 'on',
         });
+        editor.onDidLayoutChange(revealNewest);
       }
 
-      // Mirrors acpTraceProtocol.ts's extractPromptText -- \`session/prompt\`'s
-      // \`params.prompt\` is a list of content blocks; only \`text\` blocks render.
+      // Mirrors acpTraceProtocol.ts's metaOf / describeActor / extractPromptText /
+      // toWarmLogLine / describePendingLine / deriveTraceView -- those are the
+      // unit-tested originals; see renderClientPage's comment on why a copy.
+      // Display-only additions here (the \`latest\` marker, current-only
+      // non-budget channels) are covered by the budget-authority storyboard,
+      // not by those unit tests.
+      function metaOf(envelope) {
+        if (envelope.result && envelope.result._meta) return envelope.result._meta;
+        if (envelope.params && typeof envelope.params === 'object' && envelope.params._meta) return envelope.params._meta;
+        return undefined;
+      }
+
+      function describeActor(turn) {
+        return turn.speaker ? turn.speaker + ' (' + turn.actor + ')' : turn.actor;
+      }
+
       function extractPromptText(params) {
-        if (!params || typeof params !== 'object' || !Array.isArray(params.prompt)) return null;
+        if (!params || typeof params !== 'object') return null;
+        const toolCall = params.toolCall || params.update;
+        if (toolCall && typeof toolCall.title === 'string') return toolCall.title;
+        if (!Array.isArray(params.prompt)) return null;
         const texts = params.prompt
           .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
           .map((block) => block.text);
         return texts.length > 0 ? texts.join(' ') : null;
       }
 
-      // Mirrors acpTraceProtocol.ts's toWarmLogLine.
       function toWarmLogLine(frame) {
         const envelope = frame.envelope || {};
-        const diagnostic = envelope.result && envelope.result._meta && envelope.result._meta.diagnostic;
+        const meta = metaOf(envelope);
+        const diagnostic = meta && meta.diagnostic;
         const promptText = extractPromptText(envelope.params);
         const status = diagnostic ? diagnostic.code : envelope.result !== undefined ? 'ok' : 'sent';
         const call = envelope.method ? envelope.method + (promptText ? ' "' + promptText + '"' : '') : null;
         return {
-          raw: [frame.actor + ': ' + frame.action, '->', status, call].filter(Boolean).join('  '),
+          raw: [describeActor(frame) + ': ' + frame.action, '->', status, call].filter(Boolean).join('  '),
           diagnostic: diagnostic ? { severity: diagnostic.severity, code: diagnostic.code, message: diagnostic.message } : null,
           related: (diagnostic && diagnostic.related) || [],
         };
+      }
+
+      function describePendingLine(nextTurn) {
+        return describeActor(nextTurn) + ': ' + nextTurn.action + '  ->  awaiting recorded turn (Solve replays it)';
       }
 
       function renderRecords(state) {
@@ -278,13 +340,114 @@ function renderClientPage() {
         }
         const records = state.frames.map(toWarmLogLine);
         if (state.nextTurn) {
-          records.push({
-            raw: state.nextTurn.actor + ': ' + state.nextTurn.action + '  ->  blocked (press Solve)',
-            diagnostic: null,
-            related: [],
-          });
+          records.push({ raw: describePendingLine(state.nextTurn), diagnostic: null, related: [] });
         }
         return records;
+      }
+
+      function deriveTraceView(frames) {
+        const pins = [];
+        const channels = { type: [], merge: [], budget: [], authority: [] };
+        let scripted = null;
+        for (const frame of frames || []) {
+          if (scripted === null && frame.provenance && frame.provenance.scripted) scripted = frame.provenance.scripted;
+          const meta = metaOf(frame.envelope || {});
+          const latest = frame === frames[frames.length - 1];
+          for (const pin of (meta && meta.pins) || []) {
+            // acpTraceProtocol.ts throws here; a page can't, so it says so.
+            if (pins.some((existing) => existing.id === pin.id)) {
+              pins.push({ id: pin.id + '#repinned', label: pin.label, text: 'fixture error: "' + pin.id + '" pinned twice; pinned objects are immutable', latest });
+              continue;
+            }
+            pins.push(Object.assign({ latest }, pin));
+          }
+          if (meta && meta.verdict && channels[meta.verdict.channel]) channels[meta.verdict.channel].push(Object.assign({ latest }, meta.verdict));
+        }
+        for (const grant of channels.authority) {
+          const supersededBy = { pin: grant.to, scope: grant.scope, actor: grant.actor };
+          for (const pin of pins) if (pin.id === grant.from) pin.supersededBy = supersededBy;
+          for (const entry of channels.budget) {
+            if (entry.rule === grant.from && entry.subject === grant.scope) entry.supersededBy = supersededBy;
+            if (entry.rule === grant.to && entry.subject !== grant.scope) entry.outOfScope = { scope: grant.scope, actor: grant.actor };
+          }
+        }
+        return { scripted, pins, channels };
+      }
+
+      const CHANNEL_TITLES = { type: 'Type', merge: 'Merge', budget: 'Budget', authority: 'Authority' };
+
+      function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
+
+      function renderTraceView(state) {
+        const root = document.getElementById('trace-view');
+        const view = deriveTraceView(state && state.frames);
+        const verdictCount = Object.values(view.channels).reduce((n, entries) => n + entries.length, 0);
+        root.replaceChildren();
+        if (!view.scripted && view.pins.length === 0 && verdictCount === 0) {
+          root.hidden = true;
+          return;
+        }
+        root.hidden = false;
+        const labelOf = (id) => (view.pins.find((pin) => pin.id === id) || { label: id }).label;
+        const supersededText = (by) => 'superseded for ' + labelOf(by.scope) + ' by ' + labelOf(by.pin) + ' (' + by.actor + ')';
+
+        if (view.scripted) root.appendChild(el('div', 'scripted', 'Scripted replay (' + view.scripted + ') · not a live capture'));
+
+        if (view.pins.length > 0) {
+          const section = el('section', 'pins');
+          section.setAttribute('role', 'region');
+          section.setAttribute('aria-label', 'Fixed objects');
+          const list = el('ul');
+          for (const pin of view.pins) {
+            const item = el('li', pin.latest ? 'latest' : '');
+            item.dataset.pin = pin.id;
+            item.appendChild(el('span', 'label', pin.label + ': '));
+            item.appendChild(el('span', 'text', pin.text));
+            if (pin.simulated) item.appendChild(el('span', 'tag simulated', 'simulated · ' + pin.simulated));
+            if (pin.supersededBy) item.appendChild(el('span', 'tag superseded', supersededText(pin.supersededBy)));
+            list.appendChild(item);
+          }
+          section.appendChild(list);
+          root.appendChild(section);
+        }
+
+        const grid = el('div', 'channels');
+        for (const channel of ['type', 'merge', 'budget', 'authority']) {
+          const section = el('section', 'channel');
+          section.setAttribute('role', 'region');
+          section.setAttribute('aria-label', CHANNEL_TITLES[channel]);
+          section.dataset.channel = channel;
+          section.appendChild(el('h2', '', CHANNEL_TITLES[channel]));
+          // Budget keeps its whole history: an earlier evaluation must keep
+          // resolving to the rule it read. The other channels show their
+          // current state only.
+          const entries = channel === 'budget' ? view.channels[channel] : view.channels[channel].slice(-1);
+          if (entries.length === 0) section.appendChild(el('div', 'empty', 'not evaluated'));
+          const list = el('ul');
+          entries.forEach((entry, index) => {
+            const item = el('li', 'entry' + (index < entries.length - 1 ? ' older' : '') + (entry.latest ? ' latest' : ''), entry.text);
+            item.dataset.channel = channel;
+            item.dataset.status = entry.status;
+            if (entry.rule) item.dataset.rule = entry.rule;
+            if (channel === 'budget' && entry.rule) item.appendChild(el('span', 'tag rule', 'evaluated against ' + labelOf(entry.rule)));
+            if (entry.supersededBy) item.appendChild(el('span', 'tag superseded', supersededText(entry.supersededBy)));
+            if (entry.outOfScope) {
+              item.appendChild(el('span', 'tag out-of-scope', 'rule granted for ' + labelOf(entry.outOfScope.scope) + ' only, not ' + labelOf(entry.subject)));
+            }
+            if (channel === 'authority') {
+              item.appendChild(el('span', 'caption', 'Recorded ' + entry.actor + ' decision · enforcement ' + entry.enforcement));
+            }
+            list.appendChild(item);
+          });
+          section.appendChild(list);
+          grid.appendChild(section);
+        }
+        root.appendChild(grid);
       }
 
       async function renderIntoEditor(records) {
@@ -324,11 +487,13 @@ function renderClientPage() {
         const nextText = lines.join('\\n');
         if (model.getValue() !== nextText) model.setValue(nextText);
         window.monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
+        revealNewest();
       }
 
       async function applyState(payload) {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
+        renderTraceView(payload);
         await renderIntoEditor(renderRecords(payload));
       }
 
@@ -395,7 +560,13 @@ function renderAgentPage() {
           return JSON.stringify({ note: 'no frames received yet' });
         }
         return state.frames
-          .map((frame) => JSON.stringify({ actor: frame.actor, action: frame.action, envelope: frame.envelope }))
+          .map((frame) =>
+            JSON.stringify(
+              frame.speaker
+                ? { actor: frame.actor, speaker: frame.speaker, action: frame.action, envelope: frame.envelope }
+                : { actor: frame.actor, action: frame.action, envelope: frame.envelope },
+            ),
+          )
           .join('\\n');
       }
 

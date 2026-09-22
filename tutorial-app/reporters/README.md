@@ -32,7 +32,8 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
   `tutorial.ts`).
 - **State continuity is enforced.** For every step `n > 1`, the files
   declared under `before/` must equal the cumulative end state of step
-  `n-1`, path for path and byte for byte. Otherwise the reporter refuses to
+  `n-1` plus step `n`'s declared incoming turn (below), path for path and
+  byte for byte. Otherwise the reporter refuses to
   compile (see below). Step 1 has no predecessor, so its `before/` is
   unchecked; a step with no `before/` attachments declares an empty start.
 - **Passed tests only.** A failing test is a broken storyboard: the
@@ -46,9 +47,15 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
   - `tutorial:<n>:before/file/<path>` -- file state at the *start* of step
     `<n>` (1-based). Becomes the lesson's `_files`. Attach the full set of
     files the page shows, after the story has loaded.
+  - `tutorial:<n>:incoming/file/<path>` -- the incoming turn: what arrives
+    between the end of step `<n-1>` and the start of step `<n>` (what the
+    viewer sees appear on Next, e.g. a new request frame in a trace file).
+    Declaring it is what lets `before/` differ from the previous end; an
+    undeclared difference is still a continuity break. On step 1 an
+    incoming file must match the declared start.
   - `tutorial:<n>:file/<path>` -- file state at the *end* of step `<n>`,
-    merged onto the previous step's end state (cumulative). Becomes
-    `_solution`.
+    merged onto the previous step's end state and this step's incoming turn
+    (cumulative). Becomes `_solution`.
   - `tutorial:<n>:prose` -- that step's lesson body markdown.
   - `tutorial:<n>:meta` -- optional JSON attachment with runtime/display
     frontmatter (`template`, `prepareCommands`, `mainCommand`, `previews`,
@@ -93,7 +100,7 @@ stops being load-bearing.
    `i` (0-based, `stepIndex = i + 1`):
    - `_files/` = the step's own `before/file/*` attachments.
    - `_solution/` = the previous step's end state merged with this step's
-     `file/*` attachments.
+     `incoming/file/*` and then `file/*` attachments.
    - `frame.png` if a screenshot attachment was found.
    - `content.mdx`: `type: lesson`, `title: <step title>`, `template:
      default` (see below), `focus: /<file>` for the first file (alphabetical) this step
@@ -116,7 +123,7 @@ gives an editor + file tree + Solve button.
 Attachments capture only each step's *end* state, a file a step introduces
 never exists in that lesson's `_files` unless declared under `before/`. The
 reporter compares what a step declares as its start state against where
-the previous step ended:
+the previous step ended, plus that step's declared incoming turn:
 
 ```
 [tutorial-reporter] refusing to compile "area51 booking": tutorial state continuity broken:

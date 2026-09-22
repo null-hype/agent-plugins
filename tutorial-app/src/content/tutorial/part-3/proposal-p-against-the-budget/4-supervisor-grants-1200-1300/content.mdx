@@ -1,0 +1,36 @@
+---
+type: lesson
+title: Supervisor grants 1200 → 1300
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
+
+# Supervisor grants 1200 → 1300
+
+The worker asks for a decision through `session/request_permission`: raise the
+limit from 1200 to 1300 for proposal P. Solve replays the supervisor's recorded
+answer. It shows up in the **Authority** channel, not as a check result:
+
+- **who:** the supervisor
+- **what:** limit rule v1 (1200) → limit rule v2 (1300)
+- **scope:** proposal P only, at the same tree id; P itself is unchanged
+
+Rule v1 is not edited. It stays pinned, now marked superseded for P, and the
+earlier `FAIL @ v1` still points at it.
+
+**Enforcement simulated.** This replay records the decision; nothing in it
+prevents the worker from editing the rule. It shows the record a real gate would
+check, which is why the Authority channel carries that label beside the decision
+itself.

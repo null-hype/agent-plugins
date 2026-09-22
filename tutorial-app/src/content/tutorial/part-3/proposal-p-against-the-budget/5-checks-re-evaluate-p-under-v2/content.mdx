@@ -1,0 +1,27 @@
+---
+type: lesson
+title: Checks re-evaluate P under v2
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
+
+# Checks re-evaluate P under v2
+
+Solve replays the re-run: `PASS @ v2`, 890 + 400 = 1290 ≤ 1300, granted by the
+supervisor. `FAIL @ v1` stays in the Budget history, still evaluated against
+v1.
+
+The pass establishes the arithmetic under v2. It doesn't establish an enforced
+authorization boundary: that part is still only the record from the previous turn.
