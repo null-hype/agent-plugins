@@ -72,7 +72,32 @@
         "recordingId": "ghost-trace-v1#1",
         "capturedAt": "2026-09-22T08:35:12.572Z"
       }
+    },
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_ghost-01",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Would the reorder-buffer model have delivered it?"
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "ghost-trace-v1#2",
+        "capturedAt": "2026-09-22T08:35:12.572Z"
+      }
     }
   ],
-  "nextTurn": null
+  "nextTurn": {
+    "actor": "agent",
+    "action": "reply with diagnostic"
+  }
 }

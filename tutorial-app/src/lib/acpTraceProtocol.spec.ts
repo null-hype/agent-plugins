@@ -5,6 +5,7 @@ import {
   findDiagnosticFrame,
   parseAcpTraceFixture,
   resolveAcpTraceConfig,
+  toWarmLogLine,
   type AcpFrame,
 } from './acpTraceProtocol';
 
@@ -15,7 +16,10 @@ const clientFrame: AcpFrame = {
     jsonrpc: '2.0',
     id: 7,
     method: 'session/prompt',
-    params: { sessionId: 'sess_ghost-01' },
+    params: {
+      sessionId: 'sess_ghost-01',
+      prompt: [{ type: 'text', text: "Why didn't user 10 get the status update?" }],
+    },
   },
   provenance: { recordingId: 'ghost-trace-v1#0', capturedAt: '2026-09-15T00:00:00Z' },
 };
@@ -31,9 +35,13 @@ const agentFrame: AcpFrame = {
       _meta: {
         diagnostic: {
           severity: 'error',
-          code: 'LEDGER_WRITE_CONFLICT',
-          message: 'conflict',
-          source: 'acp-ghost-trace',
+          code: 'fm-missing-delivery',
+          message: 'required delivery 10 <- seq 2 is absent from the witness',
+          subject: { role: 'fact', uri: 'fixtures/arrivals/4231.json', detail: 'arrival [4,2,3,1]' },
+          related: [
+            { role: 'axiom', uri: 'followerMaze.orderedRouting', detail: 'ordering errors surface as routing errors' },
+          ],
+          evaluationId: 'followerMaze.orderedRouting:arrival-4231',
         },
       },
     },
@@ -86,7 +94,7 @@ describe('parseAcpTraceFixture + buildAcpTraceState', () => {
     expect(state.nextTurn).toBeNull();
     expect(describeNextTurn(state.nextTurn)).toBeNull();
     expect(findDiagnosticFrame(state.frames)?.envelope.result?._meta?.diagnostic.code).toBe(
-      'LEDGER_WRITE_CONFLICT',
+      'fm-missing-delivery',
     );
   });
 
@@ -103,5 +111,40 @@ describe('parseAcpTraceFixture + buildAcpTraceState', () => {
 
     expect(state.frames).toEqual([]);
     expect(state.solved).toBe(false);
+  });
+});
+
+describe('toWarmLogLine', () => {
+  it('a sent request with no result yet: status "sent", real prompt text, no diagnostic', () => {
+    const line = toWarmLogLine(clientFrame);
+
+    expect(line.raw).toBe(
+      'client: send prompt  ->  sent  session/prompt "Why didn\'t user 10 get the status update?"',
+    );
+    expect(line.diagnostic).toBeNull();
+    expect(line.related).toEqual([]);
+  });
+
+  it('a result with a diagnostic: status is the diagnostic code, not a blanket "ok"', () => {
+    const line = toWarmLogLine(agentFrame);
+
+    expect(line.raw).toContain('fm-missing-delivery');
+    expect(line.raw).not.toContain(' ok');
+    expect(line.diagnostic).toEqual({
+      severity: 'error',
+      code: 'fm-missing-delivery',
+      message: 'required delivery 10 <- seq 2 is absent from the witness',
+    });
+    expect(line.related).toEqual(agentFrame.envelope.result?._meta?.diagnostic.related);
+  });
+
+  it('a result with no diagnostic: status "ok", not the diagnostic code', () => {
+    const line = toWarmLogLine({
+      ...agentFrame,
+      envelope: { ...agentFrame.envelope, result: { stopReason: 'end_turn' } },
+    });
+
+    expect(line.raw).toContain(' ok');
+    expect(line.diagnostic).toBeNull();
   });
 });

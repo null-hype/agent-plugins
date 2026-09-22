@@ -113,11 +113,15 @@ function monacoLoaderScript() {
       }`;
 }
 
-// Preserves the existing otel-warm-log presentation: #region/#endregion
-// folding blocks, one per ACP frame, keyword-highlighted actor/action
-// headers. Diagnostics (this lesson's `_meta.diagnostic`) render as a plain
-// line inside the agent frame's region -- the same "diagnostics and
-// feedback" surface the warm log already gives other lessons.
+// CIT-247: one Monaco line per frame -- the same {raw, diagnostic, related}
+// rendering contract the otel-warm-log template already draws real markers/
+// hover/CodeLens/an evidence widget for (see that template's
+// registerHoverProvider/registerCodeLensProvider/buildEvidenceDomNode this
+// duplicates). `toWarmLogLine` below mirrors acpTraceProtocol.ts's function
+// of the same name -- that's the real, unit-tested mapping; this is a
+// duplicate because templates are plain HTML/JS strings with no shared
+// module system between them, not a second source of truth for the mapping
+// logic itself.
 function renderClientPage() {
   return `${sharedHead('ACP Trace: Client')}
   <body>
@@ -128,6 +132,49 @@ function renderClientPage() {
       let editor = null;
       let model = null;
       let currentRevision = null;
+      let diagnosticsByLine = {};
+      let relatedByLine = {};
+      let evidenceWidgetLine = null;
+      const MARKER_OWNER = 'acp-trace';
+      const PEEK_EVIDENCE_COMMAND = 'acp-trace.peekEvidence';
+      const EVIDENCE_WIDGET_ID = 'acp-trace.evidenceWidget';
+
+      function buildEvidenceDomNode(related) {
+        const node = document.createElement('div');
+        node.setAttribute('role', 'region');
+        node.setAttribute('aria-label', 'Diagnostic evidence');
+        node.className = 'evidence-widget';
+        node.style.cssText =
+          'background:#1e1e1e;color:#d4d4d4;border:1px solid #454545;border-radius:3px;' +
+          'padding:6px 10px;font:12px "Roboto Mono",Menlo,Consolas,monospace;width:600px;max-width:80vw;max-height:300px;overflow:auto;white-space:pre-wrap;';
+        related.forEach((entry) => {
+          const row = document.createElement('div');
+          const where = entry.uri + (entry.revision ? '@' + entry.revision : '') + (entry.line ? ':' + entry.line : '');
+          row.textContent = entry.role + ' (' + where + '): ' + entry.detail;
+          row.style.padding = '2px 0';
+          node.appendChild(row);
+        });
+        return node;
+      }
+
+      function toggleEvidenceWidget(monacoEditor, lineNumber, related) {
+        if (evidenceWidgetLine !== null) {
+          monacoEditor.removeContentWidget({ getId: () => EVIDENCE_WIDGET_ID });
+          const wasShowingThisLine = evidenceWidgetLine === lineNumber;
+          evidenceWidgetLine = null;
+          if (wasShowingThisLine) return;
+        }
+        const domNode = buildEvidenceDomNode(related);
+        monacoEditor.addContentWidget({
+          getId: () => EVIDENCE_WIDGET_ID,
+          getDomNode: () => domNode,
+          getPosition: () => ({
+            position: { lineNumber, column: 1 },
+            preference: [window.monaco.editor.ContentWidgetPositionPreference.BELOW],
+          }),
+        });
+        evidenceWidgetLine = lineNumber;
+      }
 
       function configureLanguage(monaco) {
         const languageId = 'acp-warm-log';
@@ -135,27 +182,45 @@ function renderClientPage() {
         monaco.languages.register({ id: languageId });
         monaco.languages.setLanguageConfiguration(languageId, { comments: { lineComment: '#' } });
         monaco.languages.setMonarchTokensProvider(languageId, {
-          tokenizer: {
-            root: [
-              [/^#region.*$/, 'keyword'],
-              [/^#endregion.*$/, 'keyword'],
-              [/^  (method|result|diagnostic|note):/, 'type'],
-            ],
+          tokenizer: { root: [[/^(client|agent): .*$/, 'keyword']] },
+        });
+
+        monaco.languages.registerHoverProvider(languageId, {
+          provideHover(hoverModel, position) {
+            const diagnostic = diagnosticsByLine[position.lineNumber];
+            if (!diagnostic) return null;
+            const related = relatedByLine[position.lineNumber] || [];
+            const contents = [{ value: '**' + diagnostic.code + '**' }, { value: diagnostic.message }];
+            for (const entry of related) contents.push({ value: '_' + entry.role + '_ (' + entry.uri + '): ' + entry.detail });
+            return {
+              range: new monaco.Range(position.lineNumber, 1, position.lineNumber, hoverModel.getLineMaxColumn(position.lineNumber)),
+              contents,
+            };
           },
         });
-        monaco.languages.registerFoldingRangeProvider(languageId, {
-          provideFoldingRanges(m) {
-            const ranges = [];
-            const stack = [];
-            for (let line = 1; line <= m.getLineCount(); line += 1) {
-              const text = m.getLineContent(line).trim();
-              if (text.startsWith('#region')) stack.push(line);
-              else if (text.startsWith('#endregion')) {
-                const start = stack.pop();
-                if (start) ranges.push({ start, end: line, kind: monaco.languages.FoldingRangeKind.Region });
-              }
+
+        monaco.editor.registerCommand(PEEK_EVIDENCE_COMMAND, (_accessor, lineNumber) => {
+          if (!editor) return;
+          const related = relatedByLine[lineNumber] || [];
+          if (related.length === 0) return;
+          editor.setPosition({ column: 1, lineNumber });
+          toggleEvidenceWidget(editor, lineNumber, related);
+        });
+
+        monaco.languages.registerCodeLensProvider(languageId, {
+          provideCodeLenses(lensModel) {
+            const lenses = [];
+            for (let lineNumber = 1; lineNumber <= lensModel.getLineCount(); lineNumber += 1) {
+              const diagnostic = diagnosticsByLine[lineNumber];
+              if (!diagnostic) continue;
+              const relatedCount = (relatedByLine[lineNumber] || []).length;
+              const prefix = diagnostic.severity === 'warning' ? '⚠ ' : diagnostic.severity === 'info' ? 'ℹ ' : '✗ ';
+              lenses.push({
+                range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+                command: { id: PEEK_EVIDENCE_COMMAND, title: prefix + diagnostic.code + ' · ' + relatedCount + ' related', arguments: [lineNumber] },
+              });
             }
-            return ranges;
+            return { lenses, dispose() {} };
           },
         });
       }
@@ -165,59 +230,106 @@ function renderClientPage() {
         const monaco = await loadMonaco();
         if (editor) return;
         configureLanguage(monaco);
-        model = monaco.editor.createModel(renderTrace(null), 'acp-warm-log');
+        model = monaco.editor.createModel('', 'acp-warm-log');
         editor = monaco.editor.create(document.getElementById('monaco-root'), {
           automaticLayout: true,
-          folding: true,
           fontFamily: '"Roboto Mono", "SFMono-Regular", Menlo, Consolas, monospace',
           fontSize: 13,
+          glyphMargin: true,
+          lineDecorationsWidth: 12,
           lineNumbers: 'on',
           minimap: { enabled: false },
           model,
           readOnly: true,
           renderLineHighlight: 'none',
           scrollBeyondLastLine: false,
-          showFoldingControls: 'always',
           theme: 'vs',
           wordWrap: 'on',
         });
       }
 
-      function renderTrace(state) {
+      // Mirrors acpTraceProtocol.ts's extractPromptText -- \`session/prompt\`'s
+      // \`params.prompt\` is a list of content blocks; only \`text\` blocks render.
+      function extractPromptText(params) {
+        if (!params || typeof params !== 'object' || !Array.isArray(params.prompt)) return null;
+        const texts = params.prompt
+          .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
+          .map((block) => block.text);
+        return texts.length > 0 ? texts.join(' ') : null;
+      }
+
+      // Mirrors acpTraceProtocol.ts's toWarmLogLine.
+      function toWarmLogLine(frame) {
+        const envelope = frame.envelope || {};
+        const diagnostic = envelope.result && envelope.result._meta && envelope.result._meta.diagnostic;
+        const promptText = extractPromptText(envelope.params);
+        const status = diagnostic ? diagnostic.code : envelope.result !== undefined ? 'ok' : 'sent';
+        const call = envelope.method ? envelope.method + (promptText ? ' "' + promptText + '"' : '') : null;
+        return {
+          raw: [frame.actor + ': ' + frame.action, '->', status, call].filter(Boolean).join('  '),
+          diagnostic: diagnostic ? { severity: diagnostic.severity, code: diagnostic.code, message: diagnostic.message } : null,
+          related: (diagnostic && diagnostic.related) || [],
+        };
+      }
+
+      function renderRecords(state) {
         if (!state || !state.frames || state.frames.length === 0) {
-          return ['#region waiting for trace', '  note: no frames received yet', '#endregion'].join('\\n');
+          return [{ raw: 'waiting for trace: no frames received yet', diagnostic: null, related: [] }];
+        }
+        const records = state.frames.map(toWarmLogLine);
+        if (state.nextTurn) {
+          records.push({
+            raw: state.nextTurn.actor + ': ' + state.nextTurn.action + '  ->  blocked (press Solve)',
+            diagnostic: null,
+            related: [],
+          });
+        }
+        return records;
+      }
+
+      async function renderIntoEditor(records) {
+        await ensureEditor();
+        const lines = [];
+        const markers = [];
+        diagnosticsByLine = {};
+        relatedByLine = {};
+        if (evidenceWidgetLine !== null) {
+          editor.removeContentWidget({ getId: () => EVIDENCE_WIDGET_ID });
+          evidenceWidgetLine = null;
         }
 
-        const lines = [];
-        for (const frame of state.frames) {
-          const label = frame.actor + ': ' + frame.action;
-          const status = frame.envelope && frame.envelope.result !== undefined ? 'ok' : 'sent';
-          lines.push('#region ' + label + ' -> ' + status);
-          if (frame.envelope && frame.envelope.method) lines.push('  method: ' + frame.envelope.method);
-          if (frame.envelope && frame.envelope.result !== undefined) {
-            lines.push('  result: ' + JSON.stringify(frame.envelope.result));
+        records.forEach((record, index) => {
+          const lineNumber = index + 1;
+          lines.push(record.raw);
+          if (record.diagnostic) {
+            diagnosticsByLine[lineNumber] = record.diagnostic;
+            markers.push({
+              startLineNumber: lineNumber,
+              startColumn: 1,
+              endLineNumber: lineNumber,
+              endColumn: Math.max(2, record.raw.length + 1),
+              severity:
+                record.diagnostic.severity === 'error'
+                  ? window.monaco.MarkerSeverity.Error
+                  : record.diagnostic.severity === 'warning'
+                    ? window.monaco.MarkerSeverity.Warning
+                    : window.monaco.MarkerSeverity.Info,
+              message: record.diagnostic.message,
+              code: record.diagnostic.code,
+            });
+            if (record.related.length > 0) relatedByLine[lineNumber] = record.related;
           }
-          const result = frame.envelope && frame.envelope.result;
-          const diagnostic = result && result._meta && result._meta.diagnostic;
-          if (diagnostic) {
-            lines.push('  diagnostic: [' + diagnostic.severity + '] ' + diagnostic.code + ' -- ' + diagnostic.message);
-          }
-          lines.push('#endregion');
-        }
-        if (state.nextTurn) {
-          lines.push('#region ' + state.nextTurn.actor + ': ' + state.nextTurn.action + ' -- blocked');
-          lines.push('  note: press Solve to reveal this turn');
-          lines.push('#endregion');
-        }
-        return lines.join('\\n');
+        });
+
+        const nextText = lines.join('\\n');
+        if (model.getValue() !== nextText) model.setValue(nextText);
+        window.monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
       }
 
       async function applyState(payload) {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
-        await ensureEditor();
-        const next = renderTrace(payload);
-        if (model.getValue() !== next) model.setValue(next);
+        await renderIntoEditor(renderRecords(payload));
       }
 
       window.addEventListener('message', (event) => {
@@ -232,7 +344,7 @@ function renderClientPage() {
       // than guessing how long a WebContainer boot or a reload takes.
       window.parent.postMessage({ type: 'lesson-preview-ready', source: 'tk-acp-trace-client-preview' }, '*');
 
-      ensureEditor().catch(() => {});
+      renderIntoEditor(renderRecords(null)).catch(() => {});
     </script>
   </body>
 </html>`;

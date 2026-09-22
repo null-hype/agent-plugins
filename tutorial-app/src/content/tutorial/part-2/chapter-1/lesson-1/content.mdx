@@ -33,7 +33,7 @@ until you press Solve.
   "method": "session/prompt",
   "params": {
     "sessionId": "sess_ghost-01",
-    "prompt": [{ "type": "text", "text": "Why did the last write to the ledger fail?" }]
+    "prompt": [{ "type": "text", "text": "Why didn't user 10 get the status update from arrival order 4,2,3,1?" }]
   }
 }
 ```
@@ -51,22 +51,62 @@ swap every other TutorialKit lesson uses. Reload the page, or press
 **Reset**, to return to the blocked state; replaying produces the same
 result every time.
 
+### One real Follower Maze case, not an invented one
+
+The diagnostic this turn reveals is a real
+[`GovernanceDiagnostic`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/governanceDiagnostic.ts)
+-- `code`/`severity`/`message` about a `subject`, plus the `related` evidence
+it was actually computed from, plus a stable `evaluationId` -- the same
+shape [chapter 1's warm-log lesson](/part-1/chapter-3/lesson-4) and Follower
+Maze both use, carried here in the ACP envelope's `result._meta.diagnostic`
+instead of invented flat fields. It is not a stand-in "ledger conflict":
+it is the real `check()`/`followerMazeAxiom()` verdict for one genuine
+arrival ordering, `4,2,3,1`, against the "plausible wrong model" witness
+(`arrivalOrderWitness`: apply each event the instant it arrives, instead of
+in sequence order) -- the same functions and the same fixtures
+[Follower Maze](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lesson-farms/follower-maze/followerMaze.ts)
+uses elsewhere in this app, run for real before this lesson's fixture was
+written.
+
+For this ordering, that witness really does drop a required delivery:
+
+- required (sequence order): `20 <- seq 1`, `10 <- seq 2`
+- what `arrivalOrderWitness` actually delivers: only `20 <- seq 1`
+- `check()` flags: `fm-missing-delivery(seq=2,user=10)`
+
+The **Client** preview draws this the same way the warm-log lessons do:
+a real Monaco marker underlines the failing line, hovering it shows the
+verdict and its related evidence, and a CodeLens toggles the same evidence
+as a widget underneath the line -- not a plain printed message.
+
 ### Provenance
 
 This exchange is fixture `ghost-trace-v1`, captured 2026-09-22. Both frames
-are the literal JSON-RPC bytes from a real ACP client/agent exchange -- not
-hand-typed JSON authored to look like one. `evidence/ghost-trace-v1/` (repo
-root of `tutorial-app`) has the two scripts that produced it (a minimal
-agent, a client that drives it and taps the wire), the full six-frame raw
-transcript, and the exact command to reproduce it; re-running it is
-byte-identical apart from each frame's `capturedAt`. This is a one-off
-evidence script, not the deferred Playwright recording/reporter pipeline --
-CIT-245 deferred building general recording capability, not the requirement
-that a fixture actually come from somewhere real.
+are the literal JSON-RPC bytes from a real ACP client/agent exchange --
+not hand-typed JSON authored to look like one, and the diagnostic inside
+the agent's reply is the real output of a real computation, not a
+hand-typed verdict either. `evidence/ghost-trace-v1/` (repo root of
+`tutorial-app`) has the scripts that produced it: a minimal agent whose
+diagnostic comes from running `followerMaze.ts`'s real `check()` over a
+vendored copy of the real arrival/world fixtures, a client that drives the
+exchange and taps the wire, the full raw transcript, and the exact command
+to reproduce it -- re-running it is byte-identical apart from each frame's
+`capturedAt`. This is a one-off evidence script, not the deferred Playwright
+recording/reporter pipeline -- CIT-245 deferred building general recording
+capability, not the requirement that a fixture actually come from
+somewhere real.
 
 **Dagger Cloud trace link: not yet captured** (see `src/lib/acpTraceProtocol.ts`
 for the `provenance.daggerCloudTraceUrl` field a real capture would fill in;
 this fixture leaves it absent rather than link to one that doesn't exist).
+
+### Continuing this thread
+
+[The next lesson](/part-2/chapter-1/lesson-2) starts exactly where this one
+ends: its `_files/acp-trace.json` carries this lesson's solved frames
+verbatim, plus one more real turn in the same session. Nothing about the
+diagnostic above is re-explained there -- the same subject, the same
+evidence, stay on screen.
 
 ### Extending this: a new lesson's own recording
 

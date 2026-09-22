@@ -1,0 +1,79 @@
+---
+type: lesson
+title: "Ghost Trace Machine: the second turn"
+template: acp-trace
+editor: false
+terminal: false
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+previews:
+  - [4173, "Client"]
+  - [4174, "Agent"]
+custom:
+  acpTrace:
+    traceFile: /acp-trace.json
+    scenario: ghost-trace-diagnostic-v1
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+# Ghost Trace Machine: the second turn
+
+This lesson starts exactly where [the first turn](/part-2/chapter-1/lesson-1)
+ended: the same recorded session, `sess_ghost-01`, continuing with one more
+real turn. Nothing here re-explains the first diagnostic -- the same
+arrival, the same subject, stay on screen in both previews the moment this
+lesson loads.
+
+### Same session, one more question already sent
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "session/prompt",
+  "params": {
+    "sessionId": "sess_ghost-01",
+    "prompt": [{ "type": "text", "text": "Would the reorder-buffer model have delivered it?" }]
+  }
+}
+```
+
+<AcpTraceBridge client:load />
+
+Press **Solve** to reveal the agent's recorded reply to this second
+question. As before, nothing here calls a live agent: Solve replays this
+lesson's `_solution/acp-trace.json`, which carries the exact same first two
+frames as lesson 1's solution plus this turn's request and reply.
+
+### The same case, a different real witness
+
+Lesson 1's diagnostic came from `arrivalOrderWitness` -- the model that
+drops a delivery for arrival order `4,2,3,1`. This turn asks about
+`reorderBufferWitness` instead: hold each event until every lower sequence
+has applied, then release in order. Run for real against the same arrival
+before this fixture was written:
+
+- `reorderBufferWitness` delivers: `20 <- seq 1`, `10 <- seq 2` -- both
+  required deliveries, in full
+- `check()` flags: none
+- verdict: `PASS`, `severity: info`
+
+The reply is the same `GovernanceDiagnostic` shape as lesson 1's --
+`subject`, `related` evidence, `evaluationId` -- just a passing one this
+time, for a different witness over the same subject. The Client preview
+draws it the same way: a real (informational) marker on the new line, the
+same hover and CodeLens behavior, no lesson-specific rendering added to
+show a different verdict.
+
+### Provenance
+
+Same fixture family as lesson 1, `ghost-trace-v1`, same capture run --
+`evidence/ghost-trace-v1/capture-ghost-trace-v1.mjs` drives both turns of
+this session in one pass, so their `capturedAt` values match exactly. See
+lesson 1's Provenance section for the reproduction command and the wire
+transcript this turn is also part of.
+
+**Dagger Cloud trace link: not yet captured** (see lesson 1's Provenance
+section; the same trace covers both turns).

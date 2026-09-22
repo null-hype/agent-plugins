@@ -1,4 +1,4 @@
-import type { AcpDiagnosticMeta } from './acpDiagnosticMeta.pkl';
+import type { AcpDiagnosticMeta, EvidenceLocation } from './acpDiagnosticMeta.pkl';
 
 /**
  * CIT-245: the first "ghost trace machine" lesson. Its custom.acpTrace
@@ -162,6 +162,65 @@ export function buildAcpTraceState(options: {
 /** The frame a diagnostic actually lives on, if any -- read by both previews. */
 export function findDiagnosticFrame(frames: readonly AcpFrame[]): AcpFrame | undefined {
   return frames.find((frame) => frame.envelope.result?._meta?.diagnostic);
+}
+
+export type AcpWarmLogDiagnostic = {
+  severity: 'info' | 'warning' | 'error';
+  code: string;
+  message: string;
+};
+
+export type AcpWarmLogLine = {
+  raw: string;
+  diagnostic: AcpWarmLogDiagnostic | null;
+  related: EvidenceLocation[];
+};
+
+/**
+ * CIT-247: the client pane's diagnostics used to print as a bare line inside
+ * a `#region` block. This maps one frame onto the same `{raw, diagnostic,
+ * related}` shape the warm log renderer already knows how to draw
+ * (`WarmLogRecord` in followerMazeLog.ts) -- the client pane's template
+ * duplicates the marker/hover/CodeLens/evidence-widget code that reads this
+ * shape (templates are plain HTML/JS strings with no shared module system
+ * between them), but the *mapping* from a frame to that shape lives here
+ * once, real and unit-tested, not reinvented per template.
+ */
+export function toWarmLogLine(frame: AcpFrame): AcpWarmLogLine {
+  const { envelope } = frame;
+  const diagnostic = envelope.result?._meta?.diagnostic;
+  const promptText = extractPromptText(envelope.params);
+  const status = diagnostic ? diagnostic.code : envelope.result !== undefined ? 'ok' : 'sent';
+  const call = envelope.method ? `${envelope.method}${promptText ? ` "${promptText}"` : ''}` : null;
+
+  return {
+    raw: [`${frame.actor}: ${frame.action}`, '->', status, call].filter(Boolean).join('  '),
+    diagnostic: diagnostic ? { severity: diagnostic.severity, code: diagnostic.code, message: diagnostic.message } : null,
+    related: diagnostic?.related ?? [],
+  };
+}
+
+/** `session/prompt`'s `params.prompt` is a list of content blocks; only `text` blocks render. */
+function extractPromptText(params: unknown): string | null {
+  if (!params || typeof params !== 'object' || !('prompt' in params)) {
+    return null;
+  }
+
+  const prompt = (params as { prompt?: unknown }).prompt;
+
+  if (!Array.isArray(prompt)) {
+    return null;
+  }
+
+  const texts = prompt
+    .filter(
+      (block): block is { type: 'text'; text: string } =>
+        Boolean(block) && typeof block === 'object' && (block as { type?: unknown }).type === 'text' &&
+        typeof (block as { text?: unknown }).text === 'string',
+    )
+    .map((block) => block.text);
+
+  return texts.length > 0 ? texts.join(' ') : null;
 }
 
 /** Solve's button label: "<Actor>: <action>", e.g. "Agent: reply with diagnostic". */

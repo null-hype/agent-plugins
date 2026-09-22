@@ -17,6 +17,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const lesson = loadLesson('part-2/chapter-1/lesson-1');
+const lesson2 = loadLesson('part-2/chapter-1/lesson-2');
 
 const editorsReady = (canvasElement: HTMLElement) =>
 	waitFor(
@@ -63,22 +64,47 @@ export const Blocked: Story = {
 	args: { payload: deriveAcpTraceState(lesson, lesson.files) },
 	play: async ({ canvasElement }) => {
 		await editorsReady(canvasElement);
-		await expectClientShows(canvasElement, 'client: send prompt -> sent');
-		await expectClientShows(canvasElement, 'agent: reply with diagnostic -- blocked');
-		await expect(clientText(canvasElement)).not.toContain('LEDGER_WRITE_CONFLICT');
+		await expectClientShows(canvasElement, 'client: send prompt  ->  sent  session/prompt');
+		await expectClientShows(canvasElement, "Why didn't user 10 get the status update");
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
+		await expect(clientText(canvasElement)).not.toContain('fm-missing-delivery');
 		await expectAgentShows(canvasElement, 'session/prompt');
 		await expect(agentText(canvasElement)).not.toContain('diagnostic');
 	},
 };
 
-// The solution file: the agent's diagnostic reply revealed, in both panes.
+// The solution file: the agent's diagnostic reply revealed, in both panes --
+// as a real Monaco marker + CodeLens (CIT-247), not a plain printed line.
 export const Solved: Story = {
 	args: { payload: deriveAcpTraceState(lesson, lesson.solved) },
 	play: async ({ canvasElement }) => {
 		await editorsReady(canvasElement);
-		await expectClientShows(canvasElement, 'agent: reply with diagnostic -> ok');
-		await expectClientShows(canvasElement, 'diagnostic: [error] LEDGER_WRITE_CONFLICT');
-		await expectAgentShows(canvasElement, '"code":"LEDGER_WRITE_CONFLICT"');
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  fm-missing-delivery');
+		await expectAgentShows(canvasElement, '"code":"fm-missing-delivery"');
+
+		const doc = canvasElement.querySelectorAll('iframe')[0]?.contentDocument;
+		await waitFor(() => {
+			if (!doc?.querySelector('.codelens-decoration')) {
+				throw new Error('diagnostic CodeLens has not rendered yet');
+			}
+		});
+
+		const lens = Array.from(doc!.querySelectorAll<HTMLElement>('.codelens-decoration a')).find((a) =>
+			a.textContent?.includes('fm-missing-delivery'),
+		);
+		if (!lens) throw new Error('fm-missing-delivery CodeLens not found');
+
+		const win = doc!.defaultView!;
+		for (const type of ['mousedown', 'mouseup', 'click']) {
+			lens.dispatchEvent(new win.MouseEvent(type, { bubbles: true, cancelable: true, view: win }));
+		}
+
+		await waitFor(() => {
+			const text = doc!.querySelector('.evidence-widget')?.textContent ?? '';
+			for (const needle of ['fixtures/arrivals/4231.json', 'witness/arrival-order', 'followerMaze.orderedRouting']) {
+				if (!text.includes(needle)) throw new Error('evidence widget missing ' + needle);
+			}
+		});
 	},
 };
 
@@ -104,7 +130,7 @@ export const ViaBridge: Story = {
 	play: async ({ canvasElement, step }) => {
 		await step('starter file: agent turn blocked in both panes', async () => {
 			await editorsReady(canvasElement);
-			await expectClientShows(canvasElement, 'agent: reply with diagnostic -- blocked');
+			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
 			await expectAgentShows(canvasElement, 'session/prompt');
 			await expect(agentText(canvasElement)).not.toContain('diagnostic');
 		});
@@ -129,8 +155,8 @@ export const ViaBridge: Story = {
 
 		await step('Solve: both panes reveal the same recorded diagnostic', async () => {
 			solveButton.click();
-			await expectClientShows(canvasElement, 'diagnostic: [error] LEDGER_WRITE_CONFLICT');
-			await expectAgentShows(canvasElement, '"code":"LEDGER_WRITE_CONFLICT"');
+			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  fm-missing-delivery');
+			await expectAgentShows(canvasElement, '"code":"fm-missing-delivery"');
 			await within(canvasElement).findByText('Trace complete.');
 		});
 
@@ -138,13 +164,13 @@ export const ViaBridge: Story = {
 			const clientFrame = canvasElement.querySelectorAll('iframe')[0] as HTMLIFrameElement;
 			clientFrame.contentWindow?.location.reload();
 			await editorsReady(canvasElement);
-			await expectClientShows(canvasElement, 'diagnostic: [error] LEDGER_WRITE_CONFLICT');
+			await expectClientShows(canvasElement, 'fm-missing-delivery');
 		});
 
 		await step('Reset: both panes return to the blocked starting state', async () => {
 			const resetButton = within(canvasElement).getByRole('button', { name: 'Reset' });
 			resetButton.click();
-			await expectClientShows(canvasElement, 'agent: reply with diagnostic -- blocked');
+			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
 			await expect(agentText(canvasElement)).not.toContain('diagnostic');
 		});
 	},
@@ -192,7 +218,53 @@ export const DelayedBoot: Story = {
 		expect(canvasElement.querySelectorAll('iframe').length).toBe(0);
 
 		await editorsReady(canvasElement);
-		await expectClientShows(canvasElement, 'agent: reply with diagnostic -- blocked');
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
 		await expectAgentShows(canvasElement, 'session/prompt');
+	},
+};
+
+// -- Tier 3: lesson 2 -- continuity from lesson 1's solved state -----------
+
+// Lesson 2's starter file already carries lesson 1's two solved frames
+// verbatim (acpTraceContinuity.spec.ts proves this at the JSON level); this
+// story is the same proof at the rendered level -- both panes show lesson
+// 1's diagnostic on load, with no Solve press, before lesson 2's own new
+// turn is revealed.
+export const Lesson2StartsFromLesson1Solved: Story = {
+	// Taller than the default 360px: Monaco's agent pane virtualizes
+	// `.view-lines` to the visible viewport (wordWrap is on, and this
+	// lesson's frames are long JSON lines), so a short pane would silently
+	// drop the later frames from any textContent read -- confirmed live via
+	// Playwright before picking this height.
+	args: { payload: deriveAcpTraceState(lesson2, lesson2.files), height: 640 },
+	play: async ({ canvasElement }) => {
+		await editorsReady(canvasElement);
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  fm-missing-delivery');
+		await expectClientShows(canvasElement, 'client: send prompt  ->  sent  session/prompt "Would the reorder-buffer model');
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
+		await expectAgentShows(canvasElement, '"code":"fm-missing-delivery"');
+	},
+};
+
+// Lesson 2 solved: the second turn's real PASS diagnostic (a different real
+// witness, `reorder-buffer`, over the same subject) renders the same way --
+// same marker/hover/CodeLens/evidence-widget code, an informational marker
+// instead of an error one.
+export const Lesson2Solved: Story = {
+	// See Lesson2StartsFromLesson1Solved's comment: all 4 frames need to be
+	// in the rendered viewport for a textContent read to see the last one.
+	args: { payload: deriveAcpTraceState(lesson2, lesson2.solved), height: 640 },
+	play: async ({ canvasElement }) => {
+		await editorsReady(canvasElement);
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  fm-missing-delivery');
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  PASS');
+		await expectAgentShows(canvasElement, '"code":"PASS"');
+
+		const doc = canvasElement.querySelectorAll('iframe')[0]?.contentDocument;
+		await waitFor(() => {
+			if ((doc?.querySelectorAll('.codelens-decoration').length ?? 0) < 2) {
+				throw new Error('expected a CodeLens for both diagnostics (lesson 1 and lesson 2 turns)');
+			}
+		});
 	},
 };

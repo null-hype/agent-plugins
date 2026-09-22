@@ -22,11 +22,21 @@ import * as pklTypescript from "@pkl-community/pkl-typescript"
 // payload a recording puts inside its `_meta`. `src/lib/acpTraceProtocol.ts`
 // is the only code that reads a parsed `_meta.diagnostic`; it treats this
 // shape as the contract, not something it derives on its own.
+//
+// CIT-247: widened from the original flat `{severity, code, message,
+// source}` to the same shape `src/lib/governanceDiagnostic.ts`'s
+// `GovernanceDiagnostic`/`EvidenceLocation` already use -- a verdict
+// (`code`/`severity`/`message`) about a `subject`, plus the `related`
+// evidence it was computed from, plus `evaluationId`. This is what let the
+// ACP client pane reuse the warm log's own marker/hover/CodeLens/evidence
+// widget instead of printing a bare message: those all read this same
+// shape already, for the other lessons that carry it.
 export interface AcpDiagnosticMeta {
   diagnostic: AcpDiagnostic
 }
 
 // Ref: Pkl class `acpDiagnosticMeta.AcpDiagnostic`.
+// Mirrors `GovernanceDiagnostic` in governanceDiagnostic.ts.
 export interface AcpDiagnostic {
   severity: "info" | "warning" | "error"
 
@@ -34,12 +44,31 @@ export interface AcpDiagnostic {
 
   message: string
 
-  // Free-form provenance for where this diagnostic came from -- a scenario
-  // name or subsystem, not a file path (evidence provenance lives on the
-  // frame that carries this diagnostic, see `AcpFrame.provenance` in
-  // acpTraceProtocol.ts).
-  source: string
+  subject: EvidenceLocation
+
+  related: Array<EvidenceLocation>
+
+  evaluationId: string
 }
+
+// Ref: Pkl class `acpDiagnosticMeta.EvidenceLocation`.
+// Mirrors `EvidenceLocation` in governanceDiagnostic.ts.
+export interface EvidenceLocation {
+  role: EvidenceRole
+
+  uri: string
+
+  detail: string
+
+  // The immutable revision `uri` is read at, when applicable. Absent for
+  // evidence with no revision identity.
+  revision: string|null
+
+  line: number|null
+}
+
+// Ref: Pkl type `acpDiagnosticMeta.EvidenceRole`.
+type EvidenceRole = "fact" | "grant" | "observation" | "axiom"
 
 // LoadFromPath loads the pkl module at the given path and evaluates it into a AcpDiagnosticMeta
 export const loadFromPath = async (path: string): Promise<AcpDiagnosticMeta> => {
