@@ -57,11 +57,11 @@ const PROSE_NAME = 'prose';
 // node_modules/playwright/types/testReporter.d.ts), but at runtime it is
 // always empty -- everything a testInfo.attach() call makes inside a
 // test.step lands flat on TestResult.attachments instead, in call order,
-// with no back-reference to which step made it. tests/area51-booking.spec.ts
-// works around this the way CIT-235 anticipated: it prefixes every
-// tutorial:* attachment name with the 1-based index of the step it belongs
-// to (`tutorial:1:file/reason.txt`), and this reporter groups by that index
-// rather than by TestStep.attachments. If a future Playwright version
+// with no back-reference to which step made it. A consuming test works
+// around this by prefixing every tutorial:* attachment name with the
+// 1-based index of the step it belongs to (`tutorial:1:file/reason.txt`),
+// and this reporter groups by that index rather than by
+// TestStep.attachments. If a future Playwright version
 // starts populating TestStep.attachments for real, this prefix scheme still
 // works (it's just no longer load-bearing) -- no need to change the test.
 const INDEXED_NAME = /^tutorial:(\d+):(.+)$/;

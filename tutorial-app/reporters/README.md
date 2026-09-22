@@ -1,16 +1,17 @@
-# tutorial reporter (CIT-235 spike)
+# tutorial reporter
 
-Compiles a passing `@tutorial`-tagged Playwright test into TutorialKit
-lessons: one lesson per top-level `test.step`, `_files` the state *before*
-the step, `_solution` the state *after*. "Solve" on a lesson therefore
-advances exactly one frame.
+Playwright `@tutorial` tests emit TutorialKit lessons. Each top-level
+`test.step` is one lesson. Indexed attachments declare before/after file
+state, prose, screenshots and optional runtime metadata. The reporter
+validates state continuity before writing output.
 
-This is the spike from [CIT-235](https://linear.app/citizen6librarian6refrain4/issue/CIT-235) --
-it proves the seam between Playwright and TutorialKit for one test, three
-steps, one reporter. It does not build a real demo UI (see
-`src/components/Area51Booking.tsx` and `src/stories/Area51Booking.stories.tsx`
-for the throwaway one), and it does not do nested steps, multiple tests,
-parts, or a Pkl evidence model -- see CIT-235 for the full "Out" list.
+`compileTutorialTest(test, result, outDir)` is the compiler's entry point;
+`reporters/tutorial.ts` is a Playwright `Reporter` that calls it once per
+finished test. Wire it into any Playwright config as:
+
+```ts
+reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/<part>' }]],
+```
 
 ## Test contract
 
@@ -24,7 +25,6 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
     await attachTutorial(testInfo, 1, 'prose', { body: 'Lesson body markdown', contentType: 'text/markdown' });
   });
   await test.step('decision is typed', async () => { /* ... */ });
-  await test.step('runnable appears', async () => { /* ... */ });
 });
 ```
 
@@ -50,35 +50,34 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
     merged onto the previous step's end state (cumulative). Becomes
     `_solution`.
   - `tutorial:<n>:prose` -- that step's lesson body markdown.
+  - `tutorial:<n>:meta` -- optional JSON attachment with runtime/display
+    frontmatter (`template`, `prepareCommands`, `mainCommand`, `previews`,
+    `terminal`, `editor`, `focus`, `filesystem`). Explicit values override
+    defaults, including inferred `focus`. Fields that would rewrite lesson
+    identity (e.g. `title`) are rejected during planning, before any write.
   - any `tutorial:<n>:*` attachment whose `contentType` starts with
     `image/` -- that step's `frame.png`.
   - anything else is ignored, so Playwright's own trace/video attachments
     never leak into a lesson.
 
-  `tests/area51-booking.spec.ts` wraps this in an `attachTutorial(testInfo,
-  index, name, options)` helper so the index can't drift from the step it's
+  A small `attachTutorial(testInfo, index, name, options)` helper (write
+  one per test file) keeps the index from drifting away from the step it's
   attached inside.
 
 ## Why attachments carry a step index
 
-CIT-235's sketch flagged this as the open question: does
-`TestStep.attachments` actually work in the installed Playwright version,
-or do attachments arrive flat on `TestResult.attachments`?
+`TestStep.attachments` is declared in
+`node_modules/playwright/types/testReporter.d.ts`, but at runtime (checked
+against Playwright 1.59.1) every `testInfo.attach()` call made inside a
+`test.step()` body lands on `TestResult.attachments` in call order, with
+`TestStep.attachments` always empty. Confirmed live with a throwaway debug
+reporter that dumped both arrays after a real run.
 
-Checked against Playwright 1.59.1: **flat.**
-`node_modules/playwright/types/testReporter.d.ts` *declares*
-`TestStep.attachments`, but at runtime every `testInfo.attach()` call made
-inside a `test.step()` body lands on `TestResult.attachments` in call
-order, with `TestStep.attachments` always empty. Confirmed live with a
-throwaway debug reporter that dumped both arrays after a real run -- three
-steps, nine attachments, all nine on `result.attachments`, zero on any
-step.
-
-So the reporter uses the `tutorial:<n>:` prefix CIT-235's sketch names as
-the fallback (`groupAttachmentsByStepIndex` in `tutorial.ts`), not as an
-optional extra. If a future Playwright version starts populating
-`TestStep.attachments` for real, this scheme still works without changes
-to the test file -- it just stops being load-bearing.
+So the reporter uses the `tutorial:<n>:` prefix (`groupAttachmentsByStepIndex`
+in `tutorial.ts`) as the load-bearing mechanism, not an optional extra. If a
+future Playwright version starts populating `TestStep.attachments` for
+real, this scheme still works without changes to the test file -- it just
+stops being load-bearing.
 
 ## Compilation
 
@@ -106,19 +105,18 @@ Planning (resolving every lesson's before/after and checking continuity)
 happens in a pure pass before anything is written, so a broken storyboard
 leaves the previous output untouched.
 
-## State continuity (CIT-236)
+`template: default` (`src/templates/default`, a `sleep infinity` no-op) is
+used for every generated lesson unless overridden via `tutorial:<n>:meta`:
+these lessons are a file-state diff to read and Solve, not necessarily a
+running preview, and `default` is the cheapest WebContainer boot that still
+gives an editor + file tree + Solve button.
 
-Attachments used to capture only each step's *end* state, so a file a step
-introduced never existed in that lesson's `_files`, and the start state had
-two sources of truth: story args (what the page shows) and the previous
-step's attachments (what `_files` held). They agreed only because the test
-and the component both hardcoded the same reason string.
+## State continuity
 
-Now the test scrapes the file set from the page at the start of each step
-(`readFiles(page)` in `tests/area51-booking.spec.ts`, after `page.goto` to
-that step's story) and again at the end. The story args stay as the review
-surface for each starting state; the reporter compares what the page actually
-started with against where the previous step ended:
+Attachments capture only each step's *end* state, a file a step introduces
+never exists in that lesson's `_files` unless declared under `before/`. The
+reporter compares what a step declares as its start state against where
+the previous step ended:
 
 ```
 [tutorial-reporter] refusing to compile "area51 booking": tutorial state continuity broken:
@@ -126,144 +124,24 @@ started with against where the previous step ended:
 ```
 
 A continuity failure writes nothing, leaves any existing output as it was,
-and makes `onEnd` return `{ status: 'failed' }`, so `npm run compile-tutorial`
-exits non-zero even though the Playwright test itself passed. Verified live
-by changing the component's `VALID_REASON` (exit 1, output byte-identical to
-before) and in `tutorial.spec.ts`.
+and makes `onEnd` return `{ status: 'failed' }`, so a compile run consuming
+this reporter exits non-zero even though the Playwright test itself passed.
 
 Not covered: continuity is about *files*. A step can't delete a file (the
 cumulative end state only grows), and nothing checks that `prose` still
 matches the files.
 
-`template: default` (`src/templates/default`, a `sleep infinity` no-op) is
-used for every generated lesson rather than something that actually boots
-a dev server: these lessons are a file-state diff to read and Solve, not a
-running preview, and `default` is the cheapest WebContainer boot that
-still gives an editor + file tree + Solve button.
-
 ## Determinism
 
-No timestamps, random IDs, or live network calls anywhere in the
-compile path. Verified directly: ran `npm run compile-tutorial` twice in a
-row and `diff -rq`'d the two output trees, byte for byte, including the
-three `frame.png` screenshots -- identical.
+No timestamps or random IDs are introduced anywhere in the compile path,
+so a consuming test that avoids live network calls and unstable rendering
+(e.g. blurring focus and waiting a frame before a screenshot) gets a
+byte-identical output tree across repeated compiles.
 
-The one thing that *could* threaten this is screenshot rendering
-(anti-aliasing, a blinking text-input caret, an in-flight CSS transition).
-`tests/area51-booking.spec.ts`'s `stableScreenshot()` blurs focus and waits
-one frame before every capture specifically to remove the caret as a
-variable; the component itself (`Area51Booking.tsx`) has no animation and
-no time-based rendering. Byte-identity is a same-machine guarantee (same
-Chromium build, same font rendering) -- it is not claimed across different
-OSes or Chromium versions.
-
-## Invocation
-
-```
-npm run compile-tutorial
-```
-
-Runs `playwright test --config=playwright.tutorial-compile.config.ts`,
-which:
-
-- Boots Storybook (`npm run storybook -- --ci --quiet`) as its `webServer`
-  -- no Astro app involved, and (per the test contract) no live network
-  either way.
-- Runs `tests/area51-booking.spec.ts`, the one `@tutorial` test. Each step
-  navigates to `/iframe.html?id=<story id>&viewMode=story` for the
-  Storybook story ([`Area51Booking.stories.tsx`](../src/stories/Area51Booking.stories.tsx))
-  whose `args` are that step's *starting* state, then drives the page
-  directly with Playwright -- the stories have no `play` function; the
-  Playwright test is the only thing that ever changes the page.
-- Writes lessons to `src/content/tutorial/part-2` via `reporters/tutorial.ts`
-  as the `reporter`. `src/content/tutorial/part-2/meta.md` (`type: part`,
-  "Spikes") is hand-authored, not generated -- the reporter only ever
-  writes one chapter directory inside a part that already exists.
-
-The generated `src/content/tutorial/part-2/area51-booking/` directory is
-committed (it's a small, fully-deterministic build output, the same as
-every other lesson under `src/content/tutorial/`) so `npm run dev` can
-render it without a separate build step. Re-run `npm run compile-tutorial`
-after editing the test or the component and commit the result.
-
-Caveat: the committed `frame.png`s are byte-identical only on the machine
-that made them (same Chromium build and font rendering). Regenerating on
-another machine or in CI will produce binary diffs. Regenerate from one
-pinned environment, or stop committing frames -- undecided.
-
-The "files" are DOM scrapes (`inputValue` of the textarea, `innerText` of
-`<code>`). Nothing compiles `decision.ts` and "does not compile" is a length
-check, so the lessons say what the page displays, not anything about types.
+## Testing
 
 Unit tests for the reporter's pure logic (`slugify`, `topLevelSteps`,
 `classifyAttachment`, `groupAttachmentsByStepIndex`,
 `compileTutorialTest`, including the failing-test-produces-no-output case)
 live in `tutorial.spec.ts` and run with the rest of the suite via `npm
 test` (vitest).
-
-## What differed from CIT-235's sketch
-
-- **The attachment question resolved to "flat," not "nested"** -- see
-  above. The `tutorial:<n>:` index prefix is required, not optional.
-- **The driven page is a Storybook story, not a standalone static HTML
-  file.** CIT-235's original scope named "a throwaway static HTML page";
-  this was redirected mid-implementation to drive
-  `iframe.html?id=<story>` instead, with each step's starting state
-  expressed as Storybook `args` on its own story
-  (`Step1ReasonDoesNotCompile` / `Step2DecisionIsTyped` /
-  `Step3RunnableAppears`). This keeps the Playwright test as the only
-  storyboard driver (no `play` function) while making each step's starting
-  condition independently reviewable in Storybook, consistent with how
-  this repo already treats stories as lesson-adjacent artifacts (see
-  CIT-204).
-- **`_solution` writes the full cumulative file set, not just the diff.**
-  CIT-235's pseudocode does this too (`_solution/* = files`, cumulative);
-  called out because the rest of this app's hand-authored lessons (e.g.
-  `part-1/chapter-1/lesson-1`) only put *changed* files in `_solution` and
-  rely on TutorialKit overlaying it onto `_files`. Both are correct
-  (unchanged files just get overwritten with identical content); this
-  reporter follows CIT-235's pseudocode rather than the hand-authored
-  convention.
-- **`focus` is a heuristic**, not part of the original contract: the first
-  file (alphabetically) a step changes that exists at the start of the
-  step. Lesson 3 only *introduces* `booking-confirmation.txt`, so it has no
-  `focus` and TutorialKit opens with an empty editor. A step that changes
-  several files would need a real answer before this goes past spike stage.
-- **`before/` attachments added (CIT-236).** The sketch had only end-state
-  `file/` attachments; the start state is now declared and checked -- see
-  "State continuity".
-
-## Runnable Follower Maze slice (CIT-236)
-
-`tests/follower-maze.spec.ts` compiles one lesson: select run `4231` from an
-already evaluated family, then open its diagnostic evidence. It uses the
-existing reporter and before/file contract. The 13-beat expansion is deferred.
-
-The optional `tutorial:<n>:meta` JSON attachment supplies runtime/display
-frontmatter (`template`, `prepareCommands`, `mainCommand`, `previews`,
-`terminal`, `editor`, `focus`, `filesystem`). Explicit values override defaults,
-including inferred focus. Unknown keys fail during planning, before writes.
-Tests without metadata retain their existing output.
-
-The shared `lesson-farms/follower-maze/Workbench.tsx` and `scenarios.ts` run in
-Storybook and the WebContainer. `workbench.json` is real application state:
-the server reads/writes it, and the app restores it, including selection and
-open evidence. It is not a scraped diagnostic transcript. TutorialKit watches
-that file; the lesson's visible controls call the existing store Reset/Solve
-methods while the source editor stays hidden. Preview reload preserves the
-current state; full page reload/direct entry starts the declared lesson state.
-
-Regenerate the bundled template after changing the shared workbench or renderer:
-
-```sh
-npm run build:follower-maze
-npm run compile-tutorial
-npx playwright test --config=playwright.follower-maze.config.ts
-```
-
-The preview test drives the generated lesson in a real WebContainer, including
-direct entry, real chip/CodeLens clicks, preview reload, Reset, Solve, and full
-page reload. The template's committed `public/` assets are generated by Vite
-from the shared source, not a second hand-maintained workbench. Compilation
-continues to run Area51 as well; its generated output must remain unchanged.
-No CIT-230/233 execution/sealing behavior changes are included.
