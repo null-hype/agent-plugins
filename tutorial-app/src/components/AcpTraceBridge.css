@@ -1,0 +1,35 @@
+.acp-trace-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 1.25rem 0;
+}
+.acp-trace-solve,
+.acp-trace-reset {
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.acp-trace-solve:hover:not(:disabled),
+.acp-trace-reset:hover:not(:disabled) {
+  background: var(--tk-background-primary, white);
+}
+.acp-trace-solve:disabled,
+.acp-trace-reset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.acp-trace-solve:focus-visible,
+.acp-trace-reset:focus-visible {
+  outline: 2px solid #3986ff;
+  outline-offset: 3px;
+}
+.acp-trace-done {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}

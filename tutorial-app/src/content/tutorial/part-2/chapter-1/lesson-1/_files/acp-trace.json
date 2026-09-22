@@ -1,0 +1,25 @@
+{
+  "scenario": "ghost-trace-diagnostic-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_ghost-01",
+          "prompt": [
+            { "type": "text", "text": "Why did the last write to the ledger fail?" }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "ghost-trace-v1#0",
+        "capturedAt": "2026-09-15T00:00:00Z"
+      }
+    }
+  ],
+  "nextTurn": { "actor": "agent", "action": "reply with diagnostic" }
+}

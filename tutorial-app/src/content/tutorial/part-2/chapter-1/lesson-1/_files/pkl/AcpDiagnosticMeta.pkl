@@ -1,0 +1,31 @@
+/// CIT-245: the schema for the `_meta.diagnostic` extension this lesson's
+/// recorded ACP exchange carries on its agent response envelope. ACP's own
+/// JSON-RPC envelope reserves `_meta` on results/notifications for exactly
+/// this kind of implementation-defined extension -- the envelope itself
+/// (`jsonrpc`/`id`/`method`/`params`/`result`) is not modelled here, only the
+/// payload a recording puts inside its `_meta`. `src/lib/acpTraceProtocol.ts`
+/// is the only code that reads a parsed `_meta.diagnostic`; it treats this
+/// shape as the contract, not something it derives on its own.
+module acpDiagnosticMeta
+
+class AcpDiagnostic {
+  severity: "info"|"warning"|"error"
+  code: String
+  message: String
+  /// Free-form provenance for where this diagnostic came from -- a scenario
+  /// name or subsystem, not a file path (evidence provenance lives on the
+  /// frame that carries this diagnostic, see `AcpFrame.provenance` in
+  /// acpTraceProtocol.ts).
+  source: String
+}
+
+// The display copy of this lesson's recorded diagnostic -- acp-trace.json
+// (the file `_files`/`_solution` actually swap) carries the same values
+// inside the response envelope's `_meta.diagnostic`; this module is the
+// governing schema/shape for that field, not a second source of truth.
+diagnostic: AcpDiagnostic = new {
+  severity = "error"
+  code = "LEDGER_WRITE_CONFLICT"
+  message = "The write to Ledger.pkl at revision 4 conflicted with a concurrent approval from the supervisor pass."
+  source = "acp-ghost-trace"
+}

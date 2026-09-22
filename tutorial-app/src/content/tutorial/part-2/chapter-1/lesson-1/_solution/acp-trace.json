@@ -1,0 +1,46 @@
+{
+  "scenario": "ghost-trace-diagnostic-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_ghost-01",
+          "prompt": [
+            { "type": "text", "text": "Why did the last write to the ledger fail?" }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "ghost-trace-v1#0",
+        "capturedAt": "2026-09-15T00:00:00Z"
+      }
+    },
+    {
+      "actor": "agent",
+      "action": "reply with diagnostic",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "result": { "stopReason": "end_turn" },
+        "_meta": {
+          "diagnostic": {
+            "severity": "error",
+            "code": "LEDGER_WRITE_CONFLICT",
+            "message": "The write to Ledger.pkl at revision 4 conflicted with a concurrent approval from the supervisor pass.",
+            "source": "acp-ghost-trace"
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "ghost-trace-v1#1",
+        "capturedAt": "2026-09-15T00:00:04Z"
+      }
+    }
+  ],
+  "nextTurn": null
+}

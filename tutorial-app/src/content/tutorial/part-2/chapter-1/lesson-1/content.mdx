@@ -1,0 +1,70 @@
+---
+type: lesson
+title: "Ghost Trace Machine: the first turn"
+template: acp-trace
+editor: false
+terminal: false
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+previews:
+  - [4173, "Client"]
+  - [4174, "Agent"]
+custom:
+  acpTrace:
+    traceFile: /acp-trace.json
+    scenario: ghost-trace-diagnostic-v1
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+# Ghost Trace Machine: the first turn
+
+This part is one recorded ACP thread. This lesson is its first turn: the
+client has already sent a prompt; the agent's reply is recorded but hidden
+until you press Solve.
+
+### The request already sent
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "session/prompt",
+  "params": {
+    "sessionId": "sess_ghost-01",
+    "prompt": [{ "type": "text", "text": "Why did the last write to the ledger fail?" }]
+  }
+}
+```
+
+The **Client** preview on the right shows this turn as a warm-log region,
+blocked on the agent's reply. The **Agent** preview shows the same turn as
+the raw envelope the agent process actually exchanges.
+
+<AcpTraceBridge client:load />
+
+Press **Solve** to reveal the agent's recorded diagnostic response. Nothing
+here calls a live agent -- Solve replays the exact envelope this lesson's
+`_solution/acp-trace.json` already carries, the same `_files` -> `_solution`
+swap every other TutorialKit lesson uses. Reload the page, or press
+**Reset**, to return to the blocked state; replaying produces the same
+result every time.
+
+### Provenance
+
+This exchange is fixture `ghost-trace-v1`, captured 2026-09-15. It is a
+hand-authored recording, not a live capture -- CIT-245 explicitly defers
+building the Playwright recording/reporter pipeline that would produce one.
+**Dagger Cloud trace link: not yet captured** (see `src/lib/acpTraceProtocol.ts`
+for the `provenance.daggerCloudTraceUrl` field a real capture would fill in;
+this fixture leaves it absent rather than link to one that doesn't exist).
+
+### Extending this: a new lesson's own recording
+
+`src/lib/acpTraceProtocol.ts`'s header comment is the contract for the next
+lesson in this part: supply your own `_files`/`_solution` pair for
+`custom.acpTrace.traceFile`, ending the starter file's `frames` array at
+your breakpoint with a `nextTurn` naming who acts next, and the solution
+file with that frame appended and `nextTurn: null`. `AcpTraceBridge` and
+both preview pages need no lesson-specific code to pick that up.
