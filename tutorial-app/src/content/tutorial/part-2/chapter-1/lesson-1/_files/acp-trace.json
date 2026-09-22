@@ -1,0 +1,31 @@
+{
+  "scenario": "ghost-trace-diagnostic-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_ghost-01",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Why didn't user 10 get the status update from arrival order 4,2,3,1?"
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "ghost-trace-v1#0",
+        "capturedAt": "2026-09-22T08:35:12.572Z"
+      }
+    }
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "action": "reply with diagnostic"
+  }
+}

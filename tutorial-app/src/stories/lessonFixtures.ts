@@ -9,6 +9,7 @@ import {
 	resolveLoanwordArcConfig,
 	validateLoanwordLesson,
 } from '../lib/loanwordArcProtocol';
+import { buildAcpTraceState, parseAcpTraceFixture, resolveAcpTraceConfig } from '../lib/acpTraceProtocol';
 
 // A lesson as TutorialKit loads it: frontmatter, starter `_files`, and the
 // `_solution` files that Solve writes over them. Read straight from
@@ -17,6 +18,8 @@ const raw = import.meta.glob(
 	[
 		'../content/tutorial/part-1/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-1/chapter-2/lesson-1/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-2/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-2/chapter-1/lesson-2/{content.mdx,_files/*,_solution/*}',
 	],
 	{ eager: true, query: '?raw', import: 'default' },
 ) as Record<string, string>;
@@ -31,7 +34,13 @@ export type Lesson = {
 	focus: string;
 };
 
-export function loadLesson(dir: 'part-1/chapter-1/lesson-1' | 'part-1/chapter-2/lesson-1'): Lesson {
+export function loadLesson(
+	dir:
+		| 'part-1/chapter-1/lesson-1'
+		| 'part-1/chapter-2/lesson-1'
+		| 'part-2/chapter-1/lesson-1'
+		| 'part-2/chapter-1/lesson-2',
+): Lesson {
 	const base = `../content/tutorial/${dir}/`;
 	const collect = (folder: string) =>
 		Object.fromEntries(
@@ -60,6 +69,17 @@ export function deriveRuleTraceState(lesson: Lesson, files: Record<string, strin
 		scenario: config.scenario,
 		storyFile: config.storyFile,
 		text: files[config.commandFile] ?? '',
+	});
+}
+
+export function deriveAcpTraceState(lesson: Lesson, files: Record<string, string>) {
+	const config = resolveAcpTraceConfig(lesson.data.custom);
+	if (!config) throw new Error('lesson has no custom.acpTrace');
+
+	return buildAcpTraceState({
+		revision: 1,
+		fixture: parseAcpTraceFixture(files[config.traceFile]),
+		scenario: config.scenario,
 	});
 }
 
