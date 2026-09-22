@@ -1,0 +1,94 @@
+/// CIT-245: the schema for the `_meta.diagnostic` extension this lesson's
+/// recorded ACP exchange carries on its agent response envelope. ACP's own
+/// JSON-RPC envelope reserves `_meta` on results/notifications for exactly
+/// this kind of implementation-defined extension -- the envelope itself
+/// (`jsonrpc`/`id`/`method`/`params`/`result`) is not modelled here, only the
+/// payload a recording puts inside its `_meta`. `src/lib/acpTraceProtocol.ts`
+/// is the only code that reads a parsed `_meta.diagnostic`; it treats this
+/// shape as the contract, not something it derives on its own.
+///
+/// CIT-247: widened from the original flat `{severity, code, message,
+/// source}` to the same shape `src/lib/governanceDiagnostic.ts`'s
+/// `GovernanceDiagnostic`/`EvidenceLocation` already use -- a verdict
+/// (`code`/`severity`/`message`) about a `subject`, plus the `related`
+/// evidence it was computed from, plus `evaluationId`. This is what let the
+/// ACP client pane reuse the warm log's own marker/hover/CodeLens/evidence
+/// widget instead of printing a bare message: those all read this same
+/// shape already, for the other lessons that carry it.
+module acpDiagnosticMeta
+
+/// Mirrors `EvidenceRole` in governanceDiagnostic.ts -- see that file for
+/// what each role means. Duplicated as a plain string union because Pkl has
+/// no cross-language import of a TypeScript module.
+typealias EvidenceRole = "fact"|"grant"|"observation"|"axiom"
+
+/// Mirrors `EvidenceLocation` in governanceDiagnostic.ts, with one generated-
+/// type difference worth naming rather than hiding: TypeScript's own
+/// `EvidenceLocation` declares `revision`/`line` genuinely optional
+/// (`revision?: string`), but `pkl-typescript` has no notation that
+/// generates an optional TS property from a nullable Pkl one -- `String?`
+/// here always generates a required `revision: string|null`. Harmless in
+/// practice (this type is `import type`-only and erased before the fixtures'
+/// actual JSON is ever read), but real: fixtures omit these keys entirely
+/// rather than setting them to `null`.
+class EvidenceLocation {
+  role: EvidenceRole
+  uri: String
+  detail: String
+  /// The immutable revision `uri` is read at, when applicable. Absent for
+  /// evidence with no revision identity.
+  revision: String?
+  line: Int?
+}
+
+/// Mirrors `GovernanceDiagnostic` in governanceDiagnostic.ts.
+class AcpDiagnostic {
+  severity: "info"|"warning"|"error"
+  code: String
+  message: String
+  subject: EvidenceLocation
+  related: Listing<EvidenceLocation>
+  evaluationId: String
+}
+
+// The display copy of this lesson's recorded diagnostic -- acp-trace.json
+// (the file `_files`/`_solution` actually swap) carries the same values
+// inside the response envelope's `_meta.diagnostic`; this module is the
+// governing schema/shape for that field, not a second source of truth. The
+// values below are the real output of `check()`/`followerMazeAxiom()` over
+// arrival ordering 4,2,3,1 with the arrival-order witness -- see
+// `evidence/ghost-trace-v1/ghost-trace-agent.mjs`, which computes them
+// (this is a copy for schema documentation, not where they're generated).
+diagnostic: AcpDiagnostic = new {
+  severity = "error"
+  code = "fm-missing-delivery"
+  message = "fm-missing-delivery(seq=2,user=10): required delivery 10 <- seq 2 (2|S|20) is absent from the witness"
+  subject = new {
+    role = "fact"
+    uri = "fixtures/arrivals/4231.json"
+    detail = "arrival [4,2,3,1]"
+  }
+  related = new Listing {
+    new {
+      role = "fact"
+      uri = "fixtures/arrivals/4231.json"
+      detail = "arrival [4,2,3,1] over connected {10, 20}: 4|S|20 2|S|20 3|U|10|20 1|F|10|20"
+    }
+    new {
+      role = "observation"
+      uri = "witness/arrival-order"
+      detail = "expected 10 <- seq 2 | actual -- missing -- [missing]"
+    }
+    new {
+      role = "observation"
+      uri = "witness/arrival-order"
+      detail = "expected 20 <- seq 1 | actual 20 <- seq 1 [ok]"
+    }
+    new {
+      role = "axiom"
+      uri = "followerMaze.orderedRouting"
+      detail = "ordering errors surface as routing errors because follow-state is temporal: who receives a status update depends on who follows at the moment it is applied, so applying events in arrival order instead of sequence order changes the recipients"
+    }
+  }
+  evaluationId = "followerMaze.orderedRouting:arrival-4231"
+}
