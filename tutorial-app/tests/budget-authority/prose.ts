@@ -1,8 +1,8 @@
 import { QUESTION, SCENARIO, WORKER_REASON } from '../../src/lib/budgetAuthorityStoryboard';
 
 // CIT-251: each lesson's markdown is the incoming turn in words. The
-// argument itself has to read from the Client preview with this prose
-// hidden (the storyboard asserts the preview, never this text); the prose
+// argument itself has to read from the Client and Agent previews with this
+// prose hidden (the storyboard asserts the preview, never this text); the prose
 // adds only what the preview can't: why this beat matters, and the two
 // honesty notes, stated where they apply.
 
@@ -11,10 +11,12 @@ const bridge = `import AcpTraceBridge from '../../../../../components/AcpTraceBr
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="${SCENARIO}" />`;
 
 const howToWatch = `**How to watch this part.** It is one ACP session, replayed. Each lesson is one
-turn: the incoming message is already on screen in the **Client** preview, whose
-last line names who acts next. **Solve** replays that recorded reply; **Next**
-brings in the following incoming message. You observe: nothing in this replay is
-an action you take. The raw ACP envelopes are the editor's \`acp-trace.json\`.`;
+turn: the incoming message is already on screen in the **Client** preview, the
+session log, whose last line names who acts next. The **Agent** preview shows the
+agent's reasoning: the objects it holds fixed, its verdicts, and the decisions
+that changed them. **Solve** replays the recorded reply; **Next** brings in the
+following incoming message. You observe: nothing in this replay is an action you
+take. The raw ACP envelopes are the editor's \`acp-trace.json\`.`;
 
 const scripted = `**Scripted, not captured.** Every frame in this part is authored by a Playwright
 storyboard (\`tests/budget-authority.tutorial.spec.ts\`), and the Client preview
@@ -34,9 +36,9 @@ same objects it names:
 
 > ${QUESTION}
 
-The worker's reason, "${WORKER_REASON}", is free text, so the **Type** channel
-reads \`malformed\`. Solve replays Jev's typed answer: \`YES · 0.94\`, and **Type**
-becomes \`well-formed\`. That verdict means the answer is well formed. It says
+The worker's reason, "${WORKER_REASON}", is free text, so the Agent's **Type**
+verdict reads \`malformed\`. Solve replays Jev's typed answer: \`YES · 0.94\`, and
+**Type** becomes \`well-formed\`. That verdict means the answer is well formed. It says
 nothing about whether the answer is right.
 
 **Simulated.** Jev's entire response, \`YES\` and \`0.94\` alike, is a labelled
@@ -65,7 +67,7 @@ Solve replays the budget check on the merged proposal: \`FAIL @ v1\`,
 beside it: the failure concerns the same proposal and the same rule Jev was asked
 about.
 
-Click the CodeLens above the failing line in the Client preview to open its
+Click the CodeLens above the failing line in the Client log to open its
 evidence: proposal P at its tree id, limit rule v1, and the answer it contradicts.
 `,
   `${bridge}
@@ -74,7 +76,8 @@ evidence: proposal P at its tree id, limit rule v1, and the answer it contradict
 
 The worker asks for a decision through \`session/request_permission\`: raise the
 limit from 1200 to 1300 for proposal P. Solve replays the supervisor's recorded
-answer. It shows up in the **Authority** channel, not as a check result:
+answer. It shows up in the Agent's reasoning, under **Authority**, not as a check
+result:
 
 - **who:** the supervisor
 - **what:** limit rule v1 (1200) → limit rule v2 (1300)
@@ -85,8 +88,8 @@ earlier \`FAIL @ v1\` still points at it.
 
 **Enforcement simulated.** This replay records the decision; nothing in it
 prevents the worker from editing the rule. It shows the record a real gate would
-check, which is why the Authority channel carries that label beside the decision
-itself.
+check, which is why the Agent's Authority record carries that label beside the
+decision itself.
 `,
   `${bridge}
 
@@ -105,12 +108,11 @@ export const LESSON_META = {
   template: 'acp-trace',
   prepareCommands: ['npm install'],
   mainCommand: 'npm run dev',
-  // Client only. With `editor: true` the raw envelopes are already on screen
-  // as acp-trace.json, so a second (Agent) pane would repeat them at the cost
-  // of halving the Client pane. Checked at 1440x900: with both panes the
-  // Authority channel is pushed partly out of view from lesson 4 on
-  // (tests/budget-authority.playback.spec.ts's expectVerdictsInView).
-  previews: [[4173, 'Client']],
+  // Client: the session log. Agent: the agent's reasoning over it.
+  previews: [
+    [4173, 'Client'],
+    [4174, 'Agent'],
+  ],
   editor: true,
   terminal: false,
 };

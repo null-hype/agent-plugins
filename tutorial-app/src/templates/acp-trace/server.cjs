@@ -113,28 +113,29 @@ function monacoLoaderScript() {
       }`;
 }
 
-// CIT-251: the strip above the log. Hidden unless the fixture carries a
-// scripted marker, pins or verdicts, so ghost-trace lessons look as before.
-// Only the Budget channel uses pass/fail colour; Type, Merge and Authority
-// share one neutral style so none of them reads as an approval.
-function traceViewStyles() {
+// CIT-251: the Agent pane is a UI over the agent's reasoning -- what it holds
+// fixed, what it has concluded, and why a conclusion changed (the recorded
+// grant). The Client pane stays what a client sees of the session: the log.
+// The reasoning view replaces the raw-envelope dump whenever the trace
+// carries reasoning (pins or verdicts); a trace without any, like the
+// ghost-trace lessons, still shows its envelopes. Only the Budget channel
+// uses pass/fail colour; Type, Merge and Authority share one neutral style so
+// none of them reads as an approval.
+function reasoningViewStyles() {
   return `<style>
-      main.client { display: flex; flex-direction: column; }
-      main.client #monaco-root { flex: 1 1 auto; min-height: 72px; height: auto; }
-      #trace-view { flex: 0 1 auto; overflow: auto; font: 11.5px/1.35 system-ui, sans-serif; color: #2b2a26; padding: 6px 8px; border-bottom: 1px solid #d8d4c8; background: #faf7ef; }
-      #trace-view[hidden] { display: none; }
-      #trace-view .scripted { font-weight: 600; color: #6b5d2e; margin-bottom: 4px; }
+      #trace-view { width: 100%; height: 100%; overflow: auto; font: 11.5px/1.3 system-ui, sans-serif; color: #2b2a26; padding: 5px 8px; background: #faf7ef; }
+      #trace-view[hidden], main.agent.reasoning #monaco-root { display: none; }
       #trace-view h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; margin: 0; color: #6f6a5c; }
       #trace-view ul { list-style: none; margin: 0; padding: 0; }
       #trace-view .pins ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); column-gap: 12px; }
       #trace-view .pins li { margin: 0; padding-left: 4px; border-left: 3px solid transparent; }
       #trace-view .pins .label { font-weight: 600; }
       #trace-view .pins .text, #trace-view .entry { font-family: "Roboto Mono", Menlo, Consolas, monospace; }
-      #trace-view .tag { display: inline-block; margin-left: 5px; padding: 0 4px; border-radius: 3px; border: 1px solid #b9b2a0; color: #5b5646; font: 10.5px system-ui, sans-serif; }
-      #trace-view .channels { display: grid; gap: 3px; margin-top: 6px; }
-      #trace-view .channel { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: start; gap: 6px; }
-      #trace-view .channel h2 { padding-top: 3px; }
-      #trace-view .entry { padding: 2px 5px; margin: 0 0 2px; border-radius: 3px; border-left: 3px solid transparent; color: #2b2a26; background: #f0ede4; }
+      #trace-view .tag { display: inline-block; margin-left: 5px; padding: 0 3px; line-height: 1.25; border-radius: 3px; border: 1px solid #b9b2a0; color: #5b5646; font: 10.5px system-ui, sans-serif; }
+      #trace-view .channels { display: grid; gap: 2px; margin-top: 5px; }
+      #trace-view .channel { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 4px; }
+      #trace-view .channel h2 { padding-top: 2px; }
+      #trace-view .entry { padding: 1px 4px; margin: 0 0 2px; border-radius: 3px; border-left: 3px solid transparent; color: #2b2a26; background: #f0ede4; }
       #trace-view .entry.older { opacity: .8; }
       #trace-view .entry[data-channel="budget"][data-status="fail"] { color: #8c1d18; background: #fde8e6; }
       #trace-view .entry[data-channel="budget"][data-status="pass"] { color: #17572a; background: #e4f4e8; }
@@ -155,9 +156,14 @@ function traceViewStyles() {
 // logic itself.
 function renderClientPage() {
   return `${sharedHead('ACP Trace: Client')}
-  ${traceViewStyles()}
+  <style>
+      main.client { display: flex; flex-direction: column; }
+      main.client #monaco-root { flex: 1 1 auto; min-height: 72px; height: auto; }
+      #scripted { flex: 0 0 auto; font: 600 11.5px/1.35 system-ui, sans-serif; color: #6b5d2e; padding: 4px 8px; border-bottom: 1px solid #d8d4c8; background: #faf7ef; }
+      #scripted[hidden] { display: none; }
+    </style>
   <body>
-    <main class="client"><section id="trace-view" aria-label="Trace view" hidden></section><div id="monaco-root"></div></main>
+    <main class="client"><div id="scripted" hidden></div><div id="monaco-root"></div></main>
     <script>
       ${monacoLoaderScript()}
 
@@ -259,8 +265,8 @@ function renderClientPage() {
 
       // CIT-251: the newest turn (and the pending line naming who acts next)
       // is what a viewer needs; in a short preview pane it would otherwise sit
-      // below the fold. Re-run on layout changes too: the strip above the log
-      // grows after a render, shrinking the editor after the first reveal.
+      // below the fold. Re-run on layout changes too: the scripted line above
+      // the log appears after a render, shrinking the editor after the first reveal.
       function revealNewest() {
         if (editor && model) editor.revealLine(model.getLineCount());
       }
@@ -290,11 +296,8 @@ function renderClientPage() {
       }
 
       // Mirrors acpTraceProtocol.ts's metaOf / describeActor / extractPromptText /
-      // toWarmLogLine / describePendingLine / deriveTraceView -- those are the
-      // unit-tested originals; see renderClientPage's comment on why a copy.
-      // Display-only additions here (the \`latest\` marker, current-only
-      // non-budget channels) are covered by the budget-authority storyboard,
-      // not by those unit tests.
+      // toWarmLogLine / describePendingLine -- those are the unit-tested
+      // originals; see renderClientPage's comment on why a copy.
       function metaOf(envelope) {
         if (envelope.result && envelope.result._meta) return envelope.result._meta;
         if (envelope.params && typeof envelope.params === 'object' && envelope.params._meta) return envelope.params._meta;
@@ -345,12 +348,105 @@ function renderClientPage() {
         return records;
       }
 
+      // A scripted replay says so above the log, whichever pane the viewer reads.
+      function renderScripted(state) {
+        const root = document.getElementById('scripted');
+        const frame = ((state && state.frames) || []).find((f) => f.provenance && f.provenance.scripted);
+        root.hidden = !frame;
+        root.textContent = frame ? 'Scripted replay (' + frame.provenance.scripted + ') · not a live capture' : '';
+      }
+
+      async function renderIntoEditor(records) {
+        await ensureEditor();
+        const lines = [];
+        const markers = [];
+        diagnosticsByLine = {};
+        relatedByLine = {};
+        if (evidenceWidgetLine !== null) {
+          editor.removeContentWidget({ getId: () => EVIDENCE_WIDGET_ID });
+          evidenceWidgetLine = null;
+        }
+
+        records.forEach((record, index) => {
+          const lineNumber = index + 1;
+          lines.push(record.raw);
+          if (record.diagnostic) {
+            diagnosticsByLine[lineNumber] = record.diagnostic;
+            markers.push({
+              startLineNumber: lineNumber,
+              startColumn: 1,
+              endLineNumber: lineNumber,
+              endColumn: Math.max(2, record.raw.length + 1),
+              severity:
+                record.diagnostic.severity === 'error'
+                  ? window.monaco.MarkerSeverity.Error
+                  : record.diagnostic.severity === 'warning'
+                    ? window.monaco.MarkerSeverity.Warning
+                    : window.monaco.MarkerSeverity.Info,
+              message: record.diagnostic.message,
+              code: record.diagnostic.code,
+            });
+            if (record.related.length > 0) relatedByLine[lineNumber] = record.related;
+          }
+        });
+
+        const nextText = lines.join('\\n');
+        if (model.getValue() !== nextText) model.setValue(nextText);
+        window.monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
+        revealNewest();
+      }
+
+      async function applyState(payload) {
+        if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
+        currentRevision = payload.revision;
+        renderScripted(payload);
+        await renderIntoEditor(renderRecords(payload));
+      }
+
+      window.addEventListener('message', (event) => {
+        const message = event.data;
+        if (!message || message.type !== 'lesson-state' || message.source !== 'tk-acp-trace-bridge') return;
+        applyState(message.payload).catch(() => {});
+      });
+
+      // Announce readiness (mirrors otel-warm-log's own page) only once the
+      // listener above is registered -- AcpTraceBridge answers this with the
+      // current state, sent straight to whichever frame just asked, rather
+      // than guessing how long a WebContainer boot or a reload takes.
+      window.parent.postMessage({ type: 'lesson-preview-ready', source: 'tk-acp-trace-client-preview' }, '*');
+
+      renderIntoEditor(renderRecords(null)).catch(() => {});
+    </script>
+  </body>
+</html>`;
+}
+
+// The agent-side pane: the agent's reasoning when the trace carries it (see
+// reasoningViewStyles), otherwise the raw ACP JSON-RPC envelopes as the agent
+// process would actually see/emit them.
+function renderAgentPage() {
+  return `${sharedHead('ACP Trace: Agent')}
+  ${reasoningViewStyles()}
+  <body>
+    <main class="agent"><section id="trace-view" aria-label="Agent reasoning" hidden></section><div id="monaco-root"></div></main>
+    <script>
+      ${monacoLoaderScript()}
+
+      // Mirrors acpTraceProtocol.ts's metaOf / deriveTraceView -- the
+      // unit-tested originals; see renderClientPage's comment on why a copy.
+      // Display-only additions here (the \`latest\` marker, current-only
+      // non-budget channels) are covered by the budget-authority storyboard,
+      // not by those unit tests.
+      function metaOf(envelope) {
+        if (envelope.result && envelope.result._meta) return envelope.result._meta;
+        if (envelope.params && typeof envelope.params === 'object' && envelope.params._meta) return envelope.params._meta;
+        return undefined;
+      }
+
       function deriveTraceView(frames) {
         const pins = [];
         const channels = { type: [], merge: [], budget: [], authority: [] };
-        let scripted = null;
         for (const frame of frames || []) {
-          if (scripted === null && frame.provenance && frame.provenance.scripted) scripted = frame.provenance.scripted;
           const meta = metaOf(frame.envelope || {});
           const latest = frame === frames[frames.length - 1];
           for (const pin of (meta && meta.pins) || []) {
@@ -371,7 +467,7 @@ function renderClientPage() {
             if (entry.rule === grant.to && entry.subject !== grant.scope) entry.outOfScope = { scope: grant.scope, actor: grant.actor };
           }
         }
-        return { scripted, pins, channels };
+        return { pins, channels };
       }
 
       const CHANNEL_TITLES = { type: 'Type', merge: 'Merge', budget: 'Budget', authority: 'Authority' };
@@ -383,20 +479,19 @@ function renderClientPage() {
         return node;
       }
 
-      function renderTraceView(state) {
+      /** Renders the reasoning view; returns false when the trace carries none. */
+      function renderReasoningView(state) {
         const root = document.getElementById('trace-view');
         const view = deriveTraceView(state && state.frames);
         const verdictCount = Object.values(view.channels).reduce((n, entries) => n + entries.length, 0);
         root.replaceChildren();
-        if (!view.scripted && view.pins.length === 0 && verdictCount === 0) {
+        if (view.pins.length === 0 && verdictCount === 0) {
           root.hidden = true;
-          return;
+          return false;
         }
         root.hidden = false;
         const labelOf = (id) => (view.pins.find((pin) => pin.id === id) || { label: id }).label;
         const supersededText = (by) => 'superseded for ' + labelOf(by.scope) + ' by ' + labelOf(by.pin) + ' (' + by.actor + ')';
-
-        if (view.scripted) root.appendChild(el('div', 'scripted', 'Scripted replay (' + view.scripted + ') · not a live capture'));
 
         if (view.pins.length > 0) {
           const section = el('section', 'pins');
@@ -448,82 +543,8 @@ function renderClientPage() {
           grid.appendChild(section);
         }
         root.appendChild(grid);
+        return true;
       }
-
-      async function renderIntoEditor(records) {
-        await ensureEditor();
-        const lines = [];
-        const markers = [];
-        diagnosticsByLine = {};
-        relatedByLine = {};
-        if (evidenceWidgetLine !== null) {
-          editor.removeContentWidget({ getId: () => EVIDENCE_WIDGET_ID });
-          evidenceWidgetLine = null;
-        }
-
-        records.forEach((record, index) => {
-          const lineNumber = index + 1;
-          lines.push(record.raw);
-          if (record.diagnostic) {
-            diagnosticsByLine[lineNumber] = record.diagnostic;
-            markers.push({
-              startLineNumber: lineNumber,
-              startColumn: 1,
-              endLineNumber: lineNumber,
-              endColumn: Math.max(2, record.raw.length + 1),
-              severity:
-                record.diagnostic.severity === 'error'
-                  ? window.monaco.MarkerSeverity.Error
-                  : record.diagnostic.severity === 'warning'
-                    ? window.monaco.MarkerSeverity.Warning
-                    : window.monaco.MarkerSeverity.Info,
-              message: record.diagnostic.message,
-              code: record.diagnostic.code,
-            });
-            if (record.related.length > 0) relatedByLine[lineNumber] = record.related;
-          }
-        });
-
-        const nextText = lines.join('\\n');
-        if (model.getValue() !== nextText) model.setValue(nextText);
-        window.monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
-        revealNewest();
-      }
-
-      async function applyState(payload) {
-        if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
-        currentRevision = payload.revision;
-        renderTraceView(payload);
-        await renderIntoEditor(renderRecords(payload));
-      }
-
-      window.addEventListener('message', (event) => {
-        const message = event.data;
-        if (!message || message.type !== 'lesson-state' || message.source !== 'tk-acp-trace-bridge') return;
-        applyState(message.payload).catch(() => {});
-      });
-
-      // Announce readiness (mirrors otel-warm-log's own page) only once the
-      // listener above is registered -- AcpTraceBridge answers this with the
-      // current state, sent straight to whichever frame just asked, rather
-      // than guessing how long a WebContainer boot or a reload takes.
-      window.parent.postMessage({ type: 'lesson-preview-ready', source: 'tk-acp-trace-client-preview' }, '*');
-
-      renderIntoEditor(renderRecords(null)).catch(() => {});
-    </script>
-  </body>
-</html>`;
-}
-
-// The agent-side pane: the raw ACP JSON-RPC envelopes as the agent process
-// would actually see/emit them -- protocol fidelity over narrative, which is
-// what distinguishes this pane from the client warm log above.
-function renderAgentPage() {
-  return `${sharedHead('ACP Trace: Agent')}
-  <body>
-    <main><div id="monaco-root"></div></main>
-    <script>
-      ${monacoLoaderScript()}
 
       let editor = null;
       let model = null;
@@ -573,6 +594,7 @@ function renderAgentPage() {
       async function applyState(payload) {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
+        document.querySelector('main.agent').classList.toggle('reasoning', renderReasoningView(payload));
         await ensureEditor();
         const next = renderEnvelopes(payload);
         if (model.getValue() !== next) model.setValue(next);

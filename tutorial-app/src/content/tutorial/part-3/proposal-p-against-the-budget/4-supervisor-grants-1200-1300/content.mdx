@@ -8,6 +8,8 @@ editor: true
 previews:
   - - 4173
     - Client
+  - - 4174
+    - Agent
 prepareCommands:
   - npm install
 mainCommand: npm run dev
@@ -21,7 +23,8 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 The worker asks for a decision through `session/request_permission`: raise the
 limit from 1200 to 1300 for proposal P. Solve replays the supervisor's recorded
-answer. It shows up in the **Authority** channel, not as a check result:
+answer. It shows up in the Agent's reasoning, under **Authority**, not as a check
+result:
 
 - **who:** the supervisor
 - **what:** limit rule v1 (1200) → limit rule v2 (1300)
@@ -32,5 +35,5 @@ earlier `FAIL @ v1` still points at it.
 
 **Enforcement simulated.** This replay records the decision; nothing in it
 prevents the worker from editing the rule. It shows the record a real gate would
-check, which is why the Authority channel carries that label beside the decision
-itself.
+check, which is why the Agent's Authority record carries that label beside the
+decision itself.
