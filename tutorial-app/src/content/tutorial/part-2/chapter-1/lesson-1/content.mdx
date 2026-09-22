@@ -29,7 +29,7 @@ until you press Solve.
 ```json
 {
   "jsonrpc": "2.0",
-  "id": 7,
+  "id": 2,
   "method": "session/prompt",
   "params": {
     "sessionId": "sess_ghost-01",
@@ -53,9 +53,17 @@ result every time.
 
 ### Provenance
 
-This exchange is fixture `ghost-trace-v1`, captured 2026-09-15. It is a
-hand-authored recording, not a live capture -- CIT-245 explicitly defers
-building the Playwright recording/reporter pipeline that would produce one.
+This exchange is fixture `ghost-trace-v1`, captured 2026-09-22. Both frames
+are the literal JSON-RPC bytes from a real ACP client/agent exchange -- not
+hand-typed JSON authored to look like one. `evidence/ghost-trace-v1/` (repo
+root of `tutorial-app`) has the two scripts that produced it (a minimal
+agent, a client that drives it and taps the wire), the full six-frame raw
+transcript, and the exact command to reproduce it; re-running it is
+byte-identical apart from each frame's `capturedAt`. This is a one-off
+evidence script, not the deferred Playwright recording/reporter pipeline --
+CIT-245 deferred building general recording capability, not the requirement
+that a fixture actually come from somewhere real.
+
 **Dagger Cloud trace link: not yet captured** (see `src/lib/acpTraceProtocol.ts`
 for the `provenance.daggerCloudTraceUrl` field a real capture would fill in;
 this fixture leaves it absent rather than link to one that doesn't exist).

@@ -26,13 +26,15 @@ const agentFrame: AcpFrame = {
   envelope: {
     jsonrpc: '2.0',
     id: 7,
-    result: { stopReason: 'end_turn' },
-    _meta: {
-      diagnostic: {
-        severity: 'error',
-        code: 'LEDGER_WRITE_CONFLICT',
-        message: 'conflict',
-        source: 'acp-ghost-trace',
+    result: {
+      stopReason: 'end_turn',
+      _meta: {
+        diagnostic: {
+          severity: 'error',
+          code: 'LEDGER_WRITE_CONFLICT',
+          message: 'conflict',
+          source: 'acp-ghost-trace',
+        },
       },
     },
   },
@@ -83,7 +85,7 @@ describe('parseAcpTraceFixture + buildAcpTraceState', () => {
     expect(state.solved).toBe(true);
     expect(state.nextTurn).toBeNull();
     expect(describeNextTurn(state.nextTurn)).toBeNull();
-    expect(findDiagnosticFrame(state.frames)?.envelope._meta?.diagnostic.code).toBe(
+    expect(findDiagnosticFrame(state.frames)?.envelope.result?._meta?.diagnostic.code).toBe(
       'LEDGER_WRITE_CONFLICT',
     );
   });

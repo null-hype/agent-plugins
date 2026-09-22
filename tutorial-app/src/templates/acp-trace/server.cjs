@@ -197,7 +197,8 @@ function renderClientPage() {
           if (frame.envelope && frame.envelope.result !== undefined) {
             lines.push('  result: ' + JSON.stringify(frame.envelope.result));
           }
-          const diagnostic = frame.envelope && frame.envelope._meta && frame.envelope._meta.diagnostic;
+          const result = frame.envelope && frame.envelope.result;
+          const diagnostic = result && result._meta && result._meta.diagnostic;
           if (diagnostic) {
             lines.push('  diagnostic: [' + diagnostic.severity + '] ' + diagnostic.code + ' -- ' + diagnostic.message);
           }
@@ -224,6 +225,12 @@ function renderClientPage() {
         if (!message || message.type !== 'lesson-state' || message.source !== 'tk-acp-trace-bridge') return;
         applyState(message.payload).catch(() => {});
       });
+
+      // Announce readiness (mirrors otel-warm-log's own page) only once the
+      // listener above is registered -- AcpTraceBridge answers this with the
+      // current state, sent straight to whichever frame just asked, rather
+      // than guessing how long a WebContainer boot or a reload takes.
+      window.parent.postMessage({ type: 'lesson-preview-ready', source: 'tk-acp-trace-client-preview' }, '*');
 
       ensureEditor().catch(() => {});
     </script>
@@ -293,6 +300,8 @@ function renderAgentPage() {
         if (!message || message.type !== 'lesson-state' || message.source !== 'tk-acp-trace-bridge') return;
         applyState(message.payload).catch(() => {});
       });
+
+      window.parent.postMessage({ type: 'lesson-preview-ready', source: 'tk-acp-trace-agent-preview' }, '*');
 
       ensureEditor().catch(() => {});
     </script>

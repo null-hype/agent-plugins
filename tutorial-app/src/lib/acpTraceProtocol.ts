@@ -20,13 +20,25 @@ import type { AcpDiagnosticMeta } from './acpDiagnosticMeta.pkl';
  *     frame here invents one.
  */
 
+/**
+ * `_meta` is not a sibling of `result` on the JSON-RPC envelope -- the ACP
+ * SDK's own response types (e.g. `PromptResponse` in
+ * agentclientprotocol/typescript-sdk's schema/types.gen.ts) carry `_meta`
+ * as a field *inside* the result payload itself, alongside `stopReason`
+ * etc. A conforming recording's diagnostic lives at `result._meta`, so
+ * that's the only place this library (or a renderer) looks for one.
+ */
+export type AcpResult = {
+  [key: string]: unknown;
+  _meta?: AcpDiagnosticMeta;
+};
+
 export type AcpEnvelope = {
   jsonrpc: '2.0';
   id?: number | string;
   method?: string;
   params?: unknown;
-  result?: unknown;
-  _meta?: AcpDiagnosticMeta;
+  result?: AcpResult;
 };
 
 export type AcpFrameProvenance = {
@@ -149,7 +161,7 @@ export function buildAcpTraceState(options: {
 
 /** The frame a diagnostic actually lives on, if any -- read by both previews. */
 export function findDiagnosticFrame(frames: readonly AcpFrame[]): AcpFrame | undefined {
-  return frames.find((frame) => frame.envelope._meta?.diagnostic);
+  return frames.find((frame) => frame.envelope.result?._meta?.diagnostic);
 }
 
 /** Solve's button label: "<Actor>: <action>", e.g. "Agent: reply with diagnostic". */

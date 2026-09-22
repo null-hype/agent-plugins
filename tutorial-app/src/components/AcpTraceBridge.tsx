@@ -34,6 +34,7 @@ type SolvableStore = {
 
 const DEFAULT_TRACE_FILE = '/acp-trace.json';
 const DEFAULT_SCENARIO = 'ghost-trace-diagnostic-v1';
+const READY_SOURCES = new Set(['tk-acp-trace-client-preview', 'tk-acp-trace-agent-preview']);
 
 interface Props {
   traceFile?: string;
@@ -83,35 +84,44 @@ export default function AcpTraceBridge({
     });
   }, [resolvedConfig.scenario, traceText]);
 
-  // One payload, broadcast to every preview iframe (client and agent alike),
-  // so both panes always agree on the same trace position -- see this
-  // lesson's acceptance criteria on the two previews never disagreeing.
+  // One payload, sent to every preview iframe (client and agent alike), so
+  // both panes always agree on the same trace position -- see this lesson's
+  // acceptance criteria on the two previews never disagreeing.
   //
-  // Same delayed-retry shape as RuleTraceBridge/LoanwordArcBridge: an iframe
-  // may not have its own message listener registered yet on the first post
-  // (WebContainer boot, or Monaco still loading), so the same message --
-  // same revision, not recomputed -- is resent a few times. Both preview
-  // pages guard on `revision`, so a resend that does land after the first is
-  // a no-op, not a re-trigger.
+  // Unlike the earlier delayed-retry approach (a fixed handful of resends
+  // over ~3s, matching RuleTraceBridge/LoanwordArcBridge's *old* shape), a
+  // slow WebContainer boot -- or reloading either preview after the retries
+  // had already stopped -- left that pane waiting forever. Each preview page
+  // now announces `lesson-preview-ready` itself once its own message
+  // listener is registered (see acp-trace/server.cjs), the same handshake
+  // LoanwordArcBridge already uses for its one preview: this bridge answers
+  // that announcement by sending current state straight to the frame that
+  // just asked, whenever that happens to be -- boot, reload, or otherwise --
+  // instead of guessing a timeout. A state change (e.g. after Solve) is still
+  // sent immediately to every frame already in the DOM; both pages guard on
+  // `revision`, so any message that arrives out of order or twice is a no-op.
   useEffect(() => {
     const message = {
       payload: traceState,
       source: 'tk-acp-trace-bridge',
       type: 'lesson-state',
     };
-    const delays = [0, 300, 900, 1600, 3200];
-    const timeoutIds = delays.map((delay) =>
-      window.setTimeout(() => {
-        for (const frame of getPreviewFrames()) {
-          frame.contentWindow?.postMessage(message, '*');
-        }
-      }, delay),
-    );
+    const send = (frame: HTMLIFrameElement) => frame.contentWindow?.postMessage(message, '*');
+    const onReady = (event: MessageEvent) => {
+      if (event.data?.type !== 'lesson-preview-ready' || !READY_SOURCES.has(event.data?.source)) {
+        return;
+      }
+      const frame = getPreviewFrames().find((frame) => frame.contentWindow === event.source);
+      if (frame) {
+        send(frame);
+      }
+    };
+
+    window.addEventListener('message', onReady);
+    getPreviewFrames().forEach(send);
 
     return () => {
-      for (const timeoutId of timeoutIds) {
-        window.clearTimeout(timeoutId);
-      }
+      window.removeEventListener('message', onReady);
     };
   }, [traceState]);
 

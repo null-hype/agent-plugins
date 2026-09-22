@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import clientPageHtml from 'virtual:acp-trace-client-page';
 import agentPageHtml from 'virtual:acp-trace-agent-page';
 import type { AcpTraceState } from '../lib/acpTraceProtocol';
@@ -52,28 +52,19 @@ function Pane({ html, payload, height, label }: { html: string; payload?: AcpTra
 }
 
 export default function AcpTracePreview({ payload, height = 360 }: Props) {
-	// Neither page announces `lesson-preview-ready` on its own (that handshake
-	// is otel-warm-log's convention, not this template's) -- both listen for
-	// `lesson-state` unconditionally from first paint, so treat them as ready
-	// immediately.
-	const readyClientHtml = useMemo(() => injectImmediateReady(clientPageHtml), []);
-	const readyAgentHtml = useMemo(() => injectImmediateReady(agentPageHtml), []);
-
+	// Both pages now announce `lesson-preview-ready` themselves (see
+	// acp-trace/server.cjs), the same handshake otel-warm-log's own page uses
+	// -- no Storybook-only shim needed to fake that signal anymore.
 	return (
 		<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Client</div>
-				<Pane html={readyClientHtml} payload={payload} height={height} label="acp-trace client preview" />
+				<Pane html={clientPageHtml} payload={payload} height={height} label="acp-trace client preview" />
 			</div>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Agent</div>
-				<Pane html={readyAgentHtml} payload={payload} height={height} label="acp-trace agent preview" />
+				<Pane html={agentPageHtml} payload={payload} height={height} label="acp-trace agent preview" />
 			</div>
 		</div>
 	);
-}
-
-function injectImmediateReady(html: string): string {
-	const shim = `<script>window.parent.postMessage({type:'lesson-preview-ready'},'*');</script>`;
-	return html.replace('<head>', `<head>${shim}`);
 }
