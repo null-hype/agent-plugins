@@ -72,6 +72,78 @@
         "recordingId": "ghost-trace-v1#1",
         "capturedAt": "2026-09-22T08:35:12.572Z"
       }
+    },
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_ghost-01",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Would the reorder-buffer model have delivered it?"
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "ghost-trace-v1#2",
+        "capturedAt": "2026-09-22T08:35:12.572Z"
+      }
+    },
+    {
+      "actor": "agent",
+      "action": "reply with diagnostic",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {
+          "stopReason": "end_turn",
+          "_meta": {
+            "diagnostic": {
+              "code": "PASS",
+              "severity": "info",
+              "message": "the witness delivers exactly what the sequence-ordered protocol entails",
+              "subject": {
+                "role": "fact",
+                "uri": "fixtures/arrivals/4231.json",
+                "detail": "arrival [4,2,3,1]"
+              },
+              "related": [
+                {
+                  "role": "fact",
+                  "uri": "fixtures/arrivals/4231.json",
+                  "detail": "arrival [4,2,3,1] over connected {10, 20}: 4|S|20 2|S|20 3|U|10|20 1|F|10|20"
+                },
+                {
+                  "role": "observation",
+                  "uri": "witness/reorder-buffer",
+                  "detail": "expected 10 <- seq 2 | actual 10 <- seq 2 [ok]"
+                },
+                {
+                  "role": "observation",
+                  "uri": "witness/reorder-buffer",
+                  "detail": "expected 20 <- seq 1 | actual 20 <- seq 1 [ok]"
+                },
+                {
+                  "role": "axiom",
+                  "uri": "followerMaze.orderedRouting",
+                  "detail": "ordering errors surface as routing errors because follow-state is temporal: who receives a status update depends on who follows at the moment it is applied, so applying events in arrival order instead of sequence order changes the recipients"
+                }
+              ],
+              "evaluationId": "followerMaze.orderedRouting:arrival-4231"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "ghost-trace-v1#3",
+        "capturedAt": "2026-09-22T08:35:12.572Z"
+      }
     }
   ],
   "nextTurn": null

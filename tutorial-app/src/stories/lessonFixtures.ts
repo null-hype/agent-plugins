@@ -19,6 +19,7 @@ const raw = import.meta.glob(
 		'../content/tutorial/part-1/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-1/chapter-2/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-2/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-2/chapter-1/lesson-2/{content.mdx,_files/*,_solution/*}',
 	],
 	{ eager: true, query: '?raw', import: 'default' },
 ) as Record<string, string>;
@@ -34,7 +35,11 @@ export type Lesson = {
 };
 
 export function loadLesson(
-	dir: 'part-1/chapter-1/lesson-1' | 'part-1/chapter-2/lesson-1' | 'part-2/chapter-1/lesson-1',
+	dir:
+		| 'part-1/chapter-1/lesson-1'
+		| 'part-1/chapter-2/lesson-1'
+		| 'part-2/chapter-1/lesson-1'
+		| 'part-2/chapter-1/lesson-2',
 ): Lesson {
 	const base = `../content/tutorial/${dir}/`;
 	const collect = (folder: string) =>
