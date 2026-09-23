@@ -79,8 +79,10 @@ hooks {
         steps {
             // Separate Claude, container-use, and Codex snapshots (disaster
             // recovery only). See .dagger/internal/devenv-base/hk/claude-session-backup.sh.
+            // A failed backup blocks the push (CIT-254) rather than being
+            // swallowed -- there is no --best-effort mode anymore.
             ["claude-session-backup"] {
-                check = "bash .dagger/internal/devenv-base/hk/claude-session-backup.sh --best-effort"
+                check = "bash .dagger/internal/devenv-base/hk/claude-session-backup.sh"
             }
         }
     }

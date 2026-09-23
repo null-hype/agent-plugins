@@ -41,7 +41,12 @@ class BackupTests(unittest.TestCase):
                          ['backup', os.environ.get('CODEX_HOME', str(Path.home()/'.codex')),
                           '--tag', 'codex-session-state'])
 
-    def test_best_effort_is_explicit(self):
+    def test_failure_is_never_swallowed(self):
+        # CIT-254: claude-session-backup.sh used to accept a --best-effort
+        # flag that turned a real failure into exit 0, so a failed pre-push
+        # backup was indistinguishable from a skipped one. There is no such
+        # mode anymore -- every caller, including the pre-push hook, sees
+        # the real failure status.
         with tempfile.TemporaryDirectory() as temp:
             fake = Path(temp)/'pass-cli'
             fake.write_text('#!/bin/sh\necho "authentication failed" >&2\nexit 9\n')
@@ -49,10 +54,8 @@ class BackupTests(unittest.TestCase):
             env = dict(os.environ, PATH=temp+':'+os.environ['PATH'])
             script = LIB.parent.parent.parent/'hk/claude-session-backup.sh'
             direct = subprocess.run(['bash', str(script)], env=env, capture_output=True, text=True)
-            hook = subprocess.run(['bash', str(script), '--best-effort'], env=env, capture_output=True, text=True)
             self.assertEqual(direct.returncode, 9)
-            self.assertEqual(hook.returncode, 0)
-            self.assertIn('session backup FAILED', hook.stderr)
+            self.assertIn('authentication failed', direct.stderr)
 
     def test_non_lock_failure_not_retried(self):
         result = shell('''
