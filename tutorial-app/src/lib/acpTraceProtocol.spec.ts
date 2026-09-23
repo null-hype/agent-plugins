@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAcpTraceState,
-  describeNextTurn,
+  deriveTraceView,
+  describePendingLine,
   findDiagnosticFrame,
   parseAcpTraceFixture,
   resolveAcpTraceConfig,
@@ -76,7 +77,9 @@ describe('parseAcpTraceFixture + buildAcpTraceState', () => {
 
     expect(state.solved).toBe(false);
     expect(state.frames).toEqual([clientFrame]);
-    expect(describeNextTurn(state.nextTurn)).toBe('Agent: reply with diagnostic');
+    expect(describePendingLine(state.nextTurn!)).toBe(
+      'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)',
+    );
     expect(findDiagnosticFrame(state.frames)).toBeUndefined();
   });
 
@@ -92,8 +95,7 @@ describe('parseAcpTraceFixture + buildAcpTraceState', () => {
 
     expect(state.solved).toBe(true);
     expect(state.nextTurn).toBeNull();
-    expect(describeNextTurn(state.nextTurn)).toBeNull();
-    expect(findDiagnosticFrame(state.frames)?.envelope.result?._meta?.diagnostic.code).toBe(
+    expect(findDiagnosticFrame(state.frames)?.envelope.result?._meta?.diagnostic?.code).toBe(
       'fm-missing-delivery',
     );
   });
@@ -146,5 +148,88 @@ describe('toWarmLogLine', () => {
 
     expect(line.raw).toContain(' ok');
     expect(line.diagnostic).toBeNull();
+  });
+});
+
+describe('CIT-251: speakers, pins and verdict channels', () => {
+  const provenance = { recordingId: 'budget-authority-v1#0', capturedAt: '2026-09-22T00:00:00Z', scripted: 'storyboard' };
+  const pinFrame = (pins: unknown[], verdict?: unknown): AcpFrame => ({
+    actor: 'client',
+    action: 'ask',
+    envelope: { jsonrpc: '2.0', id: 1, method: 'session/prompt', params: { sessionId: 's', prompt: [], _meta: { pins, verdict } } },
+    provenance,
+  } as AcpFrame);
+  const replyFrame = (speaker: string, verdict: unknown, pins: unknown[] = []): AcpFrame => ({
+    actor: speaker === 'supervisor' ? 'client' : 'agent',
+    speaker,
+    action: 'reply',
+    envelope: { jsonrpc: '2.0', id: 1, result: { _meta: { pins, verdict } } },
+    provenance,
+  } as AcpFrame);
+
+  it('names the speaker in the log line and the pending line', () => {
+    expect(toWarmLogLine(replyFrame('jev', undefined)).raw.startsWith('jev (agent): reply')).toBe(true);
+    expect(describePendingLine({ actor: 'client', speaker: 'supervisor', action: 'grant 1200 -> 1300' })).toBe(
+      'supervisor (client): grant 1200 -> 1300  ->  awaiting recorded turn (Solve replays it)',
+    );
+  });
+
+  it('reads _meta from params on requests and from result on responses', () => {
+    const view = deriveTraceView([
+      pinFrame([{ id: 'limit-v1', label: 'Limit rule v1', text: 'budget <= 1200' }], { channel: 'type', status: 'malformed', text: 'malformed' }),
+      replyFrame('jev', { channel: 'type', status: 'well-formed', text: 'well-formed' }),
+    ]);
+    expect(view.scripted).toBe('storyboard');
+    expect(view.pins.map((pin) => pin.id)).toEqual(['limit-v1']);
+    expect(view.channels.type.map((entry) => entry.status)).toEqual(['malformed', 'well-formed']);
+    expect(view.channels.budget).toEqual([]);
+  });
+
+  it('a grant marks the earlier budget entry and its rule superseded for the scoped object, without rewriting them', () => {
+    const fail = { channel: 'budget', status: 'fail', rule: 'limit-v1', subject: 'proposal-P', text: 'FAIL @ v1' };
+    const frames = [
+      pinFrame([{ id: 'limit-v1', label: 'Limit rule v1', text: 'budget <= 1200' }]),
+      replyFrame('checks', fail),
+      replyFrame(
+        'supervisor',
+        { channel: 'authority', status: 'recorded', text: 'granted', actor: 'supervisor', from: 'limit-v1', to: 'limit-v2', scope: 'proposal-P', enforcement: 'simulated' },
+        [{ id: 'limit-v2', label: 'Limit rule v2', text: 'budget <= 1300' }],
+      ),
+      replyFrame('checks', { channel: 'budget', status: 'pass', rule: 'limit-v2', subject: 'proposal-P', text: 'PASS @ v2' }),
+    ];
+    const view = deriveTraceView(frames);
+    const superseded = { pin: 'limit-v2', scope: 'proposal-P', actor: 'supervisor' };
+
+    expect(view.channels.budget[0]).toEqual({ ...fail, supersededBy: superseded });
+    expect(view.channels.budget[1].supersededBy).toBeUndefined();
+    expect(view.pins.find((pin) => pin.id === 'limit-v1')).toMatchObject({ text: 'budget <= 1200', supersededBy: superseded });
+    // The frame itself is untouched: the view is derived, not written back.
+    expect((frames[1].envelope.result?._meta?.verdict as { supersededBy?: unknown }).supersededBy).toBeUndefined();
+  });
+
+  it('a grant scoped to P changes nothing for another object, and flags that object reading the P-only rule', () => {
+    const grant = { channel: 'authority', status: 'recorded', text: 'granted', actor: 'supervisor', from: 'limit-v1', to: 'limit-v2', scope: 'proposal-P', enforcement: 'simulated' };
+    const view = deriveTraceView([
+      pinFrame([{ id: 'limit-v1', label: 'Limit rule v1', text: 'budget <= 1200' }]),
+      replyFrame('checks', { channel: 'budget', status: 'fail', rule: 'limit-v1', subject: 'proposal-Q', text: 'FAIL @ v1 (Q)' }),
+      replyFrame('supervisor', grant, [{ id: 'limit-v2', label: 'Limit rule v2', text: 'budget <= 1300' }]),
+      replyFrame('checks', { channel: 'budget', status: 'pass', rule: 'limit-v2', subject: 'proposal-Q', text: 'PASS @ v2 (Q)' }),
+    ]);
+
+    expect(view.channels.budget[0].supersededBy).toBeUndefined();
+    expect(view.channels.budget[1].outOfScope).toEqual({ scope: 'proposal-P', actor: 'supervisor' });
+  });
+
+  it('refuses to re-pin an id: pinned objects are immutable', () => {
+    const pin = { id: 'proposal-P', label: 'Proposal P', text: 'airfare 890 + ground 400' };
+    expect(() => deriveTraceView([pinFrame([pin]), pinFrame([{ ...pin, text: 'airfare 890 + ground 300' }])])).toThrow(/immutable/);
+  });
+
+  it('a ghost-trace fixture has no pins, no verdicts and no scripted marker', () => {
+    expect(deriveTraceView([clientFrame, agentFrame])).toEqual({
+      scripted: null,
+      pins: [],
+      channels: { type: [], merge: [], budget: [], authority: [] },
+    });
   });
 });

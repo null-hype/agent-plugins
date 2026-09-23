@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import AcpTracePreview from './AcpTracePreview';
 import AcpTraceBridge from '../components/AcpTraceBridge';
 import { deriveAcpTraceState, loadLesson } from './lessonFixtures';
-import { resetTutorialStore, seedTutorialStore } from '../../.storybook/tutorialkit-store';
+import tutorialStore, { resetTutorialStore, seedTutorialStore } from '../../.storybook/tutorialkit-store';
 
 const meta = {
 	title: 'Lessons/ACP Trace (Ghost Trace Machine)',
@@ -66,7 +66,7 @@ export const Blocked: Story = {
 		await editorsReady(canvasElement);
 		await expectClientShows(canvasElement, 'client: send prompt  ->  sent  session/prompt');
 		await expectClientShows(canvasElement, "Why didn't user 10 get the status update");
-		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)');
 		await expect(clientText(canvasElement)).not.toContain('fm-missing-delivery');
 		await expectAgentShows(canvasElement, 'session/prompt');
 		await expect(agentText(canvasElement)).not.toContain('diagnostic');
@@ -111,9 +111,10 @@ export const Solved: Story = {
 // -- Tier 2: the real bridge drives both pages, Solve is a real click -------
 
 // AcpTraceBridge reads /acp-trace.json from the store, builds the state with
-// acpTraceProtocol, and broadcasts it to both preview iframes. Solve calls
-// the store's own solve() (the `_files` -> `_solution` swap); this story
-// clicks the actual rendered button, not a simulated state change.
+// acpTraceProtocol, and broadcasts it to both preview iframes. It is headless
+// (CIT-251): Solve/Reset are TutorialKit's own editor controls, which call the
+// store's solve()/reset() (the `_files` -> `_solution` swap) -- this story
+// calls those same store methods.
 export const ViaBridge: Story = {
 	render: () => (
 		<>
@@ -130,7 +131,7 @@ export const ViaBridge: Story = {
 	play: async ({ canvasElement, step }) => {
 		await step('starter file: agent turn blocked in both panes', async () => {
 			await editorsReady(canvasElement);
-			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
+			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)');
 			await expectAgentShows(canvasElement, 'session/prompt');
 			await expect(agentText(canvasElement)).not.toContain('diagnostic');
 		});
@@ -149,15 +150,11 @@ export const ViaBridge: Story = {
 			await expect(agentText(canvasElement)).not.toContain('diagnostic');
 		});
 
-		const solveButton = await within(canvasElement).findByRole('button', {
-			name: 'Solve: Agent: reply with diagnostic',
-		});
-
 		await step('Solve: both panes reveal the same recorded diagnostic', async () => {
-			solveButton.click();
+			tutorialStore.solve();
 			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  fm-missing-delivery');
 			await expectAgentShows(canvasElement, '"code":"fm-missing-delivery"');
-			await within(canvasElement).findByText('Trace complete.');
+			await waitFor(() => expect(clientText(canvasElement)).not.toContain('awaiting recorded turn'));
 		});
 
 		await step('reload after Solve: a late-joining preview shows the solved state, not the stale blocked one', async () => {
@@ -168,9 +165,8 @@ export const ViaBridge: Story = {
 		});
 
 		await step('Reset: both panes return to the blocked starting state', async () => {
-			const resetButton = within(canvasElement).getByRole('button', { name: 'Reset' });
-			resetButton.click();
-			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
+			tutorialStore.reset();
+			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)');
 			await expect(agentText(canvasElement)).not.toContain('diagnostic');
 		});
 	},
@@ -218,7 +214,7 @@ export const DelayedBoot: Story = {
 		expect(canvasElement.querySelectorAll('iframe').length).toBe(0);
 
 		await editorsReady(canvasElement);
-		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)');
 		await expectAgentShows(canvasElement, 'session/prompt');
 	},
 };
@@ -241,7 +237,7 @@ export const Lesson2StartsFromLesson1Solved: Story = {
 		await editorsReady(canvasElement);
 		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  fm-missing-delivery');
 		await expectClientShows(canvasElement, 'client: send prompt  ->  sent  session/prompt "Would the reorder-buffer model');
-		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  blocked (press Solve)');
+		await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)');
 		await expectAgentShows(canvasElement, '"code":"fm-missing-delivery"');
 	},
 };
