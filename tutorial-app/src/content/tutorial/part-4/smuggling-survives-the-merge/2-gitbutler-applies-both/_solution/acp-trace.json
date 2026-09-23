@@ -24,6 +24,12 @@
                 "text": "relay.py: strip whitespace around commas in Transfer-Encoding list values -- fixes an unrelated proxy-compat bug"
               },
               {
+                "id": "patch-relay-candidate-b",
+                "label": "Autocomplete's other candidate for this hunk",
+                "text": "relay.py: strip only leading whitespace, preserve the space after each comma -- also fixes the proxy-compat bug",
+                "simulated": "offered alongside patch-relay when the hunk was drafted; not picked, not committed, not reviewed"
+              },
+              {
                 "id": "patch-gunicorn",
                 "label": "Patch: gunicorn-image-bump",
                 "text": "internalApp Dockerfile: bump gunicorn base image to latest security patch level"
@@ -97,6 +103,65 @@
           "prompt": [
             {
               "type": "text",
+              "text": "Before applying, does either candidate for relay's hunk interact with gunicorn-image-bump?"
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "smuggling-v1#2",
+        "capturedAt": "n/a (scripted)",
+        "scripted": "spike storyboard: smuggling survives the merge"
+      }
+    },
+    {
+      "actor": "agent",
+      "action": "reason across candidates, flag before commit",
+      "speaker": "agent",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+          "stopReason": "end_turn",
+          "_meta": {
+            "pins": [
+              {
+                "id": "patch-relay-eval",
+                "label": "Patch: relay-header-normalize vs gunicorn-image-bump",
+                "text": "re-aligns with gunicorn's parser -- 'chunked, gzip' and 'chunked,gzip' become indistinguishable to both parsers once both land"
+              },
+              {
+                "id": "patch-relay-candidate-b-eval",
+                "label": "Autocomplete's other candidate vs gunicorn-image-bump",
+                "text": "keeps a byte-for-byte difference gunicorn's parser still treats separately -- parsers keep disagreeing"
+              }
+            ],
+            "verdict": {
+              "channel": "review",
+              "status": "flagged",
+              "text": "flagged pre-commit · relay-header-normalize -- the candidate already approved and about to be applied -- would reopen the CL/TE ambiguity this module's original bounty exploited, once combined with gunicorn-image-bump. The candidate left on the table would not have. (simulated: a real agent reasoning pass over both candidates against the paired diff, not this trace's own capture)"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "smuggling-v1#2b",
+        "capturedAt": "n/a (scripted)",
+        "scripted": "spike storyboard: agent flags a candidate before commit"
+      }
+    },
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_smuggling-01",
+          "prompt": [
+            {
+              "type": "text",
               "text": "Apply relay-header-normalize and gunicorn-image-bump onto the integration branch."
             }
           ],
@@ -112,7 +177,7 @@
         }
       },
       "provenance": {
-        "recordingId": "smuggling-v1#2",
+        "recordingId": "smuggling-v1#4",
         "capturedAt": "n/a (scripted)",
         "scripted": "spike storyboard: smuggling survives the merge"
       }
@@ -123,7 +188,7 @@
       "speaker": "gitbutler",
       "envelope": {
         "jsonrpc": "2.0",
-        "id": 2,
+        "id": 3,
         "result": {
           "stopReason": "end_turn",
           "_meta": {
@@ -144,12 +209,43 @@
       },
       "rebaseTodo": {
         "commits": [
-          { "sha": "480731005c26", "subject": "relay+gunicorn: normalize TE whitespace, bump image" }
+          {
+            "sha": "480731005c26",
+            "subject": "relay+gunicorn: normalize TE whitespace, bump image",
+            "diagnostic": {
+              "severity": "error",
+              "code": "smuggling-reopened",
+              "message": "relay's normalizer now agrees with gunicorn's parser on 'chunked, gzip' -- the same CL/TE ambiguity the original bounty's payload exploited, reachable once both patches land together.",
+              "subject": {
+                "role": "fact",
+                "uri": "relay.py",
+                "detail": "Transfer-Encoding whitespace normalization, once paired with gunicorn-image-bump"
+              },
+              "related": [
+                {
+                  "role": "fact",
+                  "uri": "relay.py (candidate B, not picked)",
+                  "detail": "would have kept relay's parser disagreeing with gunicorn's"
+                },
+                {
+                  "role": "fact",
+                  "uri": "internalApp Dockerfile",
+                  "detail": "gunicorn-image-bump: parser already normalized 'chunked,gzip' without the space"
+                },
+                {
+                  "role": "axiom",
+                  "uri": "bounty_0 smuggling defense",
+                  "detail": "the original bounty's payload exploited exactly this kind of CL/TE parser disagreement"
+                }
+              ],
+              "evaluationId": "smuggling-v1:precommit-relay-gunicorn"
+            }
+          }
         ],
         "comment": "clean apply \u00b7 0 conflicts \u00b7 defenses.md auto-merged"
       },
       "provenance": {
-        "recordingId": "smuggling-v1#3",
+        "recordingId": "smuggling-v1#5",
         "capturedAt": "n/a (scripted)",
         "scripted": "spike storyboard: smuggling survives the merge"
       }
