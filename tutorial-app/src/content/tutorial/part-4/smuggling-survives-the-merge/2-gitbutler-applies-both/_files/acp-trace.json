@@ -24,6 +24,12 @@
                 "text": "relay.py: strip whitespace around commas in Transfer-Encoding list values -- fixes an unrelated proxy-compat bug"
               },
               {
+                "id": "patch-relay-candidate-b",
+                "label": "Autocomplete's other candidate for this hunk",
+                "text": "relay.py: strip only leading whitespace, preserve the space after each comma -- also fixes the proxy-compat bug",
+                "simulated": "offered alongside patch-relay when the hunk was drafted; not picked, not committed, not reviewed"
+              },
+              {
                 "id": "patch-gunicorn",
                 "label": "Patch: gunicorn-image-bump",
                 "text": "internalApp Dockerfile: bump gunicorn base image to latest security patch level"

@@ -44,11 +44,14 @@ module, which this spike doesn't do. The mechanism is the real one from
 `main.go`'s `smuggledAdminRequest`; this replay illustrates it, it doesn't
 capture it.
 
-That gap is exactly what neither Lesson 1's independent reviews nor Lesson
-2's clean merge could see — each checked a projection of the tree (one diff,
-or "do the diffs collide"), never the tree's own behavior. Only re-running the
-actual oracle — build it, boot it, replay the exploit, check the backend log —
-against the *result* of the merge would have caught it. That's the same
-reason your own process notes that a clean GitButler apply and an independent
-`dagger call bootstrap` re-run are both required, and neither substitutes for
-the other.
+Lesson 2's own merged commit already carried a flag naming this exact gap —
+`smuggling-reopened`, raised by reasoning across relay's autocomplete
+candidates *before* the merge was ever applied. This rebuild doesn't discover
+anything new: it confirms that flag was right. That's the pairing worth
+keeping. A pre-commit flag is a hypothesis about behavior, produced without
+running anything. Only re-running the actual oracle — build it, boot it,
+replay the exploit, check the backend log — against the *result* of the merge
+tells you whether that hypothesis holds. That's the same reason your own
+process notes that a clean GitButler apply and an independent `dagger call
+bootstrap` re-run are both required: neither substitutes for the other, and
+now neither does a pre-commit flag substitute for either one.
