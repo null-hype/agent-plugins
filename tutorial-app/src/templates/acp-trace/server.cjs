@@ -220,7 +220,13 @@ function renderClientPage() {
         monaco.languages.register({ id: languageId });
         monaco.languages.setLanguageConfiguration(languageId, { comments: { lineComment: '#' } });
         monaco.languages.setMonarchTokensProvider(languageId, {
-          tokenizer: { root: [[/^(client|agent): .*$/, 'keyword']] },
+          tokenizer: {
+            root: [
+              [/^(client|agent): .*$/, 'keyword'],
+              [/^pick .*$/, 'keyword'],
+              [/^#.*$/, 'comment'],
+            ],
+          },
         });
 
         monaco.languages.registerHoverProvider(languageId, {
@@ -348,6 +354,34 @@ function renderClientPage() {
         return records;
       }
 
+      // A git rebase -i todo buffer instead of a session log: the frame
+      // that most recently carried a rebaseTodo block (newest first) is
+      // the buffer as it stands -- squashing/rewriting replaces it wholesale,
+      // it doesn't append, the same way an actual rebase-todo file does. If
+      // no later frame supersedes it, the buffer stays byte-for-byte the
+      // same -- that's the point for this scenario's third turn: the thing a
+      // reviewer would be staring at in vim never changes, because nothing
+      // about a rebase-todo file can show runtime behavior.
+      function latestRebaseTodo(frames) {
+        for (let i = frames.length - 1; i >= 0; i -= 1) {
+          if (frames[i].rebaseTodo) return frames[i].rebaseTodo;
+        }
+        return null;
+      }
+
+      function renderRebaseTodoRecords(state) {
+        const todo = state && state.frames ? latestRebaseTodo(state.frames) : null;
+        if (!todo || !todo.commits || todo.commits.length === 0) {
+          return [{ raw: 'waiting for trace: no commits picked yet', diagnostic: null, related: [] }];
+        }
+        const lines = todo.commits.map((commit) => 'pick ' + commit.sha + ' ' + commit.subject);
+        if (todo.comment) {
+          lines.push('');
+          lines.push('# ' + todo.comment);
+        }
+        return lines.map((raw) => ({ raw, diagnostic: null, related: [] }));
+      }
+
       // A scripted replay says so above the log, whichever pane the viewer reads.
       function renderScripted(state) {
         const root = document.getElementById('scripted');
@@ -400,7 +434,8 @@ function renderClientPage() {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
         renderScripted(payload);
-        await renderIntoEditor(renderRecords(payload));
+        const records = payload.scenario === 'smuggling-v1' ? renderRebaseTodoRecords(payload) : renderRecords(payload);
+        await renderIntoEditor(records);
       }
 
       window.addEventListener('message', (event) => {
@@ -443,9 +478,20 @@ function renderAgentPage() {
         return undefined;
       }
 
+      // Channels start as this fixed set (in this order, for a stable
+      // layout across the lessons that use them) but are not limited to
+      // it: a verdict names its own channel, and any channel not in this
+      // set still gets its own section -- appended after, in first-seen
+      // order -- rather than being silently dropped. Every lesson so far
+      // (ghost-trace, budget-authority) only ever produces these four; the
+      // smuggling scenario is the first to name its own ("review",
+      // "smuggling"), which is what exposed the fixed-set version of this
+      // dropping every verdict on the floor while still rendering pins.
+      const KNOWN_CHANNELS = ['type', 'merge', 'budget', 'authority'];
+
       function deriveTraceView(frames) {
         const pins = [];
-        const channels = { type: [], merge: [], budget: [], authority: [] };
+        const channels = {};
         for (const frame of frames || []) {
           const meta = metaOf(frame.envelope || {});
           const latest = frame === frames[frames.length - 1];
@@ -457,20 +503,26 @@ function renderAgentPage() {
             }
             pins.push(Object.assign({ latest }, pin));
           }
-          if (meta && meta.verdict && channels[meta.verdict.channel]) channels[meta.verdict.channel].push(Object.assign({ latest }, meta.verdict));
+          if (meta && meta.verdict) {
+            const channel = meta.verdict.channel;
+            if (!channels[channel]) channels[channel] = [];
+            channels[channel].push(Object.assign({ latest }, meta.verdict));
+          }
         }
-        for (const grant of channels.authority) {
+        for (const grant of channels.authority || []) {
           const supersededBy = { pin: grant.to, scope: grant.scope, actor: grant.actor };
           for (const pin of pins) if (pin.id === grant.from) pin.supersededBy = supersededBy;
-          for (const entry of channels.budget) {
+          for (const entry of channels.budget || []) {
             if (entry.rule === grant.from && entry.subject === grant.scope) entry.supersededBy = supersededBy;
             if (entry.rule === grant.to && entry.subject !== grant.scope) entry.outOfScope = { scope: grant.scope, actor: grant.actor };
           }
         }
-        return { pins, channels };
+        const order = KNOWN_CHANNELS.concat(Object.keys(channels).filter((channel) => !KNOWN_CHANNELS.includes(channel)));
+        return { pins, channels, order };
       }
 
       const CHANNEL_TITLES = { type: 'Type', merge: 'Merge', budget: 'Budget', authority: 'Authority' };
+      const titleOf = (channel) => CHANNEL_TITLES[channel] || channel.charAt(0).toUpperCase() + channel.slice(1);
 
       function el(tag, className, text) {
         const node = document.createElement(tag);
@@ -512,16 +564,17 @@ function renderAgentPage() {
         }
 
         const grid = el('div', 'channels');
-        for (const channel of ['type', 'merge', 'budget', 'authority']) {
+        for (const channel of view.order) {
           const section = el('section', 'channel');
           section.setAttribute('role', 'region');
-          section.setAttribute('aria-label', CHANNEL_TITLES[channel]);
+          section.setAttribute('aria-label', titleOf(channel));
           section.dataset.channel = channel;
-          section.appendChild(el('h2', '', CHANNEL_TITLES[channel]));
+          section.appendChild(el('h2', '', titleOf(channel)));
           // Budget keeps its whole history: an earlier evaluation must keep
-          // resolving to the rule it read. The other channels show their
-          // current state only.
-          const entries = channel === 'budget' ? view.channels[channel] : view.channels[channel].slice(-1);
+          // resolving to the rule it read. The other channels (including
+          // any not in KNOWN_CHANNELS) show their current state only.
+          const channelEntries = view.channels[channel] || [];
+          const entries = channel === 'budget' ? channelEntries : channelEntries.slice(-1);
           if (entries.length === 0) section.appendChild(el('div', 'empty', 'not evaluated'));
           const list = el('ul');
           entries.forEach((entry, index) => {
