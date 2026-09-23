@@ -1,16 +1,28 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { waitFor } from 'storybook/test';
 import AcpTracePreview from './AcpTracePreview';
-import AcpTraceBridge from '../components/AcpTraceBridge';
-import { loadLesson } from './lessonFixtures';
-import tutorialStore, { resetTutorialStore, seedTutorialStore } from '../../.storybook/tutorialkit-store';
+import { deriveAcpTraceState, loadLesson } from './lessonFixtures';
 
 // `solved` is a control-only arg -- it doesn't flow into AcpTracePreview's
-// own props (render always mounts the same AcpTraceBridge + AcpTracePreview
-// pair), it only decides what beforeEach seeds the store with. So meta is
-// typed against this story-level args shape rather than `typeof
+// own props directly, render() derives `payload` from it each time. So meta
+// is typed against this story-level args shape rather than `typeof
 // AcpTracePreview`, whose real props (payload/height) aren't what the
 // Controls panel is meant to drive here.
+//
+// This chapter's docs page (Storybook autodocs) embeds all three lessons'
+// stories on one page at once, unlike every other lesson which is only ever
+// viewed one at a time (Canvas). That ruled out AcpTraceBridge + the
+// Storybook tutorialkit-store stub here: the bridge posts its state to
+// *every* `.previews-container iframe` in the whole document
+// (AcpTraceBridge.tsx's getPreviewFrames(), correct for the real app where
+// exactly one lesson is ever mounted, wrong once three are mounted
+// together), and the store stub is a module-level singleton, so three
+// concurrent `beforeEach` seeds collapse to whichever ran last -- confirmed
+// live, every embedded preview on the docs page showed lesson 3's state.
+// `deriveAcpTraceState` (same derivation AcpTraceBridge itself calls) plus
+// AcpTracePreview's own `payload` prop sidesteps both: each Pane posts only
+// to its own iframe ref, and payload is computed fresh per story/per
+// `solved` toggle with no shared mutable state at all.
 type StoryArgs = { solved: boolean };
 
 // Explicit annotation rather than `satisfies Meta<StoryArgs>` -- `satisfies`
@@ -42,12 +54,6 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
-
-const seedLesson = (lesson: ReturnType<typeof loadLesson>, solved: boolean) => {
-	seedTutorialStore({ data: lesson.data, files: lesson.files, solution: lesson.solved });
-	if (solved) tutorialStore.solve();
-	return resetTutorialStore;
-};
 
 const lesson1 = loadLesson('part-4/smuggling-survives-the-merge/1-two-patches-reviewed-independently');
 const lesson2 = loadLesson('part-4/smuggling-survives-the-merge/2-gitbutler-applies-both');
@@ -94,56 +100,55 @@ const agentText = (canvasElement: HTMLElement) => {
 	return (doc?.querySelector('.monaco-editor .view-lines')?.textContent ?? '').replace(/ /g, ' ');
 };
 
-// ViaBridge tier (see AcpTrace.stories.tsx's ViaBridge): the real
-// AcpTraceBridge + AcpTracePreview, seeded through the tutorial store's own
-// seedTutorialStore()/solve(). `solved` is a Controls-panel toggle rather
-// than a narrated play() -- flip it to compare the lesson's starter and
-// solved states. play() itself just waits for both panes to render.
+// Tier 1 (see AcpTrace.stories.tsx's own Tier 1 section): payload derived
+// straight from the lesson's files via the protocol library, same as
+// AcpTraceBridge itself does internally -- no store, no bridge. `solved` is
+// a Controls-panel toggle rather than a narrated play(); flip it to compare
+// the lesson's starter and solved states. play() itself just waits for both
+// panes to render.
+//
+// height: 640 -- default 360 is too short once the Agent pane's raw JSON
+// dump is a single long word-wrapped line (this lesson's pin text is long);
+// see AcpTrace.stories.tsx's Lesson2StartsFromLesson1Solved for the same fix
+// and the fuller explanation of why a short pane silently truncates any
+// textContent read to whatever's actually in the viewport.
 export const TwoPatchesReviewedIndependently: Story = {
-	// height: 640 -- default 360 is too short once the Agent pane's raw JSON
-	// dump is a single long word-wrapped line (this lesson's pin text is
-	// long); see AcpTrace.stories.tsx's Lesson2StartsFromLesson1Solved for
-	// the same fix and the fuller explanation of why a short pane silently
-	// truncates any textContent read to whatever's actually in the viewport.
-	render: () => (
-		<>
-			<AcpTraceBridge />
-			<div className="previews-container">
-				<AcpTracePreview height={640} />
-			</div>
-		</>
+	render: (args) => (
+		<div className="previews-container">
+			<AcpTracePreview
+				payload={deriveAcpTraceState(lesson1, args.solved ? lesson1.solved : lesson1.files)}
+				height={640}
+			/>
+		</div>
 	),
-	beforeEach: ({ args }) => seedLesson(lesson1, Boolean(args.solved)),
 	play: async ({ canvasElement }) => {
 		await editorsReady(canvasElement);
 	},
 };
 
 export const GitButlerAppliesBoth: Story = {
-	render: () => (
-		<>
-			<AcpTraceBridge />
-			<div className="previews-container">
-				<AcpTracePreview height={640} />
-			</div>
-		</>
+	render: (args) => (
+		<div className="previews-container">
+			<AcpTracePreview
+				payload={deriveAcpTraceState(lesson2, args.solved ? lesson2.solved : lesson2.files)}
+				height={640}
+			/>
+		</div>
 	),
-	beforeEach: ({ args }) => seedLesson(lesson2, Boolean(args.solved)),
 	play: async ({ canvasElement }) => {
 		await editorsReady(canvasElement);
 	},
 };
 
 export const BootstrapFindsItReopened: Story = {
-	render: () => (
-		<>
-			<AcpTraceBridge />
-			<div className="previews-container">
-				<AcpTracePreview height={640} />
-			</div>
-		</>
+	render: (args) => (
+		<div className="previews-container">
+			<AcpTracePreview
+				payload={deriveAcpTraceState(lesson3, args.solved ? lesson3.solved : lesson3.files)}
+				height={640}
+			/>
+		</div>
 	),
-	beforeEach: ({ args }) => seedLesson(lesson3, Boolean(args.solved)),
 	play: async ({ canvasElement }) => {
 		await editorsReady(canvasElement);
 	},
