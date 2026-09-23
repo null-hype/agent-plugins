@@ -1,0 +1,51 @@
+---
+type: lesson
+title: dagger call bootstrap finds it reopened
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+  - - 4174
+    - Agent
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="smuggling-v1" />
+
+# dagger call bootstrap finds it reopened
+
+The incoming message pins the real baseline: `dagger call bootstrap` against
+the *unmodified* `gunicorn` module, captured earlier today — direct `GET
+/admin` blocked with `403`, the task's own smuggling payload gets a `GET
+/admin` through anyway, and the backend logs the hit. That run's full trace is
+linked in the pin.
+
+Solve replays the check against the *merged* tree instead: **FAIL**. Relay's
+normalizer now accepts `Transfer-Encoding: chunked, gzip` (with the space)
+exactly like it always accepted `chunked,gzip` — and gunicorn's parser already
+did. Two parsers that used to disagree on a narrow set of byte-for-byte inputs
+now agree on a wider one, which is the same shape of gap the original bounty's
+payload exploited, reached from a different edge.
+
+**Simulated.** No second live `dagger call bootstrap` build backs this
+specific FAIL — building it would mean actually patching `relay.py` and
+gunicorn's Dockerfile in the real `bountytasks` checkout and re-running the
+module, which this spike doesn't do. The mechanism is the real one from
+`main.go`'s `smuggledAdminRequest`; this replay illustrates it, it doesn't
+capture it.
+
+That gap is exactly what neither Lesson 1's independent reviews nor Lesson
+2's clean merge could see — each checked a projection of the tree (one diff,
+or "do the diffs collide"), never the tree's own behavior. Only re-running the
+actual oracle — build it, boot it, replay the exploit, check the backend log —
+against the *result* of the merge would have caught it. That's the same
+reason your own process notes that a clean GitButler apply and an independent
+`dagger call bootstrap` re-run are both required, and neither substitutes for
+the other.
