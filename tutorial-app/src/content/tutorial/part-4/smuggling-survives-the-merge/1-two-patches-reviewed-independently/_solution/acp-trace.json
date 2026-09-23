@@ -73,6 +73,12 @@
           }
         }
       },
+      "rebaseTodo": {
+        "commits": [
+          { "sha": "c866856ba8d7", "subject": "relay: normalize whitespace in Transfer-Encoding list values" },
+          { "sha": "8b4710aba698", "subject": "gunicorn: bump base image (security patch)" }
+        ]
+      },
       "provenance": {
         "recordingId": "smuggling-v1#1",
         "capturedAt": "n/a (scripted)",

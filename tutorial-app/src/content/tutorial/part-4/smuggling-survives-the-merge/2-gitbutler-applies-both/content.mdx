@@ -2,7 +2,6 @@
 type: lesson
 title: GitButler applies both, 0 conflicts
 template: acp-trace
-focus: /acp-trace.json
 terminal: false
 editor: true
 previews:
@@ -13,11 +12,15 @@ previews:
 prepareCommands:
   - npm install
 mainCommand: npm run dev
+custom:
+  acpTrace:
+    traceFile: /acp-trace.json
+    scenario: smuggling-v1
 ---
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="smuggling-v1" />
+<AcpTraceBridge client:load />
 
 # GitButler applies both, 0 conflicts
 
