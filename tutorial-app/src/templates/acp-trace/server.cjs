@@ -369,17 +369,31 @@ function renderClientPage() {
         return null;
       }
 
+      // A commit entry may carry its own 'diagnostic' (same {severity, code,
+      // message, subject, related, evaluationId} shape acpDiagnosticMeta.pkl
+      // defines) -- when it does, its "pick <sha> <subject>" line gets the
+      // same real marker/hover/CodeLens/evidence-widget treatment
+      // toWarmLogLine's per-frame diagnostics get elsewhere, instead of the
+      // hardcoded diagnostic: null this view used to give every line. The
+      // rebase-todo buffer itself never changes shape for this: only whether
+      // a line commented on it changed.
       function renderRebaseTodoRecords(state) {
         const todo = state && state.frames ? latestRebaseTodo(state.frames) : null;
         if (!todo || !todo.commits || todo.commits.length === 0) {
           return [{ raw: 'waiting for trace: no commits picked yet', diagnostic: null, related: [] }];
         }
-        const lines = todo.commits.map((commit) => 'pick ' + commit.sha + ' ' + commit.subject);
+        const records = todo.commits.map((commit) => ({
+          raw: 'pick ' + commit.sha + ' ' + commit.subject,
+          diagnostic: commit.diagnostic
+            ? { severity: commit.diagnostic.severity, code: commit.diagnostic.code, message: commit.diagnostic.message }
+            : null,
+          related: (commit.diagnostic && commit.diagnostic.related) || [],
+        }));
         if (todo.comment) {
-          lines.push('');
-          lines.push('# ' + todo.comment);
+          records.push({ raw: '', diagnostic: null, related: [] });
+          records.push({ raw: '# ' + todo.comment, diagnostic: null, related: [] });
         }
-        return lines.map((raw) => ({ raw, diagnostic: null, related: [] }));
+        return records;
       }
 
       // A scripted replay says so above the log, whichever pane the viewer reads.
