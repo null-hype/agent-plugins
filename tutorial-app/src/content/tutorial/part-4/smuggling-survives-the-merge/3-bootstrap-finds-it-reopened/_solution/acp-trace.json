@@ -215,6 +215,7 @@
             "diagnostic": {
               "severity": "error",
               "code": "smuggling-reopened",
+              "confirmGate": true,
               "message": "relay's normalizer now agrees with gunicorn's parser on 'chunked, gzip' -- the same CL/TE ambiguity the original bounty's payload exploited, reachable once both patches land together.",
               "subject": {
                 "role": "fact",

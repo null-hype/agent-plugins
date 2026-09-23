@@ -161,6 +161,13 @@ function renderClientPage() {
       main.client #monaco-root { flex: 1 1 auto; min-height: 72px; height: auto; }
       #scripted { flex: 0 0 auto; font: 600 11.5px/1.35 system-ui, sans-serif; color: #6b5d2e; padding: 4px 8px; border-bottom: 1px solid #d8d4c8; background: #faf7ef; }
       #scripted[hidden] { display: none; }
+      /* CIT-XXX: a gated diagnostic's line gets a glyph-margin affordance
+         instead of its marker/CodeLens -- a play triangle before the user
+         runs it, a failing-test-style red X once they have. */
+      .monaco-editor .margin-view-overlays .acp-gate-play,
+      .monaco-editor .margin-view-overlays .acp-gate-failed { cursor: pointer; }
+      .acp-gate-play::before { content: '\\25B6'; color: #2f7d3c; font-size: 12px; display: inline-block; transform: translate(2px, 1px); }
+      .acp-gate-failed::before { content: '\\2717'; color: #c62828; font-weight: 700; font-size: 14px; display: inline-block; transform: translate(2px, 0); }
     </style>
   <body>
     <main class="client"><div id="scripted" hidden></div><div id="monaco-root"></div></main>
@@ -176,6 +183,25 @@ function renderClientPage() {
       const MARKER_OWNER = 'acp-trace';
       const PEEK_EVIDENCE_COMMAND = 'acp-trace.peekEvidence';
       const EVIDENCE_WIDGET_ID = 'acp-trace.evidenceWidget';
+
+      // A diagnostic with confirmGate: true (acp-trace.json's own field, not
+      // part of acpDiagnosticMeta.pkl's shape -- see renderRebaseTodoRecords)
+      // stays hidden behind a play affordance instead of showing its marker/
+      // CodeLens/hover immediately: the lesson this is for is about running
+      // the actual oracle, not just reading a hypothesis off the page, so
+      // the reveal is a deliberate user action rather than something Solve
+      // hands over for free. gatedByLine holds the lines currently showing
+      // the play glyph; confirmedGates (keyed by evaluationId, falling back
+      // to code) persists for the life of this iframe once a line's been
+      // run, independent of Solve/Reset -- the diagnostic's own data doesn't
+      // change between the lesson's starter and solved files, only whether
+      // the viewer has clicked play yet.
+      let gatedByLine = {};
+      let confirmedGates = new Set();
+      let lastRecords = [];
+      let gateDecorationIds = [];
+      const RUN_GATE_COMMAND = 'acp-trace.runGate';
+      const gateKey = (diagnostic) => diagnostic.evaluationId || diagnostic.code;
 
       function buildEvidenceDomNode(related) {
         const node = document.createElement('div');
@@ -251,12 +277,33 @@ function renderClientPage() {
           toggleEvidenceWidget(editor, lineNumber, related);
         });
 
+        // Same action the glyph-margin play icon triggers (see the mousedown
+        // handler in ensureEditor) -- a CodeLens command works from a normal
+        // click and doesn't depend on landing a pixel-precise hit on the
+        // glyph margin, so it's the more reliable of the two for anything
+        // driving this pane (a play() function, a person on a touch device).
+        monaco.editor.registerCommand(RUN_GATE_COMMAND, (_accessor, lineNumber) => {
+          const diagnostic = gatedByLine[lineNumber];
+          if (!diagnostic) return;
+          confirmedGates.add(gateKey(diagnostic));
+          renderIntoEditor(lastRecords).catch(() => {});
+        });
+
         monaco.languages.registerCodeLensProvider(languageId, {
           provideCodeLenses(lensModel) {
             const lenses = [];
             for (let lineNumber = 1; lineNumber <= lensModel.getLineCount(); lineNumber += 1) {
               const diagnostic = diagnosticsByLine[lineNumber];
-              if (!diagnostic) continue;
+              if (!diagnostic) {
+                const gated = gatedByLine[lineNumber];
+                if (gated) {
+                  lenses.push({
+                    range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+                    command: { id: RUN_GATE_COMMAND, title: '▶ run ' + gated.code, arguments: [lineNumber] },
+                  });
+                }
+                continue;
+              }
               const relatedCount = (relatedByLine[lineNumber] || []).length;
               const prefix = diagnostic.severity === 'warning' ? '⚠ ' : diagnostic.severity === 'info' ? 'ℹ ' : '✗ ';
               lenses.push({
@@ -299,6 +346,14 @@ function renderClientPage() {
           wordWrap: 'on',
         });
         editor.onDidLayoutChange(revealNewest);
+        editor.onMouseDown((e) => {
+          if (e.target.type !== window.monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+          const lineNumber = e.target.position && e.target.position.lineNumber;
+          const diagnostic = lineNumber && gatedByLine[lineNumber];
+          if (!diagnostic) return;
+          confirmedGates.add(gateKey(diagnostic));
+          renderIntoEditor(lastRecords).catch(() => {});
+        });
       }
 
       // Mirrors acpTraceProtocol.ts's metaOf / describeActor / extractPromptText /
@@ -385,7 +440,13 @@ function renderClientPage() {
         const records = todo.commits.map((commit) => ({
           raw: 'pick ' + commit.sha + ' ' + commit.subject,
           diagnostic: commit.diagnostic
-            ? { severity: commit.diagnostic.severity, code: commit.diagnostic.code, message: commit.diagnostic.message }
+            ? {
+                severity: commit.diagnostic.severity,
+                code: commit.diagnostic.code,
+                message: commit.diagnostic.message,
+                confirmGate: commit.diagnostic.confirmGate === true,
+                evaluationId: commit.diagnostic.evaluationId,
+              }
             : null,
           related: (commit.diagnostic && commit.diagnostic.related) || [],
         }));
@@ -406,10 +467,13 @@ function renderClientPage() {
 
       async function renderIntoEditor(records) {
         await ensureEditor();
+        lastRecords = records;
         const lines = [];
         const markers = [];
+        const glyphDecorations = [];
         diagnosticsByLine = {};
         relatedByLine = {};
+        gatedByLine = {};
         if (evidenceWidgetLine !== null) {
           editor.removeContentWidget({ getId: () => EVIDENCE_WIDGET_ID });
           evidenceWidgetLine = null;
@@ -418,29 +482,52 @@ function renderClientPage() {
         records.forEach((record, index) => {
           const lineNumber = index + 1;
           lines.push(record.raw);
-          if (record.diagnostic) {
-            diagnosticsByLine[lineNumber] = record.diagnostic;
-            markers.push({
-              startLineNumber: lineNumber,
-              startColumn: 1,
-              endLineNumber: lineNumber,
-              endColumn: Math.max(2, record.raw.length + 1),
-              severity:
-                record.diagnostic.severity === 'error'
-                  ? window.monaco.MarkerSeverity.Error
-                  : record.diagnostic.severity === 'warning'
-                    ? window.monaco.MarkerSeverity.Warning
-                    : window.monaco.MarkerSeverity.Info,
-              message: record.diagnostic.message,
-              code: record.diagnostic.code,
+          if (!record.diagnostic) return;
+
+          const stillGated = record.diagnostic.confirmGate && !confirmedGates.has(gateKey(record.diagnostic));
+          if (stillGated) {
+            gatedByLine[lineNumber] = record.diagnostic;
+            glyphDecorations.push({
+              range: new window.monaco.Range(lineNumber, 1, lineNumber, 1),
+              options: {
+                glyphMarginClassName: 'acp-gate-play',
+                glyphMarginHoverMessage: { value: 'Click to run ' + record.diagnostic.code },
+              },
             });
-            if (record.related.length > 0) relatedByLine[lineNumber] = record.related;
+            return;
+          }
+
+          diagnosticsByLine[lineNumber] = record.diagnostic;
+          markers.push({
+            startLineNumber: lineNumber,
+            startColumn: 1,
+            endLineNumber: lineNumber,
+            endColumn: Math.max(2, record.raw.length + 1),
+            severity:
+              record.diagnostic.severity === 'error'
+                ? window.monaco.MarkerSeverity.Error
+                : record.diagnostic.severity === 'warning'
+                  ? window.monaco.MarkerSeverity.Warning
+                  : window.monaco.MarkerSeverity.Info,
+            message: record.diagnostic.message,
+            code: record.diagnostic.code,
+          });
+          if (record.related.length > 0) relatedByLine[lineNumber] = record.related;
+          if (record.diagnostic.confirmGate) {
+            glyphDecorations.push({
+              range: new window.monaco.Range(lineNumber, 1, lineNumber, 1),
+              options: {
+                glyphMarginClassName: 'acp-gate-failed',
+                glyphMarginHoverMessage: { value: record.diagnostic.code + ': ' + record.diagnostic.message },
+              },
+            });
           }
         });
 
         const nextText = lines.join('\\n');
         if (model.getValue() !== nextText) model.setValue(nextText);
         window.monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
+        gateDecorationIds = editor.deltaDecorations(gateDecorationIds, glyphDecorations);
         revealNewest();
       }
 
