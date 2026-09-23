@@ -396,10 +396,12 @@ points, both required:
    `claude-session-backup` step in `hk.pkl`'s `pre-push` hooks
    (`.dagger/internal/devenv-base/hk/claude-session-backup.sh`) — originally
    `~/.claude`-only — now also runs
-   `gce_common_restic_push_container_use_state` in the same best-effort,
-   non-push-blocking pass. So every time the supervisor pass actually
-   pushes to `bountybench-dagger-modules`, both backups run as part of
-   that push.
+   `gce_common_restic_push_container_use_state` in the same pass. So every
+   time the supervisor pass actually pushes to `bountybench-dagger-modules`,
+   both backups run as part of that push. A failed backup now blocks the
+   push (CIT-254) — the hook used to accept a `--best-effort` flag that
+   converted a real backup failure into a successful exit, which made a
+   failed backup indistinguishable from a skipped one; that mode is gone.
 2. **The supervisor pass itself, unconditionally, every firing** — not
    only when it merges something. An hour where nothing passes both gates
    still leaves in-progress container-use work that needs covering; don't

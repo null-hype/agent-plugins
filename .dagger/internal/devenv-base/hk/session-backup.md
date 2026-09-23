@@ -20,8 +20,10 @@ Run a backup with failure reporting:
 bash .dagger/internal/devenv-base/hk/claude-session-backup.sh
 ```
 
-The pre-push hooks explicitly pass `--best-effort`: failures are reported but do
-not block Git pushes. Other callers receive the actual failure status.
+The pre-push hook and any other caller receive the actual failure status: a
+failed backup blocks the push (CIT-254). There is no best-effort mode -- one
+used to convert a failure into a successful exit, which made a failed backup
+indistinguishable from a skipped one.
 
 All three backups are attempted independently. Retention runs only after all
 three succeed, keeping 50 snapshots per host/path/tag group. A failed backup does
