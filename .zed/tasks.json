@@ -4,6 +4,11 @@
 [
 
   {
+        "label": "snapshots",
+        "command": "export LIB_FILE=/workspaces/agent-plugins/.dagger/internal/devenv-base/.devcontainer/lib/gce-common.sh; pass-cli run --env-file $PROTON_ENV -- bash -c 'set -euo pipefail; source \"$LIB_FILE\"; gce_common_reserve_sa_key_file; gce_common_write_sa_key; restic unlock",
+        "env": { "PROTON_PASS_AGENT_REASON": "unlock repo", "PROTON_ENV": "/workspaces/agent-plugins/.dagger/internal/devenv-base/.devcontainer/gcloud.env"}
+  },
+  {
       "label": "snapshots",
       "command": "export LIB_FILE=/workspaces/agent-plugins/.dagger/internal/devenv-base/.devcontainer/lib/gce-common.sh; pass-cli run --env-file $PROTON_ENV -- bash -c 'set -euo pipefail; source \"$LIB_FILE\"; gce_common_reserve_sa_key_file; gce_common_write_sa_key; restic snapshots --path /home/vscode/.codex'",
       "env": { "PROTON_PASS_AGENT_REASON": "list snapshots", "PROTON_ENV": "/workspaces/agent-plugins/.dagger/internal/devenv-base/.devcontainer/gcloud.env"}
