@@ -1,0 +1,83 @@
+{
+  "scenario": "smuggling-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_smuggling-01",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Do relay's Transfer-Encoding normalization fix and gunicorn's base-image bump, each taken alone, preserve the request-smuggling defense?"
+            }
+          ],
+          "_meta": {
+            "pins": [
+              {
+                "id": "patch-relay",
+                "label": "Patch: relay-header-normalize",
+                "text": "relay.py: strip whitespace around commas in Transfer-Encoding list values -- fixes an unrelated proxy-compat bug"
+              },
+              {
+                "id": "patch-gunicorn",
+                "label": "Patch: gunicorn-image-bump",
+                "text": "internalApp Dockerfile: bump gunicorn base image to latest security patch level"
+              }
+            ],
+            "verdict": {
+              "channel": "review",
+              "status": "pending",
+              "text": "pending \u00b7 each diff has its own reviewer, its own tests, and touches only its own file"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "smuggling-v1#0",
+        "capturedAt": "n/a (scripted)",
+        "scripted": "spike storyboard: smuggling survives the merge"
+      }
+    },
+    {
+      "actor": "agent",
+      "action": "approve both, independently",
+      "speaker": "reviewer",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "stopReason": "end_turn",
+          "_meta": {
+            "pins": [
+              {
+                "id": "relay-tree",
+                "label": "relay-header-normalize tree",
+                "text": "c866856ba8d7"
+              },
+              {
+                "id": "gunicorn-tree",
+                "label": "gunicorn-image-bump tree",
+                "text": "8b4710aba698"
+              }
+            ],
+            "verdict": {
+              "channel": "review",
+              "status": "approved",
+              "text": "approved \u00b7 relay diff alone: defense intact, no /admin path check touched. gunicorn diff alone: defense intact, no parser touched. (simulated: a real reviewer, not this trace's own capture)"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "smuggling-v1#1",
+        "capturedAt": "n/a (scripted)",
+        "scripted": "spike storyboard: smuggling survives the merge"
+      }
+    }
+  ]
+}

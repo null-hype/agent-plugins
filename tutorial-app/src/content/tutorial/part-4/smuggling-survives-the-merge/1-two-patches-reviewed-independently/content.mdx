@@ -1,0 +1,44 @@
+---
+type: lesson
+title: Two patches, reviewed independently
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+  - - 4174
+    - Agent
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="smuggling-v1" />
+
+# Two patches, reviewed independently
+
+**How to watch this part.** Same replay mechanics as *Proposal P against the
+budget*: one ACP session, one turn per lesson, Solve replays the recorded
+reply, Next brings in the following message. The Client preview shows the
+session log; the Agent preview shows the reasoning behind each verdict.
+
+This part starts from `gunicorn` (bounty_0), the request-smuggling module
+`dagger call bootstrap` already proved end to end: the relay blocks a direct
+`GET /admin`, but a chunked-vs-content-length disagreement between the relay's
+parser and gunicorn's own lets a smuggled `GET /admin` through anyway.
+
+Two patches land against that module, on their own branches:
+
+- **relay-header-normalize** — strips whitespace around commas in
+  `Transfer-Encoding` list values. An unrelated proxy-compat fix.
+- **gunicorn-image-bump** — bumps the backend's base image to pick up a
+  security patch. Also unrelated.
+
+Solve replays each patch's own review: **approved**, independently, on both.
+Each reviewer saw only their own diff, their own tests, their own file. Ask
+yourself before Next: does "approved twice" tell you anything about what
+happens once both patches are in the same tree?

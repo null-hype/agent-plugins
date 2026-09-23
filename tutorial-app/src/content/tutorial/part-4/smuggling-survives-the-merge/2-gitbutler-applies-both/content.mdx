@@ -1,0 +1,34 @@
+---
+type: lesson
+title: GitButler applies both, 0 conflicts
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+  - - 4174
+    - Agent
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="smuggling-v1" />
+
+# GitButler applies both, 0 conflicts
+
+Solve replays GitButler applying both branches onto the integration tree.
+**Merge** reads `clean · 0 conflicts` — this part of the trace is a real `git
+merge`, run in a scratch repository for this lesson: two branches off the same
+base, one editing a line about the relay, the other a line about gunicorn,
+auto-merged with nothing to resolve.
+
+That is the entire textual story. GitButler's own steering docs describe this
+check as *integration*, not *correctness* — and that's exactly the boundary
+this trace is drawn at: a clean apply means the two diffs don't collide on the
+same lines. It says nothing about whether the relay's parser and gunicorn's
+parser still disagree the same way they used to.
