@@ -66,6 +66,7 @@ describe('classifyAttachment', () => {
     const body = Buffer.from('hi');
     expect(classifyAttachment('file/reason.txt', 'text/plain', body)).toMatchObject({ kind: 'file', path: 'reason.txt' });
     expect(classifyAttachment('before/file/reason.txt', 'text/plain', body)).toMatchObject({ kind: 'beforeFile', path: 'reason.txt' });
+    expect(classifyAttachment('incoming/file/trace.json', 'application/json', body)).toMatchObject({ kind: 'incomingFile', path: 'trace.json' });
     expect(classifyAttachment('prose', 'text/markdown', body)).toMatchObject({ kind: 'prose' });
     expect(classifyAttachment('frame', 'image/png', body)).toMatchObject({ kind: 'screenshot' });
     expect(classifyAttachment('unrelated', 'application/zip', body)).toMatchObject({ kind: 'ignore' });
@@ -251,5 +252,59 @@ describe('compileTutorialTest', () => {
     const noBefore = continuousAttachments().filter((a) => !a.name.includes(':before/'));
     expect(() => compileTutorialTest(test, passed(steps(), noBefore), dir)).toThrow(ContinuityError);
     expect(existsSync(path.join(dir, 'area51-booking'))).toBe(false);
+  });
+
+  describe('incoming turns (CIT-251)', () => {
+    // Step 2's start adds one incoming message to where step 1 ended.
+    const withIncoming = (declare: boolean) => [
+      attachment('tutorial:1:before/file/trace.txt', 'text/plain', 'ask'),
+      attachment('tutorial:1:file/trace.txt', 'text/plain', 'ask\nreply'),
+      ...(declare ? [attachment('tutorial:2:incoming/file/trace.txt', 'text/plain', 'ask\nreply\nask again')] : []),
+      attachment('tutorial:2:before/file/trace.txt', 'text/plain', 'ask\nreply\nask again'),
+      attachment('tutorial:2:file/trace.txt', 'text/plain', 'ask\nreply\nask again\nreply again'),
+    ];
+
+    it('accepts a start that is the previous end plus a declared incoming turn', () => {
+      const dir = tmp();
+      compileTutorialTest(test, passed(steps(), withIncoming(true)), dir);
+      const lesson2 = path.join(dir, 'area51-booking', '2-decision-is-typed');
+      expect(readFileSync(path.join(lesson2, '_files', 'trace.txt'), 'utf8')).toBe('ask\nreply\nask again');
+      expect(readFileSync(path.join(lesson2, '_solution', 'trace.txt'), 'utf8')).toBe('ask\nreply\nask again\nreply again');
+    });
+
+    it('still refuses the same change when it is not declared as incoming', () => {
+      expect(() => compileTutorialTest(test, passed(steps(), withIncoming(false)), tmp())).toThrow(/trace\.txt: differs/);
+    });
+
+    it('refuses a start that differs from the declared incoming turn', () => {
+      const attachments = withIncoming(true).map((a) =>
+        a.name === 'tutorial:2:before/file/trace.txt' ? attachment(a.name, a.contentType, 'ask\nreply\nsomething else') : a,
+      );
+      expect(() => compileTutorialTest(test, passed(steps(), attachments), tmp())).toThrow(/plus its declared incoming turn/);
+    });
+
+    it('keeps an incoming file in _solution even when the step itself does not rewrite it', () => {
+      const dir = tmp();
+      const attachments = [
+        attachment('tutorial:1:before/file/a.txt', 'text/plain', 'a'),
+        attachment('tutorial:1:file/a.txt', 'text/plain', 'a2'),
+        attachment('tutorial:2:incoming/file/inbox.txt', 'text/plain', 'new message'),
+        attachment('tutorial:2:before/file/a.txt', 'text/plain', 'a2'),
+        attachment('tutorial:2:before/file/inbox.txt', 'text/plain', 'new message'),
+        attachment('tutorial:2:file/a.txt', 'text/plain', 'a3'),
+      ];
+      compileTutorialTest(test, passed(steps(), attachments), dir);
+      const solution = path.join(dir, 'area51-booking', '2-decision-is-typed', '_solution');
+      expect(readFileSync(path.join(solution, 'inbox.txt'), 'utf8')).toBe('new message');
+    });
+
+    it('on step 1, an incoming turn must be part of the declared start', () => {
+      const attachments = [
+        attachment('tutorial:1:incoming/file/a.txt', 'text/plain', 'hello'),
+        attachment('tutorial:1:before/file/a.txt', 'text/plain', 'different'),
+        attachment('tutorial:1:file/a.txt', 'text/plain', 'done'),
+      ];
+      expect(() => compileTutorialTest(test, passed([step({ title: 'one' })], attachments), tmp())).toThrow(/incoming turn of step 1/);
+    });
   });
 });

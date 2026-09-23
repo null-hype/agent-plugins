@@ -1,10 +1,8 @@
 import { useStore } from '@nanostores/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import tutorialStore from 'tutorialkit:store';
-import './AcpTraceBridge.css';
 import {
   buildAcpTraceState,
-  describeNextTurn,
   parseAcpTraceFixture,
   resolveAcpTraceConfig,
   valueToText,
@@ -26,12 +24,6 @@ type LessonRecord = {
   };
 };
 
-type SolvableStore = {
-  solve?: () => void;
-  reset?: () => void;
-  lessonFullyLoaded?: { get(): boolean; subscribe(listener: (value: boolean) => void): () => void };
-};
-
 const DEFAULT_TRACE_FILE = '/acp-trace.json';
 const DEFAULT_SCENARIO = 'ghost-trace-diagnostic-v1';
 const READY_SOURCES = new Set(['tk-acp-trace-client-preview', 'tk-acp-trace-agent-preview']);
@@ -42,13 +34,13 @@ interface Props {
 }
 
 /**
- * CIT-245: unlike the headless RuleTraceBridge/LoanwordArcBridge (this
- * lesson runs with `editor: false`, so TutorialKit's own Solve button in the
- * editor panel's chrome is collapsed to zero size and unreachable -- see
- * WorkspacePanel.js's `EditorSection`), this bridge renders its own visible
- * Solve control and calls the store's `solve()`/`reset()` directly. Those
- * methods do the same `_files` -> `_solution` swap the built-in button
- * would have triggered; only the affordance that calls them is new.
+ * Headless, like RuleTraceBridge/LoanwordArcBridge. CIT-245 first shipped
+ * this with its own Solve/Reset buttons embedded in the lesson markdown,
+ * because `editor: false` collapsed TutorialKit's Solve to zero size. CIT-251
+ * reverses that: ACP lessons run with `editor: true`, TutorialKit's own
+ * Solve/Reset in the editor chrome is the only control, and the preview's
+ * pending line names who acts next (the viewer observes a recorded turn; a
+ * second button in the prose implied they were the one acting).
  */
 export default function AcpTraceBridge({
   traceFile = DEFAULT_TRACE_FILE,
@@ -57,12 +49,6 @@ export default function AcpTraceBridge({
   const documents = useStore(tutorialStore.documents) as DocumentRecord;
   const revisionRef = useRef(0);
   const lesson = tutorialStore.lesson as LessonRecord | undefined;
-  const solvable = tutorialStore as unknown as SolvableStore;
-  const [lessonReady, setLessonReady] = useState(() => solvable.lessonFullyLoaded?.get() ?? true);
-
-  useEffect(() => {
-    return solvable.lessonFullyLoaded?.subscribe((value) => setLessonReady(value));
-  }, [solvable]);
 
   const resolvedConfig = useMemo(() => {
     const customConfig = resolveAcpTraceConfig(lesson?.data?.custom);
@@ -125,23 +111,7 @@ export default function AcpTraceBridge({
     };
   }, [traceState]);
 
-  const solveLabel = describeNextTurn(traceState.nextTurn);
-  const canSolve = lessonReady && !traceState.solved && Boolean(solvable.solve);
-  const canReset = lessonReady && Boolean(solvable.reset);
-
-  return (
-    <div className="acp-trace-controls">
-      {solveLabel && (
-        <button type="button" className="acp-trace-solve" disabled={!canSolve} onClick={() => solvable.solve?.()}>
-          Solve: {solveLabel}
-        </button>
-      )}
-      {!solveLabel && <span className="acp-trace-done">Trace complete.</span>}
-      <button type="button" className="acp-trace-reset" disabled={!canReset} onClick={() => solvable.reset?.()}>
-        Reset
-      </button>
-    </div>
-  );
+  return null;
 }
 
 function getPreviewFrames() {

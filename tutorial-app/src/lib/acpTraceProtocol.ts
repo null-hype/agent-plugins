@@ -30,8 +30,66 @@ import type { AcpDiagnosticMeta, EvidenceLocation } from './acpDiagnosticMeta.pk
  */
 export type AcpResult = {
   [key: string]: unknown;
-  _meta?: AcpDiagnosticMeta;
+  _meta?: AcpTurnMeta;
 };
+
+/**
+ * CIT-251: what a frame's `_meta` may carry besides a diagnostic. All three
+ * are optional, so a ghost-trace fixture (diagnostic only) is unchanged.
+ *
+ *   - `pins`: fixed objects the story refers to by name (a question, a
+ *     proposal, a rule version). A pin is immutable: once a frame pins an
+ *     id, no later frame may pin the same id again (`deriveTraceView`
+ *     rejects it). A new rule version is a new pin, not an edit.
+ *   - `verdict`: one entry in exactly one verdict channel. Channels are kept
+ *     apart on purpose -- a well-formed type, a clean merge, a budget result
+ *     and a recorded grant are different claims and must not share one
+ *     pass/fail indicator.
+ *
+ * `_meta` sits inside `result` on a response and inside `params` on a
+ * request or notification (ACP's own placement for both); `metaOf` reads
+ * whichever one the envelope has.
+ */
+export type AcpTurnMeta = Partial<AcpDiagnosticMeta> & {
+  pins?: AcpPin[];
+  verdict?: AcpVerdict;
+};
+
+export type AcpPin = {
+  id: string;
+  label: string;
+  text: string;
+  /** Set when the pinned value is a labelled stand-in, not recorded output. */
+  simulated?: string;
+};
+
+export type AcpVerdict =
+  | { channel: 'type'; status: 'malformed' | 'well-formed'; text: string }
+  | { channel: 'merge'; status: 'clean' | 'conflicted'; text: string }
+  | {
+      channel: 'budget';
+      status: 'pass' | 'fail';
+      text: string;
+      /** Pin id of the rule this evaluation read, e.g. `limit-v1`. */
+      rule: string;
+      /** Pin id of the object evaluated, e.g. `proposal-P`. */
+      subject: string;
+    }
+  | {
+      channel: 'authority';
+      status: 'recorded';
+      text: string;
+      actor: string;
+      /** Pin ids: the rule replaced, the rule granted, the object it applies to. */
+      from: string;
+      to: string;
+      scope: string;
+      /** `simulated`: the record exists, nothing in the replay enforces it. */
+      enforcement: 'simulated' | 'enforced';
+    };
+
+export type AcpVerdictChannel = AcpVerdict['channel'];
+export const VERDICT_CHANNELS: readonly AcpVerdictChannel[] = ['type', 'merge', 'budget', 'authority'];
 
 export type AcpEnvelope = {
   jsonrpc: '2.0';
@@ -44,12 +102,23 @@ export type AcpEnvelope = {
 export type AcpFrameProvenance = {
   recordingId: string;
   capturedAt: string;
+  /**
+   * CIT-251: set on a frame authored by a storyboard rather than captured
+   * from a live exchange. The client pane says so once, above the log.
+   */
+  scripted?: string;
   /** Deferred: absent until a real Dagger Cloud trace backs this fixture. */
   daggerCloudTraceUrl?: string;
 };
 
 export type AcpFrame = {
   actor: 'client' | 'agent';
+  /**
+   * CIT-251: who, on that side of the protocol, this frame speaks for
+   * (`jev`, `git`, `checks`, `supervisor`). ACP itself only has the two
+   * roles; the speaker is what the pending line and the log name.
+   */
+  speaker?: string;
   action: string;
   envelope: AcpEnvelope;
   provenance: AcpFrameProvenance;
@@ -57,6 +126,7 @@ export type AcpFrame = {
 
 export type AcpNextTurn = {
   actor: AcpFrame['actor'];
+  speaker?: string;
   action: string;
 };
 
@@ -161,7 +231,92 @@ export function buildAcpTraceState(options: {
 
 /** The frame a diagnostic actually lives on, if any -- read by both previews. */
 export function findDiagnosticFrame(frames: readonly AcpFrame[]): AcpFrame | undefined {
-  return frames.find((frame) => frame.envelope.result?._meta?.diagnostic);
+  return frames.find((frame) => metaOf(frame.envelope)?.diagnostic);
+}
+
+/** A response carries `_meta` in `result`; a request or notification in `params`. */
+export function metaOf(envelope: AcpEnvelope): AcpTurnMeta | undefined {
+  if (envelope.result?._meta) return envelope.result._meta;
+  const params = envelope.params;
+  if (params && typeof params === 'object' && '_meta' in params) {
+    return (params as { _meta?: AcpTurnMeta })._meta;
+  }
+  return undefined;
+}
+
+/** `jev (agent)` when a frame names its speaker, else the bare protocol role. */
+export function describeActor(turn: { actor: AcpFrame['actor']; speaker?: string }): string {
+  return turn.speaker ? `${turn.speaker} (${turn.actor})` : turn.actor;
+}
+
+/**
+ * The client pane's last line while a turn is pending. It names who acts
+ * next and says Solve *replays* a recorded turn: the viewer observes, they
+ * do not take the action themselves (CIT-251).
+ */
+export function describePendingLine(nextTurn: AcpNextTurn): string {
+  return `${describeActor(nextTurn)}: ${nextTurn.action}  ->  awaiting recorded turn (Solve replays it)`;
+}
+
+export type AcpPinView = AcpPin & {
+  /** Set once an authority record replaces this rule for `scope`. */
+  supersededBy?: { pin: string; scope: string; actor: string };
+};
+
+export type AcpVerdictView = AcpVerdict & {
+  /** Budget entries only: the rule they read has since been replaced for their object. */
+  supersededBy?: { pin: string; scope: string; actor: string };
+  /**
+   * Budget entries only: the entry read a rule that was granted for a
+   * different object. A scoped grant is not a global limit change.
+   */
+  outOfScope?: { scope: string; actor: string };
+};
+
+export type AcpTraceView = {
+  scripted: string | null;
+  pins: AcpPinView[];
+  channels: Record<AcpVerdictChannel, AcpVerdictView[]>;
+};
+
+/**
+ * CIT-251: everything the client pane shows above the log, derived from
+ * the frames alone (no second source of truth). Earlier evaluations keep
+ * the rule they read: a grant never rewrites a budget entry, it only lets
+ * the view say that entry's rule has been superseded for its object.
+ */
+export function deriveTraceView(frames: readonly AcpFrame[]): AcpTraceView {
+  const pins: AcpPinView[] = [];
+  const channels: AcpTraceView['channels'] = { type: [], merge: [], budget: [], authority: [] };
+  let scripted: string | null = null;
+
+  for (const frame of frames) {
+    scripted ??= frame.provenance?.scripted ?? null;
+    const meta = metaOf(frame.envelope);
+    for (const pin of meta?.pins ?? []) {
+      if (pins.some((existing) => existing.id === pin.id)) {
+        throw new Error(`pin "${pin.id}" is pinned twice; a pinned object is immutable -- pin a new id instead`);
+      }
+      pins.push({ ...pin });
+    }
+    if (meta?.verdict) channels[meta.verdict.channel].push({ ...meta.verdict });
+  }
+
+  // A grant replaces `from` with `to` for its scope only: a budget entry about
+  // that object that read `from` is superseded; an entry about any other
+  // object that read `to` is using a rule that was never granted for it.
+  for (const grant of channels.authority) {
+    if (grant.channel !== 'authority') continue;
+    const supersededBy = { pin: grant.to, scope: grant.scope, actor: grant.actor };
+    for (const pin of pins) if (pin.id === grant.from) pin.supersededBy = supersededBy;
+    for (const entry of channels.budget) {
+      if (entry.channel !== 'budget') continue;
+      if (entry.rule === grant.from && entry.subject === grant.scope) entry.supersededBy = supersededBy;
+      if (entry.rule === grant.to && entry.subject !== grant.scope) entry.outOfScope = { scope: grant.scope, actor: grant.actor };
+    }
+  }
+
+  return { scripted, pins, channels };
 }
 
 export type AcpWarmLogDiagnostic = {
@@ -188,21 +343,35 @@ export type AcpWarmLogLine = {
  */
 export function toWarmLogLine(frame: AcpFrame): AcpWarmLogLine {
   const { envelope } = frame;
-  const diagnostic = envelope.result?._meta?.diagnostic;
+  const diagnostic = metaOf(envelope)?.diagnostic;
   const promptText = extractPromptText(envelope.params);
   const status = diagnostic ? diagnostic.code : envelope.result !== undefined ? 'ok' : 'sent';
   const call = envelope.method ? `${envelope.method}${promptText ? ` "${promptText}"` : ''}` : null;
 
   return {
-    raw: [`${frame.actor}: ${frame.action}`, '->', status, call].filter(Boolean).join('  '),
+    raw: [`${describeActor(frame)}: ${frame.action}`, '->', status, call].filter(Boolean).join('  '),
     diagnostic: diagnostic ? { severity: diagnostic.severity, code: diagnostic.code, message: diagnostic.message } : null,
     related: diagnostic?.related ?? [],
   };
 }
 
-/** `session/prompt`'s `params.prompt` is a list of content blocks; only `text` blocks render. */
+/**
+ * `session/prompt`'s `params.prompt` is a list of content blocks; only `text`
+ * blocks render. A `session/request_permission` or tool-call `session/update`
+ * has no prompt; its tool call's `title` is what a reader needs instead.
+ */
 function extractPromptText(params: unknown): string | null {
-  if (!params || typeof params !== 'object' || !('prompt' in params)) {
+  if (!params || typeof params !== 'object') {
+    return null;
+  }
+
+  const toolCall = (params as { toolCall?: { title?: unknown }; update?: { title?: unknown } }).toolCall ??
+    (params as { update?: { title?: unknown } }).update;
+  if (toolCall && typeof toolCall.title === 'string') {
+    return toolCall.title;
+  }
+
+  if (!('prompt' in params)) {
     return null;
   }
 
@@ -221,16 +390,6 @@ function extractPromptText(params: unknown): string | null {
     .map((block) => block.text);
 
   return texts.length > 0 ? texts.join(' ') : null;
-}
-
-/** Solve's button label: "<Actor>: <action>", e.g. "Agent: reply with diagnostic". */
-export function describeNextTurn(nextTurn: AcpNextTurn | null): string | null {
-  if (!nextTurn) {
-    return null;
-  }
-
-  const actor = nextTurn.actor === 'agent' ? 'Agent' : 'Client';
-  return `${actor}: ${nextTurn.action}`;
 }
 
 function readString(value: unknown, fallback: string) {
