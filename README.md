@@ -29,9 +29,11 @@ go run .                                             # step 9 flags it
 cd tutorial-app && npm install && npm run dev
 ```
 
-Chapter 3, lesson 5 ("The wrong-way peninsula") renders the same diagnostic as
-an editor hover. It opens with background before the failure; the demo above
-is the short path.
+Start with **[Budget Authority](https://null-hype.tidelands.dev/part-3/proposal-p-against-the-budget/1-jev-types-the-answer)**:
+a confident answer, a clean merge, a failed budget check, and a scoped supervisor
+exception. The replay is scripted; the merge and arithmetic are computed, and
+authority enforcement is simulated. The tutorial then links to a recorded
+diagnostic, the merge experiment, and hands-on reconciliation labs.
 
 ## Inspect the evidence
 

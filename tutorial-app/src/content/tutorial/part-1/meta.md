@@ -1,4 +1,4 @@
 ---
 type: part
-title: Grammar & Security Protocol
+title: 'Labs: rules, access, and reconciliation'
 ---

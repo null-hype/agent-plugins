@@ -1,4 +1,4 @@
 ---
 type: part
-title: Ghost Trace Machine
+title: 'Evidence: a recorded diagnostic'
 ---
