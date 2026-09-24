@@ -1,6 +1,6 @@
 ---
 type: lesson
-title: GitButler applies both, 0 conflicts
+title: An illustrative clean merge
 template: acp-trace
 terminal: false
 editor: true
@@ -22,16 +22,20 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load />
 
-# GitButler applies both, 0 conflicts
+# An illustrative clean merge
 
-Solve replays GitButler applying both branches onto the integration tree.
-**Merge** reads `clean · 0 conflicts` — this part of the trace is a real `git
-merge`, run in a scratch repository for this lesson: two branches off the same
-base, one editing a line about the relay, the other a line about gunicorn,
-auto-merged with nothing to resolve.
+**Concept storyboard — not experimental evidence.** Solve replays authored turns;
+it does not execute Git, Dagger, or agent reviews.
 
-That is the entire textual story. GitButler's own steering docs describe this
-check as *integration*, not *correctness* — and that's exactly the boundary
-this trace is drawn at: a clean apply means the two diffs don't collide on the
-same lines. It says nothing about whether the relay's parser and gunicorn's
-parser still disagree the same way they used to.
+Solve reveals a clean textual merge illustration. The fixture reports a scratch
+merge of `defenses.md`; it does not merge the described relay and Gunicorn source
+changes, and it does not capture GitButler execution. Its abbreviated identifiers
+are not reproducible source-tree evidence.
+
+The warning is also authored. The proposed whitespace/image interaction is
+unsupported: the real relay reads Content-Length and forwards bytes, while a
+Python image bump does not update Gunicorn installed from the local codebase.
+Request smuggling depends on disagreement about message boundaries; agreement or
+rejection does not establish a bypass.
+
+“Reveal storyboard diagnostic” displays existing fixture data. It runs no gate.

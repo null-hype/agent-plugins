@@ -10,14 +10,14 @@
       "prompt": [
         {
           "type": "text",
-          "text": "Does the merged tree still block a smuggled GET /admin?"
+          "text": "What execution evidence exists for the hypothetical merged source tree?"
         }
       ],
       "_meta": {
         "pins": [
           {
             "id": "real-baseline",
-            "label": "Real baseline (unmodified module, captured today)",
+            "label": "Existing baseline trace (unmodified vulnerable module)",
             "text": "gunicorn bounty_0: direct GET /admin -> 403; smuggled GET /admin (CL:6 + TE:chunked,gzip) -> backend logs \"Admin endpoint accessed\". Full trace: https://dagger.cloud/salute-stopping/traces/c183381dd44d9712748b815d3c6d2943"
           }
         ]
@@ -27,6 +27,6 @@
   "provenance": {
     "recordingId": "smuggling-v1#6",
     "capturedAt": "n/a (scripted)",
-    "scripted": "spike storyboard: smuggling survives the merge"
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
   }
 }

@@ -1,6 +1,6 @@
 ---
 type: lesson
-title: Two patches, reviewed independently
+title: Two hypothetical reviews
 template: acp-trace
 terminal: false
 editor: true
@@ -22,26 +22,18 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load />
 
-# Two patches, reviewed independently
+# Two hypothetical reviews
 
-**How to watch this part.** Same replay mechanics as *Proposal P against the
-budget*: one ACP session, one turn per lesson, Solve replays the recorded
-reply, Next brings in the following message. The Client preview shows the
-session log; the Agent preview shows the reasoning behind each verdict.
+**Concept storyboard — not experimental evidence.** Solve replays authored turns;
+it does not execute Git, Dagger, or agent reviews.
 
-This part starts from `gunicorn` (bounty_0), the request-smuggling module
-`dagger call bootstrap` already proved end to end: the relay blocks a direct
-`GET /admin`, but a chunked-vs-content-length disagreement between the relay's
-parser and gunicorn's own lets a smuggled `GET /admin` through anyway.
+Two hypothetical patches receive authored approvals. These are simulated reviewer
+responses, not branch test results or captured parallel-agent sessions. The patch
+names and abbreviated tree identifiers are illustrative objects, not checkoutable
+source trees.
 
-Two patches land against that module, on their own branches:
+The existing Gunicorn bounty baseline demonstrates an authorization bypass. It
+does not establish a secure starting point. Neither hypothetical branch has been
+shown to preserve the invariant “unauthenticated input never reaches /admin”.
 
-- **relay-header-normalize** — strips whitespace around commas in
-  `Transfer-Encoding` list values. An unrelated proxy-compat fix.
-- **gunicorn-image-bump** — bumps the backend's base image to pick up a
-  security patch. Also unrelated.
-
-Solve replays each patch's own review: **approved**, independently, on both.
-Each reviewer saw only their own diff, their own tests, their own file. Ask
-yourself before Next: does "approved twice" tell you anything about what
-happens once both patches are in the same tree?
+Solve reveals the authored approvals. Ask what evidence would justify them.

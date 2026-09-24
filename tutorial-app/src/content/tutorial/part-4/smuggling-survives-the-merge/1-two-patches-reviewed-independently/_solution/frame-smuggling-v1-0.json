@@ -10,7 +10,7 @@
       "prompt": [
         {
           "type": "text",
-          "text": "Do relay's Transfer-Encoding normalization fix and gunicorn's base-image bump, each taken alone, preserve the request-smuggling defense?"
+          "text": "Concept storyboard: what evidence would independent reviews need before claiming these hypothetical changes preserve an authorization invariant?"
         }
       ],
       "_meta": {
@@ -18,24 +18,26 @@
           {
             "id": "patch-relay",
             "label": "Patch: relay-header-normalize",
-            "text": "relay.py: strip whitespace around commas in Transfer-Encoding list values -- fixes an unrelated proxy-compat bug"
+            "text": "Hypothetical relay edit A. No executable patch or passing security check is supplied.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           },
           {
             "id": "patch-relay-candidate-b",
             "label": "Autocomplete's other candidate for this hunk",
-            "text": "relay.py: strip only leading whitespace, preserve the space after each comma -- also fixes the proxy-compat bug",
-            "simulated": "offered alongside patch-relay when the hunk was drafted; not picked, not committed, not reviewed"
+            "text": "Alternative edit placeholder. No comparative behavior has been measured.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           },
           {
             "id": "patch-gunicorn",
             "label": "Patch: gunicorn-image-bump",
-            "text": "internalApp Dockerfile: bump gunicorn base image to latest security patch level"
+            "text": "Hypothetical image edit B. Changing the Python base image does not update Gunicorn installed from the local codebase.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           }
         ],
         "verdict": {
           "channel": "review",
           "status": "pending",
-          "text": "pending \u00b7 each diff has its own reviewer, its own tests, and touches only its own file"
+          "text": "pending \u00b7 authored review scenario; no isolated branch tests recorded"
         }
       }
     }
@@ -43,6 +45,6 @@
   "provenance": {
     "recordingId": "smuggling-v1#0",
     "capturedAt": "n/a (scripted)",
-    "scripted": "spike storyboard: smuggling survives the merge"
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
   }
 }

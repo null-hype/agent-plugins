@@ -12,18 +12,20 @@
           {
             "id": "patch-relay-eval",
             "label": "Patch: relay-header-normalize vs gunicorn-image-bump",
-            "text": "re-aligns with gunicorn's parser -- 'chunked, gzip' and 'chunked,gzip' become indistinguishable to both parsers once both land"
+            "text": "Unsupported candidate-interaction hypothesis. The relay reads Content-Length and forwards bytes; it does not normalize Transfer-Encoding.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           },
           {
             "id": "patch-relay-candidate-b-eval",
             "label": "Autocomplete's other candidate vs gunicorn-image-bump",
-            "text": "keeps a byte-for-byte difference gunicorn's parser still treats separately -- parsers keep disagreeing"
+            "text": "No evidence this alternative is safer. Parser agreement does not create request-boundary disagreement.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           }
         ],
         "verdict": {
           "channel": "review",
           "status": "flagged",
-          "text": "flagged pre-commit \u00b7 relay-header-normalize -- the candidate already approved and about to be applied -- would reopen the CL/TE ambiguity this module's original bounty exploited, once combined with gunicorn-image-bump. The candidate left on the table would not have. (simulated: a real agent reasoning pass over both candidates against the paired diff, not this trace's own capture)"
+          "text": "flagged \u00b7 authored warning for UI demonstration; the proposed parser mechanism is unsupported and has not been validated."
         }
       }
     }
@@ -31,6 +33,6 @@
   "provenance": {
     "recordingId": "smuggling-v1#2b",
     "capturedAt": "n/a (scripted)",
-    "scripted": "spike storyboard: agent flags a candidate before commit"
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
   }
 }

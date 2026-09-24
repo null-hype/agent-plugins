@@ -1,3 +1,4 @@
+import verdictContract from '../templates/acp-trace/verdict-contract.json' with { type: 'json' };
 import type { AcpDiagnosticMeta, EvidenceLocation } from './acpDiagnosticMeta.pkl';
 
 /**
@@ -88,13 +89,36 @@ export type AcpVerdict =
       enforcement: 'simulated' | 'enforced';
     }
   | {
+      channel: 'experiment';
+      status: 'not-run' | 'pass' | 'fail';
+      text: string;
+    }
+  | {
       channel: 'review';
-      status: 'pending' | 'approved';
+      status: 'pending' | 'approved' | 'flagged';
       text: string;
     };
 
 export type AcpVerdictChannel = AcpVerdict['channel'];
-export const VERDICT_CHANNELS: readonly AcpVerdictChannel[] = ['type', 'merge', 'budget', 'authority', 'review'];
+export const VERDICT_CHANNELS: readonly AcpVerdictChannel[] = Object.keys(verdictContract) as AcpVerdictChannel[];
+
+/** JSON fixtures are untrusted at runtime even when their caller uses a TS cast. */
+export function assertAcpVerdict(value: unknown): asserts value is AcpVerdict {
+  if (!value || typeof value !== 'object') throw new Error('Invalid ACP verdict');
+  const verdict = value as Record<string, unknown>;
+  const statuses = Object.hasOwn(verdictContract, String(verdict.channel))
+    ? verdictContract[verdict.channel as AcpVerdictChannel] : undefined;
+  if (!statuses || typeof verdict.status !== 'string' || !statuses.includes(verdict.status) ||
+      typeof verdict.text !== 'string') {
+    throw new Error(`Invalid ACP verdict: ${String(verdict.channel)} / ${String(verdict.status)}`);
+  }
+  const required = verdict.channel === 'budget' ? ['rule', 'subject'] :
+    verdict.channel === 'authority' ? ['actor', 'from', 'to', 'scope'] : [];
+  if (required.some((key) => typeof verdict[key] !== 'string') ||
+      (verdict.channel === 'authority' && !['simulated', 'enforced'].includes(String(verdict.enforcement)))) {
+    throw new Error(`Invalid ACP verdict fields: ${String(verdict.channel)}`);
+  }
+}
 
 export type AcpEnvelope = {
   jsonrpc: '2.0';
@@ -379,7 +403,7 @@ export type AcpTraceView = {
  */
 export function deriveTraceView(frames: readonly AcpFrame[]): AcpTraceView {
   const pins: AcpPinView[] = [];
-  const channels: AcpTraceView['channels'] = { type: [], merge: [], budget: [], authority: [], review: [] };
+  const channels = Object.fromEntries(VERDICT_CHANNELS.map((channel) => [channel, []])) as AcpTraceView['channels'];
   let scripted: string | null = null;
 
   for (const frame of frames) {
@@ -391,7 +415,10 @@ export function deriveTraceView(frames: readonly AcpFrame[]): AcpTraceView {
       }
       pins.push({ ...pin });
     }
-    if (meta?.verdict) channels[meta.verdict.channel].push({ ...meta.verdict });
+    if (meta?.verdict) {
+      assertAcpVerdict(meta.verdict);
+      channels[meta.verdict.channel].push({ ...meta.verdict });
+    }
   }
 
   // A grant replaces `from` with `to` for its scope only: a budget entry about

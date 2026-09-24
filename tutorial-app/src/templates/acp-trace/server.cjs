@@ -1,3 +1,4 @@
+const verdictContract = require('./verdict-contract.json');
 // CIT-245: two independent HTTP servers in one process, one per preview
 // ("agent" and "client") -- TutorialKit/WebContainer watches for a server to
 // come up on each port named in the lesson's `previews` frontmatter and
@@ -184,18 +185,8 @@ function renderClientPage() {
       const PEEK_EVIDENCE_COMMAND = 'acp-trace.peekEvidence';
       const EVIDENCE_WIDGET_ID = 'acp-trace.evidenceWidget';
 
-      // A diagnostic with confirmGate: true (acp-trace.json's own field, not
-      // part of acpDiagnosticMeta.pkl's shape -- see renderRebaseTodoRecords)
-      // stays hidden behind a play affordance instead of showing its marker/
-      // CodeLens/hover immediately: the lesson this is for is about running
-      // the actual oracle, not just reading a hypothesis off the page, so
-      // the reveal is a deliberate user action rather than something Solve
-      // hands over for free. gatedByLine holds the lines currently showing
-      // the play glyph; confirmedGates (keyed by evaluationId, falling back
-      // to code) persists for the life of this iframe once a line's been
-      // run, independent of Solve/Reset -- the diagnostic's own data doesn't
-      // change between the lesson's starter and solved files, only whether
-      // the viewer has clicked play yet.
+      // confirmGate controls a fixture reveal only. No Git or Dagger runs.
+      // Keep the reveal state for the life of this preview iframe.
       let gatedByLine = {};
       let confirmedGates = new Set();
       let lastRecords = [];
@@ -299,7 +290,7 @@ function renderClientPage() {
                 if (gated) {
                   lenses.push({
                     range: new monaco.Range(lineNumber, 1, lineNumber, 1),
-                    command: { id: RUN_GATE_COMMAND, title: '▶ run ' + gated.code, arguments: [lineNumber] },
+                    command: { id: RUN_GATE_COMMAND, title: '▶ Reveal storyboard diagnostic: ' + gated.code, arguments: [lineNumber] },
                   });
                 }
                 continue;
@@ -491,7 +482,7 @@ function renderClientPage() {
               range: new window.monaco.Range(lineNumber, 1, lineNumber, 1),
               options: {
                 glyphMarginClassName: 'acp-gate-play',
-                glyphMarginHoverMessage: { value: 'Click to run ' + record.diagnostic.code },
+                glyphMarginHoverMessage: { value: 'Reveal storyboard diagnostic: ' + record.diagnostic.code },
               },
             });
             return;
@@ -579,16 +570,9 @@ function renderAgentPage() {
         return undefined;
       }
 
-      // Channels start as this fixed set (in this order, for a stable
-      // layout across the lessons that use them) but are not limited to
-      // it: a verdict names its own channel, and any channel not in this
-      // set still gets its own section -- appended after, in first-seen
-      // order -- rather than being silently dropped. Every lesson so far
-      // (ghost-trace, budget-authority) only ever produces these four; the
-      // smuggling scenario is the first to name its own ("review",
-      // "smuggling"), which is what exposed the fixed-set version of this
-      // dropping every verdict on the floor while still rendering pins.
-      const KNOWN_CHANNELS = ['type', 'merge', 'budget', 'authority'];
+      // Same channel/status contract as the canonical TypeScript derivation.
+      const VERDICT_CONTRACT = ${JSON.stringify(verdictContract)};
+      const KNOWN_CHANNELS = Object.keys(VERDICT_CONTRACT);
 
       function deriveTraceView(frames) {
         const pins = [];
@@ -606,6 +590,16 @@ function renderAgentPage() {
           }
           if (meta && meta.verdict) {
             const channel = meta.verdict.channel;
+            const statuses = Object.hasOwn(VERDICT_CONTRACT, channel) && VERDICT_CONTRACT[channel];
+            if (!statuses || !statuses.includes(meta.verdict.status) || typeof meta.verdict.text !== 'string') {
+              throw new Error('Invalid ACP verdict: ' + channel + ' / ' + meta.verdict.status);
+            }
+            const required = channel === 'budget' ? ['rule', 'subject'] :
+              channel === 'authority' ? ['actor', 'from', 'to', 'scope'] : [];
+            if (required.some((key) => typeof meta.verdict[key] !== 'string') ||
+                (channel === 'authority' && !['simulated', 'enforced'].includes(meta.verdict.enforcement))) {
+              throw new Error('Invalid ACP verdict fields: ' + channel);
+            }
             if (!channels[channel]) channels[channel] = [];
             channels[channel].push(Object.assign({ latest }, meta.verdict));
           }

@@ -1,0 +1,27 @@
+{
+  "type": [
+    "malformed",
+    "well-formed"
+  ],
+  "merge": [
+    "clean",
+    "conflicted"
+  ],
+  "budget": [
+    "pass",
+    "fail"
+  ],
+  "authority": [
+    "recorded"
+  ],
+  "review": [
+    "pending",
+    "approved",
+    "flagged"
+  ],
+  "experiment": [
+    "not-run",
+    "pass",
+    "fail"
+  ]
+}

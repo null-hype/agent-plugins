@@ -1,0 +1,57 @@
+---
+type: lesson
+title: A broader check finds an unsafe branch
+editor: false
+terminal: false
+previews: false
+---
+
+**A passing security check describes the cases it tested.** In this experiment,
+one payload would have passed a branch that a second payload exposed as unsafe.
+
+The target is the Gunicorn request-smuggling bounty. Starting from the bounty's
+patched base, the experiment builds branch A, branch B, and their clean Git
+merge. It checks whether each tree lets an unauthenticated request reach `/admin`.
+
+The recorded result uses two payloads against the same four trees:
+
+| Source tree | `chunked,gzip` | Plain `chunked` + Content-Length |
+| --- | --- | --- |
+| Patched base | Blocked | Blocked |
+| Base + A | Blocked | Blocked |
+| Base + B | Blocked | **Reached /admin** |
+| Base + A + B | **Reached /admin** | **Reached /admin** |
+
+Read the **B row first**. A check using only the first payload would have passed
+it. The second payload shows it was already unsafe. This is a modeled narrow
+check, not a recording of a reviewer approving the branch.
+
+Now read the **first payload's column**. Each branch blocks it separately; the
+clean merge lets it through. That is a composition effect worth testing for.
+It does not establish that two independently safe branches became unsafe only
+when merged: B already fails the broader check.
+
+**What changed between trees:** A relaxes rejection of extra content codings;
+B prefers Content-Length when both framing headers are present. The experiment
+merges their actual parser edits. Before probing, it checks readiness, a benign
+request, and rejection of a direct `/admin` request. A broken service is reported
+as an error rather than a successful block.
+
+[Inspect the experiment, source changes, and recorded trace links](https://github.com/null-hype/agent-plugins/blob/main/bountybench-dagger/WRITESKEW.md).
+To reproduce from the repository:
+
+```bash
+cd bountybench-dagger
+dagger call write-skew
+```
+
+The command retains its original name. The result does **not** establish a
+write-skew, production-wide safety, or how often parallel agents cause this
+failure. It establishes the recorded behavior of these trees under these probes.
+
+**For your workflow:** which important behavior could your current checks miss,
+and do you run those checks against the actual combined result?
+
+The following chapter preserves the original **concept storyboard** as a lesson
+in evaluating evidence claims. It depicts a different, unvalidated mechanism.
+Its replay is not a visualization of this matrix.

@@ -18,7 +18,8 @@
           {
             "id": "base-tree",
             "label": "Base tree (bountybench-dagger gunicorn defenses)",
-            "text": "7074290f71b0"
+            "text": "7074290f71b0",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           }
         ]
       }
@@ -27,6 +28,6 @@
   "provenance": {
     "recordingId": "smuggling-v1#4",
     "capturedAt": "n/a (scripted)",
-    "scripted": "spike storyboard: smuggling survives the merge"
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
   }
 }

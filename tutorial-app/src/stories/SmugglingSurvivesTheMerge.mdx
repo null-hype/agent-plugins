@@ -3,102 +3,45 @@ import * as SmugglingSurvivesTheMergeStories from './SmugglingSurvivesTheMerge.s
 
 <Meta of={SmugglingSurvivesTheMergeStories} />
 
-# Smuggling survives the merge
+# Composition review — concept storyboard
 
-Same replay mechanics as *Proposal P against the budget*: one ACP session,
-one turn per lesson, Solve replays the recorded reply. The Client pane shows
-the session log; the Agent pane shows the reasoning behind each verdict. Use
-each story's `solved` control below to step from the lesson's starting state
-to its resolved one.
+**This is not experimental evidence of write skew or parallel-agent vulnerability
+reintroduction.** The existing Dagger trace backs an already-vulnerable baseline.
+Reviews, candidate reasoning and the merge presentation are authored illustrations.
+No merged-source experiment has run. Solve and diagnostic reveal display fixture
+data; they do not execute Git, GitButler or Dagger.
 
-This chapter starts from `gunicorn` (bounty_0), the request-smuggling module
-`dagger call bootstrap` already proved end to end: the relay blocks a direct
-`GET /admin`, but a chunked-vs-content-length disagreement between the
-relay's parser and gunicorn's own lets a smuggled `GET /admin` through
-anyway.
+## 1. Two hypothetical reviews
 
-## 1. Two patches, reviewed independently
-
-Two patches land against that module, on their own branches:
-
-- **relay-header-normalize** — strips whitespace around commas in
-  `Transfer-Encoding` list values. An unrelated proxy-compat fix.
-- **gunicorn-image-bump** — bumps the backend's base image to pick up a
-  security patch. Also unrelated.
-
-Solve replays each patch's own review: **approved**, independently, on both.
-Each reviewer saw only their own diff, their own tests, their own file. Ask
-yourself before moving on: does "approved twice" tell you anything about what
-happens once both patches are in the same tree?
+The approvals are simulated. Neither branch has passed an invariant check; their
+identifiers do not name reproducible source trees. Use `solved` to reveal the
+response, and `frameId` to inspect a turn with its surrounding context.
 
 <Story of={SmugglingSurvivesTheMergeStories.TwoPatchesReviewedIndependently} />
-
-`solved` steps between this lesson's starting and resolved state. Lesson 1's
-trace is also split into individually addressable frames (CIT: the
-`frame-{id}.json` refactor) -- `frameId` (e.g. `smuggling-v1-0`) narrows the
-Client/Agent panes above to that frame plus its immediate context, once
-`solved` is on (the starter fixture has no frames yet to narrow into):
-
 <Controls of={SmugglingSurvivesTheMergeStories.TwoPatchesReviewedIndependently} />
 
-Autocomplete had actually offered a second candidate for relay's hunk — one
-that fixed the same proxy-compat bug without re-aligning relay's parser with
-gunicorn's. It wasn't picked, wasn't committed, and neither review ever saw
-it. That candidate is pinned in the trace above for a reason: it's the road
-not taken, and the next two lessons are about what reasoning across both
-roads — before the commit, not after — would have caught.
+## 2. An illustrative clean merge
 
-## 2. GitButler applies both, 0 conflicts
-
-Solve replays GitButler applying both branches onto the integration tree.
-**Merge** reads `clean · 0 conflicts` — this part of the trace is a real
-`git merge`, run in a scratch repository for this lesson: two branches off
-the same base, one editing a line about the relay, the other a line about
-gunicorn, auto-merged with nothing to resolve.
-
-That would be the entire textual story, and GitButler's own steering docs
-describe this kind of check as *integration*, not *correctness* — a clean
-apply means the two diffs don't collide on the same lines. It says nothing
-about whether the relay's parser and gunicorn's parser still disagree the
-same way they used to.
-
-Except here, before the merge lands, the agent reasons across both of
-relay's candidates against gunicorn's diff directly — not each patch alone,
-the pairing — and flags it: the picked candidate re-aligns relay's parser
-with gunicorn's on the exact ambiguity the module's original bounty
-exploited; the candidate left on the table would not have. That flag is
-attached to the merged commit itself, visible in the Client pane as a real
-diagnostic on the `pick` line, before anything downstream ever runs.
+The fixture reports a scratch `defenses.md` merge, not a source merge or GitButler
+execution. Its warning is unsupported. The actual relay reads Content-Length and
+forwards bytes; changing the Python image does not update the local Gunicorn
+codebase. Parser agreement is not the disagreement that creates desynchronization.
+The supplied fixed parser rejects gzip after chunked. No safer alternate candidate
+has been demonstrated.
 
 <Story of={SmugglingSurvivesTheMergeStories.GitButlerAppliesBoth} />
 
-A clean merge and a pre-commit flag on that same merge are not in tension —
-they're answering different questions. The next lesson is the third: does
-the flag hold up once something actually runs against the result.
+## 3. The merged experiment has not run
 
-## 3. `dagger call bootstrap` finds it reopened
-
-The incoming message pins the real baseline: `dagger call bootstrap` against
-the *unmodified* `gunicorn` module, captured earlier — direct `GET /admin`
-blocked with `403`, the task's own smuggling payload gets a `GET /admin`
-through anyway, and the backend logs the hit.
-
-Solve replays the check against the *merged* tree instead: **FAIL**. Relay's
-normalizer now accepts `Transfer-Encoding: chunked, gzip` (with the space)
-exactly like it always accepted `chunked,gzip` — and gunicorn's parser
-already did. Two parsers that used to disagree on a narrow set of
-byte-for-byte inputs now agree on a wider one, the same shape of gap the
-original bounty's payload exploited, reached from a different edge.
+The original baseline trace remains linked in the replay. Its successful exploit
+means the starting security invariant is false. The final verdict is **NOT RUN**:
+no rebuild confirms the warning. Bootstrap clones upstream, accepts no merged
+source tree, and succeeds on exploitation rather than on blocking the exploit.
 
 <Story of={SmugglingSurvivesTheMergeStories.BootstrapFindsItReopened} />
 
-Lesson 2's own merged commit already carried a flag naming this exact gap —
-`smuggling-reopened`, raised by reasoning across relay's autocomplete
-candidates *before* the merge was ever applied. This rebuild doesn't
-discover anything new: it confirms that flag was right. That's the pairing
-worth keeping. A pre-commit flag is a hypothesis about behavior, produced
-without running anything. Only re-running the actual oracle — build it, boot
-it, replay the exploit, check the backend log — against the *result* of the
-merge tells you whether that hypothesis holds. Neither a clean GitButler
-apply, nor an independent `dagger call bootstrap` re-run, nor a pre-commit
-flag substitutes for either of the other two.
+Before presenting an experiment, require one trusted oracle to pass on the exact
+base, A and B trees and fail on the cleanly merged A+B tree. Add benign and textual
+conflict controls, composition-order checks, payload variants, pinned dependencies,
+and captured agent provenance. One passing experiment would demonstrate possibility;
+it would not measure frequency or establish scaling with agent count.

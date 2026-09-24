@@ -287,7 +287,7 @@ describe('CIT-251: speakers, pins and verdict channels', () => {
     expect(deriveTraceView([clientFrame, agentFrame])).toEqual({
       scripted: null,
       pins: [],
-      channels: { type: [], merge: [], budget: [], authority: [], review: [] },
+      channels: { type: [], merge: [], budget: [], authority: [], review: [], experiment: [] },
     });
   });
 });
