@@ -19,11 +19,13 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-# Git merges the two branches
+# A clean merge
 
-The worker's two changes arrive as branches: `airfare 890` and `ground 400`.
-Solve replays the merge. **Proposal P** appears with both lines and its tree id,
-and **Merge** reads `clean · 0 conflicts`.
+Select **Solve** to reveal the combination of `airfare 890` and `ground 400`.
+**Proposal P** now shows both costs and a tree ID identifying the merged content.
+**Merge** reads `clean · 0 conflicts`.
 
-**Budget** still reads `not evaluated`. A clean merge means the two changes
-combine without conflict. It doesn't mean the combination fits the budget.
+Look at **Budget**: it still reads `not evaluated`.
+The changes combine successfully; the budget question is still unanswered.
+
+Continue to check the same proposal against the original 1200 limit.

@@ -22,36 +22,29 @@ custom:
 
 import RuleTraceBridge from '../../../../../components/RuleTraceBridge';
 
-# Authorization by Benutzer-ID
-
 <RuleTraceBridge client:load />
 
-Lesson 3 concludes the Black Thursday loop as the capstone.
-
-The editor on the right validates a missing article against a lesson-local Pkl grammar rule. The preview pane replays a mocked OpenTrader warm log once the phrase is repaired.
-
-### The Task
-Complete the sentence:
+Complete the sentence in `exercise.de`:
 
 `Die API prüft die Berechtigung anhand _____ Benutzer-ID`
 
-1. Fill the blank with the required genitive article.
-2. If the answer is wrong, hover the squiggle to peek at the governing **Pkl grammar rule**.
-3. When the squiggle clears, the preview will automatically render the mocked **Insecure Direct Object Reference (IDOR)** warm log.
-4. Expand the anomaly span in the preview to inspect the security rule that flags the authorization drift.
+Enter **der**, the article required by this lesson's rule. Hover the diagnostic
+to inspect the rule before you repair it. Once the phrase passes, the preview
+reveals a mocked OpenTrader trace.
 
-### What you are seeing
-- **`AuthorizationGrammar.pkl`**: Defines the grammar contract for this lesson. In protocol engineering, we treat natural language and API schemas with the same rigor.
-- **`authorization-grammar.json`**: The compiled artifact that powers the real-time validator.
-- **`OpenTraderSecurityRules.pkl`**: The actual security policy that detects the IDOR vulnerability when the "grammar" of the system request is invalid.
-- **`trace-story.json`**: An OTel-compatible story fixture that simulates a live system breach.
+Expand its anomaly span. The security question is whether authorization relies
+on a user-controlled ID. That is a separate check from the sentence exercise:
+repairing the article reveals the trace; it does not repair the authorization flaw.
 
----
+| File | What it contributes |
+| --- | --- |
+| `AuthorizationGrammar.pkl` | The sentence rule used by this exercise |
+| `authorization-grammar.json` | The artifact used by the browser validator |
+| `OpenTraderSecurityRules.pkl` | The policy describing authorization grounded in user-controlled input |
+| `trace-story.json` | The authored trace and anomaly shown in the preview |
 
-<div style="margin-top: 2rem; padding: 1.25rem 1.5rem; border: 1px solid #e4e6e9; border-radius: 10px; background: #f9fafb;">
-  <p style="margin: 0 0 0.5rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af;">This is Grammar as Protocol</p>
-  <p style="margin: 0 0 1rem; font-size: 0.95rem; line-height: 1.5; color: #374151;">The same Pkl constraint engine that validated a German loanword just detected an IDOR. Three more domains are in the queue: Music, Chess, Argumentation. The full methodology is in the article.</p>
-  <a href="https://github.com/null-hype/null-hype.github.io" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; font-weight: 500; color: #1d4ed8; text-decoration: none;">
-    Read the article →
-  </a>
-</div>
+**Evidence scope:** this is a fixture-based demonstration. The browser does not
+execute a live API exploit or prove a production authorization boundary.
+
+Continue to the next chapter to inspect a recorded CI export and then work with
+capability requests, grants, and observations.

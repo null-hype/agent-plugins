@@ -19,12 +19,14 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-# Checks evaluate P under v1
+# The check contradicts the answer
 
-Solve replays the budget check on the merged proposal: `FAIL @ v1`,
-890 + 400 = 1290 > 1200. The clean merge and Jev's `YES · 0.94` stay on screen
-beside it: the failure concerns the same proposal and the same rule Jev was asked
-about.
+Select **Solve**. The budget result is **`FAIL @ v1`: 890 + 400 = 1290 > 1200**.
+Jev's `YES · 0.94` and the clean merge remain visible beside it.
+All three refer to the same proposal.
 
-Click the CodeLens above the failing line in the Client log to open its
-evidence: proposal P at its tree id, limit rule v1, and the answer it contradicts.
+Click the diagnostic link above the failing line in the **Client** log to open
+its evidence: the proposal's tree ID, limit rule v1, and the answer it contradicts.
+
+The diagnostic gives the reviewer something specific to decide. The next turn
+asks for an exception for this proposal.
