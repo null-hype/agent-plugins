@@ -1,37 +1,26 @@
 ---
 type: lesson
-title: Grammar as Protocol
+title: Rules you can inspect
 editor: false
 terminal: false
 previews: false
 ---
 
-**Formal grammars are not a stylistic preference. They are the protocol layer between human intent and agent execution.**
+These labs explore how a declared rule becomes an executable check.
+They move from a small vocabulary exercise to approval records and reconciliation.
 
-In this tutorial the same constraint engine — built on [Pkl](https://pkl-lang.org/) — validates three different systems:
+For the client walkthrough, [start with Budget Authority](/part-3/proposal-p-against-the-budget/1-jev-types-the-answer).
+You can return here to edit the inputs and inspect the implementation.
 
-- A German word that has no English translation
-- A German article that must be precise for an authorization rule to hold
-- An API request that carries an IDOR vulnerability when the grammar is wrong
+- **Vocabulary:** distinguish a well-formed term from one admitted by a policy.
+- **Authorization:** inspect a mocked trace whose security rule compares an authorization subject with user-controlled input.
+- **Reconciliation:** compare a worker's request, a supervisor's grant, and an observed operation.
 
-Every lesson follows the same pattern: a rule defined in Pkl, compiled to a JSON artifact, a runtime that catches the violation. The domain changes. The mechanism does not.
+The language exercises use deliberately narrow lesson policies. They illustrate
+how constraints work; accepting a word or repairing a sentence does not establish
+that an API is secure.
 
-```pkl
-module AuthorizationGrammar
+Browser exercises use TypeScript evaluators and fixtures. Where a Pkl source or
+recorded run supports a lesson, the lesson identifies it and explains its scope.
 
-class ArticleRule {
-  phrase: String
-  governedCase: String
-  requiredArticle: String
-}
-
-authorizationAnchor = new ArticleRule {
-  phrase = "anhand ... Benutzer-ID"
-  governedCase = "Dative"
-  requiredArticle = "der"
-}
-```
-
-This rule governs a sentence in German and the authorization check in a live API. That equivalence is the point.
-
-Use the **→** arrow above to start.
+Use the **→** arrow to open the first lab.
