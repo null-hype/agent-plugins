@@ -1,27 +1,35 @@
-# Smuggling survives the merge — a semantic-drift witness
+# Smuggling survives the merge — what the four-tree matrix actually shows
 
 This module builds the gunicorn bounty_0 target from actual source, applies the
 bounty's own fix to get a secure base, and runs an **executed** experiment on
-how independently-reviewed parser edits compose. Every cell below is produced by
-running the real gunicorn+relay topology and replaying the bounty's exploit —
-not an authored fixture.
+how two parser edits compose. Every cell below is produced by running the real
+gunicorn+relay topology and replaying the bounty's exploit — not an authored
+fixture.
 
-**What this witnesses (the honest frame): semantic drift, not write-skew.**
-Two parser edits are each reviewed against the *canonical exploit* and judged to
-keep it blocked. Each is "green" under that review. A clean `git merge` of the
-two reopens the authorization bypass anyway — the composed parser no longer
-enforces the property the review was standing in for. The failure is the gap
-between the *reviewed* property ("the canonical payload is blocked") and the
-*true* property ("no smuggled `GET /admin` reaches the backend, for any
-payload"), and merge composition is where that gap becomes an exploit.
+**Headline finding (the strongest true thing here): a narrow check passes an
+already-unsafe branch.** We set out to construct an authorization write-skew.
+Firing a *second* payload found that branch B is already vulnerable on its own —
+it admits a smuggled `GET /admin` under plain `chunked`. A review that fired
+only the canonical exploit would have declared B safe. The lesson is the partial
+oracle, not the merge.
 
-This is **not** a database-style write-skew, and this doc no longer claims to be
-one. A write-skew needs both branches to *truly* preserve the full invariant,
-with only the merge breaking it. Here branch B is **not** independently safe (it
-smuggles on plain `chunked`); it is only *review-green* on the canonical
-payload. Semantic drift is the weaker, true, and more realistic claim: review
-signals that are green per-branch can still compose into a vulnerability. See
-"Why drift, not write-skew" below.
+**Secondary, but genuinely a composition effect.** The *canonical* exploit
+(`chunked,gzip`) is blocked by base+A alone *and* by base+B alone, yet REACHES
+`/admin` after their clean `git merge`. So composition does reopen something no
+single branch exposed for that payload — this is the "semantic drift" the user
+asked about: a signal that is green per-branch (under a modeled single-payload
+check) is defeated by the merge. It is a real effect; it is just not the whole
+story, because B was never safe to begin with.
+
+**This is NOT a write-skew, and this doc does not claim to be one.** A write-skew
+needs both branches to *truly* preserve the full invariant, with only the merge
+breaking it. Here branch B fails the invariant alone (plain `chunked`). The
+two-genuinely-safe-branches question is left open, not answered.
+
+**Caveat on "review".** The canonical-payload column below is a *modeled*
+single-payload check — the experiment fires that payload on each tree — not a
+recording of an actual code review that ran only that payload. Read it as "what
+a single-payload oracle would report", not "what a reviewer approved".
 
 Target: `gunicorn/bounties/bounty_0` (CVE-2024-6827, CWE-444 HTTP request
 smuggling). Secure base = the bounty's fix (`patch_files/message.py` mapped onto
@@ -35,11 +43,12 @@ smuggling). Secure base = the bounty's fix (`patch_files/message.py` mapped onto
 reports `ERROR` and exits non-zero, so an infrastructure failure is never read
 as "blocked". Two payloads are fired per tree:
 
-- `chunked,gzip` — the canonical exploit from `exploit_files/exploit.sh`. This
-  is **the reviewer's oracle**: the single payload a per-branch review fires.
-- plain `chunked` + `Content-Length: 6` — a second payload the review does *not*
-  fire, used here to expose the drift (i.e. to show what the canonical oracle
-  misses).
+- `chunked,gzip` — the canonical exploit from `exploit_files/exploit.sh`. Treat
+  this as the **modeled single-payload oracle**: the one payload a narrow
+  per-branch check would fire.
+- plain `chunked` + `Content-Length: 6` — a second payload that narrow check
+  does *not* fire. It is what exposes branch B as already unsafe, and shows what
+  the single-payload oracle misses.
 
 ## The two branches
 
@@ -63,28 +72,31 @@ base+B                 control=ok  direct/admin=403  |  chunked,gzip=blocked  | 
 base+A+B (git merge)   control=ok  direct/admin=403  |  chunked,gzip=REACHED  |  plain-chunked+CL=REACHED
 ```
 
-Read the **canonical `chunked,gzip` column as the review signal**
-(`green/green/green/REACHED`): both branches pass the review as conducted, and
-the clean merge reopens the bypass. That is the semantic-drift witness.
+Two things are true at once here, and the order matters:
 
-The second column shows *why* the per-branch review was a partial oracle:
-**base+B already REACHES /admin on its own** under plain `chunked`. B was never
-truly safe — it only looked safe because the canonical payload is the one A's
-untouched guard still rejects. The review measured the wrong property.
+1. **The plain-`chunked` column is the headline.** `base+B` already REACHES
+   `/admin` on its own. A modeled single-payload check (canonical column) would
+   have passed B. The strongest finding is that the narrow oracle missed an
+   unsafe branch — full stop, no merge required.
+2. **The canonical column is the composition effect.**
+   `blocked/blocked/blocked/REACHED`: neither branch alone smuggles the
+   canonical payload, but the clean merge does. That is real — a per-branch
+   green signal defeated by the merge (the "semantic drift").
 
 ## Why drift, not write-skew
 
-| | write-skew (what we do NOT have) | semantic drift (what we DO have) |
+| | write-skew (what we do NOT have) | what we DO have |
 |---|---|---|
-| requires each branch *truly* invariant-preserving | yes | **no** |
-| requires each branch *review-green* | — | yes |
-| break happens only at the merge | yes | the *review signal* breaks only at the merge |
-| our branch B | fails (unsafe on plain chunked) | fine — it's review-green on the canonical payload |
+| requires each branch *truly* invariant-preserving | yes | **no** — B is unsafe alone |
+| requires each branch green under a modeled single-payload check | — | yes |
+| the full invariant first fails at the merge | yes | **no** — it already fails on B |
+| the *canonical-payload* signal first fails at the merge | — | yes (the composition effect) |
 
-Semantic drift is the more realistic failure mode for code review: the common
-way two "approved" changes compose into a vulnerability is not that both were
-provably safe, but that the review/test oracle was a partial one and the merge
-lands in the gap it didn't cover.
+Semantic drift (row 4) is a real and realistic failure mode: a partial
+review/test oracle goes green per-branch and the merge lands in the gap it
+didn't cover. But it is not the same as a write-skew, because the full
+authorization invariant does not first fail at the merge — it already fails on
+branch B (row 3). Present both, and lead with the branch-B finding.
 
 Whether a strict two-safe-branch write-skew is even constructible on this parser
 looks doubtful: on the patched base, `chunked,gzip` is protected by two
@@ -98,14 +110,22 @@ interact through runtime behavior rather than the shared framing decision).
 ## What this experiment does establish
 
 - A **secure base** exists and blocks the exploit (`I(base)=true`), from source.
-- Two parser edits are each **review-green** against the canonical exploit.
-- A **clean git merge** of them reopens the bypass — the review signal that was
-  green per-branch is defeated by composition. Per-branch, single-payload review
-  is insufficient; the composed behavior is not deducible from the two diffs (an
-  earlier A+B that left `force_close` in place stayed blocked — only running it
-  revealed the truth).
+- **A single-payload check is a partial oracle**: it would pass branch B, which
+  is already unsafe under plain `chunked`. (This is the headline.)
+- **Composition is real too**: the canonical payload, blocked by A alone and by
+  B alone, is reopened by their clean `git merge` — the composed behavior is not
+  deducible from the two diffs (an earlier A+B that left `force_close` in place
+  stayed blocked; only running it revealed the truth).
 - The module can now build a patched and a merged tree and gate either with a
   hardened oracle, not only a fresh upstream clone.
+
+## What this experiment does NOT establish
+
+- **An authorization write-skew.** That still needs two *genuinely* safe
+  branches with the invariant failing only at their merge. Branch B is not safe
+  alone, so this is not that witness; the question is left open.
+- **An observed code review.** The "single-payload check" is modeled by the
+  experiment firing one payload, not a recording of a reviewer's approval.
 
 ## Reproduce
 
