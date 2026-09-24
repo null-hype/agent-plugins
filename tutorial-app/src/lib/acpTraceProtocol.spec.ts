@@ -4,8 +4,11 @@ import {
   deriveTraceView,
   describePendingLine,
   findDiagnosticFrame,
+  frameFilePath,
   parseAcpTraceFixture,
+  parseAcpTraceFixtureRef,
   resolveAcpTraceConfig,
+  resolveAcpTraceFixture,
   toWarmLogLine,
   type AcpFrame,
 } from './acpTraceProtocol';
@@ -113,6 +116,61 @@ describe('parseAcpTraceFixture + buildAcpTraceState', () => {
 
     expect(state.frames).toEqual([]);
     expect(state.solved).toBe(false);
+  });
+});
+
+describe('resolveAcpTraceFixture', () => {
+  const frameStore: Record<string, string> = {
+    '/frame-a.json': JSON.stringify(clientFrame),
+    '/frame-b.json': JSON.stringify(agentFrame),
+  };
+  const loadFrame = (frameId: string) => frameStore[frameFilePath('/acp-trace.json', frameId)];
+
+  it('resolves frameIds into frames, in order', () => {
+    const ref = parseAcpTraceFixtureRef(JSON.stringify({ scenario: 's', frameIds: ['a', 'b'] }));
+    const fixture = resolveAcpTraceFixture(ref, loadFrame);
+
+    expect(fixture.frames).toEqual([clientFrame, agentFrame]);
+  });
+
+  it('preserves nextTurn through a frameIds fixture -- CIT: the frame-split refactor once dropped this, making every ACP lesson report solved', () => {
+    const ref = parseAcpTraceFixtureRef(
+      JSON.stringify({ scenario: 's', frameIds: ['a'], nextTurn: { actor: 'agent', action: 'reply' } }),
+    );
+    const state = buildAcpTraceState({ revision: 1, fixture: resolveAcpTraceFixture(ref, loadFrame) });
+
+    expect(state.solved).toBe(false);
+    expect(state.nextTurn).toEqual({ actor: 'agent', action: 'reply' });
+  });
+
+  it('narrows to frameId plus surrounding context (previous/next frame)', () => {
+    const ref = parseAcpTraceFixtureRef(JSON.stringify({ scenario: 's', frameIds: ['a', 'b'] }));
+
+    // Only 2 frames exist, so "context around" either one is still both --
+    // this is expected, not a bug: there's no third frame to exclude yet.
+    expect(resolveAcpTraceFixture(ref, loadFrame, { frameId: 'a' }).frames).toEqual([clientFrame, agentFrame]);
+    expect(resolveAcpTraceFixture(ref, loadFrame, { frameId: 'b' }).frames).toEqual([clientFrame, agentFrame]);
+  });
+
+  it('narrows to a real window once there are 3+ frames', () => {
+    const store: Record<string, string> = { ...frameStore, '/frame-c.json': JSON.stringify(clientFrame) };
+    const load = (frameId: string) => store[frameFilePath('/acp-trace.json', frameId)];
+    const ref = parseAcpTraceFixtureRef(JSON.stringify({ scenario: 's', frameIds: ['a', 'b', 'c'] }));
+
+    expect(resolveAcpTraceFixture(ref, load, { frameId: 'a' }).frames).toEqual([clientFrame, agentFrame]);
+    expect(resolveAcpTraceFixture(ref, load, { frameId: 'c' }).frames).toEqual([agentFrame, clientFrame]);
+  });
+
+  it('ignores an unmatched frameId (returns the full trace, does not throw)', () => {
+    const ref = parseAcpTraceFixtureRef(JSON.stringify({ scenario: 's', frameIds: ['a', 'b'] }));
+
+    expect(resolveAcpTraceFixture(ref, loadFrame, { frameId: 'nope' }).frames).toEqual([clientFrame, agentFrame]);
+  });
+
+  it('falls back to embedded frames when there are no frameIds', () => {
+    const ref = parseAcpTraceFixtureRef(JSON.stringify({ scenario: 's', frames: [clientFrame] }));
+
+    expect(resolveAcpTraceFixture(ref, loadFrame, { frameId: 'a' }).frames).toEqual([clientFrame]);
   });
 });
 
@@ -229,7 +287,7 @@ describe('CIT-251: speakers, pins and verdict channels', () => {
     expect(deriveTraceView([clientFrame, agentFrame])).toEqual({
       scripted: null,
       pins: [],
-      channels: { type: [], merge: [], budget: [], authority: [] },
+      channels: { type: [], merge: [], budget: [], authority: [], review: [] },
     });
   });
 });

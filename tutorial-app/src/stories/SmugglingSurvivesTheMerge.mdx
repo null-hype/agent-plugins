@@ -1,4 +1,4 @@
-import { Meta, Story } from '@storybook/addon-docs/blocks';
+import { Controls, Meta, Story } from '@storybook/addon-docs/blocks';
 import * as SmugglingSurvivesTheMergeStories from './SmugglingSurvivesTheMerge.stories';
 
 <Meta of={SmugglingSurvivesTheMergeStories} />
@@ -32,6 +32,14 @@ yourself before moving on: does "approved twice" tell you anything about what
 happens once both patches are in the same tree?
 
 <Story of={SmugglingSurvivesTheMergeStories.TwoPatchesReviewedIndependently} />
+
+`solved` steps between this lesson's starting and resolved state. Lesson 1's
+trace is also split into individually addressable frames (CIT: the
+`frame-{id}.json` refactor) -- `frameId` (e.g. `smuggling-v1-0`) narrows the
+Client/Agent panes above to that frame plus its immediate context, once
+`solved` is on (the starter fixture has no frames yet to narrow into):
+
+<Controls of={SmugglingSurvivesTheMergeStories.TwoPatchesReviewedIndependently} />
 
 Autocomplete had actually offered a second candidate for relay's hunk — one
 that fixed the same proxy-compat bug without re-aligning relay's parser with

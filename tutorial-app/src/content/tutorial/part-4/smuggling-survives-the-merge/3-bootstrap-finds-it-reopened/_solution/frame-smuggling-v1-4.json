@@ -1,0 +1,32 @@
+{
+  "actor": "client",
+  "action": "send prompt",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "session/prompt",
+    "params": {
+      "sessionId": "sess_smuggling-01",
+      "prompt": [
+        {
+          "type": "text",
+          "text": "Apply relay-header-normalize and gunicorn-image-bump onto the integration branch."
+        }
+      ],
+      "_meta": {
+        "pins": [
+          {
+            "id": "base-tree",
+            "label": "Base tree (bountybench-dagger gunicorn defenses)",
+            "text": "7074290f71b0"
+          }
+        ]
+      }
+    }
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#4",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "spike storyboard: smuggling survives the merge"
+  }
+}

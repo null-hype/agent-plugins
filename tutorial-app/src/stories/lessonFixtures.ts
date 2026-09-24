@@ -9,7 +9,13 @@ import {
 	resolveLoanwordArcConfig,
 	validateLoanwordLesson,
 } from '../lib/loanwordArcProtocol';
-import { buildAcpTraceState, parseAcpTraceFixture, resolveAcpTraceConfig } from '../lib/acpTraceProtocol';
+import {
+	buildAcpTraceState,
+	frameFilePath,
+	parseAcpTraceFixtureRef,
+	resolveAcpTraceConfig,
+	resolveAcpTraceFixture,
+} from '../lib/acpTraceProtocol';
 
 // A lesson as TutorialKit loads it: frontmatter, starter `_files`, and the
 // `_solution` files that Solve writes over them. Read straight from
@@ -78,13 +84,20 @@ export function deriveRuleTraceState(lesson: Lesson, files: Record<string, strin
 	});
 }
 
-export function deriveAcpTraceState(lesson: Lesson, files: Record<string, string>) {
+export function deriveAcpTraceState(
+	lesson: Lesson,
+	files: Record<string, string>,
+	options?: { frameId?: string },
+) {
 	const config = resolveAcpTraceConfig(lesson.data.custom);
 	if (!config) throw new Error('lesson has no custom.acpTrace');
 
+	const ref = parseAcpTraceFixtureRef(files[config.traceFile]);
+	const loadFrame = (frameId: string) => files[frameFilePath(config.traceFile, frameId)];
+
 	return buildAcpTraceState({
 		revision: 1,
-		fixture: parseAcpTraceFixture(files[config.traceFile]),
+		fixture: resolveAcpTraceFixture(ref, loadFrame, options),
 		scenario: config.scenario,
 	});
 }
