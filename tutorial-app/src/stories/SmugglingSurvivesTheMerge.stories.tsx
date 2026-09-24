@@ -23,7 +23,7 @@ import { deriveAcpTraceState, loadLesson } from './lessonFixtures';
 // AcpTracePreview's own `payload` prop sidesteps both: each Pane posts only
 // to its own iframe ref, and payload is computed fresh per story/per
 // `solved` toggle with no shared mutable state at all.
-type StoryArgs = { solved: boolean };
+type StoryArgs = { solved: boolean; frameId?: string };
 
 // Explicit annotation rather than `satisfies Meta<StoryArgs>` -- `satisfies`
 // keeps the narrower literal type of the object itself, which has no
@@ -45,9 +45,14 @@ const meta: Meta<StoryArgs> = {
 	// the path there once we're iterating on them again.
 	argTypes: {
 		solved: { control: 'boolean' },
+		// All three lessons' fixtures are split into frame-{id}.json files.
+		// An id that doesn't match the current lesson's own frameIds is
+		// ignored -- see resolveAcpTraceFixture's graceful fallback.
+		frameId: { control: 'text' },
 	},
 	args: {
 		solved: false,
+		frameId: undefined,
 	},
 };
 
@@ -116,7 +121,11 @@ export const TwoPatchesReviewedIndependently: Story = {
 	render: (args) => (
 		<div className="previews-container">
 			<AcpTracePreview
-				payload={deriveAcpTraceState(lesson1, args.solved ? lesson1.solved : lesson1.files)}
+				payload={deriveAcpTraceState(
+					lesson1,
+					args.solved || args.frameId ? lesson1.solved : lesson1.files,
+					{ frameId: args.frameId },
+				)}
 				height={640}
 			/>
 		</div>
@@ -130,7 +139,11 @@ export const GitButlerAppliesBoth: Story = {
 	render: (args) => (
 		<div className="previews-container">
 			<AcpTracePreview
-				payload={deriveAcpTraceState(lesson2, args.solved ? lesson2.solved : lesson2.files)}
+				payload={deriveAcpTraceState(
+					lesson2,
+					args.solved || args.frameId ? lesson2.solved : lesson2.files,
+					{ frameId: args.frameId },
+				)}
 				height={640}
 			/>
 		</div>
@@ -144,7 +157,11 @@ export const BootstrapFindsItReopened: Story = {
 	render: (args) => (
 		<div className="previews-container">
 			<AcpTracePreview
-				payload={deriveAcpTraceState(lesson3, args.solved ? lesson3.solved : lesson3.files)}
+				payload={deriveAcpTraceState(
+					lesson3,
+					args.solved || args.frameId ? lesson3.solved : lesson3.files,
+					{ frameId: args.frameId },
+				)}
 				height={640}
 			/>
 		</div>

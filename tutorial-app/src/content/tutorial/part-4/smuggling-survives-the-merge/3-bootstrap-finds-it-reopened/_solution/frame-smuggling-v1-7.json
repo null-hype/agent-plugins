@@ -1,0 +1,37 @@
+{
+  "actor": "agent",
+  "action": "re-run dagger call bootstrap against the merged tree",
+  "speaker": "dagger",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 4,
+    "result": {
+      "stopReason": "end_turn",
+      "_meta": {
+        "pins": [
+          {
+            "id": "precommit-flag-ref",
+            "label": "Pre-commit flag (already raised)",
+            "text": "smuggling-reopened, evaluationId smuggling-v1:precommit-relay-gunicorn -- raised on the merged commit before this rebuild ever ran"
+          },
+          {
+            "id": "mechanism",
+            "label": "Why it reopens",
+            "text": "relay's normalizer now treats 'chunked, gzip' (with a space) the same as 'chunked,gzip'; gunicorn's parser already did. The two parsers re-agree on a payload shape neither diff's own test exercised -- the same CL/TE ambiguity the original bounty exploited, on a new trigger string.",
+            "simulated": "mechanism illustration -- no second live dagger build backs this specific run"
+          }
+        ],
+        "verdict": {
+          "channel": "smuggling",
+          "status": "FAIL (simulated)",
+          "text": "FAIL \u00b7 smuggled GET /admin reaches the backend again -- confirms the smuggling-reopened flag already raised on the merged commit, before this rebuild ever ran. (simulated: no second bootstrap build exists for the patched tree in this spike; the mechanism is real, this specific replay is not)"
+        }
+      }
+    }
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#7",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "spike storyboard: smuggling survives the merge"
+  }
+}

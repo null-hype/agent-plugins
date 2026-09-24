@@ -1,0 +1,36 @@
+{
+  "actor": "agent",
+  "action": "reason across candidates, flag before commit",
+  "speaker": "agent",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+      "stopReason": "end_turn",
+      "_meta": {
+        "pins": [
+          {
+            "id": "patch-relay-eval",
+            "label": "Patch: relay-header-normalize vs gunicorn-image-bump",
+            "text": "re-aligns with gunicorn's parser -- 'chunked, gzip' and 'chunked,gzip' become indistinguishable to both parsers once both land"
+          },
+          {
+            "id": "patch-relay-candidate-b-eval",
+            "label": "Autocomplete's other candidate vs gunicorn-image-bump",
+            "text": "keeps a byte-for-byte difference gunicorn's parser still treats separately -- parsers keep disagreeing"
+          }
+        ],
+        "verdict": {
+          "channel": "review",
+          "status": "flagged",
+          "text": "flagged pre-commit \u00b7 relay-header-normalize -- the candidate already approved and about to be applied -- would reopen the CL/TE ambiguity this module's original bounty exploited, once combined with gunicorn-image-bump. The candidate left on the table would not have. (simulated: a real agent reasoning pass over both candidates against the paired diff, not this trace's own capture)"
+        }
+      }
+    }
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#2b",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "spike storyboard: agent flags a candidate before commit"
+  }
+}

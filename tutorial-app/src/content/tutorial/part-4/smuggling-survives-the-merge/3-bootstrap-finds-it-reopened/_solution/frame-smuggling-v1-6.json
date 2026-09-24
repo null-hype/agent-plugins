@@ -1,0 +1,32 @@
+{
+  "actor": "client",
+  "action": "send prompt",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "session/prompt",
+    "params": {
+      "sessionId": "sess_smuggling-01",
+      "prompt": [
+        {
+          "type": "text",
+          "text": "Does the merged tree still block a smuggled GET /admin?"
+        }
+      ],
+      "_meta": {
+        "pins": [
+          {
+            "id": "real-baseline",
+            "label": "Real baseline (unmodified module, captured today)",
+            "text": "gunicorn bounty_0: direct GET /admin -> 403; smuggled GET /admin (CL:6 + TE:chunked,gzip) -> backend logs \"Admin endpoint accessed\". Full trace: https://dagger.cloud/salute-stopping/traces/c183381dd44d9712748b815d3c6d2943"
+          }
+        ]
+      }
+    }
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#6",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "spike storyboard: smuggling survives the merge"
+  }
+}
