@@ -51,9 +51,9 @@ here mutates state another test reads:
 
 Same as the previous lesson, neither axiom can reach a live Pkl evaluator
 from the browser, so both are TypeScript replays --
-[`ledgerCheckAccess.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/ledgerCheckAccess.ts)
+[`ledgerCheckAccess.ts`](https://github.com/null-hype/agent-plugins/blob/main/tutorial-app/src/lib/ledgerCheckAccess.ts)
 and
-[`inventoryCheck.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/inventoryCheck.ts)
+[`inventoryCheck.ts`](https://github.com/null-hype/agent-plugins/blob/main/tutorial-app/src/lib/inventoryCheck.ts)
 -- typed against `inventory.pkl.ts`/`grant_state.pkl.ts`, both generated
 from the real Pkl modules by `@pkl-community/pkl-typescript`. This lesson's
 `template: capability-check` boots a real Node WebContainer, `npm install`s

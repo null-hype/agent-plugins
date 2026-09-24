@@ -10,6 +10,7 @@ import {
 	validateLoanwordLesson,
 } from '../lib/loanwordArcProtocol';
 import {
+	type AcpTraceConfig,
 	buildAcpTraceState,
 	frameFilePath,
 	parseAcpTraceFixtureRef,
@@ -26,6 +27,11 @@ const raw = import.meta.glob(
 		'../content/tutorial/part-1/chapter-2/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-2/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-2/chapter-1/lesson-2/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-3/proposal-p-against-the-budget/1-jev-types-the-answer/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-3/proposal-p-against-the-budget/2-git-merges-the-two-branches/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-3/proposal-p-against-the-budget/3-checks-evaluate-p-under-v1/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-3/proposal-p-against-the-budget/4-supervisor-grants-1200-1300/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-3/proposal-p-against-the-budget/5-checks-re-evaluate-p-under-v2/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-4/smuggling-survives-the-merge/1-two-patches-reviewed-independently/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-4/smuggling-survives-the-merge/2-gitbutler-applies-both/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-4/smuggling-survives-the-merge/3-bootstrap-finds-it-reopened/{content.mdx,_files/*,_solution/*}',
@@ -49,6 +55,11 @@ export function loadLesson(
 		| 'part-1/chapter-2/lesson-1'
 		| 'part-2/chapter-1/lesson-1'
 		| 'part-2/chapter-1/lesson-2'
+		| 'part-3/proposal-p-against-the-budget/1-jev-types-the-answer'
+		| 'part-3/proposal-p-against-the-budget/2-git-merges-the-two-branches'
+		| 'part-3/proposal-p-against-the-budget/3-checks-evaluate-p-under-v1'
+		| 'part-3/proposal-p-against-the-budget/4-supervisor-grants-1200-1300'
+		| 'part-3/proposal-p-against-the-budget/5-checks-re-evaluate-p-under-v2'
 		| 'part-4/smuggling-survives-the-merge/1-two-patches-reviewed-independently'
 		| 'part-4/smuggling-survives-the-merge/2-gitbutler-applies-both'
 		| 'part-4/smuggling-survives-the-merge/3-bootstrap-finds-it-reopened',
@@ -84,12 +95,14 @@ export function deriveRuleTraceState(lesson: Lesson, files: Record<string, strin
 	});
 }
 
+// `config` stands in for frontmatter when a lesson passes traceFile/scenario
+// to AcpTraceBridge as props instead (part 3's compiled lessons do).
 export function deriveAcpTraceState(
 	lesson: Lesson,
 	files: Record<string, string>,
-	options?: { frameId?: string },
+	options?: { frameId?: string; config?: AcpTraceConfig },
 ) {
-	const config = resolveAcpTraceConfig(lesson.data.custom);
+	const config = options?.config ?? resolveAcpTraceConfig(lesson.data.custom);
 	if (!config) throw new Error('lesson has no custom.acpTrace');
 
 	const ref = parseAcpTraceFixtureRef(files[config.traceFile]);
