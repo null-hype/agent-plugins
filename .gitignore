@@ -10,3 +10,4 @@ digest.txt
 .claude/
 __pycache__/
 docs/launch/triage-proposals.json
+test-results/budget-authority/.last-run.json
