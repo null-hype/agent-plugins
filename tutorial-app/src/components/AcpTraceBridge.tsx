@@ -63,12 +63,42 @@ export default function AcpTraceBridge({
   const traceState = useMemo(() => {
     revisionRef.current += 1;
 
+    // Parse the fixture reference (which may contain frameIds)
+    const fixtureRef = JSON.parse(traceText || '{}') as {
+      scenario: string;
+      frames?: unknown[];
+      frameIds?: string[];
+    };
+
+    // If frameIds are present, load each frame from the document store
+    let frames: unknown[] = fixtureRef.frames || [];
+    if (fixtureRef.frameIds && fixtureRef.frameIds.length > 0) {
+      frames = fixtureRef.frameIds
+        .map((frameId) => {
+          const frameFile = resolvedConfig.traceFile.replace('acp-trace.json', `frame-${frameId}.json`);
+          const frameText = valueToText(documents[frameFile]?.value);
+          try {
+            return frameText ? JSON.parse(frameText) : null;
+          } catch {
+            console.warn(`Failed to parse frame ${frameFile}`);
+            return null;
+          }
+        })
+        .filter((f) => f !== null);
+    }
+
+    // Reconstruct the full fixture
+    const fullFixture = {
+      scenario: fixtureRef.scenario,
+      frames,
+    };
+
     return buildAcpTraceState({
       revision: revisionRef.current,
-      fixture: parseAcpTraceFixture(traceText),
+      fixture: parseAcpTraceFixture(JSON.stringify(fullFixture)),
       scenario: resolvedConfig.scenario,
     });
-  }, [resolvedConfig.scenario, traceText]);
+  }, [resolvedConfig.scenario, resolvedConfig.traceFile, traceText, documents]);
 
   // One payload, sent to every preview iframe (client and agent alike), so
   // both panes always agree on the same trace position -- see this lesson's
