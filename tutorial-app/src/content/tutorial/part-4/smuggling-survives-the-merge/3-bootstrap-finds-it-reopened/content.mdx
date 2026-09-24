@@ -1,6 +1,6 @@
 ---
 type: lesson
-title: A clean merge reopens the bypass — but not as a write-skew
+title: A clean merge reopens the bypass — semantic drift, not write-skew
 template: acp-trace
 terminal: false
 editor: true
@@ -22,9 +22,9 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load />
 
-# A clean merge reopens the bypass — but not as a write-skew
+# A clean merge reopens the bypass — semantic drift, not write-skew
 
-There is now a real, executed experiment behind this chapter (see
+There is a real, executed experiment behind this chapter (see
 `bountybench-dagger/WRITESKEW.md`; reproduce with `dagger call write-skew`). Read
 it for exactly what it does and does not show. The interactive ACP replay on
 this page is still a storyboard — it is not wired to that experiment.
@@ -43,23 +43,43 @@ base+B                 chunked,gzip=blocked   |  plain-chunked+CL=REACHED
 base+A+B (git merge)   chunked,gzip=REACHED   |  plain-chunked+CL=REACHED
 ```
 
-Against the canonical `chunked,gzip` exploit alone the column reads
-`blocked/blocked/blocked/REACHED` — which *looks* like a write-skew. It is not.
-The second payload shows **branch B already reaches `/admin` on its own**: B is
-not independently safe; it only passes the canonical payload because branch A's
-untouched guard still rejects that specific one.
+## The lesson: semantic drift
 
-So the honest lesson is narrower, and still worth keeping:
+Read the **canonical `chunked,gzip` column as the review signal** — the one
+payload a per-branch reviewer actually fires:
 
-- A **clean git merge** of two reviewed parser edits reopened an authorization
-  bypass that neither branch's canonical-exploit check caught alone.
-- A per-branch, single-payload invariant check is therefore **insufficient** —
-  the composed behavior is not deducible from the two diffs (an earlier A+B that
-  left `force_close` in place stayed blocked; only running it revealed the truth).
+```
+base+A   green      base+B   green      base+A+B (merge)   REACHED
+```
 
-What this is **not** yet: a valid write-skew of two *independently-safe*
-branches. That needs `I(base+A)` and `I(base+B)` to hold for every payload, with
-the merge the only break. Here `I(base+B)` fails on plain `chunked`, and that
-looks structural for this parser (plain `chunked` has a single protection that
-any reopening branch must remove). A genuine witness likely needs a different
-target or a cross-file A/B pair.
+Both branches pass review. The clean merge reopens the bypass anyway. That is
+**semantic drift**: each edit keeps the *reviewed* property (canonical exploit
+blocked), but the merge lets the composed parser drift past the *true* property
+(no smuggled `GET /admin`, for any payload). The vulnerability lives in the gap
+between what the review measured and what it meant to measure — and composition
+is where that gap opens.
+
+## Why this is drift and not a write-skew
+
+A write-skew would need both branches to be *genuinely* safe, with only the
+merge breaking the invariant. That is **not** what happened here, and the second
+payload proves it: **branch B already reaches `/admin` on its own** under plain
+`chunked`. B was never independently safe — it only looked safe because the
+canonical payload is the one branch A's untouched guard still rejects. The
+review measured the wrong property.
+
+Semantic drift is the weaker claim, and the more useful one:
+
+- A **clean git merge** of two *review-green* parser edits reopened an
+  authorization bypass. The green signal was per-branch; composition defeated it.
+- A per-branch, single-payload review is a **partial oracle**. The composed
+  behavior is not deducible from the two diffs — an earlier A+B that left
+  `force_close` in place stayed blocked; only running the merge revealed the truth.
+- This is the ordinary way two "approved" changes ship a vulnerability: not that
+  both were provably safe, but that the review oracle didn't cover the case the
+  merge lands in.
+
+A strict two-safe-branch write-skew looks structurally hard for this parser:
+plain `chunked` has a single protection (chunked-framing) that any reopening
+branch must remove, so no reopening branch can be safe alone. A genuine
+write-skew witness would likely need a different target or a cross-file A/B pair.
