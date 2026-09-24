@@ -1,0 +1,50 @@
+import { Controls, Meta, Story } from '@storybook/addon-docs/blocks';
+import * as BudgetAuthorityStories from './BudgetAuthority.stories';
+
+<Meta of={BudgetAuthorityStories} />
+
+# Budget Authority — Proposal P against the budget
+
+Part 3, one lesson per story. Each lesson opens on its starter state, which is the
+previous lesson's solved state plus one incoming message. Toggle `solved` to replay
+the recorded reply, as the lesson's **Solve** button does. Every frame is scripted
+by `tests/budget-authority.tutorial.spec.ts`. Only the git merge (turn 2) and the
+two budget evaluations (turns 3 and 5) are computed for real.
+
+## 1. Jev types the answer
+
+Solve turns **Type** from `malformed` to `well-formed`. **Budget** stays `not evaluated`.
+
+<Story of={BudgetAuthorityStories.JevTypesTheAnswer} />
+<Controls of={BudgetAuthorityStories.JevTypesTheAnswer} />
+
+## 2. Git merges the two branches
+
+Solve pins **Proposal P** at its tree id, and **Merge** reads `clean · 0 conflicts`.
+**Budget** still reads `not evaluated`.
+
+<Story of={BudgetAuthorityStories.GitMergesTheTwoBranches} />
+<Controls of={BudgetAuthorityStories.GitMergesTheTwoBranches} />
+
+## 3. Checks evaluate P under v1
+
+Solve adds `FAIL @ v1`. Click its CodeLens in the Client log to open the evidence:
+P at its tree id, rule v1, and the answer it contradicts.
+
+<Story of={BudgetAuthorityStories.ChecksEvaluatePUnderV1} />
+<Controls of={BudgetAuthorityStories.ChecksEvaluatePUnderV1} />
+
+## 4. Supervisor grants 1200 → 1300
+
+Solve records the grant under **Authority**, pins rule v2 for P only, and marks v1
+and the earlier FAIL as superseded for P.
+
+<Story of={BudgetAuthorityStories.SupervisorGrants1200To1300} />
+<Controls of={BudgetAuthorityStories.SupervisorGrants1200To1300} />
+
+## 5. Checks re-evaluate P under v2
+
+Solve adds `PASS @ v2` beside the unchanged `FAIL @ v1`.
+
+<Story of={BudgetAuthorityStories.ChecksReEvaluatePUnderV2} />
+<Controls of={BudgetAuthorityStories.ChecksReEvaluatePUnderV2} />

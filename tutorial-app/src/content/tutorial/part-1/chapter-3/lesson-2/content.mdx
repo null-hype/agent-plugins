@@ -29,16 +29,16 @@ reason:
   `grantState.json` starts with no grants recorded, so `checkAccess`
   denies with `CAP_NO_GRANT`.
 
-Fixing the declaration turns the first check green. The second needs an
-actual decision. Click **Approve as supervisor** below the file tree to
+Fixing the declaration turns the first check green. The second needs a
+supervisor decision in the exercise. Click **Approve as supervisor** below the file tree to
 record one -- it writes `grantState.json` and `pkl/GrantState.pkl` the way
 a real `supervisor.Decide` call would, and vitest reruns on its own.
 **Revoke** puts both back to their unresolved starting state.
 
-You are acting as the supervisor in this exercise: hand-editing the grant
-file in the WebContainer is exactly the self-grant the real product
-prevents. This is a simulation, not M2 evidence -- and Revoke doesn't
-actually undo a Proton Pass share the way it implies.
+You are acting as the supervisor in this exercise. The browser lets you edit
+the grant file directly, so this demonstrates the decision record, not an
+enforced separation of worker and supervisor. **Revoke** resets the fixture;
+it does not undo a real Proton Pass share.
 
 A third row checks `CAP_VAULT_MISMATCH`: the same approved grant, requested
 for a different vault than it was approved for. That's frozen to a real
@@ -49,11 +49,11 @@ captured decision, independent of Approve/Revoke, so it passes either way.
 axiom), and `worker/flight_booking_area51.pkl` (the fact under
 evaluation). Neither axiom can reach a live Pkl evaluator from the browser,
 so both run here as TypeScript replays --
-[`ledgerCheckAccess.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/ledgerCheckAccess.ts)
+[`ledgerCheckAccess.ts`](https://github.com/null-hype/agent-plugins/blob/main/tutorial-app/src/lib/ledgerCheckAccess.ts)
 and
-[`inventoryCheck.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/inventoryCheck.ts)
+[`inventoryCheck.ts`](https://github.com/null-hype/agent-plugins/blob/main/tutorial-app/src/lib/inventoryCheck.ts)
 -- typed against `inventory.pkl.ts`/`grant_state.pkl.ts`, generated from
 the real Pkl modules, and wrapped by
-[`axioms.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/axioms.ts)'s
+[`axioms.ts`](https://github.com/null-hype/agent-plugins/blob/main/tutorial-app/src/lib/axioms.ts)'s
 `toHaveVerdict` matcher, which records every check -- pass or fail -- to
 `evaluations.jsonl`.

@@ -19,21 +19,18 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-# Supervisor grants 1200 → 1300
+# A scoped exception
 
-The worker asks for a decision through `session/request_permission`: raise the
-limit from 1200 to 1300 for proposal P. Solve replays the supervisor's recorded
-answer. It shows up in the Agent's reasoning, under **Authority**, not as a check
-result:
+The worker asks to raise the limit from 1200 to 1300 for proposal P.
+Select **Solve** to reveal the supervisor's decision under **Authority**:
 
-- **who:** the supervisor
-- **what:** limit rule v1 (1200) → limit rule v2 (1300)
-- **scope:** proposal P only, at the same tree id; P itself is unchanged
+- **Who:** the supervisor.
+- **Change:** limit rule v1 (1200) → limit rule v2 (1300).
+- **Scope:** proposal P at the same tree ID. The costs stay unchanged.
 
-Rule v1 is not edited. It stays pinned, now marked superseded for P, and the
-earlier `FAIL @ v1` still points at it.
+The original rule and `FAIL @ v1` remain in the record. Granting an exception
+does not rewrite what the earlier check found.
 
-**Enforcement simulated.** This replay records the decision; nothing in it
-prevents the worker from editing the rule. It shows the record a real gate would
-check, which is why the Agent's Authority record carries that label beside the
-decision itself.
+**Enforcement is simulated.** This replay represents the approval record a gate
+would need to verify. It does not prevent the worker from editing the rule.
+Continue to evaluate the unchanged proposal under the new limit.
