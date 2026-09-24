@@ -23,6 +23,12 @@ custom:
 
 import LoanwordArcBridge from '../../../../../components/LoanwordArcBridge';
 
+How do you say 'Fingerspitzengefühl' in English?
+
+`translation.en` starts with `tact`. Watch which check blocks it, and read the loss axes the rule lists: each one names something the gloss throws away.
+
 <LoanwordArcBridge client:load />
 
-How do you say 'Fingerspitzengefühl' in English?
+This time the word is already in `PersonalVocabulary.pkl`, so there is no second gate to clear. Only the translation needs to change. Compare that with Schadenfreude: the same rule shape, but here the vocabulary already allows the word, so the only thing left to check is whether you kept it.
+
+Use **Solve** to see the preserved form, then put `tact` back to see the check fail again.

@@ -8,13 +8,15 @@ previews: false
 
 **Formal grammars are not a stylistic preference. They are the protocol layer between human intent and agent execution.**
 
-In this tutorial the same constraint engine — built on [Pkl](https://pkl-lang.org/) — validates three different systems:
+This tutorial is for people who let agents change code, spend money, or touch credentials, and who want to know what a green check actually proves. Each change can pass on its own and still be unsafe once combined with others. The lessons show how to write the rule down as a typed, executable check, and how to make its verdict carry the evidence it was computed from.
+
+The same constraint engine, built on [Pkl](https://pkl-lang.org/), validates three very different things:
 
 - A German word that has no English translation
-- A German article that must be precise for an authorization rule to hold
+- A German article that must be exact for an authorization rule to hold
 - An API request that carries an IDOR vulnerability when the grammar is wrong
 
-Every lesson follows the same pattern: a rule defined in Pkl, compiled to a JSON artifact, a runtime that catches the violation. The domain changes. The mechanism does not.
+Every lesson follows the same pattern: a rule defined in Pkl, compiled to a JSON artifact, and a runtime that catches the violation. The domain changes. The mechanism does not.
 
 ```pkl
 module AuthorizationGrammar
@@ -27,11 +29,20 @@ class ArticleRule {
 
 authorizationAnchor = new ArticleRule {
   phrase = "anhand ... Benutzer-ID"
-  governedCase = "Dative"
+  governedCase = "Genitive"
   requiredArticle = "der"
 }
 ```
 
 This rule governs a sentence in German and the authorization check in a live API. That equivalence is the point.
+
+### The route
+
+1. **Grammar & Security Protocol.** Starts with language, then applies the same rules to authorization, capability grants, and reconciling what an agent said against what it did.
+2. **Ghost Trace Machine.** Reads one recorded agent conversation as a sequence of typed verdicts.
+3. **Budget Authority.** Follows one question through a merge, a failing check, and a supervisor's decision. Start here if you only have ten minutes.
+4. **Research.** An executed experiment in which a narrow security check passed a branch that a broader check showed was already unsafe.
+
+Every lesson says whether it shows real, captured evidence or a labelled simulation.
 
 Use the **→** arrow above to start.

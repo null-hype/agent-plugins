@@ -15,7 +15,7 @@
     "title": "Peek: AuthorizationGrammar.pkl",
     "source": "AuthorizationGrammar.pkl",
     "explanation": "This lesson models the phrase `anhand ... Benutzer-ID` as a dative-governed authorization anchor that requires `der`.",
-    "snippet": "module AuthorizationGrammar\n\nclass ArticleRule {\n  phrase: String\n  governedCase: String\n  requiredArticle: String\n}\n\nauthorizationAnchor = new ArticleRule {\n  phrase = \"anhand ... Benutzer-ID\"\n  governedCase = \"Dative\"\n  requiredArticle = \"der\"\n}"
+    "snippet": "module AuthorizationGrammar\n\nclass ArticleRule {\n  phrase: String\n  governedCase: String\n  requiredArticle: String\n}\n\nauthorizationAnchor = new ArticleRule {\n  phrase = \"anhand ... Benutzer-ID\"\n  governedCase = \"Genitive\"\n  requiredArticle = \"der\"\n}"
   },
   "preview": {
     "invalidSummary": "idor(place_order) blocked",
