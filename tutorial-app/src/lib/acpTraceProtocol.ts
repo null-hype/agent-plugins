@@ -86,10 +86,15 @@ export type AcpVerdict =
       scope: string;
       /** `simulated`: the record exists, nothing in the replay enforces it. */
       enforcement: 'simulated' | 'enforced';
+    }
+  | {
+      channel: 'review';
+      status: 'pending' | 'approved';
+      text: string;
     };
 
 export type AcpVerdictChannel = AcpVerdict['channel'];
-export const VERDICT_CHANNELS: readonly AcpVerdictChannel[] = ['type', 'merge', 'budget', 'authority'];
+export const VERDICT_CHANNELS: readonly AcpVerdictChannel[] = ['type', 'merge', 'budget', 'authority', 'review'];
 
 export type AcpEnvelope = {
   jsonrpc: '2.0';
@@ -201,6 +206,93 @@ export function parseAcpTraceFixture(value: string | Uint8Array | undefined): Ac
   }
 }
 
+/**
+ * A fixture file's on-disk shape after the frame-{id}.json split: either
+ * `frames` embedded directly (ghost-trace lessons, unchanged) or `frameIds`
+ * naming per-frame files a caller resolves via `loadFrame`. Both bridges
+ * (the real app's AcpTraceBridge, Storybook's deriveAcpTraceState) read this
+ * same shape so neither can drift from the other -- see the frame-split
+ * refactor's regression, where an ad hoc reconstruction in one consumer
+ * silently dropped `nextTurn` (every ACP lesson reported `solved: true`).
+ */
+export type AcpTraceFixtureRef = {
+  scenario: string;
+  frames?: AcpFrame[];
+  frameIds?: string[];
+  nextTurn?: AcpNextTurn | null;
+};
+
+export function parseAcpTraceFixtureRef(value: string | Uint8Array | undefined): AcpTraceFixtureRef {
+  const text = valueToText(value);
+
+  if (!text.trim()) {
+    return { scenario: DEFAULT_CONFIG.scenario };
+  }
+
+  try {
+    return JSON.parse(text) as AcpTraceFixtureRef;
+  } catch (_error) {
+    return { scenario: DEFAULT_CONFIG.scenario };
+  }
+}
+
+/** Given a frame id, returns that frame file's raw text (or undefined if missing). */
+export type AcpFrameLoader = (frameId: string) => string | Uint8Array | undefined;
+
+/**
+ * Resolves a fixture reference into the full fixture `buildAcpTraceState`
+ * consumes: embedded `frames` pass through unchanged; `frameIds` are loaded
+ * one file per id via `loadFrame` and parsed in order. `frameId`, when given
+ * and the fixture has `frameIds`, narrows the result to that frame plus its
+ * surrounding context (previous frame, next frame) -- frame-by-frame
+ * traversal for a single lesson's trace, not an isolated frame with no
+ * decision/consequence around it. An id not found in `frameIds` is ignored
+ * (the full trace is returned), the same graceful fallback as a fixture
+ * with no `frameIds` at all, rather than throwing out of a story's
+ * render().
+ */
+export function resolveAcpTraceFixture(
+  ref: AcpTraceFixtureRef,
+  loadFrame: AcpFrameLoader,
+  options?: { frameId?: string },
+): AcpTraceFixture {
+  const frameIds = ref.frameIds;
+  let frames =
+    frameIds && frameIds.length > 0
+      ? frameIds.map((id) => parseFrame(loadFrame(id))).filter((frame): frame is AcpFrame => frame !== null)
+      : ref.frames ?? [];
+
+  if (options?.frameId && frameIds) {
+    const index = frameIds.indexOf(options.frameId);
+    if (index !== -1) {
+      frames = frames.slice(Math.max(0, index - 1), index + 2);
+    }
+  }
+
+  return {
+    scenario: ref.scenario ?? DEFAULT_CONFIG.scenario,
+    frames,
+    nextTurn: ref.nextTurn ?? null,
+  };
+}
+
+function parseFrame(value: string | Uint8Array | undefined): AcpFrame | null {
+  const text = valueToText(value);
+
+  if (!text.trim()) return null;
+
+  try {
+    return JSON.parse(text) as AcpFrame;
+  } catch (_error) {
+    return null;
+  }
+}
+
+/** The `frame-{id}.json` sibling of a `traceFile` path, e.g. `/frame-x.json`. */
+export function frameFilePath(traceFile: string, frameId: string): string {
+  return traceFile.replace(/[^/]+$/, `frame-${frameId}.json`);
+}
+
 export function valueToText(value: string | Uint8Array | undefined) {
   if (typeof value === 'string') {
     return value;
@@ -287,7 +379,7 @@ export type AcpTraceView = {
  */
 export function deriveTraceView(frames: readonly AcpFrame[]): AcpTraceView {
   const pins: AcpPinView[] = [];
-  const channels: AcpTraceView['channels'] = { type: [], merge: [], budget: [], authority: [] };
+  const channels: AcpTraceView['channels'] = { type: [], merge: [], budget: [], authority: [], review: [] };
   let scripted: string | null = null;
 
   for (const frame of frames) {
