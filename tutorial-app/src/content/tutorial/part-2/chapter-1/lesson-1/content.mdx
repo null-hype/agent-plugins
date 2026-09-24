@@ -1,6 +1,6 @@
 ---
 type: lesson
-title: "Ghost Trace Machine: the first turn"
+title: Where did this diagnostic come from?
 template: acp-trace
 editor: true
 terminal: false
@@ -18,101 +18,35 @@ custom:
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-# Ghost Trace Machine: the first turn
-
-This part is one recorded ACP thread. This lesson is its first turn: the
-client has already sent a prompt; the agent's reply is recorded but hidden
-until you press Solve.
-
-### The request already sent
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "session/prompt",
-  "params": {
-    "sessionId": "sess_ghost-01",
-    "prompt": [{ "type": "text", "text": "Why didn't user 10 get the status update from arrival order 4,2,3,1?" }]
-  }
-}
-```
-
-The **Client** preview on the right shows this turn as a warm-log region,
-blocked on the agent's reply. The **Agent** preview shows the same turn as
-the raw envelope the agent process actually exchanges.
-
 <AcpTraceBridge client:load />
 
-Press **Solve** to reveal the agent's recorded diagnostic response. Nothing
-here calls a live agent -- Solve replays the exact envelope this lesson's
-`_solution/acp-trace.json` already carries, the same `_files` -> `_solution`
-swap every other TutorialKit lesson uses. Reload the page, or press
-**Reset**, to return to the blocked state; replaying produces the same
-result every time.
+A recipient missed an update. Can we show which rule was violated and which
+observations support that conclusion?
 
-### One real Follower Maze case, not an invented one
+This recorded exchange uses a small event-processing case, **Follower Maze**.
+Events arrive in order `4,2,3,1`. The model being checked applies each event as
+it arrives, even though the required behavior depends on sequence order.
 
-The diagnostic this turn reveals is a real
-[`GovernanceDiagnostic`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/governanceDiagnostic.ts)
--- `code`/`severity`/`message` about a `subject`, plus the `related` evidence
-it was actually computed from, plus a stable `evaluationId` -- the same
-shape [chapter 3's warm-log lesson](/part-1/chapter-3/lesson-4) and Follower
-Maze both use, carried here in the ACP envelope's `result._meta.diagnostic`
-instead of invented flat fields. It is not a stand-in "ledger conflict":
-it is the real `check()`/`followerMazeAxiom()` verdict for one genuine
-arrival ordering, `4,2,3,1`, against the "plausible wrong model" witness
-(`arrivalOrderWitness`: apply each event the instant it arrives, instead of
-in sequence order) -- the same functions and the same fixtures
-[Follower Maze](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lesson-farms/follower-maze/followerMaze.ts)
-uses elsewhere in this app, run for real before this lesson's fixture was
-written.
+Select **Solve** to reveal the recorded diagnostic:
+**`fm-missing-delivery(seq=2,user=10)`**. Hover the marked line or click the
+diagnostic link above it to inspect the supporting evidence.
 
-For this ordering, that witness really does drop a required delivery:
+| Delivery | Required by sequence order | Produced by the arrival-order model |
+| --- | --- | --- |
+| Sequence 1 → user 20 | Yes | Yes |
+| Sequence 2 → user 10 | Yes | **Missing** |
 
-- required (sequence order): `20 <- seq 1`, `10 <- seq 2`
-- what `arrivalOrderWitness` actually delivers: only `20 <- seq 1`
-- `check()` flags: `fm-missing-delivery(seq=2,user=10)`
+The result comes from running the lesson's checker against this case. Its
+subject, related evidence, and evaluation ID travel with the verdict, so the
+explanation can be inspected wherever the diagnostic appears.
 
-The **Client** preview draws this the same way the warm-log lessons do:
-a real Monaco marker underlines the failing line, hovering it shows the
-verdict and its related evidence, and a CodeLens toggles the same evidence
-as a widget underneath the line -- not a plain printed message.
+**Evidence scope:** the fixture was captured from an actual exchange between a
+small test agent and an ACP client. The test agent runs a deterministic checker;
+this is not a recording of an autonomous model diagnosing a production incident.
+Solve replays the captured reply. It does not call a live agent.
 
-### Provenance
+[Inspect the capture scripts, transcript, and reproduction instructions](https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/evidence/ghost-trace-v1).
+There is no Dagger Cloud trace for this capture.
 
-This exchange is fixture `ghost-trace-v1`, captured 2026-09-22. Both frames
-are the literal JSON-RPC bytes from a real ACP client/agent exchange --
-not hand-typed JSON authored to look like one, and the diagnostic inside
-the agent's reply is the real output of a real computation, not a
-hand-typed verdict either. `evidence/ghost-trace-v1/` (repo root of
-`tutorial-app`) has the scripts that produced it: a minimal agent whose
-diagnostic comes from running `followerMaze.ts`'s real `check()` over a
-vendored copy of the real arrival/world fixtures, a client that drives the
-exchange and taps the wire, the full raw transcript, and the exact command
-to reproduce it -- re-running it is byte-identical apart from each frame's
-`capturedAt`. This is a one-off evidence script, not the deferred Playwright
-recording/reporter pipeline -- CIT-245 deferred building general recording
-capability, not the requirement that a fixture actually come from
-somewhere real.
-
-**Dagger Cloud trace link: not yet captured** (see `src/lib/acpTraceProtocol.ts`
-for the `provenance.daggerCloudTraceUrl` field a real capture would fill in;
-this fixture leaves it absent rather than link to one that doesn't exist).
-
-### Continuing this thread
-
-[The next lesson](/part-2/chapter-1/lesson-2) starts exactly where this one
-ends: its `_files/acp-trace.json` carries this lesson's solved frames
-verbatim, plus one more real turn in the same session. Nothing about the
-diagnostic above is re-explained there -- the same subject, the same
-evidence, stay on screen.
-
-### Extending this: a new lesson's own recording
-
-`src/lib/acpTraceProtocol.ts`'s header comment is the contract for the next
-lesson in this part: supply your own `_files`/`_solution` pair for
-`custom.acpTrace.traceFile`, ending the starter file's `frames` array at
-your breakpoint with a `nextTurn` naming who acts next, and the solution
-file with that frame appended and `nextTurn: null`. `AcpTraceBridge` and
-both preview pages need no lesson-specific code to pick that up.
+Next, keep the same events and ask whether a different processing model delivers
+the missing update.

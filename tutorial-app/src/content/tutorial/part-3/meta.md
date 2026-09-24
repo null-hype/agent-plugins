@@ -1,4 +1,4 @@
 ---
 type: part
-title: Budget Authority
+title: 'Walkthrough: budget and authority'
 ---
