@@ -1,0 +1,50 @@
+{
+  "actor": "client",
+  "action": "send prompt",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "session/prompt",
+    "params": {
+      "sessionId": "sess_smuggling-01",
+      "prompt": [
+        {
+          "type": "text",
+          "text": "Concept storyboard: what evidence would independent reviews need before claiming these hypothetical changes preserve an authorization invariant?"
+        }
+      ],
+      "_meta": {
+        "pins": [
+          {
+            "id": "patch-relay",
+            "label": "Patch: relay-header-normalize",
+            "text": "Hypothetical relay edit A. No executable patch or passing security check is supplied.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          },
+          {
+            "id": "patch-relay-candidate-b",
+            "label": "Autocomplete's other candidate for this hunk",
+            "text": "Alternative edit placeholder. No comparative behavior has been measured.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          },
+          {
+            "id": "patch-gunicorn",
+            "label": "Patch: gunicorn-image-bump",
+            "text": "Hypothetical image edit B. Changing the Python base image does not update Gunicorn installed from the local codebase.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          }
+        ],
+        "verdict": {
+          "channel": "review",
+          "status": "pending",
+          "text": "pending \u00b7 authored review scenario; no isolated branch tests recorded"
+        }
+      }
+    }
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#0",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
+  }
+}

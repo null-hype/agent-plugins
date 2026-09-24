@@ -1,0 +1,47 @@
+import { Controls, Meta, Story } from '@storybook/addon-docs/blocks';
+import * as SmugglingSurvivesTheMergeStories from './SmugglingSurvivesTheMerge.stories';
+
+<Meta of={SmugglingSurvivesTheMergeStories} />
+
+# Composition review — concept storyboard
+
+**This is not experimental evidence of write skew or parallel-agent vulnerability
+reintroduction.** The existing Dagger trace backs an already-vulnerable baseline.
+Reviews, candidate reasoning and the merge presentation are authored illustrations.
+No merged-source experiment has run. Solve and diagnostic reveal display fixture
+data; they do not execute Git, GitButler or Dagger.
+
+## 1. Two hypothetical reviews
+
+The approvals are simulated. Neither branch has passed an invariant check; their
+identifiers do not name reproducible source trees. Use `solved` to reveal the
+response, and `frameId` to inspect a turn with its surrounding context.
+
+<Story of={SmugglingSurvivesTheMergeStories.TwoPatchesReviewedIndependently} />
+<Controls of={SmugglingSurvivesTheMergeStories.TwoPatchesReviewedIndependently} />
+
+## 2. An illustrative clean merge
+
+The fixture reports a scratch `defenses.md` merge, not a source merge or GitButler
+execution. Its warning is unsupported. The actual relay reads Content-Length and
+forwards bytes; changing the Python image does not update the local Gunicorn
+codebase. Parser agreement is not the disagreement that creates desynchronization.
+The supplied fixed parser rejects gzip after chunked. No safer alternate candidate
+has been demonstrated.
+
+<Story of={SmugglingSurvivesTheMergeStories.GitButlerAppliesBoth} />
+
+## 3. The merged experiment has not run
+
+The original baseline trace remains linked in the replay. Its successful exploit
+means the starting security invariant is false. The final verdict is **NOT RUN**:
+no rebuild confirms the warning. Bootstrap clones upstream, accepts no merged
+source tree, and succeeds on exploitation rather than on blocking the exploit.
+
+<Story of={SmugglingSurvivesTheMergeStories.BootstrapFindsItReopened} />
+
+Before presenting an experiment, require one trusted oracle to pass on the exact
+base, A and B trees and fail on the cleanly merged A+B tree. Add benign and textual
+conflict controls, composition-order checks, payload variants, pinned dependencies,
+and captured agent provenance. One passing experiment would demonstrate possibility;
+it would not measure frequency or establish scaling with agent count.

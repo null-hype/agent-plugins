@@ -3,8 +3,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import tutorialStore from 'tutorialkit:store';
 import {
   buildAcpTraceState,
-  parseAcpTraceFixture,
+  frameFilePath,
+  parseAcpTraceFixtureRef,
   resolveAcpTraceConfig,
+  resolveAcpTraceFixture,
   valueToText,
 } from '../lib/acpTraceProtocol';
 
@@ -63,12 +65,15 @@ export default function AcpTraceBridge({
   const traceState = useMemo(() => {
     revisionRef.current += 1;
 
+    const ref = parseAcpTraceFixtureRef(traceText);
+    const loadFrame = (frameId: string) => documents[frameFilePath(resolvedConfig.traceFile, frameId)]?.value;
+
     return buildAcpTraceState({
       revision: revisionRef.current,
-      fixture: parseAcpTraceFixture(traceText),
+      fixture: resolveAcpTraceFixture(ref, loadFrame),
       scenario: resolvedConfig.scenario,
     });
-  }, [resolvedConfig.scenario, traceText]);
+  }, [resolvedConfig.scenario, resolvedConfig.traceFile, traceText, documents]);
 
   // One payload, sent to every preview iframe (client and agent alike), so
   // both panes always agree on the same trace position -- see this lesson's

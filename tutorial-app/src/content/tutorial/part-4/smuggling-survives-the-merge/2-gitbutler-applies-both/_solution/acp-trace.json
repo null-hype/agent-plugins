@@ -1,0 +1,11 @@
+{
+  "scenario": "smuggling-v1",
+  "frameIds": [
+    "smuggling-v1-0",
+    "smuggling-v1-1",
+    "smuggling-v1-2",
+    "smuggling-v1-2b",
+    "smuggling-v1-4",
+    "smuggling-v1-5"
+  ]
+}

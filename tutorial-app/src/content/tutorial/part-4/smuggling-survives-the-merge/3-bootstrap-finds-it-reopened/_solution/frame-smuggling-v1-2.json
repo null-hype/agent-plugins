@@ -1,0 +1,23 @@
+{
+  "actor": "client",
+  "action": "send prompt",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "session/prompt",
+    "params": {
+      "sessionId": "sess_smuggling-01",
+      "prompt": [
+        {
+          "type": "text",
+          "text": "Before applying, does either candidate for relay's hunk interact with gunicorn-image-bump?"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#2",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
+  }
+}

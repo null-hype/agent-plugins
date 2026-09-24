@@ -1,0 +1,38 @@
+{
+  "actor": "agent",
+  "action": "reason across candidates, flag before commit",
+  "speaker": "agent",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+      "stopReason": "end_turn",
+      "_meta": {
+        "pins": [
+          {
+            "id": "patch-relay-eval",
+            "label": "Patch: relay-header-normalize vs gunicorn-image-bump",
+            "text": "Unsupported candidate-interaction hypothesis. The relay reads Content-Length and forwards bytes; it does not normalize Transfer-Encoding.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          },
+          {
+            "id": "patch-relay-candidate-b-eval",
+            "label": "Autocomplete's other candidate vs gunicorn-image-bump",
+            "text": "No evidence this alternative is safer. Parser agreement does not create request-boundary disagreement.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          }
+        ],
+        "verdict": {
+          "channel": "review",
+          "status": "flagged",
+          "text": "flagged \u00b7 authored warning for UI demonstration; the proposed parser mechanism is unsupported and has not been validated."
+        }
+      }
+    }
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#2b",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
+  }
+}
