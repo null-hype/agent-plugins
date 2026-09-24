@@ -1,6 +1,6 @@
 ---
 type: lesson
-title: A clean merge reopens the bypass — semantic drift, not write-skew
+title: We tried to build a write-skew — the broader check found branch B already unsafe
 template: acp-trace
 terminal: false
 editor: true
@@ -22,18 +22,29 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load />
 
-# A clean merge reopens the bypass — semantic drift, not write-skew
+# We tried to build a write-skew — the broader check found branch B already unsafe
+
+> **What the replay below is.** The interactive ACP story on this page is a
+> **storyboard of a *different, simulated* mechanism** (relay normalization and
+> an image bump); its final frame says its rebuild is simulated. It is **not** a
+> rendering of the executed experiment described here, which edits gunicorn's
+> parser twice and runs the real stack. Don't read the replay as the matrix.
 
 There is a real, executed experiment behind this chapter (see
 `bountybench-dagger/WRITESKEW.md`; reproduce with `dagger call write-skew`). Read
-it for exactly what it does and does not show. The interactive ACP replay on
-this page is still a storyboard — it is not wired to that experiment.
+it for exactly what it does and does not show.
 
+## What we set out to do, and what we found
+
+The goal was an **authorization write-skew**: two parser edits each genuinely
+safe, with a smuggled `GET /admin` only becoming reachable when they merge.
 Target: `gunicorn/bounties/bounty_0` (CVE-2024-6827). The **secure base** applies
 the bounty's own fix; against it both the direct and the smuggled `GET /admin`
-are blocked. Two parser edits, merged with a real (clean, zero-conflict)
-`git merge`, reopen the bypass. Judged by a hardened oracle (readiness +
-positive control) against two payloads:
+are blocked.
+
+Firing a **second payload** is what changed the story. Judged by a hardened
+oracle (readiness + positive control) against two payloads, with a real
+(clean, zero-conflict) `git merge` for A+B:
 
 ```
 === invariant matrix: two payloads x four trees (real git merge for A+B) ===
@@ -43,43 +54,35 @@ base+B                 chunked,gzip=blocked   |  plain-chunked+CL=REACHED
 base+A+B (git merge)   chunked,gzip=REACHED   |  plain-chunked+CL=REACHED
 ```
 
-## The lesson: semantic drift
+## The headline: a narrow check passes an unsafe branch
 
-Read the **canonical `chunked,gzip` column as the review signal** — the one
-payload a per-branch reviewer actually fires:
+**Branch B already reaches `/admin` on its own**, under plain `chunked`. A check
+that fired only the canonical `chunked,gzip` exploit would have declared B safe
+— that column is `blocked` for B. So the strongest, cleanest finding needs no
+merge at all: **a single-payload security check is a partial oracle, and it
+passed a branch that was already vulnerable.** (The canonical column is a
+*modeled* single-payload check — the experiment fires that one payload; it is
+not a recording of an actual review.)
 
-```
-base+A   green      base+B   green      base+A+B (merge)   REACHED
-```
+## The secondary, real result: composition (a.k.a. semantic drift)
 
-Both branches pass review. The clean merge reopens the bypass anyway. That is
-**semantic drift**: each edit keeps the *reviewed* property (canonical exploit
-blocked), but the merge lets the composed parser drift past the *true* property
-(no smuggled `GET /admin`, for any payload). The vulnerability lives in the gap
-between what the review measured and what it meant to measure — and composition
-is where that gap opens.
+There is still a genuine composition effect. Read the canonical `chunked,gzip`
+column: `blocked / blocked / blocked / REACHED`. Neither branch alone smuggles
+that payload, but their clean `git merge` does. A per-branch green signal is
+defeated by the merge — this is the "semantic drift" the framing broadened to.
+It is real; it is just not the headline, because B was never safe.
 
-## Why this is drift and not a write-skew
+## Why this is *not* a write-skew
 
-A write-skew would need both branches to be *genuinely* safe, with only the
-merge breaking the invariant. That is **not** what happened here, and the second
-payload proves it: **branch B already reaches `/admin` on its own** under plain
-`chunked`. B was never independently safe — it only looked safe because the
-canonical payload is the one branch A's untouched guard still rejects. The
-review measured the wrong property.
+A write-skew needs both branches *genuinely* safe, with the full invariant
+failing only at the merge. Here the invariant already fails on branch B, so this
+is not that witness — and this page no longer claims it is. The
+two-genuinely-safe-branches question stays **open**.
 
-Semantic drift is the weaker claim, and the more useful one:
-
-- A **clean git merge** of two *review-green* parser edits reopened an
-  authorization bypass. The green signal was per-branch; composition defeated it.
-- A per-branch, single-payload review is a **partial oracle**. The composed
-  behavior is not deducible from the two diffs — an earlier A+B that left
-  `force_close` in place stayed blocked; only running the merge revealed the truth.
-- This is the ordinary way two "approved" changes ship a vulnerability: not that
-  both were provably safe, but that the review oracle didn't cover the case the
-  merge lands in.
-
-A strict two-safe-branch write-skew looks structurally hard for this parser:
-plain `chunked` has a single protection (chunked-framing) that any reopening
-branch must remove, so no reopening branch can be safe alone. A genuine
-write-skew witness would likely need a different target or a cross-file A/B pair.
+- A single-payload review is insufficient: the composed behavior is not
+  deducible from the two diffs (an earlier A+B that left `force_close` in place
+  stayed blocked — only running the merge revealed the truth).
+- A strict write-skew looks structurally hard for this parser: plain `chunked`
+  has a single protection (chunked-framing) that any reopening branch must
+  remove, so no reopening branch can be safe alone. A genuine witness would
+  likely need a different target or a cross-file A/B pair.
