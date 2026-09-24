@@ -64,7 +64,7 @@ class ArticleRule {
 
 authorizationAnchor = new ArticleRule {
   phrase = "anhand ... Benutzer-ID"
-  governedCase = "Dative"
+  governedCase = "Genitive"
   requiredArticle = "der"
 }`;
 

@@ -21,7 +21,7 @@ authored to resolve cleanly.
 **The claim this lesson demonstrates is not "here is a log viewer."** It's
 that an agent's stated reason can be type-checked against what it was
 actually permitted to do -- the same `Diagnostic{severity, code, message}`
-shape [CIT-139](https://github.com/null-hype/agent-plugins/tree/main/capability-spike)
+shape [capability-spike](https://github.com/null-hype/agent-plugins/tree/main/capability-spike)
 already uses for `pkl/Ledger.pkl`'s `CAP_NO_GRANT`, `CAP_REJECTED`, and
 `CAP_VAULT_MISMATCH`, extended one step earlier: from "may this fact
 acquire the capability" to "does this fact's stated reason even name
@@ -29,12 +29,12 @@ something the supervisor recognizes."
 
 ## The vocabulary is governed, not personal
 
-`pkl/GovernedVocabulary.pkl` is modelled on chapter-1 lesson-2's
-`PersonalVocabulary.pkl`, with ownership inverted. There, *you* admitted
+`pkl/GovernedVocabulary.pkl` is modelled on the Schadenfreude lesson's
+`PersonalVocabulary.pkl` (chapter 1, lesson 1), with ownership inverted. There, *you* admitted
 `Schadenfreude` into your own vocabulary. Here, only the supervisor may
 admit a phrase -- a worker fact can reference an admitted term by name, but
-cannot add one. `requiresVocabularyAdmission = true`, same field name as
-lesson 2, opposite direction of control.
+cannot add one. `requiresVocabularyAdmission = true`: the same field name as
+that lesson, with control running the other way.
 
 ## The resolver
 
@@ -91,7 +91,7 @@ read the reason it failed.
 
 ## The diagnostic is a language service, not a rendering
 
-[CIT-152](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/governanceDiagnostic.ts)
+[`governanceDiagnostic.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/governanceDiagnostic.ts)
 widens that same `{severity, code, message, factID, vault}` `Diagnostic`
 one step further: `reasonDiagnosticToGovernance` (in `governanceDiagnostic.ts`,
 alongside `reasonResolver.ts` in the tree to the left) reads the same
@@ -107,16 +107,11 @@ the related evidence alongside the verdict, and each failing line also
 carries a CodeLens -- `✗ CAP_NO_GRANT · 2 related` -- that toggles a small
 panel underneath the line showing the same evidence, closer to
 `✗ CAP_NO_GRANT · supervisor never recorded a grant` sitting next to
-`Ledger.checkAccess(factID, requestedVault)` than to a log viewer. (This
-build's Monaco bundle doesn't register a `peek-definition` action to hang
-that panel off of -- checked directly, no `editor.action.peekDefinition`
-exists on a freshly created editor here -- so it's a Monaco content widget
-instead of the built-in Peek View; the shape of what's shown is the same
-either way.)
+`Ledger.checkAccess(factID, requestedVault)` than to a log viewer.
 
 **Supporting files**, all real, in the tree to the left:
 `pkl/GovernedVocabulary.pkl` (the admitted vocabulary) and `pkl/Ledger.pkl`
-(the capability gate, unchanged from CIT-139), plus the TypeScript replays
+(the capability gate, unchanged from earlier lessons), plus the TypeScript replays
 this browser lesson runs instead of a live Pkl evaluator --
 `reasonResolver.ts`, `governedVocabulary.ts`, `ledgerCheckAccess.ts`,
 `governanceDiagnostic.ts`, and the fixtures themselves in
