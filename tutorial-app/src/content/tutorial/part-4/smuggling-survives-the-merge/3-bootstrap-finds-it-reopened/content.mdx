@@ -1,6 +1,6 @@
 ---
 type: lesson
-title: dagger call bootstrap finds it reopened
+title: A clean merge reopens the bypass — but not as a write-skew
 template: acp-trace
 terminal: false
 editor: true
@@ -22,36 +22,44 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load />
 
-# dagger call bootstrap finds it reopened
+# A clean merge reopens the bypass — but not as a write-skew
 
-The incoming message pins the real baseline: `dagger call bootstrap` against
-the *unmodified* `gunicorn` module, captured earlier today — direct `GET
-/admin` blocked with `403`, the task's own smuggling payload gets a `GET
-/admin` through anyway, and the backend logs the hit. That run's full trace is
-linked in the pin.
+There is now a real, executed experiment behind this chapter (see
+`bountybench-dagger/WRITESKEW.md`; reproduce with `dagger call write-skew`). Read
+it for exactly what it does and does not show. The interactive ACP replay on
+this page is still a storyboard — it is not wired to that experiment.
 
-Solve replays the check against the *merged* tree instead: **FAIL**. Relay's
-normalizer now accepts `Transfer-Encoding: chunked, gzip` (with the space)
-exactly like it always accepted `chunked,gzip` — and gunicorn's parser already
-did. Two parsers that used to disagree on a narrow set of byte-for-byte inputs
-now agree on a wider one, which is the same shape of gap the original bounty's
-payload exploited, reached from a different edge.
+Target: `gunicorn/bounties/bounty_0` (CVE-2024-6827). The **secure base** applies
+the bounty's own fix; against it both the direct and the smuggled `GET /admin`
+are blocked. Two parser edits, merged with a real (clean, zero-conflict)
+`git merge`, reopen the bypass. Judged by a hardened oracle (readiness +
+positive control) against two payloads:
 
-**Simulated.** No second live `dagger call bootstrap` build backs this
-specific FAIL — building it would mean actually patching `relay.py` and
-gunicorn's Dockerfile in the real `bountytasks` checkout and re-running the
-module, which this spike doesn't do. The mechanism is the real one from
-`main.go`'s `smuggledAdminRequest`; this replay illustrates it, it doesn't
-capture it.
+```
+=== invariant matrix: two payloads x four trees (real git merge for A+B) ===
+base (secure)          chunked,gzip=blocked   |  plain-chunked+CL=blocked
+base+A                 chunked,gzip=blocked   |  plain-chunked+CL=blocked
+base+B                 chunked,gzip=blocked   |  plain-chunked+CL=REACHED
+base+A+B (git merge)   chunked,gzip=REACHED   |  plain-chunked+CL=REACHED
+```
 
-Lesson 2's own merged commit already carried a flag naming this exact gap —
-`smuggling-reopened`, raised by reasoning across relay's autocomplete
-candidates *before* the merge was ever applied. This rebuild doesn't discover
-anything new: it confirms that flag was right. That's the pairing worth
-keeping. A pre-commit flag is a hypothesis about behavior, produced without
-running anything. Only re-running the actual oracle — build it, boot it,
-replay the exploit, check the backend log — against the *result* of the merge
-tells you whether that hypothesis holds. That's the same reason your own
-process notes that a clean GitButler apply and an independent `dagger call
-bootstrap` re-run are both required: neither substitutes for the other, and
-now neither does a pre-commit flag substitute for either one.
+Against the canonical `chunked,gzip` exploit alone the column reads
+`blocked/blocked/blocked/REACHED` — which *looks* like a write-skew. It is not.
+The second payload shows **branch B already reaches `/admin` on its own**: B is
+not independently safe; it only passes the canonical payload because branch A's
+untouched guard still rejects that specific one.
+
+So the honest lesson is narrower, and still worth keeping:
+
+- A **clean git merge** of two reviewed parser edits reopened an authorization
+  bypass that neither branch's canonical-exploit check caught alone.
+- A per-branch, single-payload invariant check is therefore **insufficient** —
+  the composed behavior is not deducible from the two diffs (an earlier A+B that
+  left `force_close` in place stayed blocked; only running it revealed the truth).
+
+What this is **not** yet: a valid write-skew of two *independently-safe*
+branches. That needs `I(base+A)` and `I(base+B)` to hold for every payload, with
+the merge the only break. Here `I(base+B)` fails on plain `chunked`, and that
+looks structural for this parser (plain `chunked` has a single protection that
+any reopening branch must remove). A genuine witness likely needs a different
+target or a cross-file A/B pair.
