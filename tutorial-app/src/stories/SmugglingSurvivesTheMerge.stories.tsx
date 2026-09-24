@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { waitFor } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
+import { deriveTraceView } from '../lib/acpTraceProtocol';
 import AcpTracePreview from './AcpTracePreview';
 import { deriveAcpTraceState, loadLesson } from './lessonFixtures';
 
@@ -31,9 +32,9 @@ type StoryArgs = { solved: boolean; frameId?: string };
 // one. Annotating with the Meta<StoryArgs> type directly makes `typeof meta`
 // resolve to that, so beforeEach/play's `args` come through typed.
 const meta: Meta<StoryArgs> = {
-	title: 'Lessons/Smuggling Survives the Merge',
-	// docs.story.autoplay: false -- play() here only waits for both Monaco
-	// panes to render, it doesn't narrate; keeping it off still avoids firing
+	title: 'Lessons/Composition Review (Concept Storyboard)',
+	id: 'lessons-smuggling-survives-the-merge',
+	// docs.story.autoplay: false -- play() checks the visible replay verdicts; keeping it off still avoids firing
 	// that wait the instant a reader scrolls a story into view on the
 	// autodocs page. The Canvas view (a story opened on its own) is
 	// unaffected -- Storybook always autoplays there.
@@ -110,7 +111,7 @@ const agentText = (canvasElement: HTMLElement) => {
 // AcpTraceBridge itself does internally -- no store, no bridge. `solved` is
 // a Controls-panel toggle rather than a narrated play(); flip it to compare
 // the lesson's starter and solved states. play() itself just waits for both
-// panes to render.
+// panes to render and checks their verdicts.
 //
 // height: 640 -- default 360 is too short once the Agent pane's raw JSON
 // dump is a single long word-wrapped line (this lesson's pin text is long);
@@ -118,6 +119,7 @@ const agentText = (canvasElement: HTMLElement) => {
 // and the fuller explanation of why a short pane silently truncates any
 // textContent read to whatever's actually in the viewport.
 export const TwoPatchesReviewedIndependently: Story = {
+	name: 'Two hypothetical reviews',
 	render: (args) => (
 		<div className="previews-container">
 			<AcpTracePreview
@@ -130,12 +132,21 @@ export const TwoPatchesReviewedIndependently: Story = {
 			/>
 		</div>
 	),
-	play: async ({ canvasElement }) => {
+	play: async ({ canvasElement, args }) => {
 		await editorsReady(canvasElement);
+		const state = deriveAcpTraceState(lesson1, args.solved || args.frameId ? lesson1.solved : lesson1.files, { frameId: args.frameId });
+		const view = deriveTraceView(state.frames);
+		await waitFor(() => {
+			for (const entries of Object.values(view.channels)) {
+				for (const entry of entries) expect(agentText(canvasElement)).toContain(entry.text);
+			}
+			expect(clientText(canvasElement)).toContain(state.frames.some((frame) => 'rebaseTodo' in frame) ? 'pick ' : 'waiting for trace');
+		}, { timeout: 15000 });
 	},
 };
 
 export const GitButlerAppliesBoth: Story = {
+	name: 'An illustrative clean merge',
 	render: (args) => (
 		<div className="previews-container">
 			<AcpTracePreview
@@ -148,12 +159,21 @@ export const GitButlerAppliesBoth: Story = {
 			/>
 		</div>
 	),
-	play: async ({ canvasElement }) => {
+	play: async ({ canvasElement, args }) => {
 		await editorsReady(canvasElement);
+		const state = deriveAcpTraceState(lesson2, args.solved || args.frameId ? lesson2.solved : lesson2.files, { frameId: args.frameId });
+		const view = deriveTraceView(state.frames);
+		await waitFor(() => {
+			for (const entries of Object.values(view.channels)) {
+				for (const entry of entries) expect(agentText(canvasElement)).toContain(entry.text);
+			}
+			expect(clientText(canvasElement)).toContain(state.frames.some((frame) => 'rebaseTodo' in frame) ? 'pick ' : 'waiting for trace');
+		}, { timeout: 15000 });
 	},
 };
 
 export const BootstrapFindsItReopened: Story = {
+	name: 'The merged experiment has not run',
 	render: (args) => (
 		<div className="previews-container">
 			<AcpTracePreview
@@ -166,7 +186,15 @@ export const BootstrapFindsItReopened: Story = {
 			/>
 		</div>
 	),
-	play: async ({ canvasElement }) => {
+	play: async ({ canvasElement, args }) => {
 		await editorsReady(canvasElement);
+		const state = deriveAcpTraceState(lesson3, args.solved || args.frameId ? lesson3.solved : lesson3.files, { frameId: args.frameId });
+		const view = deriveTraceView(state.frames);
+		await waitFor(() => {
+			for (const entries of Object.values(view.channels)) {
+				for (const entry of entries) expect(agentText(canvasElement)).toContain(entry.text);
+			}
+			expect(clientText(canvasElement)).toContain(state.frames.some((frame) => 'rebaseTodo' in frame) ? 'pick ' : 'waiting for trace');
+		}, { timeout: 15000 });
 	},
 };

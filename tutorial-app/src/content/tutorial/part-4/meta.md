@@ -1,4 +1,7 @@
 ---
 type: part
-title: Merge Invariants
+title: 'Research: what a green check misses'
+chapters:
+  - experiment
+  - smuggling-survives-the-merge
 ---

@@ -1,6 +1,6 @@
 ---
 type: lesson
-title: We tried to build a write-skew — the broader check found branch B already unsafe
+title: What evidence would justify the warning?
 template: acp-trace
 terminal: false
 editor: true
@@ -22,67 +22,22 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load />
 
-# We tried to build a write-skew — the broader check found branch B already unsafe
+**Concept storyboard.** Solve reveals an authored failure report. It does not
+rebuild a source tree or run a security check.
 
-> **What the replay below is.** The interactive ACP story on this page is a
-> **storyboard of a *different, simulated* mechanism** (relay normalization and
-> an image bump); its final frame says its rebuild is simulated. It is **not** a
-> rendering of the executed experiment described here, which edits gunicorn's
-> parser twice and runs the real stack. Don't read the replay as the matrix.
+The replay has now shown two approvals, a clean merge, and a warning. None of
+those authored turns supplies the missing experimental evidence. The proposed
+relay-normalization and image-bump mechanism was not validated.
 
-There is a real, executed experiment behind this chapter (see
-`bountybench-dagger/WRITESKEW.md`; reproduce with `dagger call write-skew`). Read
-it for exactly what it does and does not show.
+To substantiate the original claim, we would need the same trusted check to pass
+on a secure base and on each branch, then fail on their actual clean merge.
+The check must cover the authorization invariant rather than just one payload.
 
-## What we set out to do, and what we found
+The [executed experiment](/part-4/experiment/1-what-the-check-missed) tested a
+different pair of parser edits. Its broader check found branch B already unsafe.
+That changed the conclusion: a narrow check missed an existing vulnerability,
+and the merge also changed which payload could reach it.
 
-The goal was an **authorization write-skew**: two parser edits each genuinely
-safe, with a smuggled `GET /admin` only becoming reachable when they merge.
-Target: `gunicorn/bounties/bounty_0` (CVE-2024-6827). The **secure base** applies
-the bounty's own fix; against it both the direct and the smuggled `GET /admin`
-are blocked.
-
-Firing a **second payload** is what changed the story. Judged by a hardened
-oracle (readiness + positive control) against two payloads, with a real
-(clean, zero-conflict) `git merge` for A+B:
-
-```
-=== invariant matrix: two payloads x four trees (real git merge for A+B) ===
-base (secure)          chunked,gzip=blocked   |  plain-chunked+CL=blocked
-base+A                 chunked,gzip=blocked   |  plain-chunked+CL=blocked
-base+B                 chunked,gzip=blocked   |  plain-chunked+CL=REACHED
-base+A+B (git merge)   chunked,gzip=REACHED   |  plain-chunked+CL=REACHED
-```
-
-## The headline: a narrow check passes an unsafe branch
-
-**Branch B already reaches `/admin` on its own**, under plain `chunked`. A check
-that fired only the canonical `chunked,gzip` exploit would have declared B safe
-— that column is `blocked` for B. So the strongest, cleanest finding needs no
-merge at all: **a single-payload security check is a partial oracle, and it
-passed a branch that was already vulnerable.** (The canonical column is a
-*modeled* single-payload check — the experiment fires that one payload; it is
-not a recording of an actual review.)
-
-## The secondary, real result: composition (a.k.a. semantic drift)
-
-There is still a genuine composition effect. Read the canonical `chunked,gzip`
-column: `blocked / blocked / blocked / REACHED`. Neither branch alone smuggles
-that payload, but their clean `git merge` does. A per-branch green signal is
-defeated by the merge — this is the "semantic drift" the framing broadened to.
-It is real; it is just not the headline, because B was never safe.
-
-## Why this is *not* a write-skew
-
-A write-skew needs both branches *genuinely* safe, with the full invariant
-failing only at the merge. Here the invariant already fails on branch B, so this
-is not that witness — and this page no longer claims it is. The
-two-genuinely-safe-branches question stays **open**.
-
-- A single-payload review is insufficient: the composed behavior is not
-  deducible from the two diffs (an earlier A+B that left `force_close` in place
-  stayed blocked — only running the merge revealed the truth).
-- A strict write-skew looks structurally hard for this parser: plain `chunked`
-  has a single protection (chunked-framing) that any reopening branch must
-  remove, so no reopening branch can be safe alone. A genuine witness would
-  likely need a different target or a cross-file A/B pair.
+The useful habit is to follow each verdict back to its source tree, rule, and
+observations. A persuasive replay is a way to explain a result; the evidence
+still has to justify that result.

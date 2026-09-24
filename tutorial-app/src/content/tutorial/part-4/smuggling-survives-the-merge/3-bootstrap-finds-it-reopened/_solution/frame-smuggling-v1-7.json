@@ -1,7 +1,7 @@
 {
   "actor": "agent",
-  "action": "re-run dagger call bootstrap against the merged tree",
-  "speaker": "dagger",
+  "action": "report missing merged-source experiment",
+  "speaker": "storyboard",
   "envelope": {
     "jsonrpc": "2.0",
     "id": 4,
@@ -12,19 +12,20 @@
           {
             "id": "precommit-flag-ref",
             "label": "Pre-commit flag (already raised)",
-            "text": "smuggling-reopened, evaluationId smuggling-v1:precommit-relay-gunicorn -- raised on the merged commit before this rebuild ever ran"
+            "text": "unverified-composition: authored warning, not a prediction confirmed by execution.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           },
           {
             "id": "mechanism",
-            "label": "Why it reopens",
-            "text": "relay's normalizer now treats 'chunked, gzip' (with a space) the same as 'chunked,gzip'; gunicorn's parser already did. The two parsers re-agree on a payload shape neither diff's own test exercised -- the same CL/TE ambiguity the original bounty exploited, on a new trigger string.",
-            "simulated": "mechanism illustration -- no second live dagger build backs this specific run"
+            "label": "Why this is not a write-skew witness",
+            "text": "The baseline already permits the exploit. No secure base, isolated branch checks, or merged-source run exists. The supplied fixed parser rejects gzip after chunked; parser agreement does not recreate desynchronization.",
+            "simulated": "Authored storyboard object; not source-tree evidence."
           }
         ],
         "verdict": {
-          "channel": "smuggling",
-          "status": "FAIL (simulated)",
-          "text": "FAIL \u00b7 smuggled GET /admin reaches the backend again -- confirms the smuggling-reopened flag already raised on the merged commit, before this rebuild ever ran. (simulated: no second bootstrap build exists for the patched tree in this spike; the mechanism is real, this specific replay is not)"
+          "channel": "experiment",
+          "status": "not-run",
+          "text": "NOT RUN \u00b7 no merged-source experiment. Bootstrap clones upstream and succeeds when the exploit succeeds; it is not a security-invariant gate."
         }
       }
     }
@@ -32,6 +33,6 @@
   "provenance": {
     "recordingId": "smuggling-v1#7",
     "capturedAt": "n/a (scripted)",
-    "scripted": "spike storyboard: smuggling survives the merge"
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
   }
 }

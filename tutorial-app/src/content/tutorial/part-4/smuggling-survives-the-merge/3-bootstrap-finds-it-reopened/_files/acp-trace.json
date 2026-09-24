@@ -13,7 +13,7 @@
           "prompt": [
             {
               "type": "text",
-              "text": "Do relay's Transfer-Encoding normalization fix and gunicorn's base-image bump, each taken alone, preserve the request-smuggling defense?"
+              "text": "Concept storyboard: what evidence would independent reviews need before claiming these hypothetical changes preserve an authorization invariant?"
             }
           ],
           "_meta": {
@@ -21,24 +21,26 @@
               {
                 "id": "patch-relay",
                 "label": "Patch: relay-header-normalize",
-                "text": "relay.py: strip whitespace around commas in Transfer-Encoding list values -- fixes an unrelated proxy-compat bug"
+                "text": "Hypothetical relay edit A. No executable patch or passing security check is supplied.",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               },
               {
                 "id": "patch-relay-candidate-b",
                 "label": "Autocomplete's other candidate for this hunk",
-                "text": "relay.py: strip only leading whitespace, preserve the space after each comma -- also fixes the proxy-compat bug",
-                "simulated": "offered alongside patch-relay when the hunk was drafted; not picked, not committed, not reviewed"
+                "text": "Alternative edit placeholder. No comparative behavior has been measured.",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               },
               {
                 "id": "patch-gunicorn",
                 "label": "Patch: gunicorn-image-bump",
-                "text": "internalApp Dockerfile: bump gunicorn base image to latest security patch level"
+                "text": "Hypothetical image edit B. Changing the Python base image does not update Gunicorn installed from the local codebase.",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               }
             ],
             "verdict": {
               "channel": "review",
               "status": "pending",
-              "text": "pending · each diff has its own reviewer, its own tests, and touches only its own file"
+              "text": "pending \u00b7 authored review scenario; no isolated branch tests recorded"
             }
           }
         }
@@ -46,7 +48,7 @@
       "provenance": {
         "recordingId": "smuggling-v1#0",
         "capturedAt": "n/a (scripted)",
-        "scripted": "spike storyboard: smuggling survives the merge"
+        "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
       }
     },
     {
@@ -63,32 +65,40 @@
               {
                 "id": "relay-tree",
                 "label": "relay-header-normalize tree",
-                "text": "c866856ba8d7"
+                "text": "c866856ba8d7",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               },
               {
                 "id": "gunicorn-tree",
                 "label": "gunicorn-image-bump tree",
-                "text": "8b4710aba698"
+                "text": "8b4710aba698",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               }
             ],
             "verdict": {
               "channel": "review",
               "status": "approved",
-              "text": "approved · relay diff alone: defense intact, no /admin path check touched. gunicorn diff alone: defense intact, no parser touched. (simulated: a real reviewer, not this trace's own capture)"
+              "text": "approved \u00b7 simulated reviewer responses only; neither branch has an executed invariant check."
             }
           }
         }
       },
       "rebaseTodo": {
         "commits": [
-          { "sha": "c866856ba8d7", "subject": "relay: normalize whitespace in Transfer-Encoding list values" },
-          { "sha": "8b4710aba698", "subject": "gunicorn: bump base image (security patch)" }
+          {
+            "sha": "c866856ba8d7",
+            "subject": "hypothetical A: relay edit (no source patch supplied)"
+          },
+          {
+            "sha": "8b4710aba698",
+            "subject": "hypothetical B: change Python base image (not a Gunicorn update)"
+          }
         ]
       },
       "provenance": {
         "recordingId": "smuggling-v1#1",
         "capturedAt": "n/a (scripted)",
-        "scripted": "spike storyboard: smuggling survives the merge"
+        "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
       }
     },
     {
@@ -111,7 +121,7 @@
       "provenance": {
         "recordingId": "smuggling-v1#2",
         "capturedAt": "n/a (scripted)",
-        "scripted": "spike storyboard: smuggling survives the merge"
+        "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
       }
     },
     {
@@ -128,18 +138,20 @@
               {
                 "id": "patch-relay-eval",
                 "label": "Patch: relay-header-normalize vs gunicorn-image-bump",
-                "text": "re-aligns with gunicorn's parser -- 'chunked, gzip' and 'chunked,gzip' become indistinguishable to both parsers once both land"
+                "text": "Unsupported candidate-interaction hypothesis. The relay reads Content-Length and forwards bytes; it does not normalize Transfer-Encoding.",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               },
               {
                 "id": "patch-relay-candidate-b-eval",
                 "label": "Autocomplete's other candidate vs gunicorn-image-bump",
-                "text": "keeps a byte-for-byte difference gunicorn's parser still treats separately -- parsers keep disagreeing"
+                "text": "No evidence this alternative is safer. Parser agreement does not create request-boundary disagreement.",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               }
             ],
             "verdict": {
               "channel": "review",
               "status": "flagged",
-              "text": "flagged pre-commit · relay-header-normalize -- the candidate already approved and about to be applied -- would reopen the CL/TE ambiguity this module's original bounty exploited, once combined with gunicorn-image-bump. The candidate left on the table would not have. (simulated: a real agent reasoning pass over both candidates against the paired diff, not this trace's own capture)"
+              "text": "flagged \u00b7 authored warning for UI demonstration; the proposed parser mechanism is unsupported and has not been validated."
             }
           }
         }
@@ -147,7 +159,7 @@
       "provenance": {
         "recordingId": "smuggling-v1#2b",
         "capturedAt": "n/a (scripted)",
-        "scripted": "spike storyboard: agent flags a candidate before commit"
+        "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
       }
     },
     {
@@ -170,7 +182,8 @@
               {
                 "id": "base-tree",
                 "label": "Base tree (bountybench-dagger gunicorn defenses)",
-                "text": "7074290f71b0"
+                "text": "7074290f71b0",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               }
             ]
           }
@@ -179,13 +192,13 @@
       "provenance": {
         "recordingId": "smuggling-v1#4",
         "capturedAt": "n/a (scripted)",
-        "scripted": "spike storyboard: smuggling survives the merge"
+        "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
       }
     },
     {
       "actor": "agent",
-      "action": "apply both virtual branches",
-      "speaker": "gitbutler",
+      "action": "replay illustrative text merge",
+      "speaker": "git (illustration)",
       "envelope": {
         "jsonrpc": "2.0",
         "id": 3,
@@ -196,13 +209,14 @@
               {
                 "id": "merge-tree",
                 "label": "Merged tree",
-                "text": "480731005c26"
+                "text": "480731005c26",
+                "simulated": "Authored storyboard object; not source-tree evidence."
               }
             ],
             "verdict": {
               "channel": "merge",
               "status": "clean",
-              "text": "clean · 0 conflicts · defenses.md auto-merged (real `git merge`, scratch repo, both branches from tree 7074290f71b0)"
+              "text": "clean \u00b7 0 conflicts \u00b7 illustrative defenses.md merge only; no relay or Gunicorn source composition, no GitButler execution."
             }
           }
         }
@@ -213,43 +227,48 @@
             "sha": "480731005c26",
             "subject": "relay+gunicorn: normalize TE whitespace, bump image",
             "diagnostic": {
-              "severity": "error",
-              "code": "smuggling-reopened",
+              "severity": "warning",
+              "code": "unverified-composition",
               "confirmGate": true,
-              "message": "relay's normalizer now agrees with gunicorn's parser on 'chunked, gzip' -- the same CL/TE ambiguity the original bounty's payload exploited, reachable once both patches land together.",
+              "message": "Concept storyboard: this authored warning has no executed source-tree evidence. Reveal shows the fixture; it does not run Git or Dagger.",
               "subject": {
                 "role": "fact",
                 "uri": "relay.py",
-                "detail": "Transfer-Encoding whitespace normalization, once paired with gunicorn-image-bump"
+                "detail": "Hypothetical edit A; no source patch supplied"
               },
               "related": [
                 {
                   "role": "fact",
                   "uri": "relay.py (candidate B, not picked)",
-                  "detail": "would have kept relay's parser disagreeing with gunicorn's"
+                  "detail": "Alternative placeholder; comparative safety untested"
                 },
                 {
                   "role": "fact",
                   "uri": "internalApp Dockerfile",
-                  "detail": "gunicorn-image-bump: parser already normalized 'chunked,gzip' without the space"
+                  "detail": "Python image changes do not update the locally installed Gunicorn codebase"
                 },
                 {
                   "role": "axiom",
                   "uri": "bounty_0 smuggling defense",
-                  "detail": "the original bounty's payload exploited exactly this kind of CL/TE parser disagreement"
+                  "detail": "A write-skew witness requires a secure base and passing individual branches; neither is established here"
                 }
               ],
               "evaluationId": "smuggling-v1:precommit-relay-gunicorn"
             }
           }
         ],
-        "comment": "clean apply · 0 conflicts · defenses.md auto-merged"
+        "comment": "concept storyboard \u00b7 illustrative text merge \u00b7 source behavior untested"
       },
       "provenance": {
         "recordingId": "smuggling-v1#5",
         "capturedAt": "n/a (scripted)",
-        "scripted": "spike storyboard: smuggling survives the merge"
+        "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
       }
     }
-  ]
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "storyboard",
+    "action": "report missing merged-source experiment"
+  }
 }
