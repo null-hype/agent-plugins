@@ -1,0 +1,70 @@
+{
+  "actor": "agent",
+  "action": "replay illustrative text merge",
+  "speaker": "git (illustration)",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "result": {
+      "stopReason": "end_turn",
+      "_meta": {
+        "pins": [
+          {
+            "id": "merge-tree",
+            "label": "Merged tree",
+            "text": "480731005c26",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          }
+        ],
+        "verdict": {
+          "channel": "merge",
+          "status": "clean",
+          "text": "clean \u00b7 0 conflicts \u00b7 illustrative defenses.md merge only; no relay or Gunicorn source composition, no GitButler execution."
+        }
+      }
+    }
+  },
+  "rebaseTodo": {
+    "commits": [
+      {
+        "sha": "480731005c26",
+        "subject": "relay+gunicorn: normalize TE whitespace, bump image",
+        "diagnostic": {
+          "severity": "warning",
+          "code": "unverified-composition",
+          "confirmGate": true,
+          "message": "Concept storyboard: this authored warning has no executed source-tree evidence. Reveal shows the fixture; it does not run Git or Dagger.",
+          "subject": {
+            "role": "fact",
+            "uri": "relay.py",
+            "detail": "Hypothetical edit A; no source patch supplied"
+          },
+          "related": [
+            {
+              "role": "fact",
+              "uri": "relay.py (candidate B, not picked)",
+              "detail": "Alternative placeholder; comparative safety untested"
+            },
+            {
+              "role": "fact",
+              "uri": "internalApp Dockerfile",
+              "detail": "Python image changes do not update the locally installed Gunicorn codebase"
+            },
+            {
+              "role": "axiom",
+              "uri": "bounty_0 smuggling defense",
+              "detail": "A write-skew witness requires a secure base and passing individual branches; neither is established here"
+            }
+          ],
+          "evaluationId": "smuggling-v1:precommit-relay-gunicorn"
+        }
+      }
+    ],
+    "comment": "concept storyboard \u00b7 illustrative text merge \u00b7 source behavior untested"
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#5",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
+  }
+}

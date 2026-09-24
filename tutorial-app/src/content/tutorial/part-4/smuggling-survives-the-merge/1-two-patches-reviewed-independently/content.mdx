@@ -1,0 +1,39 @@
+---
+type: lesson
+title: Two hypothetical reviews
+template: acp-trace
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+  - - 4174
+    - Agent
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+custom:
+  acpTrace:
+    traceFile: /acp-trace.json
+    scenario: smuggling-v1
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load />
+
+# Two hypothetical reviews
+
+**Concept storyboard — not experimental evidence.** Solve replays authored turns;
+it does not execute Git, Dagger, or agent reviews.
+
+Two hypothetical patches receive authored approvals. These are simulated reviewer
+responses, not branch test results or captured parallel-agent sessions. The patch
+names and abbreviated tree identifiers are illustrative objects, not checkoutable
+source trees.
+
+The existing Gunicorn bounty baseline demonstrates an authorization bypass. It
+does not establish a secure starting point. Neither hypothetical branch has been
+shown to preserve the invariant “unauthenticated input never reaches /admin”.
+
+Solve reveals the authored approvals. Ask what evidence would justify them.

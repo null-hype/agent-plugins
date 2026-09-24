@@ -1,0 +1,50 @@
+{
+  "actor": "agent",
+  "action": "approve both, independently",
+  "speaker": "reviewer",
+  "envelope": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "stopReason": "end_turn",
+      "_meta": {
+        "pins": [
+          {
+            "id": "relay-tree",
+            "label": "relay-header-normalize tree",
+            "text": "c866856ba8d7",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          },
+          {
+            "id": "gunicorn-tree",
+            "label": "gunicorn-image-bump tree",
+            "text": "8b4710aba698",
+            "simulated": "Authored storyboard object; not source-tree evidence."
+          }
+        ],
+        "verdict": {
+          "channel": "review",
+          "status": "approved",
+          "text": "approved \u00b7 simulated reviewer responses only; neither branch has an executed invariant check."
+        }
+      }
+    }
+  },
+  "rebaseTodo": {
+    "commits": [
+      {
+        "sha": "c866856ba8d7",
+        "subject": "hypothetical A: relay edit (no source patch supplied)"
+      },
+      {
+        "sha": "8b4710aba698",
+        "subject": "hypothetical B: change Python base image (not a Gunicorn update)"
+      }
+    ]
+  },
+  "provenance": {
+    "recordingId": "smuggling-v1#1",
+    "capturedAt": "n/a (scripted)",
+    "scripted": "Concept storyboard: authored reviews and merge illustration; no merged-source experiment or concurrent agent capture."
+  }
+}

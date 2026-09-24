@@ -9,7 +9,13 @@ import {
 	resolveLoanwordArcConfig,
 	validateLoanwordLesson,
 } from '../lib/loanwordArcProtocol';
-import { buildAcpTraceState, parseAcpTraceFixture, resolveAcpTraceConfig } from '../lib/acpTraceProtocol';
+import {
+	buildAcpTraceState,
+	frameFilePath,
+	parseAcpTraceFixtureRef,
+	resolveAcpTraceConfig,
+	resolveAcpTraceFixture,
+} from '../lib/acpTraceProtocol';
 
 // A lesson as TutorialKit loads it: frontmatter, starter `_files`, and the
 // `_solution` files that Solve writes over them. Read straight from
@@ -20,6 +26,9 @@ const raw = import.meta.glob(
 		'../content/tutorial/part-1/chapter-2/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-2/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-2/chapter-1/lesson-2/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-4/smuggling-survives-the-merge/1-two-patches-reviewed-independently/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-4/smuggling-survives-the-merge/2-gitbutler-applies-both/{content.mdx,_files/*,_solution/*}',
+		'../content/tutorial/part-4/smuggling-survives-the-merge/3-bootstrap-finds-it-reopened/{content.mdx,_files/*,_solution/*}',
 	],
 	{ eager: true, query: '?raw', import: 'default' },
 ) as Record<string, string>;
@@ -39,7 +48,10 @@ export function loadLesson(
 		| 'part-1/chapter-1/lesson-1'
 		| 'part-1/chapter-2/lesson-1'
 		| 'part-2/chapter-1/lesson-1'
-		| 'part-2/chapter-1/lesson-2',
+		| 'part-2/chapter-1/lesson-2'
+		| 'part-4/smuggling-survives-the-merge/1-two-patches-reviewed-independently'
+		| 'part-4/smuggling-survives-the-merge/2-gitbutler-applies-both'
+		| 'part-4/smuggling-survives-the-merge/3-bootstrap-finds-it-reopened',
 ): Lesson {
 	const base = `../content/tutorial/${dir}/`;
 	const collect = (folder: string) =>
@@ -72,13 +84,20 @@ export function deriveRuleTraceState(lesson: Lesson, files: Record<string, strin
 	});
 }
 
-export function deriveAcpTraceState(lesson: Lesson, files: Record<string, string>) {
+export function deriveAcpTraceState(
+	lesson: Lesson,
+	files: Record<string, string>,
+	options?: { frameId?: string },
+) {
 	const config = resolveAcpTraceConfig(lesson.data.custom);
 	if (!config) throw new Error('lesson has no custom.acpTrace');
 
+	const ref = parseAcpTraceFixtureRef(files[config.traceFile]);
+	const loadFrame = (frameId: string) => files[frameFilePath(config.traceFile, frameId)];
+
 	return buildAcpTraceState({
 		revision: 1,
-		fixture: parseAcpTraceFixture(files[config.traceFile]),
+		fixture: resolveAcpTraceFixture(ref, loadFrame, options),
 		scenario: config.scenario,
 	});
 }

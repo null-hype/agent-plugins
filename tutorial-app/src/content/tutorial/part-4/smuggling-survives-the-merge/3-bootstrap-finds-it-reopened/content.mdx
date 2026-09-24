@@ -1,0 +1,43 @@
+---
+type: lesson
+title: What evidence would justify the warning?
+template: acp-trace
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+  - - 4174
+    - Agent
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+custom:
+  acpTrace:
+    traceFile: /acp-trace.json
+    scenario: smuggling-v1
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load />
+
+**Concept storyboard.** Solve reveals an authored failure report. It does not
+rebuild a source tree or run a security check.
+
+The replay has now shown two approvals, a clean merge, and a warning. None of
+those authored turns supplies the missing experimental evidence. The proposed
+relay-normalization and image-bump mechanism was not validated.
+
+To substantiate the original claim, we would need the same trusted check to pass
+on a secure base and on each branch, then fail on their actual clean merge.
+The check must cover the authorization invariant rather than just one payload.
+
+The [executed experiment](/part-4/experiment/1-what-the-check-missed) tested a
+different pair of parser edits. Its broader check found branch B already unsafe.
+That changed the conclusion: a narrow check missed an existing vulnerability,
+and the merge also changed which payload could reach it.
+
+The useful habit is to follow each verdict back to its source tree, rule, and
+observations. A persuasive replay is a way to explain a result; the evidence
+still has to justify that result.
