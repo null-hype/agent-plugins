@@ -52,7 +52,7 @@ The three stories are one story:
 Four roles, not two. `Reconcile.test.pkl` itself keeps `facts {}` and
 `examples {}` apart on purpose — an executable proposition is not a
 rendered value pinned against a golden file — and this chapter's own
-axiom/example distinction from CIT-148 already names the other two:
+axiom/example distinction from lessons 2 and 3 already names the other two:
 
 - **Fact.** World state. `worker/flight_booking_area51.pkl` requesting a
   capability, `pkl/GrantState.pkl`'s recorded decision, the Proton
@@ -117,16 +117,13 @@ supervisor
 
 `pkl/Reconcile.pkl` is real and runs for real: `pkl test
 pkl/Reconcile.test.pkl` in
-[capability-spike](https://github.com/null-hype/agent-plugins/tree/0ba6b9b94602f0da3d2c12d1ee766c7218c246c8/capability-spike)
+[capability-spike](https://github.com/null-hype/agent-plugins/tree/main/capability-spike)
 needs no Go toolchain, no credentials and no state on disk, and it is
-wired as an `hk check` step there. That link is pinned to a specific
-commit, not `main` — as of this lesson, that code lives on
-[agent-plugins#78](https://github.com/null-hype/agent-plugins/pull/78),
-still open, so `main` itself 404s on these paths today. The browser
+wired as an `hk check` step there. The browser
 cannot reach a Pkl evaluator, so what runs in the terminal below is
 [`reconcileCheck.ts`](https://github.com/null-hype/null-hype.github.io/blob/main/tutorial-app/src/lib/reconcileCheck.ts),
 a TypeScript replay of it and of
-[`reconcile/reconcile.go`](https://github.com/null-hype/agent-plugins/blob/0ba6b9b94602f0da3d2c12d1ee766c7218c246c8/capability-spike/reconcile/reconcile.go)
+[`reconcile/reconcile.go`](https://github.com/null-hype/agent-plugins/blob/main/capability-spike/reconcile/reconcile.go)
 — same three inputs, same order of work, same detail strings. The first
 test in `frameCheck.spec.ts` is what keeps that honest: it asserts the
 replay reproduces `Reconcile.test.pkl-expected.pcf`'s four pinned
@@ -140,7 +137,7 @@ diagnostics exactly, in order.
 
 `statedReason.ts` is open. It holds what the agent exports as
 `PROTON_PASS_AGENT_REASON`, and
-[`runtime.RecordMaterialization`](https://github.com/null-hype/agent-plugins/blob/0ba6b9b94602f0da3d2c12d1ee766c7218c246c8/capability-spike/runtime/proton.go)
+[`runtime.RecordMaterialization`](https://github.com/null-hype/agent-plugins/blob/main/capability-spike/runtime/proton.go)
 carries it into the observation ledger verbatim.
 
 Read the value before you change it. It is
@@ -284,7 +281,7 @@ instead of a passenger or a telescope.
 
 **Supporting files**, all real, in the tree to the left:
 `pkl/Reconcile.pkl` (the alignment axiom) and `pkl/Ledger.pkl` (the
-capability gate, unchanged from CIT-139), `pkl/GrantState.pkl` (the
+capability gate, unchanged from earlier lessons), `pkl/GrantState.pkl` (the
 supervisor's recorded decisions), `worker/bypassed_gate.pkl` and
 `worker/flight_booking_area51.pkl` (the two facts whose `pkl test`
 results are identical), plus the TypeScript replays this browser lesson

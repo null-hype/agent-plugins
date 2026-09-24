@@ -20,9 +20,16 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 # Ghost Trace Machine: the first turn
 
-This part is one recorded ACP thread. This lesson is its first turn: the
-client has already sent a prompt; the agent's reply is recorded but hidden
+This part is one recorded conversation between a client and an agent over
+the Agent Client Protocol (ACP). This lesson is its first turn: the client
+has already sent a prompt, and the agent's reply is recorded but hidden
 until you press Solve.
+
+**The problem being diagnosed.** Follower Maze is a small event-delivery
+system: events arrive out of order, each with a sequence number, and some of
+them must be delivered to particular users. A system that applies each event
+the moment it arrives, rather than in sequence order, can silently drop a
+delivery. The question below asks why user 10 never received one.
 
 ### The request already sent
 
@@ -91,9 +98,8 @@ diagnostic comes from running `followerMaze.ts`'s real `check()` over a
 vendored copy of the real arrival/world fixtures, a client that drives the
 exchange and taps the wire, the full raw transcript, and the exact command
 to reproduce it -- re-running it is byte-identical apart from each frame's
-`capturedAt`. This is a one-off evidence script, not the deferred Playwright
-recording/reporter pipeline -- CIT-245 deferred building general recording
-capability, not the requirement that a fixture actually come from
+`capturedAt`. This is a one-off evidence script, not a general recording pipeline.
+That pipeline hasn't been built yet, but the fixture still has to come from
 somewhere real.
 
 **Dagger Cloud trace link: not yet captured** (see `src/lib/acpTraceProtocol.ts`
