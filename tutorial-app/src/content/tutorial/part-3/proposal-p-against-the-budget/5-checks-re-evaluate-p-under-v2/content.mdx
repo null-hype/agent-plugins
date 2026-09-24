@@ -19,11 +19,21 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-# Checks re-evaluate P under v2
+# A pass with its history intact
 
-Solve replays the re-run: `PASS @ v2`, 890 + 400 = 1290 ≤ 1300, granted by the
-supervisor. `FAIL @ v1` stays in the Budget history, still evaluated against
-v1.
+Select **Solve**. The result is **`PASS @ v2`: 1290 ≤ 1300**.
+The earlier **`FAIL @ v1`** remains visible against the original 1200 limit.
 
-The pass establishes the arithmetic under v2. It doesn't establish an enforced
-authorization boundary: that part is still only the record from the previous turn.
+The proposal did not become cheaper. The supervisor granted a scoped exception,
+and the check evaluated that proposal against the revised rule.
+
+A reviewer can now answer: what was proposed, what failed, which exception was
+granted, and which rule supports the current pass. The arithmetic is computed;
+this replay's authorization boundary remains simulated.
+
+**Apply this to your workflow:** choose one decision an agent makes today.
+Identify its rule, the evidence needed to check it, and who may grant an exception.
+[Discuss a scoped assessment](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml)
+using a public, non-sensitive description.
+
+Next, [inspect a diagnostic from a recorded exchange](/part-2/chapter-1/lesson-1).

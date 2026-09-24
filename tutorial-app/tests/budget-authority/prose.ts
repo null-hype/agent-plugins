@@ -1,106 +1,102 @@
-import { QUESTION, SCENARIO, WORKER_REASON } from '../../src/lib/budgetAuthorityStoryboard';
-
-// CIT-251: each lesson's markdown is the incoming turn in words. The
-// argument itself has to read from the Client and Agent previews with this
-// prose hidden (the storyboard asserts the preview, never this text); the prose
-// adds only what the preview can't: why this beat matters, and the two
-// honesty notes, stated where they apply.
-
-const bridge = `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
-
-<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="${SCENARIO}" />`;
-
-const howToWatch = `**How to watch this part.** It is one ACP session, replayed. Each lesson is one
-turn: the incoming message is already on screen in the **Client** preview, the
-session log, whose last line names who acts next. The **Agent** preview shows the
-agent's reasoning: the objects it holds fixed, its verdicts, and the decisions
-that changed them. **Solve** replays the recorded reply; **Next** brings in the
-following incoming message. You observe: nothing in this replay is an action you
-take. The raw ACP envelopes are the editor's \`acp-trace.json\`.`;
-
-const scripted = `**Scripted, not captured.** Every frame in this part is authored by a Playwright
-storyboard (\`tests/budget-authority.tutorial.spec.ts\`), and the Client preview
-says so above the log. What that storyboard computes for real: the git merge in
-turn 2 (a real \`git merge\` in a scratch repository; the tree id shown is its
-output) and both budget evaluations (turns 3 and 5).`;
+// Editorial source for the generated budget walkthrough. Keep lesson paths stable.
 
 export const PROSE: string[] = [
-  `${bridge}
+  `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-# Jev types the answer
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-${howToWatch}
+# A confident answer
 
-The question is fixed for the whole part, and every later check evaluates the
-same objects it names:
+**The trip costs 1290. The limit is 1200.** Follow what happens when an agent
+answers yes anyway, and keep that answer in view as the checks arrive.
 
-> ${QUESTION}
+> Does proposal P (airfare 890 + ground 400) fit within limit rule v1 (1200)?
 
-The worker's reason, "${WORKER_REASON}", is free text, so the Agent's **Type**
-verdict reads \`malformed\`. Solve replays Jev's typed answer: \`YES · 0.94\`, and
-**Type** becomes \`well-formed\`. That verdict means the answer is well formed. It says
-nothing about whether the answer is right.
+Select **Solve**. Jev's free-text reason becomes a structured answer,
+\`YES · 0.94\`. The **Type** verdict becomes \`well-formed\`: the answer fits the
+required shape. Its confidence does not establish that the trip fits the budget.
 
-**Simulated.** Jev's entire response, \`YES\` and \`0.94\` alike, is a labelled
-stub, not a recorded Jev answer. It shows how the interface exposes a confident
-answer; it doesn't claim a particular agent gave it.
+In the **Client** preview, follow the session log. In **Agent**, follow the
+proposal, rules, and verdicts. Use the **→** arrow for the next turn; the same
+proposal stays in view throughout.
 
-${scripted}
+**Evidence scope:** this is a scripted replay. Jev's answer and confidence are
+illustrative. The storyboard computes a real Git merge in a scratch repository
+and both budget evaluations. The supervisor's authority is simulated.
 `,
-  `${bridge}
+  `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-# Git merges the two branches
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-The worker's two changes arrive as branches: \`airfare 890\` and \`ground 400\`.
-Solve replays the merge. **Proposal P** appears with both lines and its tree id,
-and **Merge** reads \`clean · 0 conflicts\`.
+# A clean merge
 
-**Budget** still reads \`not evaluated\`. A clean merge means the two changes
-combine without conflict. It doesn't mean the combination fits the budget.
+Select **Solve** to reveal the combination of \`airfare 890\` and \`ground 400\`.
+**Proposal P** now shows both costs and a tree ID identifying the merged content.
+**Merge** reads \`clean · 0 conflicts\`.
+
+Look at **Budget**: it still reads \`not evaluated\`.
+The changes combine successfully; the budget question is still unanswered.
+
+Continue to check the same proposal against the original 1200 limit.
 `,
-  `${bridge}
+  `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-# Checks evaluate P under v1
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-Solve replays the budget check on the merged proposal: \`FAIL @ v1\`,
-890 + 400 = 1290 > 1200. The clean merge and Jev's \`YES · 0.94\` stay on screen
-beside it: the failure concerns the same proposal and the same rule Jev was asked
-about.
+# The check contradicts the answer
 
-Click the CodeLens above the failing line in the Client log to open its
-evidence: proposal P at its tree id, limit rule v1, and the answer it contradicts.
+Select **Solve**. The budget result is **\`FAIL @ v1\`: 890 + 400 = 1290 > 1200**.
+Jev's \`YES · 0.94\` and the clean merge remain visible beside it.
+All three refer to the same proposal.
+
+Click the diagnostic link above the failing line in the **Client** log to open
+its evidence: the proposal's tree ID, limit rule v1, and the answer it contradicts.
+
+The diagnostic gives the reviewer something specific to decide. The next turn
+asks for an exception for this proposal.
 `,
-  `${bridge}
+  `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-# Supervisor grants 1200 → 1300
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-The worker asks for a decision through \`session/request_permission\`: raise the
-limit from 1200 to 1300 for proposal P. Solve replays the supervisor's recorded
-answer. It shows up in the Agent's reasoning, under **Authority**, not as a check
-result:
+# A scoped exception
 
-- **who:** the supervisor
-- **what:** limit rule v1 (1200) → limit rule v2 (1300)
-- **scope:** proposal P only, at the same tree id; P itself is unchanged
+The worker asks to raise the limit from 1200 to 1300 for proposal P.
+Select **Solve** to reveal the supervisor's decision under **Authority**:
 
-Rule v1 is not edited. It stays pinned, now marked superseded for P, and the
-earlier \`FAIL @ v1\` still points at it.
+- **Who:** the supervisor.
+- **Change:** limit rule v1 (1200) → limit rule v2 (1300).
+- **Scope:** proposal P at the same tree ID. The costs stay unchanged.
 
-**Enforcement simulated.** This replay records the decision; nothing in it
-prevents the worker from editing the rule. It shows the record a real gate would
-check, which is why the Agent's Authority record carries that label beside the
-decision itself.
+The original rule and \`FAIL @ v1\` remain in the record. Granting an exception
+does not rewrite what the earlier check found.
+
+**Enforcement is simulated.** This replay represents the approval record a gate
+would need to verify. It does not prevent the worker from editing the rule.
+Continue to evaluate the unchanged proposal under the new limit.
 `,
-  `${bridge}
+  `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-# Checks re-evaluate P under v2
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="budget-authority-v1" />
 
-Solve replays the re-run: \`PASS @ v2\`, 890 + 400 = 1290 ≤ 1300, granted by the
-supervisor. \`FAIL @ v1\` stays in the Budget history, still evaluated against
-v1.
+# A pass with its history intact
 
-The pass establishes the arithmetic under v2. It doesn't establish an enforced
-authorization boundary: that part is still only the record from the previous turn.
+Select **Solve**. The result is **\`PASS @ v2\`: 1290 ≤ 1300**.
+The earlier **\`FAIL @ v1\`** remains visible against the original 1200 limit.
+
+The proposal did not become cheaper. The supervisor granted a scoped exception,
+and the check evaluated that proposal against the revised rule.
+
+A reviewer can now answer: what was proposed, what failed, which exception was
+granted, and which rule supports the current pass. The arithmetic is computed;
+this replay's authorization boundary remains simulated.
+
+**Apply this to your workflow:** choose one decision an agent makes today.
+Identify its rule, the evidence needed to check it, and who may grant an exception.
+[Discuss a scoped assessment](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml)
+using a public, non-sensitive description.
+
+Next, [inspect a diagnostic from a recorded exchange](/part-2/chapter-1/lesson-1).
 `,
 ];
 
