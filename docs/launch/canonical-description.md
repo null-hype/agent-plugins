@@ -1,43 +1,21 @@
 # Canonical description (CIT-157)
 
-> **Status: DRAFT for owner sign-off.** Once approved, every surface (README,
-> landing page, meta tags, LinkedIn, outreach) reuses this text verbatim. A change
-> to the proposition is made here first, on purpose.
+> **Status: FROZEN for launch.** Every surface (README, landing page, meta tags, LinkedIn, outreach) reuses this text verbatim. Any future change to the proposition must be made here first.
 
 ## Two sentences
 
-Agent capabilities (MCP servers, skills, plugins, connectors) can pass
-review and green tests while the approval they seem to imply never happened.
-This project turns capability governance into executable, typed checks that
-compare what a worker declared, what a supervisor granted and what actually
-happened, and flag the disagreement, with the facts behind it, before a
-capability is accepted.
+Agent capabilities and automated changes can merge cleanly and pass tests while violating the business and security rules they seem to satisfy. This project turns capability governance into inspectable, typed checks that evaluate proposals before acceptance, flag policy violations with their underlying evidence, and record human supervisor exceptions without overwriting audit history.
 
 ## Fifteen seconds, spoken
 
-"An agent's test can go green without the approval it implies ever
-happening. We turn that gap into a check you can read, with the evidence
-behind it, instead of a green build that governs nothing."
+"An agent's changes can merge cleanly and go green without the rules actually being satisfied. We make agent decisions reviewable with inspectable checks and immutable evidence instead of blind trust in a green build."
 
 ## Technical paragraph
 
-Governance rules are stated as Pkl axioms (declared vs. observed inventory,
-supervisor-owned grants, a governed vocabulary for agent-stated reasons) and
-evaluated against facts a worker cannot edit to make a request pass. A
-verdict is a typed `GovernanceDiagnostic` carrying the fact, grant,
-observation and axiom it was computed from, so it renders as an editor
-hover or CodeLens. Scope: the demonstrated result is reconciliation of one worker's fact, grant
-and observation; composition of two independently acceptable changes is not
-yet demonstrated (see [`aha-scenario.md`](aha-scenario.md)). A reconciliation axiom checks that the worker's fact, the
-agent's stated reason, the supervisor's grant and what actually
-materialized agree, and flags a green test that never called the gate.
-Status: research prototype on synthetic and CI-exported scenarios, not a
-production control. See [`claims-evidence.md`](claims-evidence.md).
+Governance rules are expressed as declarative policy checks and Pkl axioms evaluated against immutable facts that an agent cannot edit to force a pass. In the Budget Authority walkthrough, two independently acceptable branches merge with zero textual conflicts, but fail semantic evaluation (`FAIL @ v1`) because the combined travel cost exceeds policy ($1,290 vs $1,200). When a supervisor grants an exception, rule version `v2` is pinned specifically to that proposal, producing `PASS @ v2` while retaining the original `FAIL @ v1` on the audit trail. In the capability engine, reconciliation checks compare declared inventory, agent-stated reasons, supervisor grants, and observed operations, generating typed `GovernanceDiagnostic` annotations for any unapproved or bypassed access. Scope & limitations: research prototype evaluated on synthetic and CI-exported scenarios; turn sequences are scripted with computed git merges and budget evaluations; the approval boundary is simulated. See [`claims-evidence.md`](claims-evidence.md).
 
 ## Vocabulary note
 
-Primary terms: **capability**, **approval**, **evidence**. **Composition** is
-held back until an A-alone / B-alone / A+B fixture exists.
-Secondary, introduced progressively, never in the opening screen: axioms,
-facts, evaluations, conflicting worlds, supervisor protocol, reconciliation,
-`GovernanceDiagnostic`, MCP/skills/plugin governance, pre-merge composition.
+Primary terms: **capability**, **approval**, **evidence**, **rule version**.
+Secondary, introduced progressively: axioms, facts, evaluations, supervisor protocol, reconciliation, `GovernanceDiagnostic`, pre-merge composition.
+
