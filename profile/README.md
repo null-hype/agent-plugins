@@ -1,17 +1,33 @@
-# Null Hype
+# Null Hype ($H_0$)
 
-I work on making agent capabilities (MCP servers, skills, plugins, connectors)
-governable: a test can go green without the approval it implies ever happening, and
-ordinary merge checks don't show it. My work turns that governance into
-executable, typed checks that flag the disagreement, and the facts behind it,
-before a capability is accepted.
+> *This profile is not a portfolio of promises; it is a log of evidence.*
 
-- **See it in two minutes:** [demo walkthrough](https://github.com/null-hype/agent-plugins/blob/main/docs/launch/demo.md)
-- **Try it:** [null-hype.tidelands.dev](https://null-hype.tidelands.dev), interactive lessons
-- **Inspect the evidence:** [claims and how to run them](https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md)
-- **Source:** [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins)
-- **Design and components:** [Storybook](https://null-hype.github.io/agent-plugins/)
+Agent capabilities and automated changes can merge cleanly and pass tests while violating the business and security rules they seem to satisfy. My work turns agent capability governance into inspectable, typed checks that evaluate proposals before acceptance, flag policy violations with their underlying evidence, and record human supervisor exceptions without overwriting audit history.
 
-Research prototype; scenarios are synthetic or exported from my own CI.
+---
 
-**Talk about applying this to an agent system, consulting, collaboration or funding:** [open an issue](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) (public; no secrets).
+### Quick Access
+
+- **Run the walkthrough:** [null-hype.tidelands.dev](https://null-hype.tidelands.dev) (interactive budget & authority lessons)
+- **60–120s Demo & Narrative:** [Walkthrough guide](https://github.com/null-hype/agent-plugins/blob/main/docs/launch/demo.md)
+- **Claim → Evidence Trail:** [claims and runnable test matrix](https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md)
+- **Source Code & Checks:** [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins)
+- **UI Components & Storybook:** [Storybook preview](https://null-hype.github.io/agent-plugins/)
+
+---
+
+### Research & Consulting Focus
+
+- **Pre-Merge Semantic Invariants:** Detecting multi-agent capability and authorization drift before PR acceptance.
+- **Supervisor Protocols & Scoped Exceptions:** Recording supervisor overrides without discarding or mutating the original violation record.
+- **Evidence Reconciliation:** Static and runtime verification across declared agent intent, supervisor grants, and observed tool execution.
+
+*Status: Research prototype evaluated on synthetic fixtures and CI-exported runs. Not a production control.*
+
+---
+
+### Contact
+
+- **Public Collaboration:** [Open an issue](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) to discuss open-source setups, reproduction, or test cases (public; do not include private credentials).
+- **Private Enquiries (Consulting, Research Collaboration, Advisory, Funding):** Email [`public.rant@pm.me`](mailto:public.rant@pm.me) for confidential discussions regarding production agent architectures. (Please describe workflow context; do not send secrets or API keys in initial outreach).
+

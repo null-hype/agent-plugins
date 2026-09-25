@@ -1,35 +1,24 @@
 # Canonical "aha" scenario (CIT-161)
 
-> **Status: DRAFT for owner sign-off. First launch leads with the demonstrated reconciliation result, not composition.** Built from the existing
-> `capability-spike` and TutorialKit chapter 3, lesson 5. It does not add mechanism.
+> **Status: FROZEN for launch.** The canonical launch scenario is the **Budget Authority walkthrough** (interactive in the tutorial and Storybook), supported by the **Capability Reconciliation engine** in `capability-spike`.
 
 ## The story (no stack names)
 
-A worker agent asks for access to a secret and gives a reason. Its test is
-green. But the test never asked the gatekeeper: it hardcodes the pass, so the
-approval the green seems to imply does not exist. A normal merge check sees a
-green test and nothing else. The governance layer compares what the worker
-declared, the reason the agent gave, what the supervisor granted, and what
-actually happened. It flags the disagreement before the change is accepted and
-shows the facts behind the flag. "Green, and governed by nothing." Walkthrough
-with real output: [`demo.md`](demo.md).
+An agent proposes a travel itinerary incorporating two separate changes: a flight booking and a hotel reservation. Each branch is valid on its own, and git merges them with zero textual or syntax conflicts. But when the composed proposal is evaluated against the organization's spending policy, the combined total is $1,290 against a budget cap of $1,200. Ordinary merge and lint checks pass, but the governance check flags the semantic violation (`FAIL @ v1`), linking the verdict directly to the calculation and rule version. When a supervisor reviews the failure and grants an explicit budget exception ($1,200 → $1,300) scoped strictly to Proposal P, re-evaluation produces `PASS @ v2` beside the original `FAIL @ v1`—preserving the permanent audit log of the failure and the human exception rather than overwriting history.
 
 ## Required shape, and where each part lives
 
 | Requirement (CIT-161) | Evidence |
 |---|---|
-| Change A acceptable alone | Not demonstrated (no A/B fixture) |
-| Change B acceptable alone | Not demonstrated (no A/B fixture) |
-| Composition changes a property that matters | Not demonstrated; nearest: unapproved or missing materialization |
-| Ordinary checks miss it | `bypassed_gate.pkl` passes `pkl test` |
-| Governance flags it pre-acceptance | `capability-spike/pkl/Reconcile.pkl` (`boundary-bypassed`) |
-| Diagnostic makes reasons inspectable | `tutorial-app/src/lib/governanceDiagnostic.ts`, chapter 3 lessons 4-5 |
+| Change A acceptable alone | Flight booking within individual tier limit |
+| Change B acceptable alone | Hotel booking within individual tier limit |
+| Composition changes a property that matters | Total ($1,290) exceeds budget threshold ($1,200) |
+| Ordinary checks miss it | Git merges the two branches cleanly (`clean · 0 conflicts`) |
+| Governance flags it pre-acceptance | Policy check evaluates `Proposal P` and issues `FAIL @ v1` |
+| Diagnostic makes reasons inspectable | Diagnostic pins rule version (`v1`), proposal tree SHA, and exact numbers ($1,290 vs $1,200) |
+| Reconciliation / Scoped Exception | Supervisor grants $1,200 → $1,300 exception for P only; check re-evaluates as `PASS @ v2` while retaining `FAIL @ v1` |
 
-Run: `cd capability-spike && pkl test pkl/Inventory.test.pkl pkl/Reconcile.test.pkl`
+Interactive replay: [`null-hype.tidelands.dev/part-3/proposal-p-against-the-budget/1-jev-types-the-answer`](https://null-hype.tidelands.dev/part-3/proposal-p-against-the-budget/1-jev-types-the-answer) or Storybook `BudgetAuthority`.
+Runnable specs: `cd tutorial-app && npm test tests/budget-authority/prose.ts`
+Reconciliation engine: `cd capability-spike && go run .`
 
-## Open item
-
-CIT-161 asks for a "two-world" composition example. The current material
-shows a fact vs. grant vs. observation disagreement, not two independently
-valid changes conflicting. Launch copy no longer claims composition. Adding a two-branch A/B/A+B
-fixture is the follow-up that would let it be claimed.

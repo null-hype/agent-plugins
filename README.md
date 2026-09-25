@@ -1,15 +1,10 @@
 # Agent capability governance: executable evidence
 
 <!-- CANONICAL DESCRIPTION: keep identical to docs/launch/canonical-description.md -->
-Agent capabilities (MCP servers, skills, plugins, connectors) can pass
-review and green tests while the approval they seem to imply never happened.
-This project turns capability governance into executable, typed checks that
-compare what a worker declared, what a supervisor granted and what actually
-happened, and flag the disagreement, with the facts behind it, before a
-capability is accepted.
+Agent capabilities and automated changes can merge cleanly and pass tests while violating the business and security rules they seem to satisfy. This project turns capability governance into inspectable, typed checks that evaluate proposals before acceptance, flag policy violations with their underlying evidence, and record human supervisor exceptions without overwriting audit history.
 
-> Research prototype. Scenarios are synthetic or exported from this project's
-> own CI. Not a production control. See [limitations](#limitations).
+> Research prototype. Scenarios are either computed on synthetic fixtures or exported from this project's own CI runs. Not a production control. See [limitations](#limitations).
+
 
 ## See it in two minutes
 
@@ -57,24 +52,20 @@ worker fact (Pkl) ──► Ledger.pkl gate ──► GovernanceDiagnostic (type
 ## Limitations
 
 - Two independently acceptable changes becoming unsafe together is not
-  demonstrated; the demo shows one worker's fact, grant and observation
-  disagreeing.
-- The `boundary-bypassed` flag is a text search for `Ledger.checkAccess(`,
-  not proof of runtime enforcement.
-- Synthetic and self-exported scenarios; no evaluation on third-party MCP
-  servers or plugins.
-- Proton Pass integration records to a local ledger, not a real vault.
-- Diagnostics render in a TutorialKit preview, not a full language server.
-- See [`tutorial-app/GAP-IMPLEMENTATION.md`](tutorial-app/GAP-IMPLEMENTATION.md)
-  for the scoped limits of the tutorial slice.
+- Scripted turn sequence with computed git merges and budget evaluations; the approval boundary is simulated.
+- The `boundary-bypassed` flag is a static search for `Ledger.checkAccess(`, not proof of runtime enforcement.
+- Synthetic and self-exported scenarios; no evaluation against unconstrained third-party agent swarms.
+- Proton Pass integration records to a local ledger, not a live production vault.
+- Diagnostics render in a TutorialKit/Monaco preview, not a production language server.
+- See [`tutorial-app/GAP-IMPLEMENTATION.md`](tutorial-app/GAP-IMPLEMENTATION.md) for the scoped limits of the tutorial slice.
 
 ## Contact
 
-To discuss applying this to an agent system, or consulting, collaboration or
-funding, [open an issue with the form](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml).
-It is public, so leave out secrets and private details. This is the one
-contact route; the launch status is in
-[`docs/launch/publication-status.md`](docs/launch/publication-status.md).
+We support two direct routes depending on your context:
+
+- **Public Collaboration & Reproductions:** [Open an issue with the template](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) to discuss open-source agent setups, reproduce checks, or ask technical questions. (Public; do not include secrets or proprietary architecture details).
+- **Private Enquiries (Consulting, Research, Funding, Hiring):** Email [`public.rant@pm.me`](mailto:public.rant@pm.me) to discuss internal agent systems, confidential evaluation, or advisory engagements. Please describe the workflow context; do not send credentials, API keys, or unredacted secrets in an initial message.
+
 
 ## Repository notes
 
