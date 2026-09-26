@@ -149,7 +149,7 @@ test -s /out/omni-flash.mp4
 
 	// Force the network/API step now so a failed interaction is surfaced as
 	// Generate's error rather than later during export.
-	if _, err := ctr.File("/out/omni-flash.mp4").Size(ctx); err != nil {
+	if _, err := ctr.Stdout(ctx); err != nil {
 		return nil, err
 	}
 	return ctr.File("/out/omni-flash.mp4"), nil
