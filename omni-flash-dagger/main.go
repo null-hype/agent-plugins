@@ -18,6 +18,16 @@ const (
 	defaultAspectRatio = "16:9"
 	defaultResolution  = "360p"
 	interactionsURL    = "https://generativelanguage.googleapis.com/v1beta/interactions"
+
+	// Vertex AI (Gemini Enterprise Agent Platform) image path. This bills
+	// against the given GCP project's own billing account/credit balance
+	// via IAM auth, unlike Generate above which bills the AI Studio API
+	// key directly. Use this first to prove credit-backed billing before
+	// touching the (much more expensive) video path.
+	defaultImageModel    = "imagen-4.0-fast-generate-001"
+	defaultLocation      = "us-central1"
+	defaultImageCount    = 1
+	vertexPredictURLTmpl = "https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:predict"
 )
 
 type OmniFlash struct{}
@@ -153,6 +163,186 @@ test -s /out/omni-flash.mp4
 		return nil, err
 	}
 	return ctr.File("/out/omni-flash.mp4"), nil
+}
+
+type imagePredictInstance struct {
+	Prompt string `json:"prompt"`
+}
+
+type imagePredictParameters struct {
+	SampleCount int `json:"sampleCount"`
+}
+
+type imagePredictRequest struct {
+	Instances  []imagePredictInstance  `json:"instances"`
+	Parameters imagePredictParameters `json:"parameters"`
+}
+
+func normalizeImage(model, location string, sampleCount int) (string, string, int, error) {
+	if model == "" {
+		model = defaultImageModel
+	}
+	if location == "" {
+		location = defaultLocation
+	}
+	if sampleCount == 0 {
+		sampleCount = defaultImageCount
+	}
+	if sampleCount < 1 || sampleCount > 4 {
+		return "", "", 0, fmt.Errorf("unsupported sample count %d: use 1-4", sampleCount)
+	}
+	return model, location, sampleCount, nil
+}
+
+func imagePredictURL(project, model, location string) string {
+	return fmt.Sprintf(vertexPredictURLTmpl, location, project, location, model)
+}
+
+func imageRequestJSON(prompt, model, location string, sampleCount int) ([]byte, error) {
+	if prompt == "" {
+		return nil, fmt.Errorf("prompt must not be empty")
+	}
+	model, location, sampleCount, err := normalizeImage(model, location, sampleCount)
+	if err != nil {
+		return nil, err
+	}
+	return json.MarshalIndent(imagePredictRequest{
+		Instances:  []imagePredictInstance{{Prompt: prompt}},
+		Parameters: imagePredictParameters{SampleCount: sampleCount},
+	}, "", "  ")
+}
+
+// ImageRequest shows the exact Vertex AI Imagen predict request this module
+// would submit, along with the endpoint URL it would target. Useful for
+// cheap/offline inspection before running GenerateImage.
+func (m *OmniFlash) ImageRequest(
+	project string,
+	// +optional
+	model string,
+	// +optional
+	location string,
+	prompt string,
+	// +optional
+	sampleCount int,
+) (string, error) {
+	body, err := imageRequestJSON(prompt, model, location, sampleCount)
+	if err != nil {
+		return "", err
+	}
+	resolvedModel, resolvedLocation, _, err := normalizeImage(model, location, sampleCount)
+	if err != nil {
+		return "", err
+	}
+	url := imagePredictURL(project, resolvedModel, resolvedLocation)
+	return fmt.Sprintf("%s\n\n%s\n", url, body), nil
+}
+
+// GenerateImage calls Vertex AI's Imagen predict endpoint (Gemini Enterprise
+// Agent Platform) and returns the generated PNG as a Dagger File.
+//
+// This bills the given GCP project's own billing account/credit balance via
+// IAM auth (a service-account key exchanged for an access token), which is
+// the credit-backed path — distinct from Generate above, which bills the AI
+// Studio API key directly. Prefer proving this path works before spending on
+// the (much more expensive) video path.
+func (m *OmniFlash) GenerateImage(
+	ctx context.Context,
+	// Service-account JSON key with the Vertex AI User role on project.
+	credentials *dagger.Secret,
+	project string,
+	prompt string,
+	// +optional
+	model string,
+	// +optional
+	location string,
+	// +optional
+	sampleCount int,
+) (*dagger.File, error) {
+	body, err := imageRequestJSON(prompt, model, location, sampleCount)
+	if err != nil {
+		return nil, err
+	}
+	resolvedModel, resolvedLocation, _, err := normalizeImage(model, location, sampleCount)
+	if err != nil {
+		return nil, err
+	}
+	url := imagePredictURL(project, resolvedModel, resolvedLocation)
+
+	script := `set -eu
+mkdir -p /out
+gcloud auth activate-service-account --key-file=/tmp/credentials.json >/dev/null
+token="$(gcloud auth print-access-token)"
+
+curl --fail-with-body --silent --show-error \
+  -X POST "$PREDICT_URL" \
+  -H "Authorization: Bearer $token" \
+  -H "Content-Type: application/json" \
+  --data-binary @/tmp/request.json \
+  > /tmp/response.json
+
+image_b64="$(jq -r '.predictions[0].bytesBase64Encoded // empty' /tmp/response.json)"
+
+if [ -z "$image_b64" ]; then
+  echo "Vertex AI returned no image payload:" >&2
+  jq . /tmp/response.json >&2
+  exit 1
+fi
+
+printf '%s' "$image_b64" | base64 -d > /out/omni-image.png
+test -s /out/omni-image.png
+`
+
+	ctr := dag.Container().
+		From("google/cloud-sdk:slim").
+		WithSecretVariable("GOOGLE_CREDENTIALS_JSON", credentials).
+		WithExec([]string{"sh", "-c", "printf '%s' \"$GOOGLE_CREDENTIALS_JSON\" > /tmp/credentials.json"}).
+		WithEnvVariable("PREDICT_URL", url).
+		WithNewFile("/tmp/request.json", string(body)).
+		WithExec([]string{"sh", "-c", script})
+
+	// Force the network/API step now so a failed prediction is surfaced as
+	// GenerateImage's error rather than later during export.
+	if _, err := ctr.Stdout(ctx); err != nil {
+		return nil, err
+	}
+	return ctr.File("/out/omni-image.png"), nil
+}
+
+// CheckImage is an offline module check for the Vertex AI Imagen path. It
+// verifies defaults, endpoint construction, and validation without spending
+// quota or requiring credentials.
+//
+// +check
+func (m *OmniFlash) CheckImage(ctx context.Context) error {
+	body, err := imageRequestJSON("A paper boat crossing a puddle.", "", "", 0)
+	if err != nil {
+		return err
+	}
+	var req imagePredictRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		return err
+	}
+	if len(req.Instances) != 1 || req.Instances[0].Prompt == "" {
+		return fmt.Errorf("unexpected instances: %+v", req.Instances)
+	}
+	if req.Parameters.SampleCount != defaultImageCount {
+		return fmt.Errorf("sampleCount default drifted: %d", req.Parameters.SampleCount)
+	}
+	url := imagePredictURL("my-project", defaultImageModel, defaultLocation)
+	want := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/my-project/locations/%s/publishers/google/models/%s:predict",
+		defaultLocation, defaultLocation, defaultImageModel)
+	if url != want {
+		return fmt.Errorf("unexpected predict URL: %s", url)
+	}
+	if _, _, _, err := normalizeImage("", "", 0); err != nil {
+		return fmt.Errorf("defaults unexpectedly rejected: %w", err)
+	}
+	if _, _, _, err := normalizeImage("", "", 5); err == nil {
+		return fmt.Errorf("invalid sample count unexpectedly accepted")
+	}
+
+	_ = ctx
+	return nil
 }
 
 // Check is an offline module check. It verifies the stable Omni model ID,

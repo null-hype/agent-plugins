@@ -55,17 +55,53 @@ Optional flags:
 Supported resolutions in this spike are `360p`, `720p`, `1080p`, and
 `4k`.
 
+## Credits vs. billing: two separate paths
+
+`Generate` above bills the AI Studio API key's own billing account directly —
+it does **not** draw on Vertex AI / Gemini Enterprise Agent Platform
+promotional credit. If the goal is to consume credit tied to a GCP project
+rather than pay per call, use the Vertex AI Imagen path instead:
+
+```sh
+dagger call -m ./omni-flash-dagger image-request \
+  --project my-gcp-project \
+  --prompt "A tiny sailboat crossing Sydney Harbour at dawn."
+```
+
+Defaults:
+
+- model: `imagen-4.0-fast-generate-001` (cheap/fast for a first probe)
+- location: `us-central1`
+- sample count: `1`
+
+Generate a real image against the given project's own billing/credit balance
+(auth is a service-account key with the Vertex AI User role, exchanged for an
+access token via `gcloud`, not an API key):
+
+```sh
+dagger call -m ./omni-flash-dagger generate-image \
+  --credentials=file:./service-account.json \
+  --project my-gcp-project \
+  --prompt "A tiny sailboat crossing Sydney Harbour at dawn." \
+  export --path=omni-image.png
+```
+
+`dagger check` includes an offline `check-image` alongside `check`, so both
+paths' defaults/request shape/URL construction are validated without spending
+quota.
+
 ## Scope / next step
 
-This first pass targets the direct **Gemini API** with an API key because it is
-the smallest executable proof of the Dagger↔Omni boundary.
+Image generation via Vertex AI Imagen (above) is the recommended first live
+probe for proving credit-backed billing, since it's far cheaper than video.
 
-It does **not** yet route through Gemini Enterprise Agent Platform / Vertex
-managed-agent infrastructure. If CIT-101's original goal was specifically to
-consume Agent Platform promotional credit, that should be a second adapter
-behind the same Dagger interface rather than conflated with this direct API
-probe.
+Video generation still only has the direct **Gemini API** path (`Generate`)
+implemented, which bills the API key directly rather than a project's credit
+balance. If credit-backed *video* is needed, that's a further adapter against
+Omni Flash on Vertex AI/Gemini Enterprise Agent Platform (model ID
+`gemini-omni-1.1-flash-preview` there, not the bare Gemini API name) — not yet
+built here.
 
-The spike also uses inline video delivery. Google's docs recommend URI delivery
+The video path also uses inline delivery. Google's docs recommend URI delivery
 for larger outputs; add that before treating 1080p/4K generation as a normal
 path.
