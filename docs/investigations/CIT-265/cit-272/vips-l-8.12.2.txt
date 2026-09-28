@@ -1,0 +1,359 @@
+  VipsOperation (operation), operations
+    VipsSystem (system), run an external command
+    VipsArithmetic (arithmetic), arithmetic operations
+      VipsBinary (binary), binary operations
+        VipsAdd (add), add two images
+        VipsSubtract (subtract), subtract two images
+        VipsMultiply (multiply), multiply two images
+        VipsDivide (divide), divide two images
+        VipsRelational (relational), relational operation on two images
+        VipsRemainder (remainder), remainder after integer division of two images
+        VipsBoolean (boolean), boolean operation on two images
+        VipsMath2 (math2), binary math operations
+        VipsComplex2 (complex2), complex binary operations on two images
+        VipsComplexform (complexform), form a complex image from two real images
+      VipsNary (nary), nary operations
+        VipsSum (sum), sum an array of images
+      VipsUnary (unary), unary operations
+        VipsInvert (invert), invert an image
+        VipsLinear (linear), calculate (a * in + b)
+        VipsMath (math), apply a math operation to an image
+        VipsAbs (abs), absolute value of an image
+        VipsSign (sign), unit vector of pixel
+        VipsRound (round), perform a round function on an image
+        VipsUnaryConst (unary_const), unary operations with a constant
+          VipsRelationalConst (relational_const), relational operations against a constant
+          VipsRemainderConst (remainder_const), remainder after integer division of an image and a constant
+          VipsBooleanConst (boolean_const), boolean operations against a constant
+          VipsMath2Const (math2_const), binary math operations with a constant
+        VipsComplex (complex), perform a complex operation on an image
+        VipsComplexget (complexget), get a component from a complex image
+    VipsStatistic (statistic), VIPS statistic operations
+      VipsAvg (avg), find image average
+      VipsMin (min), find image minimum
+      VipsMax (max), find image maximum
+      VipsDeviate (deviate), find image standard deviation
+      VipsStats (stats), find many image stats
+      VipsHistFind (hist_find), find image histogram
+      VipsHistFindNDim (hist_find_ndim), find n-dimensional image histogram
+      VipsHistFindIndexed (hist_find_indexed), find indexed image histogram
+      VipsHough (hough), find hough transform
+        VipsHoughLine (hough_line), find hough line transform
+        VipsHoughCircle (hough_circle), find hough circle transform
+      VipsProject (project), find image projections
+      VipsProfile (profile), find image profiles
+    VipsMeasure (measure), measure a set of patches on a color chart
+    VipsGetpoint (getpoint), read a point from an image
+    VipsFindTrim (find_trim), search an image for non-edge areas
+    VipsConversion (conversion), conversion operations
+      VipsCopy (copy), copy an image
+      VipsBlockCache (blockcache), cache an image
+        VipsTileCache (tilecache), cache an image as a set of tiles
+        VipsLineCache (linecache), cache an image as a set of lines
+      VipsSequential (sequential), check sequential access
+      VipsCache (cache), cache an image
+      VipsEmbedBase (embed_base), embed an image in a larger image
+        VipsEmbed (embed), embed an image in a larger image
+        VipsGravity (gravity), place an image within a larger image with a certain gravity
+      VipsFlip (flip), flip an image
+      VipsInsert (insert), insert image @sub into @main at @x, @y
+      VipsJoin (join), join a pair of images
+      VipsArrayjoin (arrayjoin), join an array of images
+      VipsExtractArea (extract_area), extract an area from an image
+      crop (extract_area), extract an area from an image
+      VipsSmartcrop (smartcrop), extract an area from an image
+      VipsBandary (bandary), operations on image bands
+        VipsExtractBand (extract_band), extract band from an image
+        VipsBandjoin (bandjoin), bandwise join a set of images
+        VipsBandjoinConst (bandjoin_const), append a constant band to an image
+        VipsBandrank (bandrank), band-wise rank of a set of images
+        VipsBandmean (bandmean), band-wise average
+        VipsBandbool (bandbool), boolean operation across image bands
+      VipsReplicate (replicate), replicate an image
+      VipsCast (cast), cast an image
+      VipsRot (rot), rotate an image
+      VipsRot45 (rot45), rotate an image
+      VipsAutorot (autorot), autorotate image by exif tag
+      VipsIfthenelse (ifthenelse), ifthenelse an image
+      VipsRecomb (recomb), linear recombination with matrix
+      VipsBandfold (bandfold), fold up x axis into bands
+      VipsBandunfold (bandunfold), unfold image bands into x axis
+      VipsFlatten (flatten), flatten alpha out of an image
+      VipsPremultiply (premultiply), premultiply image alpha
+      VipsUnpremultiply (unpremultiply), unpremultiply image alpha
+      VipsGrid (grid), grid an image
+      VipsTranspose3d (transpose3d), transpose3d an image
+      VipsScale (scale), scale an image to uchar
+      VipsWrap (wrap), wrap image origin
+      VipsZoom (zoom), zoom an image
+      VipsSubsample (subsample), subsample an image
+      VipsMsb (msb), pick most-significant byte from an image
+      VipsByteswap (byteswap), byteswap an image
+      VipsFalsecolour (falsecolour), false-color an image
+      VipsGamma (gamma), gamma an image
+      VipsCompositeBase (composite_base), blend images together
+        VipsComposite (composite), blend an array of images with an array of blend modes
+        VipsComposite2 (composite2), blend a pair of images with a blend mode
+    VipsCreate (create), create operations
+      VipsBlack (black), make a black image
+      VipsGaussnoise (gaussnoise), make a gaussnoise image
+      VipsXyz (xyz), make an image where pixel values are coordinates
+      VipsGaussmat (gaussmat), make a gaussian image
+      VipsLogmat (logmat), make a Laplacian of Gaussian image
+      VipsText (text), make a text image
+      VipsPoint (point), make a point image
+        VipsEye (eye), make an image showing the eye's spatial response
+        VipsGrey (grey), make a grey ramp image
+        VipsZone (zone), make a zone plate
+        VipsSines (sines), make a 2D sine wave
+        VipsMask (mask), base class for frequency filters
+          VipsMaskIdeal (mask_ideal), make an ideal filter
+            VipsMaskIdealRing (mask_ideal_ring), make an ideal ring filter
+          VipsMaskIdealBand (mask_ideal_band), make an ideal band filter
+          VipsMaskButterworth (mask_butterworth), make a butterworth filter
+            VipsMaskButterworthRing (mask_butterworth_ring), make a butterworth ring filter
+          VipsMaskButterworthBand (mask_butterworth_band), make a butterworth_band filter
+          VipsMaskGaussian (mask_gaussian), make a gaussian filter
+            VipsMaskGaussianRing (mask_gaussian_ring), make a gaussian ring filter
+          VipsMaskGaussianBand (mask_gaussian_band), make a gaussian filter
+          VipsMaskFractal (mask_fractal), make fractal filter
+      VipsBuildlut (buildlut), build a look-up table
+      VipsInvertlut (invertlut), build an inverted look-up table
+      VipsTonelut (tonelut), build a look-up table
+      VipsIdentity (identity), make a 1D image where pixel values are indexes
+      VipsFractsurf (fractsurf), make a fractal surface
+      VipsWorley (worley), make a worley noise image
+      VipsPerlin (perlin), make a perlin noise image
+    VipsSwitch (switch), find the index of the first non-zero pixel in tests
+    VipsForeign (foreign), load and save image files, priority=0
+      VipsForeignLoad (fileload), file loaders, priority=0
+        VipsForeignLoadCsv (csvload_base), load csv, priority=0
+          VipsForeignLoadCsvFile (csvload), load csv (.csv), priority=0, get_flags, get_flags_filename, header, load
+          VipsForeignLoadCsvSource (csvload_source), load csv, priority=0, is_a_source, get_flags, header, load
+        VipsForeignLoadMatrix (matrixload_base), load matrix, priority=0
+          VipsForeignLoadMatrixFile (matrixload), load matrix (.mat), priority=0, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadMatrixSource (matrixload_source), load matrix, priority=0, is_a_source, get_flags, header, load
+        VipsForeignLoadRaw (rawload), load raw data from a file, priority=0, get_flags, get_flags_filename, header
+        VipsForeignLoadVips (vipsload_base), load vips base class, priority=200
+          VipsForeignLoadVipsFile (vipsload), load vips from file (.v, .vips), priority=200, is_a, get_flags, get_flags_filename, header
+          VipsForeignLoadVipsSource (vipsload_source), load vips from source, priority=200, is_a_source, get_flags, get_flags_filename, header
+        VipsForeignLoadAnalyze (analyzeload), load an Analyze6 image (.img, .hdr), priority=-50, is_a, get_flags, get_flags_filename, header, load
+        VipsForeignLoadPpm (ppmload_base), load ppm base class (.pbm, .pgm, .ppm, .pfm), priority=200
+          VipsForeignLoadPpmFile (ppmload), load ppm from file (.pbm, .pgm, .ppm, .pfm), priority=200, is_a, get_flags, header, load
+          VipsForeignLoadPpmSource (ppmload_source), load ppm base class (.pbm, .pgm, .ppm, .pfm), priority=200, is_a_source, get_flags, header, load
+        VipsForeignLoadRad (radload_base), load rad base class, priority=-50
+          VipsForeignLoadRadFile (radload), load a Radiance image from a file (.hdr), priority=-50, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadRadBuffer (radload_buffer), load rad from buffer, priority=-50, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadRadSource (radload_source), load rad from source, priority=-50, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadPdf (pdfload_base), load PDF with libpoppler, priority=0
+          VipsForeignLoadPdfFile (pdfload), load PDF from file (.pdf), priority=0, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadPdfBuffer (pdfload_buffer), load PDF from buffer, priority=0, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadPdfSource (pdfload_source), load PDF from source, priority=0, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadSvg (svgload_base), load SVG with rsvg, priority=-5
+          VipsForeignLoadSvgFile (svgload), load SVG with rsvg (.svg, .svgz, .svg.gz), priority=-5, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadSvgBuffer (svgload_buffer), load SVG with rsvg, priority=-5, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadSvgSource (svgload_source), load svg from source, priority=-5, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadJp2k (jp2kload_base), load JPEG2000 image, priority=0
+          VipsForeignLoadJp2kFile (jp2kload), load JPEG2000 image (.j2k, .jp2, .jpt, .j2c, .jpc), priority=0, is_a, get_flags, header, load
+          VipsForeignLoadJp2kBuffer (jp2kload_buffer), load JPEG2000 image, priority=0, is_a_buffer, get_flags, header, load
+          VipsForeignLoadJp2kSource (jp2kload_source), load JPEG2000 image, priority=0, is_a_source, get_flags, header, load
+        VipsForeignLoadNsgif (gifload_base), load GIF with libnsgif, priority=50
+          VipsForeignLoadNsgifFile (gifload), load GIF with libnsgif (.gif), priority=50, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadNsgifBuffer (gifload_buffer), load GIF with libnsgif, priority=50, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadNsgifSource (gifload_source), load gif from source, priority=50, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadPng (pngload_base), load png base class, priority=200
+          VipsForeignLoadPngFile (pngload), load png from file (.png), priority=200, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadPngBuffer (pngload_buffer), load png from buffer, priority=200, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadPngSource (pngload_source), load png from source, priority=200, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadMat (matload), load mat from file (.mat), priority=0, is_a, get_flags, get_flags_filename, header, load
+        VipsForeignLoadJpeg (jpegload_base), load jpeg, priority=50
+          VipsForeignLoadJpegFile (jpegload), load jpeg from file (.jpg, .jpeg, .jpe), priority=50, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadJpegBuffer (jpegload_buffer), load jpeg from buffer, priority=50, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadJpegSource (jpegload_source), load image from jpeg source, priority=50, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadWebp (webpload_base), load webp, priority=200
+          VipsForeignLoadWebpFile (webpload), load webp from file (.webp), priority=200, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadWebpBuffer (webpload_buffer), load webp from buffer, priority=200, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadWebpSource (webpload_source), load webp from source, priority=200, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadTiff (tiffload_base), load tiff, priority=50
+          VipsForeignLoadTiffFile (tiffload), load tiff from file (.tif, .tiff), priority=50, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadTiffBuffer (tiffload_buffer), load tiff from buffer, priority=50, is_a_buffer, get_flags, get_flags_filename, header, load
+          VipsForeignLoadTiffSource (tiffload_source), load tiff from source, priority=50, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadOpenslide (openslideload_base), load OpenSlide base class, priority=100
+          VipsForeignLoadOpenslideFile (openslideload), load file with OpenSlide (.svs, .vms, .vmu, .ndpi, .scn, .mrxs, .svslide, .tif, .bif), priority=100, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadOpenslideSource (openslideload_source), load source with OpenSlide, priority=100, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadMagick (magickload_base), load with ImageMagick, priority=-100
+          VipsForeignLoadMagickFile (magickload), load file with ImageMagick, priority=-100, is_a, get_flags, get_flags_filename, header
+          VipsForeignLoadMagickBuffer (magickload_buffer), load buffer with ImageMagick, priority=-100, is_a_buffer, get_flags, get_flags_filename, header
+        VipsForeignLoadFits (fitsload_base), FITS loader base class, priority=-50
+          VipsForeignLoadFitsFile (fitsload), load a FITS image (.fits, .fit, .fts), priority=-50, is_a, get_flags, get_flags_filename, header, load
+          VipsForeignLoadFitsSource (fitsload_source), load FITS from a source, priority=-50, is_a, is_a_source, get_flags, get_flags_filename, header, load
+        VipsForeignLoadOpenexr (openexrload), load an OpenEXR image (.exr), priority=200, is_a, get_flags, get_flags_filename, header, load
+        VipsForeignLoadHeif (heifload_base), load a HEIF image, priority=0
+          VipsForeignLoadHeifFile (heifload), load a HEIF image (.heic, .heif, .avif), priority=0, is_a, get_flags, header, load
+          VipsForeignLoadHeifBuffer (heifload_buffer), load a HEIF image, priority=0, is_a_buffer, get_flags, header, load
+          VipsForeignLoadHeifSource (heifload_source), load a HEIF image, priority=0, is_a_source, get_flags, header, load
+      VipsForeignSave (filesave), file savers, priority=0, mono
+        VipsForeignSaveCsv (csvsave_base), save image to csv (.csv), priority=0, mono
+          VipsForeignSaveCsvFile (csvsave), save image to csv (.csv), priority=0, mono
+          VipsForeignSaveCsvTarget (csvsave_target), save image to csv (.csv), priority=0, mono
+        VipsForeignSaveMatrix (matrixsave_base), save image to matrix (.mat), priority=0, mono
+          VipsForeignSaveMatrixFile (matrixsave), save image to matrix (.mat), priority=0, mono
+          VipsForeignSaveMatrixTarget (matrixsave_target), save image to matrix (.mat), priority=0, mono
+          VipsForeignPrintMatrix (matrixprint), print matrix (.mat), priority=0, mono
+        VipsForeignSaveRaw (rawsave), save image to raw file (.raw), priority=0, any
+        VipsForeignSaveRawFd (rawsave_fd), write raw image to file descriptor (.raw), priority=0, any
+        VipsForeignSaveVips (vipssave_base), save vips base class (.v, .vips), priority=0, any
+          VipsForeignSaveVipsFile (vipssave), save image to file in vips format (.v, .vips), priority=0, any
+          VipsForeignSaveVipsTarget (vipssave_target), save image to target in vips format (.v, .vips), priority=0, any
+        VipsForeignSavePpm (ppmsave_base), save to ppm, priority=0, rgb
+          VipsForeignSavePpmFile (ppmsave), save image to ppm file (.pbm, .pgm, .ppm, .pfm), priority=0, rgb
+          VipsForeignSavePpmTarget (ppmsave_target), save to ppm (.ppm), priority=0, rgb
+        VipsForeignSaveRad (radsave_base), save Radiance (.hdr), priority=0, rgb
+          VipsForeignSaveRadFile (radsave), save image to Radiance file (.hdr), priority=0, rgb
+          VipsForeignSaveRadBuffer (radsave_buffer), save image to Radiance buffer (.hdr), priority=0, rgb
+          VipsForeignSaveRadTarget (radsave_target), save image to Radiance target (.hdr), priority=0, rgb
+        VipsForeignSaveJp2k (jp2ksave_base), save image in JPEG2000 format (.j2k, .jp2, .jpt, .j2c, .jpc), priority=0, any
+          VipsForeignSaveJp2kFile (jp2ksave), save image in JPEG2000 format (.j2k, .jp2, .jpt, .j2c, .jpc), priority=0, any
+          VipsForeignSaveJp2kBuffer (jp2ksave_buffer), save image in JPEG2000 format (.j2k, .jp2, .jpt, .j2c, .jpc), priority=0, any
+          VipsForeignSaveJp2kTarget (jp2ksave_target), save image in JPEG2000 format (.j2k, .jp2, .jpt, .j2c, .jpc), priority=0, any
+        VipsForeignSaveDz (dzsave_base), save image to deep zoom format (.dz), priority=0, any
+          VipsForeignSaveDzFile (dzsave), save image to deepzoom file (.dz), priority=0, any
+          VipsForeignSaveDzBuffer (dzsave_buffer), save image to dz buffer (.dz), priority=0, any
+        VipsForeignSavePng (pngsave_base), save png (.png), priority=0, rgba
+          VipsForeignSavePngFile (pngsave), save image to png file (.png), priority=0, rgba
+          VipsForeignSavePngBuffer (pngsave_buffer), save image to png buffer (.png), priority=0, rgba
+          VipsForeignSavePngTarget (pngsave_target), save image to target as PNG (.png), priority=0, rgba
+        VipsForeignSaveJpeg (jpegsave_base), save jpeg (.jpg, .jpeg, .jpe), priority=0, rgb-cmyk
+          VipsForeignSaveJpegFile (jpegsave), save image to jpeg file (.jpg, .jpeg, .jpe), priority=0, rgb-cmyk
+          VipsForeignSaveJpegBuffer (jpegsave_buffer), save image to jpeg buffer (.jpg, .jpeg, .jpe), priority=0, rgb-cmyk
+          VipsForeignSaveJpegTarget (jpegsave_target), save image to jpeg target (.jpg, .jpeg, .jpe), priority=0, rgb-cmyk
+          VipsForeignSaveJpegMime (jpegsave_mime), save image to jpeg mime (.jpg, .jpeg, .jpe), priority=0, rgb-cmyk
+        VipsForeignSaveWebp (webpsave_base), save webp (.webp), priority=0, rgba-only
+          VipsForeignSaveWebpFile (webpsave), save image to webp file (.webp), priority=0, rgba-only
+          VipsForeignSaveWebpBuffer (webpsave_buffer), save image to webp buffer (.webp), priority=0, rgba-only
+          VipsForeignSaveWebpTarget (webpsave_target), save image to webp target (.webp), priority=0, rgba-only
+        VipsForeignSaveTiff (tiffsave_base), save image to tiff file (.tif, .tiff), priority=0, any
+          VipsForeignSaveTiffFile (tiffsave), save image to tiff file (.tif, .tiff), priority=0, any
+          VipsForeignSaveTiffBuffer (tiffsave_buffer), save image to tiff buffer (.tif, .tiff), priority=0, any
+        VipsForeignSaveMagick (magicksave_base), save with ImageMagick (), priority=-100, any
+          VipsForeignSaveMagickFile (magicksave), save file with ImageMagick (), priority=-100, any
+          VipsForeignSaveMagickBuffer (magicksave_buffer), save image to magick buffer (), priority=-100, any
+        VipsForeignSaveFits (fitssave), save image to fits file (.fits, .fit, .fts), priority=0, any
+        VipsForeignSaveHeif (heifsave_base), save image in HEIF format, priority=0, rgba-only
+          VipsForeignSaveHeifFile (heifsave), save image in HEIF format (.heic, .heif, .avif), priority=0, rgba-only
+          VipsForeignSaveHeifBuffer (heifsave_buffer), save image in HEIF format (.heic, .heif), priority=0, rgba-only
+          VipsForeignSaveHeifTarget (heifsave_target), save image in HEIF format (.heic, .heif), priority=0, rgba-only
+    VipsThumbnail (thumbnail_base), thumbnail generation
+      VipsThumbnailFile (thumbnail), generate thumbnail from file
+      VipsThumbnailBuffer (thumbnail_buffer), generate thumbnail from buffer
+      VipsThumbnailImage (thumbnail_image), generate thumbnail from image
+      VipsThumbnailSource (thumbnail_source), generate thumbnail from source
+    VipsResample (resample), resample operations
+      VipsMapim (mapim), resample with a map image
+      VipsShrink (shrink), shrink an image
+      VipsShrinkh (shrinkh), shrink an image horizontally
+      VipsShrinkv (shrinkv), shrink an image vertically
+      VipsReduceh (reduceh), shrink an image horizontally
+      VipsReducev (reducev), shrink an image vertically
+      VipsReduce (reduce), reduce an image
+      VipsQuadratic (quadratic), resample an image with a quadratic transform
+      VipsAffine (affine), affine transform of an image
+      VipsSimilarityBase (similarity_base), base similarity transform
+        VipsSimilarity (similarity), similarity transform of an image
+        VipsRotate (rotate), rotate an image by a number of degrees
+      VipsResize (resize), resize an image
+    VipsColourspace (colourspace), convert to a new colorspace
+    VipsColour (colour), color operations
+      VipsColourTransform (space), color space transformations
+        VipsLab2XYZ (Lab2XYZ), transform CIELAB to XYZ
+        VipsXYZ2Lab (XYZ2Lab), transform XYZ to Lab
+        VipsLab2LCh (Lab2LCh), transform Lab to LCh
+        VipsLCh2Lab (LCh2Lab), transform LCh to Lab
+        VipsLCh2CMC (LCh2CMC), transform LCh to CMC
+        VipsCMC2LCh (CMC2LCh), transform LCh to CMC
+        VipsXYZ2Yxy (XYZ2Yxy), transform XYZ to Yxy
+        VipsYxy2XYZ (Yxy2XYZ), transform Yxy to XYZ
+        VipsscRGB2XYZ (scRGB2XYZ), transform scRGB to XYZ
+        VipsXYZ2scRGB (XYZ2scRGB), transform XYZ to scRGB
+      VipsColourCode (code), change color coding
+        VipsLabQ2Lab (LabQ2Lab), unpack a LabQ image to float Lab
+        VipsLab2LabQ (Lab2LabQ), transform float Lab to LabQ coding
+        VipsLabQ2LabS (LabQ2LabS), unpack a LabQ image to short Lab
+        VipsLabS2LabQ (LabS2LabQ), transform short Lab to LabQ coding
+        VipsLabS2Lab (LabS2Lab), transform signed short Lab to float
+        VipsLab2LabS (Lab2LabS), transform float Lab to signed short
+        VipsRad2float (rad2float), unpack Radiance coding to float RGB
+        VipsFloat2rad (float2rad), transform float RGB to Radiance coding
+        VipsLabQ2sRGB (LabQ2sRGB), convert a LabQ image to sRGB
+        VipssRGB2HSV (sRGB2HSV), transform sRGB to HSV
+        VipsHSV2sRGB (HSV2sRGB), transform HSV to sRGB
+        VipsIcc (icc), transform using ICC profiles
+          VipsIccImport (icc_import), import from device with ICC profile
+          VipsIccExport (icc_export), output to device with ICC profile
+          VipsIccTransform (icc_transform), transform between devices with ICC profiles
+      VipsColourDifference (difference), calculate color difference
+        VipsdE76 (dE76), calculate dE76
+        VipsdE00 (dE00), calculate dE00
+        VipsdECMC (dECMC), calculate dECMC
+    VipssRGB2scRGB (sRGB2scRGB), convert an sRGB image to scRGB
+    VipsscRGB2BW (scRGB2BW), convert scRGB to BW
+    VipsscRGB2sRGB (scRGB2sRGB), convert an scRGB image to sRGB
+    VipsCMYK2XYZ (CMYK2XYZ), transform CMYK to XYZ
+    VipsXYZ2CMYK (XYZ2CMYK), transform XYZ to CMYK
+    VipsProfileLoad (profile_load), load named ICC profile
+    VipsMaplut (maplut), map an image though a lut
+    VipsCase (case), use pixel values to pick cases from an array of images
+    VipsPercent (percent), find threshold for percent of pixels
+    VipsStdif (stdif), statistical difference
+    VipsHistogram (histogram), histogram operations
+      VipsHistUnary (hist_unary), hist_unary operations
+        VipsHistCum (hist_cum), form cumulative histogram
+      VipsHistMatch (hist_match), match two histograms
+    VipsHistNorm (hist_norm), normalise histogram
+    VipsHistEqual (hist_equal), histogram equalisation
+    VipsHistPlot (hist_plot), plot histogram
+    VipsHistLocal (hist_local), local histogram equalisation
+    VipsHistIsmonotonic (hist_ismonotonic), test for monotonicity
+    VipsHistEntropy (hist_entropy), estimate image entropy
+    VipsConvolution (convolution), convolution operations
+      VipsConv (conv), convolution operation
+      VipsConva (conva), approximate integer convolution
+      VipsConvf (convf), float convolution operation
+      VipsConvi (convi), int convolution operation
+      VipsCompass (compass), convolve with rotating mask
+      VipsConvsep (convsep), seperable convolution operation
+      VipsConvasep (convasep), approximate separable integer convolution
+    VipsCorrelation (correlation), correlation operation
+      VipsFastcor (fastcor), fast correlation
+      VipsSpcor (spcor), spatial correlation
+    VipsSharpen (sharpen), unsharp masking for print
+    VipsGaussblur (gaussblur), gaussian blur
+    VipsCanny (canny), Canny edge detector
+    VipsSobel (sobel), Sobel edge detector
+    VipsFreqfilt (freqfilt), frequency-domain filter operations
+      VipsFwfft (fwfft), forward FFT
+      VipsInvfft (invfft), inverse FFT
+      VipsFreqmult (freqmult), frequency-domain filtering
+      VipsSpectrum (spectrum), make displayable power spectrum
+      VipsPhasecor (phasecor), calculate phase correlation
+    VipsMorphology (morphology), morphological operations
+      VipsMorph (morph), morphology operation
+      VipsRank (rank), rank filter
+      VipsCountlines (countlines), count lines in an image
+      VipsLabelregions (labelregions), label regions in an image
+      VipsFillNearest (fill_nearest), fill image zeros with nearest non-zero pixel
+    VipsDraw (draw), draw operations
+      VipsDrawink (drawink), draw with ink operations
+        VipsDrawRect (draw_rect), paint a rectangle on an image
+        VipsDrawMask (draw_mask), draw a mask on an image
+        VipsDrawLine (draw_line), draw a line on an image
+        VipsDrawCircle (draw_circle), draw a circle on an image
+        VipsDrawFlood (draw_flood), flood-fill an area
+      VipsDrawImage (draw_image), paint an image into another image
+      VipsDrawSmudge (draw_smudge), blur a rectangle on an image
+    VipsMerge (merge), merge two images
+    VipsMosaic (mosaic), mosaic two images
+    VipsMosaic1 (mosaic1), first-order mosaic of two images
+    VipsMatrixinvert (matrixinvert), invert an matrix
+    VipsMatch (match), first-order match of two images
+    VipsGlobalbalance (globalbalance), global balance an image mosaic
