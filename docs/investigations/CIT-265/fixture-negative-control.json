@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "case": "Negative control: libvips release with no loader or trust changes",
+    "linear": "CIT-265",
+    "state_source": "CIT-272 snapshot diff (NOT YET RUN -- state below is a placeholder)",
+    "hint_level": 0,
+    "rules": [
+      "Only `state` may be sent to the model under test. `meta` and `expected` are harness-only and must never be included in a Jev/Noul prompt or a free-agent's context."
+    ]
+  },
+  "state": {
+    "diff_items": [
+      {
+        "component": "<package or component name>",
+        "kind": "<added | modified | removed>",
+        "from_version": "<old version or null>",
+        "to_version": "<new version or null>",
+        "summary": "<one line: what changed, from package metadata or release notes/commit bodies>"
+      }
+    ],
+    "files": {
+      "<path>": "<file contents>"
+    }
+  },
+  "expected": {
+    "decided": true,
+    "decided_by": "CIT-274",
+    "high": [],
+    "ambiguous": [],
+    "low": "all",
+    "rationale": "No loader-trust, default, or dependency-boundary change is present by construction (that is what makes this the negative control for the active-storage fixture's a02/a06/a03/a05 candidates) -- every category should score low. A high or ambiguous Jev answer here is a false positive, not a finding."
+  }
+}

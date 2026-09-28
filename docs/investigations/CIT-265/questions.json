@@ -1,0 +1,42 @@
+{
+  "a01_broken_access_control": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A01 Broken Access Control: users or processes can act outside their intended permissions, including server-side request forgery? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a02_security_misconfiguration": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A02 Security Misconfiguration: an insecure default, setting, or missing hardening step leaves the system exposed? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a03_software_supply_chain": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A03 Software Supply Chain Failures: a dependency, build, or distribution component introduces risk the application does not account for? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a04_cryptographic_failures": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A04 Cryptographic Failures: data is exposed through missing, weak, or misused cryptography? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a05_injection": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A05 Injection: untrusted data is interpreted as code, commands, or queries? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a06_insecure_design": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A06 Insecure Design: the design lacks a control that the threat model requires? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a07_authentication_failures": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A07 Authentication Failures: identity or session handling can be bypassed or abused? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a08_integrity_failures": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A08 Software or Data Integrity Failures: code or data is trusted without verifying its integrity? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a09_logging_alerting_failures": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A09 Security Logging and Alerting Failures: security-relevant events are not recorded or not alerted on? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  },
+  "a10_exceptional_conditions": {
+    "type": "noul",
+    "instructions": "Consider the system as it is after the changes in `diff_items`, using the code in `files`. Does the resulting system contain a weakness in OWASP A10 Mishandling of Exceptional Conditions: errors or abnormal input cause the system to fail open or behave unsafely? Answer yes only if the state shows a concrete path to this weakness, not merely that the category could apply to software like this."
+  }
+}
