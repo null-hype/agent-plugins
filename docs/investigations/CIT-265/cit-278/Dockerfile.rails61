@@ -1,0 +1,5 @@
+FROM rails-cit277:before
+RUN apt-get update && apt-get install -y strace && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /work
+COPY zz_cit278.rb /app/config/initializers/zz_cit278.rb
+COPY canary_runner.rb /work/canary_runner.rb

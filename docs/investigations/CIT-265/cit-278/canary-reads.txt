@@ -1,0 +1,63 @@
+CIT-278 canary reads: strace openat(O_RDONLY) evidence per arm.
+Detector: strace -f -e trace=openat -y bin/rails runner <runner>.
+Same-dir canary runner = canary_runner.rb (refs: relative sibling, abs /tmp, abs /work).
+Cross-dir canary runner = canary_runner_xdir.rb (single abs /work ref).
+========================================================================
+
+IMAGE: after (libvips 8.13.0, Rails 7.0.10, Active Storage 7.0.10)
+### ARM A  :vips, blocking off        [canary_runner.rb]
+== variant_processor: :vips
+== VIPS_BLOCK_UNTRUSTED env: nil
+== identified content_type=image/svg+xml variable?=true
+== variant processed OK, key=gx0jhwpvur9rtvyq9lwwq0hxhz0y
+  -- canary openat(O_RDONLY) --
+  openat(AT_FDCWD, "/tmp/canary_rel.txt", O_RDONLY) = 13</tmp/canary_rel.txt>
+  openat(AT_FDCWD, "/tmp/canary_abs.txt", O_RDONLY) = 13</tmp/canary_abs.txt>
+
+### ARM B  :vips, VIPS_BLOCK_UNTRUSTED=1 [canary_runner.rb]
+== variant_processor: :vips
+== VIPS_BLOCK_UNTRUSTED env: "1"
+== identified content_type=image/svg+xml variable?=true
+== variant raised: Vips::Error: svgload: operation is blocked
+  -- canary openat(O_RDONLY) --
+
+### ARM C  :mini_magick               [canary_runner.rb]
+== variant_processor: :mini_magick
+== VIPS_BLOCK_UNTRUSTED env: nil
+== identified content_type=image/svg+xml variable?=true
+== variant raised: MiniMagick::Error: `convert /tmp/ActiveStorage-1-20260928-9-smmd7b.svg[0] -auto-orient -resize 48x48> /tmp/image_processing20260928-9-4jizv1.png` failed with status: 1 and error:
+  -- canary openat(O_RDONLY) --
+  openat(AT_FDCWD, "canary_rel.txt", O_RDONLY) = -1 ENOENT (No such file or directory)
+  openat(AT_FDCWD, "canary_rel.txt", O_RDONLY) = -1 ENOENT (No such file or directory)
+
+### ARM A' :vips, cross-dir ref        [canary_runner_xdir.rb]
+== variant_processor: :vips
+== variant processed OK
+  -- canary openat(O_RDONLY) --
+
+### ARM C' :mini_magick, cross-dir ref [canary_runner_xdir.rb]
+== variant_processor: :mini_magick
+== variant raised: MiniMagick::Error: `convert /tmp/ActiveStorage-1-20260928-9-38moif.svg[0] -auto-orient -resize 32x32> /tmp/image_processing20260928-9-q6lzay.png` failed with status: 1 and error:
+  -- canary openat(O_RDONLY) --
+  openat(AT_FDCWD, "/work/canary_xdir.txt", O_RDONLY) = 4</work/canary_xdir.txt>
+  openat(AT_FDCWD, "/work/canary_xdir.txt", O_RDONLY) = 4</work/canary_xdir.txt>
+
+IMAGE: rails61 (libvips 8.10.5, Rails 6.1.7, Active Storage 6.1.7.10)
+### 6.1 ARM  :vips explicit           [canary_runner.rb]
+== variant_processor: :vips
+== VIPS_BLOCK_UNTRUSTED env: nil
+== identified content_type=image/svg+xml variable?=true
+== variant processed OK, key=xxkzkkm50mivtvxk1ahq35vnocgr
+  -- canary openat(O_RDONLY) --
+  openat(AT_FDCWD, "/tmp/canary_rel.txt", O_RDONLY) = 19</tmp/canary_rel.txt>
+  openat(AT_FDCWD, "/tmp/canary_abs.txt", O_RDONLY) = 19</tmp/canary_abs.txt>
+
+### 6.1 ARM  :vips + VIPS_BLOCK_UNTRUSTED=1 (no-op on 8.10.5) [canary_runner.rb]
+== variant_processor: :vips
+== VIPS_BLOCK_UNTRUSTED env: "1"
+== identified content_type=image/svg+xml variable?=true
+== variant processed OK, key=9udlemaenc2mi00w0y5chzj4y00u
+  -- canary openat(O_RDONLY) --
+  openat(AT_FDCWD, "/tmp/canary_rel.txt", O_RDONLY) = 19</tmp/canary_rel.txt>
+  openat(AT_FDCWD, "/tmp/canary_abs.txt", O_RDONLY) = 19</tmp/canary_abs.txt>
+
