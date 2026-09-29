@@ -1,0 +1,10 @@
+{
+    "name": "Evidence format and validator",
+    "id": "evidence",
+    "version": "1.0.0",
+    "description": "The evidence record a reasoning agent emits (one finding per record: component, source path, excerpt, the implied 'never', whether anything enforces it), a JSON Schema for it, and an 'evidence-validate' bin with a grounding check that each excerpt appears verbatim at its source path in an image root. No case data.",
+    "options": {},
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
