@@ -1,0 +1,64 @@
+/// The Jev/Noul transport contract: the shape of one request the `jev` client
+/// sends to TypeSafe's Jev judge and the response it accepts back.
+///
+/// This mirrors the role `tk-evidence-exporter/pkl/Evidence.pkl` plays for the
+/// snapshot-evidence package: a versioned, externally-consumable schema a
+/// consumer can evaluate a concrete instance against, so a structurally invalid
+/// request/response fails loudly at the boundary rather than silently. It is
+/// documentation of the contract, NOT an install-time dependency -- the `jev`
+/// bin validates in Python (stdlib only) and nothing in `install.sh` evaluates
+/// this file. Wiring real pkl-go evaluation into the pipeline (the way the
+/// exporter does) is a follow-up; see NOTES.md.
+///
+/// Verified against docs.typesafe.ai/api (POST https://api.typesafe.ai/v1/systemone).
+module jev
+
+/// Any JSON value. `state` is deliberately opaque here for the same reason the
+/// client treats it opaquely: the questions phrase themselves over
+/// `diff_items`/`files`, but the client must not assume that (or the CIT-284
+/// evidence shape). See NOTES.md, "Open question: what is `state`?".
+typealias JsonValue = String|Boolean|Number|Mapping|Listing|Null
+
+/// Optional free-text descriptions of what a yes/no answer means. Both fields
+/// optional per the API.
+class Criteria {
+  `true`: String?
+  `false`: String?
+}
+
+/// One Noul question. `type` is always "noul"; `instructions` carries the whole
+/// judgement (OWASP category semantics live in this text, not in any dedicated
+/// field). `criteria` is optional.
+class NoulQuestion {
+  type: "noul"
+  instructions: String(!isEmpty)
+  criteria: Criteria?
+}
+
+/// The request body. Only `state`, `model`, and `questions` -- a closed class,
+/// so amending it with harness-only `meta`/`expected` is a structural error,
+/// which is exactly the "only `state` is sent" rule expressed as a type.
+class JevRequest {
+  state: JsonValue
+  model: String = "jev-latest"
+  questions: Mapping<String, NoulQuestion>
+}
+
+/// One answer: a probability in [0, 1] (0 = no, 1 = yes).
+class NoulAnswer {
+  type: "noul"
+  noul: Number(isBetween(0, 1))
+}
+
+class Usage {
+  input_tokens: Int?
+  output_tokens: Int?
+}
+
+/// The response body. `answers` is keyed by the same question ids as the
+/// request; the client additionally enforces that the id sets match exactly.
+class JevResponse {
+  model: String
+  answers: Mapping<String, NoulAnswer>
+  usage: Usage?
+}

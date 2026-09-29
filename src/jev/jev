@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""jev -- method-layer client for TypeSafe's Jev (the Noul judge).
+
+Given a fixture 'state' and a set of Noul questions, return one probability in
+[0, 1] per question. This is the client CIT-289 asks for; the deterministic and
+live-smoke contract scenarios that drive it live in CIT-286, and the real Rails
+fixture run in CIT-275.
+
+Design contract (see NOTES.md for the why):
+
+  * state is OPAQUE. The client passes it through untouched and never assumes a
+    shape. In particular it does not assume CIT-284 evidence ({"findings":[...]});
+    the Noul questions phrase themselves in terms of `diff_items`/`files`, and
+    reconciling those two shapes is an open CIT-286 question, not this client's
+    job. See NOTES.md ("Open question: what is `state`?").
+
+  * Only `state` leaves the process. A fixture file carries harness-only `meta`
+    and `expected` (and `expected.rationale`, which names the real CVE) that must
+    NEVER reach the model -- leaking them voids the experiment. When the input
+    document has a top-level `state` key, only that value is sent; `meta` /
+    `expected` are dropped. Use `--print-request` to see exactly what would go
+    out without calling anything.
+
+  * The output keys are exactly the input question ids, each value a finite
+    number in [0, 1]. Malformed questions are rejected BEFORE any backend call
+    (the seam CIT-286 scenario 5 checks).
+
+  * Backends are explicit and recorded. The real backend needs TYPESAFE_API_KEY
+    in the environment (wrap the call with `pass-cli run --env-file ... -- jev`);
+    with no key it fails loudly and never invents probabilities. The mock backend
+    returns only what a canned answers file provides -- also never invented.
+"""
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+# NB: urllib is imported lazily inside the transport, not here. Some devcontainer
+# base images ship a python3 whose stdlib lacks the 'http' package, so
+# `import urllib.request` raises at import time; keeping it out of module scope
+# means --help, --print-request, the mock backend, and all validation still work
+# there, and only a real HTTP call needs a working transport (urllib or curl).
+
+DEFAULT_API_URL = os.environ.get("JEV_API_URL", "https://api.typesafe.ai/v1/systemone")
+DEFAULT_MODEL = os.environ.get("JEV_MODEL", "jev-latest")
+API_KEY_ENV = "TYPESAFE_API_KEY"  # chosen name; docs.typesafe.ai/api does not fix one.
+
+
+def die(msg):
+    sys.stderr.write("jev: %s\n" % msg)
+    sys.exit(2)
+
+
+def load_json(path):
+    try:
+        if path == "-":
+            return json.load(sys.stdin)
+        with open(path, "r") as fh:
+            return json.load(fh)
+    except (OSError, ValueError) as exc:
+        die("could not read JSON from %s: %s" % (path, exc))
+
+
+def extract_state(document):
+    """Send only `.state` when present; otherwise treat the whole doc as state.
+
+    A fixture ({meta, state, expected}) yields just its state. A bare state
+    document is passed through. Either way, `meta`/`expected` never leave here.
+    """
+    if isinstance(document, dict) and "state" in document:
+        return document["state"]
+    return document
+
+
+def validate_questions(questions):
+    """Reject malformed Noul questions before any backend call.
+
+    Each question must be type == "noul" with a non-empty `instructions` string.
+    `criteria`, if present, must be an object (its true/false descriptions are
+    optional per the API). Returns the questions unchanged, or exits non-zero.
+    """
+    if not isinstance(questions, dict) or not questions:
+        die("questions must be a non-empty JSON object keyed by question id")
+    for qid, q in questions.items():
+        if not isinstance(q, dict):
+            die("question %r is not an object" % qid)
+        if q.get("type") != "noul":
+            die("question %r: type must be \"noul\"" % qid)
+        instructions = q.get("instructions")
+        if not isinstance(instructions, str) or not instructions.strip():
+            die("question %r: non-empty string \"instructions\" is required" % qid)
+        if "criteria" in q and not isinstance(q["criteria"], dict):
+            die("question %r: \"criteria\" must be an object when present" % qid)
+    return questions
+
+
+def build_request(state, questions, model):
+    """The exact body sent to Jev. Note: state and questions only -- no meta."""
+    return {"state": state, "model": model, "questions": questions}
+
+
+def finite_prob(value, qid):
+    try:
+        prob = float(value)
+    except (TypeError, ValueError):
+        die("answer for %r is not a number: %r" % (qid, value))
+    # reject NaN/inf and out-of-range
+    if prob != prob or prob in (float("inf"), float("-inf")):
+        die("answer for %r is not finite: %r" % (qid, value))
+    if prob < 0.0 or prob > 1.0:
+        die("answer for %r is out of [0,1]: %r" % (qid, prob))
+    return prob
+
+
+def parse_answers(answers, questions):
+    """Map the API's answers object to {qid: prob}, with the contract enforced.
+
+    Exactly the input question ids, each a finite probability in [0, 1].
+    """
+    if not isinstance(answers, dict):
+        die("backend returned no \"answers\" object")
+    got = set(answers)
+    want = set(questions)
+    if got != want:
+        die("answer ids %s do not match question ids %s" % (sorted(got), sorted(want)))
+    out = {}
+    for qid in questions:
+        ans = answers[qid]
+        if not isinstance(ans, dict) or "noul" not in ans:
+            die("answer for %r has no \"noul\" field" % qid)
+        out[qid] = finite_prob(ans["noul"], qid)
+    return out
+
+
+def call_real(request, api_url):
+    api_key = os.environ.get(API_KEY_ENV)
+    if not api_key:
+        die("%s is not set. The real backend never invents probabilities; "
+            "wrap the call with pass-cli (e.g. `pass-cli run --env-file <f> -- "
+            "jev ...`) or pass --backend mock for tests." % API_KEY_ENV)
+    payload = json.dumps(request).encode("utf-8")
+    return _http_post(api_url, api_key, payload)
+
+
+def _http_post(url, api_key, payload):
+    """POST JSON and return the parsed body. Prefer urllib; fall back to curl
+    where the interpreter's stdlib lacks the 'http' module."""
+    try:
+        import urllib.error as _err
+        import urllib.request as _req
+    except ImportError:
+        return _http_post_curl(url, api_key, payload)
+    req = _req.Request(
+        url,
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": "Bearer %s" % api_key,
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with _req.urlopen(req) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except _err.HTTPError as exc:
+        die("Jev API returned HTTP %s: %s" % (exc.code, exc.read().decode("utf-8", "replace")))
+    except (_err.URLError, ValueError) as exc:
+        die("Jev API call failed: %s" % exc)
+
+
+def _http_post_curl(url, api_key, payload):
+    if not shutil.which("curl"):
+        die("no HTTP transport: python's urllib lacks the 'http' module and "
+            "curl is not installed")
+    # Keep the key out of argv/the process list: the Authorization header goes in
+    # a 0600 temp file (curl -H @file), the body on stdin (--data-binary @-).
+    fd, hdr_path = tempfile.mkstemp()
+    try:
+        os.write(fd, ("Authorization: Bearer %s\n" % api_key).encode("utf-8"))
+        os.close(fd)
+        proc = subprocess.run(
+            ["curl", "-fsS", "-X", "POST", url,
+             "-H", "@%s" % hdr_path, "-H", "Content-Type: application/json",
+             "--data-binary", "@-"],
+            input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    finally:
+        try:
+            os.unlink(hdr_path)
+        except OSError:
+            pass
+    if proc.returncode != 0:
+        die("Jev API call via curl failed: %s" % proc.stderr.decode("utf-8", "replace"))
+    try:
+        return json.loads(proc.stdout.decode("utf-8"))
+    except ValueError as exc:
+        die("Jev API returned non-JSON: %s" % exc)
+
+
+def call_mock(request, mock_answers_path, questions):
+    """Return probabilities from a canned file only -- never fabricated.
+
+    The file may be either {qid: prob} or a full API response
+    {"answers": {qid: {"noul": prob}}}.
+    """
+    if not mock_answers_path:
+        die("--backend mock requires --mock-answers FILE (probabilities are never "
+            "invented, not even in the mock)")
+    canned = load_json(mock_answers_path)
+    if isinstance(canned, dict) and "answers" in canned:
+        return canned
+    # bare {qid: prob} -> API-shaped answers
+    if not isinstance(canned, dict):
+        die("--mock-answers must be a JSON object")
+    return {"answers": {qid: {"type": "noul", "noul": v} for qid, v in canned.items()}}
+
+
+def main(argv):
+    ap = argparse.ArgumentParser(
+        prog="jev",
+        description="Send a fixture state and Noul questions to Jev; get one "
+                    "probability in [0,1] per question.",
+    )
+    ap.add_argument("state_file", metavar="FIXTURE_OR_STATE",
+                    help="fixture file (only its .state is sent) or a bare state "
+                         "file; '-' for stdin")
+    ap.add_argument("-q", "--questions", required=True, metavar="FILE",
+                    help="Noul questions JSON (map of id -> {type,instructions,criteria?})")
+    ap.add_argument("--backend", choices=("real", "mock"), default="real",
+                    help="'real' calls Jev (needs %s); 'mock' returns --mock-answers"
+                         % API_KEY_ENV)
+    ap.add_argument("--mock-answers", metavar="FILE",
+                    help="canned answers for --backend mock")
+    ap.add_argument("--model", default=DEFAULT_MODEL,
+                    help="Jev model (default %(default)s; or $JEV_MODEL)")
+    ap.add_argument("--api-url", default=DEFAULT_API_URL,
+                    help="Jev endpoint (default %(default)s; or $JEV_API_URL)")
+    ap.add_argument("--print-request", action="store_true",
+                    help="print the exact request body that WOULD be sent and "
+                         "exit, without calling any backend (leak-check / debug)")
+    args = ap.parse_args(argv)
+
+    document = load_json(args.state_file)
+    state = extract_state(document)
+    questions = validate_questions(load_json(args.questions))
+    request = build_request(state, questions, args.model)
+
+    if args.print_request:
+        json.dump(request, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return 0
+
+    if args.backend == "mock":
+        body = call_mock(request, args.mock_answers, questions)
+    else:
+        body = call_real(request, args.api_url)
+
+    probabilities = parse_answers(body.get("answers"), questions)
+    result = {
+        "backend": args.backend,
+        "model": body.get("model", args.model),
+        "probabilities": probabilities,
+    }
+    json.dump(result, sys.stdout, indent=2, sort_keys=True)
+    sys.stdout.write("\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
