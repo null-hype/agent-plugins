@@ -29,6 +29,7 @@ declared: Listing<VaultSpec> = new {
       "render.com"
       "cloudflare"
       "dagger.cloud"
+      "stitch.withgoogle.com"
     }
   }
   // "linear-release" and "claude" used to live here (see the header comment

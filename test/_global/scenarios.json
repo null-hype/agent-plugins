@@ -1,52 +1,96 @@
 {
-    "color_and_playwright_cli": {
-        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-        "features": {
-            "pass-cli": {
-                "favorite": "purple"
-            },
-            "playwright-cli": {
-                "browser": "firefox"
-            }
-        }
-    },
-    "jin-81-pass-cli": {
-        "build": {
-            "dockerfile": "Dockerfile"
-        },
-        "features": {
-            "pass-cli": {
-                "favorite": "green",
-                "tag": "jin-81-pass-cli"
-            },
-            "playwright-cli": {}
-        },
-        "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
-        }
-    },
-    "jin-90-dead-drop": {
-        "build": {
-            "dockerfile": "Dockerfile"
-        },
-        "features": {
-            "pass-cli": {}
-        },
-        "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
-        }
-    },
-    "jin-91-resume-session": {
-        "build": {
-            "dockerfile": "Dockerfile"
-        },
-        "features": {
-            "pass-cli": {
-                "tag": "jin-91-resume-session"
-            }
-        },
-        "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
-        }
+  "color_and_playwright_cli": {
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+      "pass-cli": {
+        "favorite": "purple"
+      },
+      "playwright-cli": {
+        "browser": "firefox"
+      }
     }
+  },
+  "jin-81-pass-cli": {
+    "build": {
+      "dockerfile": "Dockerfile"
+    },
+    "features": {
+      "pass-cli": {
+        "favorite": "green",
+        "tag": "jin-81-pass-cli"
+      },
+      "playwright-cli": {}
+    },
+    "containerEnv": {
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+    }
+  },
+  "jin-90-dead-drop": {
+    "build": {
+      "dockerfile": "Dockerfile"
+    },
+    "features": {
+      "pass-cli": {}
+    },
+    "containerEnv": {
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+    }
+  },
+  "jin-91-resume-session": {
+    "build": {
+      "dockerfile": "Dockerfile"
+    },
+    "features": {
+      "pass-cli": {
+        "tag": "jin-91-resume-session"
+      }
+    },
+    "containerEnv": {
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+    }
+  },
+  "cit-271-free-agent-hint0": {
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+    "features": {
+      "pass-cli": {}
+    },
+    "containerEnv": {
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+    }
+  },
+  "cit-271-free-agent-hint1": {
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+    "features": {
+      "pass-cli": {}
+    },
+    "containerEnv": {
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+    }
+  },
+  "cit-271-free-agent-hint2": {
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+    "features": {
+      "pass-cli": {}
+    },
+    "containerEnv": {
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+    }
+  },
+  "cit-271-free-agent-hint3": {
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+    "features": {
+      "pass-cli": {}
+    },
+    "containerEnv": {
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+    }
+  }
 }
