@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Evidence file",
+    "description": "What the reasoning agent emits. An empty findings array (\"no findings\") is valid.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["findings"],
+    "properties": {
+        "findings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["component", "source_path", "excerpt", "never", "enforced"],
+                "properties": {
+                    "component": {"type": "string", "minLength": 1, "description": "The component that states the 'never'."},
+                    "source_path": {"type": "string", "minLength": 1, "description": "Path relative to the image root."},
+                    "excerpt": {"type": "string", "minLength": 1, "description": "Text that appears verbatim at source_path."},
+                    "never": {"type": "string", "minLength": 1, "description": "The thing the excerpt says must never happen."},
+                    "enforced": {"type": "boolean", "description": "Whether anything in the system enforces the 'never'."}
+                }
+            }
+        }
+    }
+}
