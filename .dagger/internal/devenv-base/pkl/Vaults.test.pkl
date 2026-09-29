@@ -36,6 +36,7 @@ local envFiles: Listing<String> = new {
   "../../../../test/_global/jin-81-pass-cli/.env"
   "../../../../test/_global/jin-90-dead-drop/.env"
   "../../../../test/_global/jin-91-resume-session/.env"
+  "../../../../test/_global/cit-271-free-agent/.env"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)
