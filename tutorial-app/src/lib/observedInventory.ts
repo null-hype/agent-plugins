@@ -28,6 +28,7 @@ export const observed: ObservedInventory = {
         'cloudflare',
         'dagger.cloud',
         'SSH-tidelane',
+        'aistudio.google.com',
         'jules.googleapis.com',
         'netlify',
         'stitch.withgoogle.com',

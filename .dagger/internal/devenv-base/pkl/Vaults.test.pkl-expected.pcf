@@ -4,7 +4,7 @@ examples {
   }
   ["observed items in each declared vault"] {
     new {
-      ["infra"] = List("SSH-tidelane", "cloudflare", "dagger.cloud", "github.com", "jules.googleapis.com", "netlify", "render.com", "restic", "stitch.withgoogle.com", "tailscale", "tidelands-1.seahorse-saurolophus.ts.net")
+      ["infra"] = List("SSH-tidelane", "aistudio.google.com", "cloudflare", "dagger.cloud", "github.com", "jules.googleapis.com", "netlify", "render.com", "restic", "stitch.withgoogle.com", "tailscale", "tidelands-1.seahorse-saurolophus.ts.net")
     }
     new {
       ["tidelands.dev"] = List("agent.tidelands.dev", "pass-cli")
