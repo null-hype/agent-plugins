@@ -50,59 +50,47 @@
     }
   },
   "cit-271-free-agent-hint0": {
-    "build": {
-      "dockerfile": "cit-271-free-agent/Dockerfile",
-      "context": "cit-271-free-agent"
-    },
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
     "features": {
-      "pass-cli": {
-        "tag": "cit-271-free-agent"
-      }
+      "pass-cli": {}
     },
     "containerEnv": {
-      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
     }
   },
   "cit-271-free-agent-hint1": {
-    "build": {
-      "dockerfile": "cit-271-free-agent/Dockerfile",
-      "context": "cit-271-free-agent"
-    },
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
     "features": {
-      "pass-cli": {
-        "tag": "cit-271-free-agent"
-      }
+      "pass-cli": {}
     },
     "containerEnv": {
-      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
     }
   },
   "cit-271-free-agent-hint2": {
-    "build": {
-      "dockerfile": "cit-271-free-agent/Dockerfile",
-      "context": "cit-271-free-agent"
-    },
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
     "features": {
-      "pass-cli": {
-        "tag": "cit-271-free-agent"
-      }
+      "pass-cli": {}
     },
     "containerEnv": {
-      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
     }
   },
   "cit-271-free-agent-hint3": {
-    "build": {
-      "dockerfile": "cit-271-free-agent/Dockerfile",
-      "context": "cit-271-free-agent"
-    },
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
     "features": {
-      "pass-cli": {
-        "tag": "cit-271-free-agent"
-      }
+      "pass-cli": {}
     },
     "containerEnv": {
-      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+      "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+      "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+      "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
     }
   }
 }
