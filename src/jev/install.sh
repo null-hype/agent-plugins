@@ -19,6 +19,13 @@ FEATURE_DIR="$(cd "$(dirname "$0")" && pwd)"
 # The client bin.
 install -m 0755 "$FEATURE_DIR/jev" /usr/local/bin/jev
 
+# The transport contract, installed so it exists in the target container (the
+# same way the 'evidence' feature installs its schema under /usr/local/share).
+# The bin validates in Python; this file is the externally-consumable contract a
+# pkl-aware consumer can evaluate an instance against.
+mkdir -p /usr/local/share/jev
+install -m 0644 "$FEATURE_DIR/pkl/Jev.pkl" /usr/local/share/jev/Jev.pkl
+
 # install.sh always runs as root, so a plain '~' here resolves to /root -- a
 # different home than whichever user actually invokes 'jev' (and reads its
 # skills) later. Use _REMOTE_USER_HOME so both agree on one home directory, and

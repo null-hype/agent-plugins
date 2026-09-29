@@ -44,25 +44,37 @@ echo '{"q1":{"type":"noul"}}' > "$T/bad-missing.json"
 echo '{"a02_security_misconfiguration": 0.9}' > "$T/ans.json"
 echo '{"a02_security_misconfiguration": 1.5}' > "$T/ans-bad.json"
 
+# A rejection must be a clean, deliberate error (die() exits 2), NOT a crash: a
+# bare `! jev ...` would pass on any nonzero exit, including a traceback (exit 1)
+# -- the same false-pass shape as trusting a bind mount that silently did
+# nothing. rejected() asserts exit code exactly 2.
+rejected() { "$@"; test "$?" -eq 2; }
+
 check "jev is on PATH" bash -c "jev --help >/dev/null"
 check "first-party jev skill installed" bash -c "test -f \$HOME/.claude/skills/jev/SKILL.md"
 check "third-party TypeSafe skill installed" bash -c "ls -d \$HOME/.claude/skills/*typesafe* >/dev/null 2>&1"
+check "Jev.pkl contract installed" test -f /usr/local/share/jev/Jev.pkl
 
-# The most important check: only .state leaves the process.
-check "request carries state" bash -c "jev --print-request -q '$T/questions.json' '$T/fixture.json' | grep -q STATE-MARKER"
-check "request does NOT leak meta/expected" bash -c "! jev --print-request -q '$T/questions.json' '$T/fixture.json' | grep -q CVE-LEAK-9999"
+# The most important check: only .state leaves the process. Capture the request
+# once and require jev to succeed (exit 0) before asserting on its output, so a
+# crash can't masquerade as "no leak".
+check "request carries state but not meta/expected" bash -c "
+    req=\$(jev --print-request -q '$T/questions.json' '$T/fixture.json') || exit 1
+    printf '%s' \"\$req\" | grep -q STATE-MARKER || exit 1
+    printf '%s' \"\$req\" | grep -q CVE-LEAK-9999 && exit 1
+    exit 0"
 
 # Output contract, via the mock backend.
 check "mock returns the question's probability" bash -c "jev --backend mock --mock-answers '$T/ans.json' -q '$T/questions.json' '$T/fixture.json' | grep -q '\"a02_security_misconfiguration\": 0.9'"
 check "output records the backend" bash -c "jev --backend mock --mock-answers '$T/ans.json' -q '$T/questions.json' '$T/fixture.json' | grep -q '\"backend\": \"mock\"'"
 
-# Rejections happen before any backend call.
-check "malformed question (wrong type) rejected" bash -c "! jev --backend mock --mock-answers '$T/ans.json' -q '$T/bad-type.json' '$T/fixture.json'"
-check "malformed question (no instructions) rejected" bash -c "! jev --backend mock --mock-answers '$T/ans.json' -q '$T/bad-missing.json' '$T/fixture.json'"
-check "out-of-range probability rejected" bash -c "! jev --backend mock --mock-answers '$T/ans-bad.json' -q '$T/questions.json' '$T/fixture.json'"
+# Rejections happen before any backend call, and exit deliberately (code 2).
+check "malformed question (wrong type) rejected" rejected jev --backend mock --mock-answers "$T/ans.json" -q "$T/bad-type.json" "$T/fixture.json"
+check "malformed question (no instructions) rejected" rejected jev --backend mock --mock-answers "$T/ans.json" -q "$T/bad-missing.json" "$T/fixture.json"
+check "out-of-range probability rejected" rejected jev --backend mock --mock-answers "$T/ans-bad.json" -q "$T/questions.json" "$T/fixture.json"
 
 # Never invent probabilities.
-check "mock without --mock-answers fails" bash -c "! jev --backend mock -q '$T/questions.json' '$T/fixture.json'"
-check "real backend without API key fails loudly" bash -c "unset TYPESAFE_API_KEY; ! jev --backend real -q '$T/questions.json' '$T/fixture.json'"
+check "mock without --mock-answers fails" rejected jev --backend mock -q "$T/questions.json" "$T/fixture.json"
+check "real backend without API key fails loudly" bash -c "unset TYPESAFE_API_KEY; jev --backend real -q '$T/questions.json' '$T/fixture.json'; test \$? -eq 2"
 
 reportResults
