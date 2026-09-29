@@ -1,0 +1,14 @@
+== positive arm (toy-noteexpand:positive) ==
+hello
+MARKER-8f3a
+bye
+
+== control arm (toy-noteexpand:control) ==
+hello
+[include refused]
+bye
+
+pos: plain lines rendered -- OK
+ctl: plain lines rendered -- OK
+positive: MARKER read (unenforced 'never' fires) -- OK
+control: MARKER refused ('never' enforced) -- OK
