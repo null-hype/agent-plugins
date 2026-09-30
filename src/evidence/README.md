@@ -34,9 +34,15 @@ A scenario `amends "modulepath:/Scenario.pkl"`; a thin `<scenario>_test.py` call
 
 Select with `CONTRACT_MODE` / `--mode`. **Credentials never select a mode**; the opt-in switches default off even when credentials exist. Deterministic mode refuses any real call and never falls back from mock to real. A disabled live mode prints `NOT RUN`, separate from deterministic results; an explicitly requested mode whose prerequisite is missing is `BLOCKED` (exit 1). Bounds: `CONTRACT_REPEATS` (1..5) is enforced; `CONTRACT_MAX_TOKENS`/`CONTRACT_MAX_USD` are refused because neither the `jev` client nor a reasoning-agent runner can enforce them (fail closed). Mock assertions establish wiring, not Jev's discrimination or calibration.
 
-## Expectations and repeats
+## Expectations, verdicts and records
 
-Relative expectations and bands are evaluated **per repeat**, and every repeat's results are printed (`RESULT repeat=N ...`), so a passing later repeat cannot hide a failing earlier one. An uncalibrated band (`calibrated = false`, the default) is asserted on mock answers only, as a wiring check, and reported as not asserted on real results.
+**Pkl owns the semantics.** `pkl/Verdicts.pkl` defines the comparison functions and `Scenario.evaluate` applies a scenario's registered expectations to an observed world (Jev probabilities keyed by declared case identity), returning typed verdicts: `EXPECTED_ORDER` / `ORDER_REVERSED` / `ORDER_TIED`, `WITHIN_BAND` / `OUTSIDE_BAND`, `VALID_PROBABILITY` / `INVALID_PROBABILITY`, `MISSING_OBSERVATION`, `NOT_ASSERTED_UNCALIBRATED`. Python only supplies the world (`-p world.uri=`) and runs a thin matcher, the `expect(fact).toHaveVerdict(axiom, world, code)` shape used in `tutorial-app`: it compares the actual code with the registered one (`expected`; `accepted` lists the codes that pass) and records the evaluation.
+
+- **Required checks fail on a missing observation** (`required = true`, the default). Agent-collected evidence is scored as the scenario's declared `agentObservationId`, not a generic id.
+- **Calibration is explicit.** An uncalibrated band (`calibrated = false`, the default) is a mock wiring check; on a real result it yields the recorded status `not-asserted`, reported separately and never counted as verified.
+- **Every repeat is its own world**, evaluated independently (no aggregation rule is registered).
+- **Known inputs:** a scenario's `diagnostics` (aligned, out-of-band, reversed, tied, invalid, missing, uncalibrated) are checked by `pkl test` facts and a golden `-expected.pcf`, and re-asserted through the matcher; an expected diagnostic passes.
+- **Records:** every evaluation, pass or fail, is appended to `evaluations.jsonl` (run, repeat, caseId, checkId, axiom, worldRef, actual, expected, accepted, status, message). `worldRef` names a preserved `worlds/repeat-N/` directory holding the evidence, the state sent to Jev, the results and `world.json`. Records go to `CONTRACT_RECORDS_DIR` (default `/tmp/contract-records`) and CI uploads them as artifacts even on failure.
 
 ## Agent isolation (prerequisite for `full-experiment`)
 

@@ -187,3 +187,18 @@ jobs:
           name: tk-evidence-restic-backup
           path: build/tk-evidence/
           if-no-files-found: ignore
+
+      - name: "Collect evaluation records"
+        if: always()
+        run: |
+          mkdir -p build/contract-records
+          find /tmp/devcontainercli/container-features-test -type d -name contract-records 2>/dev/null \
+            -exec cp -r {}/. build/contract-records/ \; || true
+
+      - name: "Upload evaluation records"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-records
+          path: build/contract-records/
+          if-no-files-found: ignore

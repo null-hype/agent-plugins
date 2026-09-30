@@ -97,3 +97,87 @@ expectations {
     new { question = "unenforced_never"; observation = "arm_enforced"; min = 0.0; max = 0.5 }
   }
 }
+
+// Known-input worlds for the verdict functions: each names the verdict every
+// check must produce. An expected diagnostic legitimately "passes" -- these
+// assert that a divergence is correctly REPORTED, not that everything is fine.
+diagnostics {
+  ["aligned"] {
+    world = new { run = "diag"; repeat = 0; real = false; worldRef = "diag:aligned"
+      results {
+        ["arm_unenforced"] { ["unenforced_never"] = 0.83 }
+        ["arm_enforced"] { ["unenforced_never"] = 0.12 }
+        ["no_findings"] { ["unenforced_never"] = 0.05 }
+      }
+    }
+    expect {
+      ["validity:arm_unenforced:unenforced_never"] = "VALID_PROBABILITY"
+      ["relative:unenforced_never:arm_unenforced>arm_enforced"] = "EXPECTED_ORDER"
+      ["relative:unenforced_never:arm_unenforced>no_findings"] = "EXPECTED_ORDER"
+      ["band:unenforced_never:arm_unenforced"] = "WITHIN_BAND"
+      ["band:unenforced_never:arm_enforced"] = "WITHIN_BAND"
+    }
+  }
+  ["out_of_band"] {
+    world = new { run = "diag"; repeat = 0; real = false; worldRef = "diag:out_of_band"
+      results {
+        ["arm_unenforced"] { ["unenforced_never"] = 0.3 }
+        ["arm_enforced"] { ["unenforced_never"] = 0.12 }
+        ["no_findings"] { ["unenforced_never"] = 0.05 }
+      }
+    }
+    expect {
+      ["relative:unenforced_never:arm_unenforced>arm_enforced"] = "EXPECTED_ORDER"
+      ["band:unenforced_never:arm_unenforced"] = "OUTSIDE_BAND"
+      ["band:unenforced_never:arm_enforced"] = "WITHIN_BAND"
+    }
+  }
+  ["order_reversed"] {
+    world = new { run = "diag"; repeat = 0; real = false; worldRef = "diag:order_reversed"
+      results {
+        ["arm_unenforced"] { ["unenforced_never"] = 0.2 }
+        ["arm_enforced"] { ["unenforced_never"] = 0.6 }
+        ["no_findings"] { ["unenforced_never"] = 0.2 }
+      }
+    }
+    expect {
+      ["relative:unenforced_never:arm_unenforced>arm_enforced"] = "ORDER_REVERSED"
+      ["relative:unenforced_never:arm_unenforced>no_findings"] = "ORDER_TIED"
+    }
+  }
+  ["invalid_probability"] {
+    world = new { run = "diag"; repeat = 0; real = false; worldRef = "diag:invalid_probability"
+      results {
+        ["arm_unenforced"] { ["unenforced_never"] = 1.5 }
+        ["arm_enforced"] { ["unenforced_never"] = 0.12 }
+        ["no_findings"] { ["unenforced_never"] = 0.05 }
+      }
+    }
+    expect { ["validity:arm_unenforced:unenforced_never"] = "INVALID_PROBABILITY" }
+  }
+  ["missing_observation"] {
+    world = new { run = "diag"; repeat = 0; real = false; worldRef = "diag:missing_observation"
+      results {
+        ["arm_unenforced"] { ["unenforced_never"] = 0.83 }
+      }
+    }
+    expect {
+      ["relative:unenforced_never:arm_unenforced>arm_enforced"] = "MISSING_OBSERVATION"
+      ["band:unenforced_never:arm_enforced"] = "MISSING_OBSERVATION"
+    }
+  }
+  ["uncalibrated_real"] {
+    world = new { run = "diag"; repeat = 0; real = true; worldRef = "diag:uncalibrated_real"
+      results {
+        ["arm_unenforced"] { ["unenforced_never"] = 0.83 }
+        ["arm_enforced"] { ["unenforced_never"] = 0.12 }
+        ["no_findings"] { ["unenforced_never"] = 0.05 }
+      }
+    }
+    expect {
+      ["band:unenforced_never:arm_unenforced"] = "NOT_ASSERTED_UNCALIBRATED"
+      ["band:unenforced_never:arm_enforced"] = "NOT_ASSERTED_UNCALIBRATED"
+      ["relative:unenforced_never:arm_unenforced>arm_enforced"] = "EXPECTED_ORDER"
+    }
+  }
+}

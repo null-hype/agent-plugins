@@ -13,6 +13,7 @@ mode was blocked. Deterministic results and live results are printed under
 separate headings and never merged.
 """
 import argparse
+import hashlib
 import http.server
 import json
 import os
@@ -121,7 +122,7 @@ class Recorder:
 def load_scenario(module):
     """Agent/Jev-side views only. `expectations` is loaded separately, later."""
     keys = ("groundingFiles", "rootDir", "observations", "ungrounded", "malformed",
-            "questions", "mockAnswers", "hintLevel")
+            "questions", "mockAnswers", "hintLevel", "agentObservationId")
     return {k: ec.scenario_view(module, k) for k in keys}
 
 
@@ -158,38 +159,65 @@ def leak_strings(expectations):
     return out | {"expectations", "relative", "higher", "lower", "bands"}
 
 
-def evaluate_expectations(exp, results, real):
-    """Evaluate every applicable pre-registered expectation on ONE set of
-    results ({observation id: Jev result}). Returns (name, ok) pairs plus
-    notes for expectations that were not applicable or not asserted.
-
-    Relative expectations need both observations present. A band applies only
-    if its observation is present, and an uncalibrated band is asserted on
-    mock answers only (wiring), never on a real result.
+class EvalLog:
+    """Thin matcher + recorder. Pkl produces the verdicts (Scenario.evaluate);
+    this only compares an actual verdict code with the registered expected
+    code(s) and appends a structured record for EVERY evaluation, pass or
+    fail, to evaluations.jsonl -- the toHaveVerdict shape. Each record points
+    (worldRef) at a preserved world directory holding the actual inputs and
+    results, so the reference is inspectable.
     """
-    out, notes = [], []
-    for r in exp["relative"]:
-        if r["higher"] in results and r["lower"] in results:
-            hi = results[r["higher"]]["probabilities"][r["question"]]
-            lo = results[r["lower"]]["probabilities"][r["question"]]
-            out.append(("%s: %s (%.3f) > %s (%.3f)" % (r["question"], r["higher"], hi, r["lower"], lo), hi > lo))
-        else:
-            notes.append("relative %s>%s not applicable (observation missing)" % (r["higher"], r["lower"]))
-    for b in exp["bands"]:
-        if b["observation"] not in results:
-            notes.append("band on %s not applicable (observation missing)" % b["observation"])
-        elif real and not b["calibrated"]:
-            notes.append("band on %s not asserted: uncalibrated (mock wiring check only)" % b["observation"])
-        else:
-            p = results[b["observation"]]["probabilities"][b["question"]]
-            out.append(("%s: %s %.3f in [%.2f, %.2f]" % (b["question"], b["observation"], p, b["min"], b["max"]),
-                        b["min"] <= p <= b["max"]))
-    return out, notes
+
+    def __init__(self, records_dir, run):
+        self.run = run
+        self.dir = os.path.join(records_dir, run)
+        shutil.rmtree(self.dir, ignore_errors=True)
+        os.makedirs(os.path.join(self.dir, "worlds"))
+        self.path = os.path.join(self.dir, "evaluations.jsonl")
+        self.not_asserted = 0
+
+    def world(self, repeat, real, results, inputs):
+        """Preserve one repeat's inputs/results; return the World for Pkl."""
+        wdir = os.path.join(self.dir, "worlds", "repeat-%d" % repeat)
+        os.makedirs(wdir, exist_ok=True)
+        digest = hashlib.sha256()
+        for name in sorted(inputs):
+            shutil.copy(inputs[name], os.path.join(wdir, name))
+            digest.update(name.encode() + open(inputs[name], "rb").read())
+        digest.update(json.dumps(results, sort_keys=True).encode())
+        world = {"run": self.run, "repeat": repeat, "real": real, "results": results,
+                 "worldRef": "worlds/repeat-%d@sha256:%s" % (repeat, digest.hexdigest()[:16])}
+        write_json(os.path.join(wdir, "world.json"), world)
+        return world, os.path.join(wdir, "world.json")
+
+    def match(self, evaluations, label, expect=None):
+        """expect: {checkId: code} for a diagnostic world; otherwise each
+        evaluation's own registered `accepted` codes decide."""
+        with open(self.path, "a") as fh:
+            for e in evaluations:
+                if expect is not None:
+                    if e["checkId"] not in expect:
+                        continue
+                    expected, accepted, asserted = expect[e["checkId"]], [expect[e["checkId"]]], True
+                else:
+                    expected, accepted, asserted = e["expected"], e["accepted"], e["asserted"]
+                ok = e["actual"] in accepted
+                status = ("pass" if ok else "fail") if asserted or expect is not None else "not-asserted"
+                fh.write(json.dumps({
+                    "run": e["run"], "repeat": e["repeat"], "caseId": e["caseId"], "checkId": e["checkId"],
+                    "axiom": e["axiom"], "worldRef": e["worldRef"], "actual": e["actual"], "expected": expected,
+                    "accepted": accepted, "status": status, "message": e["message"]}, sort_keys=True) + "\n")
+                if status == "not-asserted":
+                    self.not_asserted += 1
+                    print("  not asserted  %s [%s] repeat %d: %s" % (e["checkId"], label, e["repeat"], e["message"]))
+                else:
+                    check("%s repeat %d: %s => %s (expected %s)" % (label, e["repeat"], e["checkId"], e["actual"], expected),
+                          ok, e["message"])
 
 
 # --- deterministic ---------------------------------------------------------
 
-def run_deterministic(module, tmp):
+def run_deterministic(module, tmp, log):
     print("== deterministic (canned evidence + mock Jev; zero real calls) ==")
     plan = ec.plan_mode("deterministic")
     sc = load_scenario(module)
@@ -241,6 +269,8 @@ def run_deterministic(module, tmp):
     for oid in sc["observations"]:
         n = rec.count()
         results[oid], states[oid] = ec.run_pipeline(plan, ev[oid], root, qpath, tmp, "mock", ans[oid], env=rec.env)
+        shutil.copy(os.path.join(tmp, "state.json"), os.path.join(tmp, "state-%s.json" % oid))
+        write_json(os.path.join(tmp, "result-%s.json" % oid), results[oid])
         c = rec.call(n)
         check("accepted %s: exactly one jev call, explicit --backend mock" % oid,
               rec.count() == n + 1 and "mock" in c["argv"] and "real" not in c["argv"])
@@ -270,12 +300,24 @@ def run_deterministic(module, tmp):
           req and not any(s in req for s in leaks), [s for s in leaks if s in req])
     check("Jev request holds exactly state, model and questions", set(json.loads(req)) == {"state", "model", "questions"})
 
-    # expectations over the mock results: wiring only
-    check("probability validity holds for every mock result", all(valid_probs(r, qids) for r in results.values()))
-    checks, _ = evaluate_expectations(exp, results, real=False)
-    check("expectations are applicable to the canned observations", len(checks) == len(exp["relative"]) + len(exp["bands"]))
-    for name, ok in checks:
-        check("mock expectation (wiring, not Jev discrimination or calibration): " + name, ok)
+    # Expectations are evaluated by Pkl over the observed (mock) world; the
+    # matcher compares codes and records every evaluation. Wiring only: mock
+    # answers say nothing about Jev's discrimination or calibration.
+    inputs = {}
+    for oid in oids:
+        inputs["evidence-%s.json" % oid] = ev[oid]
+        inputs["state-%s.json" % oid] = os.path.join(tmp, "state-%s.json" % oid)
+        inputs["result-%s.json" % oid] = os.path.join(tmp, "result-%s.json" % oid)
+    world, wpath = log.world(0, False, {o: results[o]["probabilities"] for o in oids}, inputs)
+    evals = ec.evaluate_world(module, wpath)
+    check("every registered check produced an evaluation",
+          len(evals) == len(qids) * len(oids) + len(exp["relative"]) + len(exp["bands"]))
+    log.match(evals, "mock wiring")
+    # verdict functions on known inputs (out-of-band, reversed, missing, ...)
+    diags = ec.scenario_view(module, "diagnostics")
+    diag_evals = ec.scenario_view(module, "diagnosticEvaluations")
+    for name in sorted(diags):
+        log.match(diag_evals[name], "diagnostic:" + name, expect=diags[name]["expect"])
 
     # zero real calls, and guards
     check("no non-mock jev call was made", all("real" not in rec.call(i)["argv"] for i in range(rec.count())))
@@ -354,7 +396,7 @@ def run_deterministic(module, tmp):
 
 # --- live modes ------------------------------------------------------------
 
-def run_live(mode, module, tmp, repeats, model):
+def run_live(mode, module, tmp, repeats, model, log):
     print("== %s (REAL Jev%s) ==" % (mode, " + reasoning agent" if mode == "full-experiment" else ""))
     plan = ec.plan_mode(mode)
     if not plan.runnable:
@@ -380,8 +422,7 @@ def run_live(mode, module, tmp, repeats, model):
     qpath = os.path.join(tmp, "questions.json")
     write_json(qpath, sc["questions"])
     rec = Recorder(tmp, strict=False)
-    exp = ec.scenario_view(module, "expectations")
-    history = []  # every repeat's results, retained
+    results = {}
     for rep in range(repeats):
         results = {}
         if mode == "live-jev":
@@ -394,22 +435,26 @@ def run_live(mode, module, tmp, repeats, model):
             if path is None:
                 path = os.path.join(tmp, oid + ".json")
                 write_json(path, sc["observations"][oid])
+            case = oid if oid != "agent" else (sc["agentObservationId"] or "agent")
+            shutil.copy(path, os.path.join(tmp, "evidence-%s.json" % case))
             try:
                 res, _ = ec.run_pipeline(plan, path, root, qpath, tmp, "real", model=model, env=rec.env)
             except ec.Rejected as e:
                 check("repeat %d %s: evidence rejected before Jev" % (rep, oid), False, e.errors)
                 continue
-            results[oid] = res
+            results[case] = res
+            shutil.copy(os.path.join(tmp, "state.json"), os.path.join(tmp, "state-%s.json" % case))
+            write_json(os.path.join(tmp, "result-%s.json" % case), res)
             check("repeat %d %s: real Jev returned one probability in [0,1] per question" % (rep, oid),
                   res.get("backend") == "real" and valid_probs(res, qids))
-        history.append(results)
-        # Each repeat is judged on its own; a good later repeat cannot hide a bad earlier one.
-        checks, notes = evaluate_expectations(exp, results, real=True)
-        for name, ok in checks:
-            check("repeat %d expectation: %s" % (rep, name), ok)
-        for n in sorted(set(notes)):
-            print("  note (repeat %d): %s" % (rep, n))
-        print("  RESULT repeat=%d %s" % (rep, json.dumps({k: v["probabilities"] for k, v in results.items()}, sort_keys=True)))
+        # Each repeat is its own world, evaluated and recorded independently.
+        inputs = {}
+        for oid in results:
+            inputs["evidence-%s.json" % oid] = os.path.join(tmp, "evidence-%s.json" % oid)
+            inputs["state-%s.json" % oid] = os.path.join(tmp, "state-%s.json" % oid)
+            inputs["result-%s.json" % oid] = os.path.join(tmp, "result-%s.json" % oid)
+        world, wpath = log.world(rep, True, {k: v["probabilities"] for k, v in results.items()}, inputs)
+        log.match(ec.evaluate_world(module, wpath), "real Jev")
     return "ran"
 
 
@@ -423,9 +468,14 @@ def main(module, argv=None):
     args = ap.parse_args(argv)
     tmp = tempfile.mkdtemp()
     status = {}
+    # Evaluation records are evidence: kept outside the temp dir, written on
+    # pass and fail alike, and exported as CI artifacts (CONTRACT_RECORDS_DIR).
+    records_dir = os.environ.get("CONTRACT_RECORDS_DIR") or "/tmp/contract-records"
+    scenario = os.path.basename(module)[:-len(".pkl")]
+    log = EvalLog(records_dir, "%s-%s" % (scenario, args.mode))
     try:
         if args.mode == "deterministic":
-            run_deterministic(module, tmp)
+            run_deterministic(module, tmp, log)
             status["deterministic"] = "pass" if not _results["fail"] else "FAIL"
             if args.report_live:
                 for m in ("live-jev", "full-experiment"):
@@ -433,13 +483,13 @@ def main(module, argv=None):
                     print("== %s ==\n  %s" % (m, "NOT RUN: " + plan.reason if not plan.runnable else "opted in; select with --mode"))
                     status[m] = "not-run"
         else:
-            status[args.mode] = run_live(args.mode, module, tmp, args.repeats, args.model)
+            status[args.mode] = run_live(args.mode, module, tmp, args.repeats, args.model, log)
     except (ec.BoundNotEnforceable, ec.RealCallForbidden, ec.IsolationViolation) as e:
         print("  REFUSED: %s" % e)
         status[args.mode] = "refused"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    print("\nsummary: %s | checks: %d passed, %d failed" % (
-        ", ".join("%s=%s" % kv for kv in status.items()), _results["pass"], _results["fail"]))
+    print("\nsummary: %s | checks: %d passed, %d failed, %d not asserted | records: %s" % (
+        ", ".join("%s=%s" % kv for kv in status.items()), _results["pass"], _results["fail"], log.not_asserted, log.dir))
     bad = _results["fail"] or any(v in ("blocked", "refused") for v in status.values())
     return 1 if bad else 0

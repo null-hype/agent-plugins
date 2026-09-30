@@ -11,4 +11,13 @@ facts = scenario.invariants()
 examples {
   ["canned observations"] { scenario.observations }
   ["fixed questions"] { scenario.questions }
+  // Verdict functions on known inputs: out-of-band, reversed, tied, invalid,
+  // missing and uncalibrated worlds, as (checkId, code, accepted, asserted).
+  ["verdicts on known inputs"] {
+    new Mapping {
+      for (name, evals in scenario.diagnosticEvaluations) {
+        [name] = evals.toList().map((e) -> "\(e.checkId) => \(e.actual) accepted=\(e.accepted.toList()) asserted=\(e.asserted)")
+      }
+    }
+  }
 }

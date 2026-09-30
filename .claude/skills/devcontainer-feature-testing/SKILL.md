@@ -140,6 +140,13 @@ capturing the actual request (PATH shim) with **distinguishable inputs**, never
 by a hardcoded state. Expectations, control identities and answers stay out of
 the agent's context and Jev's request; question templates are fixed.
 
+Expectation semantics live in Pkl (`Verdicts.pkl`, `Scenario.evaluate`): Python
+supplies the observed world, a thin matcher compares verdict codes, and every
+evaluation is recorded to `evaluations.jsonl` (pass and fail) with a `worldRef`
+to preserved inputs; CI uploads them as artifacts. Do not re-implement band or
+ordering semantics in Python. Required checks fail on a missing observation;
+uncalibrated bands are recorded as not-asserted on real results.
+
 Modes (never chosen by credentials): `deterministic` (default, canned + mock, zero
 real calls, even with dummy credentials present), `live-jev` (canned + real Jev),
 `full-experiment` (agent-collected + real Jev). Live modes need explicit opt-in
