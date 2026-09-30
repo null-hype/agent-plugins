@@ -158,9 +158,33 @@ def leak_strings(expectations):
     return out | {"expectations", "relative", "higher", "lower", "bands"}
 
 
-def relative_ok(exp, results):
-    return all(results[r["higher"]]["probabilities"][r["question"]] >
-               results[r["lower"]]["probabilities"][r["question"]] for r in exp["relative"])
+def evaluate_expectations(exp, results, real):
+    """Evaluate every applicable pre-registered expectation on ONE set of
+    results ({observation id: Jev result}). Returns (name, ok) pairs plus
+    notes for expectations that were not applicable or not asserted.
+
+    Relative expectations need both observations present. A band applies only
+    if its observation is present, and an uncalibrated band is asserted on
+    mock answers only (wiring), never on a real result.
+    """
+    out, notes = [], []
+    for r in exp["relative"]:
+        if r["higher"] in results and r["lower"] in results:
+            hi = results[r["higher"]]["probabilities"][r["question"]]
+            lo = results[r["lower"]]["probabilities"][r["question"]]
+            out.append(("%s: %s (%.3f) > %s (%.3f)" % (r["question"], r["higher"], hi, r["lower"], lo), hi > lo))
+        else:
+            notes.append("relative %s>%s not applicable (observation missing)" % (r["higher"], r["lower"]))
+    for b in exp["bands"]:
+        if b["observation"] not in results:
+            notes.append("band on %s not applicable (observation missing)" % b["observation"])
+        elif real and not b["calibrated"]:
+            notes.append("band on %s not asserted: uncalibrated (mock wiring check only)" % b["observation"])
+        else:
+            p = results[b["observation"]]["probabilities"][b["question"]]
+            out.append(("%s: %s %.3f in [%.2f, %.2f]" % (b["question"], b["observation"], p, b["min"], b["max"]),
+                        b["min"] <= p <= b["max"]))
+    return out, notes
 
 
 # --- deterministic ---------------------------------------------------------
@@ -248,7 +272,10 @@ def run_deterministic(module, tmp):
 
     # expectations over the mock results: wiring only
     check("probability validity holds for every mock result", all(valid_probs(r, qids) for r in results.values()))
-    check("relative expectations hold on the mock answers (wiring, not Jev discrimination)", relative_ok(exp, results))
+    checks, _ = evaluate_expectations(exp, results, real=False)
+    check("expectations are applicable to the canned observations", len(checks) == len(exp["relative"]) + len(exp["bands"]))
+    for name, ok in checks:
+        check("mock expectation (wiring, not Jev discrimination or calibration): " + name, ok)
 
     # zero real calls, and guards
     check("no non-mock jev call was made", all("real" not in rec.call(i)["argv"] for i in range(rec.count())))
@@ -273,23 +300,51 @@ def run_deterministic(module, tmp):
     check("opt-in switches do not turn deterministic into a live mode",
           not ec.plan_mode("deterministic", {"CONTRACT_ALLOW_REAL_JEV": "1"}).allow_real_jev)
 
-    # collection seam (fake runner, no model): runner sees root/hint/out only
+    # collection seam (fake runner, no model). This establishes the ADAPTER's
+    # behaviour (env allowlist, no scenario in argv/cwd, manifest verified
+    # fail-closed), NOT that a real runner is contained.
     log = os.path.join(tmp, "runner.log")
     runner = os.path.join(tmp, "fake-runner")
     canned = json.dumps(sc["observations"][oids[0]])
-    open(runner, "w").write("#!/bin/bash\n{ echo \"ARGV $*\"; env; find . -type f; } > %s\n"
-                            "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && out=$2; shift; done\n"
-                            "cat > \"$out\" <<'EOF'\n%s\nEOF\n" % (log, canned))
-    os.chmod(runner, os.stat(runner).st_mode | stat.S_IXUSR)
+    real_root = os.path.realpath(root)
+
+    def write_runner(manifest):
+        mtxt = "" if manifest is None else json.dumps(manifest)
+        open(runner, "w").write(
+            "#!/bin/bash\n{ echo \"ARGV $*\"; env; find . -type f; } > %s\n"
+            "while [ $# -gt 0 ]; do case \"$1\" in --out) out=$2;; --isolation-manifest) man=$2;; esac; shift; done\n"
+            "cat > \"$out\" <<'EOF'\n%s\nEOF\n"
+            "%s" % (log, canned, "" if manifest is None else "cat > \"$man\" <<'EOF'\n%s\nEOF\n" % mtxt))
+        os.chmod(runner, os.stat(runner).st_mode | stat.S_IXUSR)
+
+    good = {"tools": ["read_file", "list_directory", "grep", "glob"],
+            "disallowed": ["web_fetch", "web_search", "bash"], "fs_roots": [real_root]}
+    write_runner(good)
+    outp = os.path.join(tmp, "c.json")
     check("agent collection refused in deterministic mode",
-          raises(ec.RealCallForbidden, lambda: ec.collect_evidence(plan, runner, root, sc["hintLevel"], os.path.join(tmp, "c.json")))
+          raises(ec.RealCallForbidden, lambda: ec.collect_evidence(plan, runner, root, sc["hintLevel"], outp))
           and not os.path.exists(log))
     full = ec.plan_mode("full-experiment", {"CONTRACT_ALLOW_REAL_JEV": "1", "CONTRACT_ALLOW_REASONING_AGENT": "1"})
-    out = ec.collect_evidence(full, runner, root, sc["hintLevel"], os.path.join(tmp, "c.json"))
+    os.environ["EVAL_ONLY_SENTINEL"] = "leak-canary"
+    try:
+        out, manifest = ec.collect_evidence(full, runner, root, sc["hintLevel"], outp)
+    finally:
+        del os.environ["EVAL_ONLY_SENTINEL"]
     seen = open(log).read()
     check("collected evidence validates and grounds", ec.validate(out, root)[0] == [])
-    check("runner got only --root/--hint-level/--out", seen.splitlines()[0].startswith("ARGV --root"))
+    check("runner got only --root/--hint-level/--out/--isolation-manifest", seen.splitlines()[0].startswith("ARGV --root"))
     check("runner context excludes expectations", not any(s in seen for s in leaks), [s for s in leaks if s in seen])
+    check("runner environment is an allowlist (no inherited evaluator/credential variables)",
+          "leak-canary" not in seen and "TYPESAFE_API_KEY" not in seen and "CONTRACT_" not in seen)
+    check("declared isolation contract verified and recorded", manifest["fs_roots"] == [real_root])
+    for label, bad in (
+            ("web tool offered", dict(good, tools=good["tools"] + ["web_fetch"])),
+            ("shell tool offered", dict(good, tools=good["tools"] + ["bash"])),
+            ("filesystem scope wider than the root", dict(good, fs_roots=[real_root, "/"])),
+            ("no manifest written", None)):
+        write_runner(bad)
+        check("collection fails closed: %s" % label,
+              raises(ec.IsolationViolation, lambda: ec.collect_evidence(full, runner, root, sc["hintLevel"], outp)))
 
     # bounds fail closed
     check("repeats above the cap refused", raises(ec.BoundNotEnforceable, lambda: ec.check_bounds(ec.MAX_REPEATS + 1)))
@@ -312,6 +367,10 @@ def run_live(mode, module, tmp, repeats, model):
     runner = os.environ.get("REASONING_AGENT_RUNNER")
     if mode == "full-experiment" and not (runner and shutil.which(runner)):
         blockers.append("REASONING_AGENT_RUNNER is not an executable (the runner lands with CIT-271/CIT-288)")
+    if mode == "full-experiment":
+        sc0 = load_scenario(module)
+        if sc0["rootDir"] and os.path.realpath(module).startswith(os.path.realpath(sc0["rootDir"]) + os.sep):
+            blockers.append("scenario files live inside the agent's root %s" % sc0["rootDir"])
     if blockers:
         print("  BLOCKED (explicitly requested): " + "; ".join(blockers))
         return "blocked"
@@ -321,12 +380,16 @@ def run_live(mode, module, tmp, repeats, model):
     qpath = os.path.join(tmp, "questions.json")
     write_json(qpath, sc["questions"])
     rec = Recorder(tmp, strict=False)
-    results = {}
+    exp = ec.scenario_view(module, "expectations")
+    history = []  # every repeat's results, retained
     for rep in range(repeats):
+        results = {}
         if mode == "live-jev":
             sources = {oid: None for oid in sc["observations"]}
         else:
-            sources = {"agent": ec.collect_evidence(plan, runner, root, sc["hintLevel"], os.path.join(tmp, "agent-%d.json" % rep))}
+            agent_out, manifest = ec.collect_evidence(plan, runner, root, sc["hintLevel"], os.path.join(tmp, "agent-%d.json" % rep))
+            print("  isolation (declared by runner, verified against the adapter's contract; containment itself is NOT proven here): %s" % json.dumps(manifest, sort_keys=True))
+            sources = {"agent": agent_out}
         for oid, path in sources.items():
             if path is None:
                 path = os.path.join(tmp, oid + ".json")
@@ -339,11 +402,14 @@ def run_live(mode, module, tmp, repeats, model):
             results[oid] = res
             check("repeat %d %s: real Jev returned one probability in [0,1] per question" % (rep, oid),
                   res.get("backend") == "real" and valid_probs(res, qids))
-    if mode == "live-jev":
-        exp = ec.scenario_view(module, "expectations")
-        if exp["relative"] and all(k in results for r in exp["relative"] for k in (r["higher"], r["lower"])):
-            print("  relative expectations (pre-registered): %s" % ("hold" if relative_ok(exp, results) else "DO NOT hold"))
-            check("pre-registered relative expectations hold on real Jev", relative_ok(exp, results))
+        history.append(results)
+        # Each repeat is judged on its own; a good later repeat cannot hide a bad earlier one.
+        checks, notes = evaluate_expectations(exp, results, real=True)
+        for name, ok in checks:
+            check("repeat %d expectation: %s" % (rep, name), ok)
+        for n in sorted(set(notes)):
+            print("  note (repeat %d): %s" % (rep, n))
+        print("  RESULT repeat=%d %s" % (rep, json.dumps({k: v["probabilities"] for k, v in results.items()}, sort_keys=True)))
     return "ran"
 
 
@@ -368,7 +434,7 @@ def main(module, argv=None):
                     status[m] = "not-run"
         else:
             status[args.mode] = run_live(args.mode, module, tmp, args.repeats, args.model)
-    except (ec.BoundNotEnforceable, ec.RealCallForbidden) as e:
+    except (ec.BoundNotEnforceable, ec.RealCallForbidden, ec.IsolationViolation) as e:
         print("  REFUSED: %s" % e)
         status[args.mode] = "refused"
     finally:

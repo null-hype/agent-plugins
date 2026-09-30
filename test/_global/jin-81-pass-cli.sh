@@ -40,7 +40,9 @@ check "check playwright-cli's skill was installed" bash -c "test -f \$HOME/.clau
 # from the 'pass-cli' feature's own "tag" option (see scenarios.json), so
 # invoking `color` after login exercises the pass-cli skill and restic
 # snapshot end to end, the same way any real consumer of the feature would.
-if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+# Paid: the 'ask claude' half runs only on the explicit PASS_CLI_ALLOW_CLAUDE=1
+# opt-in (default off). A token alone never selects a paid model call.
+if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ] && [ "${PASS_CLI_ALLOW_CLAUDE:-0}" = "1" ]; then
     echo -e "\nAsking claude its favorite color:\n"
 
     if ! command -v pass-cli >/dev/null 2>&1; then
@@ -76,7 +78,7 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
 
     pass-cli logout || true
 else
-    echo -e "\nSkipping 'ask claude its favorite color' check: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
+    echo -e "\nNOT RUN: 'ask claude its favorite color' check -- needs PASS_CLI_ALLOW_CLAUDE=1 and PROTON_PASS_PERSONAL_ACCESS_TOKEN.\n"
 fi
 
 # Report result

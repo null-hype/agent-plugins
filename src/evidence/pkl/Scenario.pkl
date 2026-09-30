@@ -35,9 +35,12 @@ class Relative {
   lower: String
 }
 
-/// A numeric confidence band. Only add after calibration on independently
-/// established known-answer cases; freeze before held-out evaluation.
+/// A numeric confidence band. Only set `calibrated = true` after calibration on
+/// independently established known-answer cases, frozen before held-out
+/// evaluation. An uncalibrated band is asserted against MOCK answers only, as
+/// a wiring check; it is never asserted on a real Jev result.
 class Band {
+  calibrated: Boolean = false
   question: String
   observation: String
   min: Number(isBetween(0, 1))

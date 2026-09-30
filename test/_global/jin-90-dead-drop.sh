@@ -24,6 +24,14 @@ set -e
 # Optional: Import test library bundled with the devcontainer CLI
 source dev-container-features-test-lib
 
+# Paid (a claude turn): runs only on the explicit PASS_CLI_ALLOW_CLAUDE=1 opt-in,
+# default off. A token alone never selects a paid model call.
+if [ "${PASS_CLI_ALLOW_CLAUDE:-0}" != "1" ]; then
+    echo -e "\nNOT RUN: dead-drop check -- makes paid claude calls; needs PASS_CLI_ALLOW_CLAUDE=1.\n"
+    reportResults
+    exit 0
+fi
+
 if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo -e "\nSkipping dead-drop check: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
     reportResults
