@@ -1,0 +1,11 @@
+examples {
+  ["evidence"] {
+    List(Map("component", "noteexpand", "source_path", "opt/toy/README.md", "excerpt", "Never run the expander on a note you did not write yourself.", "never", "expanding caller-supplied includes outside the note directory", "enforced", true, "supporting_paths", List("opt/toy/service.sh", "opt/toy/expander.sh")))
+  }
+  ["observed behavior"] {
+    "outsideRead=false, plainLinesRendered=true"
+  }
+  ["diagnostics"] {
+    List()
+  }
+}

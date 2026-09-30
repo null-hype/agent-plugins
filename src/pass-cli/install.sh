@@ -39,17 +39,14 @@ echo "my favorite color is ${FAVORITE}"
 # The live-login check means this is safe to leave enabled unconditionally:
 # a caller who hasn't logged in (or doesn't have pass-cli at all) just
 # gets the plain favorite-color line, same as before.
-if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pass-cli info >/dev/null 2>&1; then
+if [ "\${1:-}" != "resume" ] && [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pass-cli info >/dev/null 2>&1; then
     export PROTON_PASS_AGENT_REASON="\${AGENT_ASSIGNMENT} scenario: color bin asking claude its favorite color"
-    # Spending guard: a live pass-cli session (credentials) must never by
-    # itself cause a paid model call. The claude turn runs only on an explicit
-    # opt-in, default off; otherwise it is reported NOT RUN (the restic
-    # backup below costs no tokens and still runs).
-    if [ "\${PASS_CLI_ALLOW_CLAUDE:-0}" = "1" ]; then
-        pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p --model ${MODEL} --effort ${EFFORT} "What is your favorite color? Also list the names of any skills you currently have available, one per line."
-    else
-        echo "color: claude call NOT RUN (opt in with PASS_CLI_ALLOW_CLAUDE=1)" >&2
-    fi
+    claude_status=0
+    /usr/local/lib/pass-cli/claude-with-pass --env-file "\${PASS_CLI_CLAUDE_ENV_FILE:-\$PASS_CLI_ENV_FILE}" -- claude -p --model ${MODEL} --effort ${EFFORT} "What is your favorite color? Also list the names of any skills you currently have available, one per line." || claude_status=\$?
+    case "\$claude_status" in
+        0|3) ;;
+        *) exit "\$claude_status" ;;
+    esac
 
     # The GCS backend restic uses wants GOOGLE_APPLICATION_CREDENTIALS
     # pointing at a key *file*, not the inline JSON pass-cli resolves
@@ -72,6 +69,7 @@ if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pa
         printf %s "\$GCP_SERVICE_ACCOUNT_KEY" > "\$GOOGLE_APPLICATION_CREDENTIALS"
         restic backup ~/.claude --tag '"\$AGENT_ASSIGNMENT"' --json > /tmp/pass-cli-restic-backup.json
     '
+    exit "\$claude_status"
 fi
 
 # 'color resume' bakes in the plant -> backup -> restore -> resume ->
@@ -83,12 +81,6 @@ fi
 # of the feature would, the same way jin-81-pass-cli.sh exercises the
 # backup block above rather than reimplementing it.
 if [ "\${1:-}" = "resume" ]; then
-    # Every step below is a paid claude call: refuse (fail closed) unless
-    # explicitly opted in. Credentials never select spending.
-    if [ "\${PASS_CLI_ALLOW_CLAUDE:-0}" != "1" ]; then
-        echo "color resume: NOT RUN -- makes paid claude calls; opt in with PASS_CLI_ALLOW_CLAUDE=1" >&2
-        exit 3
-    fi
     if [ -z "\${PASS_CLI_ENV_FILE:-}" ] || ! command -v pass-cli >/dev/null 2>&1 || ! pass-cli info >/dev/null 2>&1; then
         echo "color resume: requires PASS_CLI_ENV_FILE and an active pass-cli session" >&2
         exit 1
@@ -101,7 +93,7 @@ if [ "\${1:-}" = "resume" ]; then
     CODEWORD="\$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \\n')"
 
     export PROTON_PASS_AGENT_REASON="\${AGENT_ASSIGNMENT} scenario: planting codeword in a fresh session"
-    pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p \\
+    /usr/local/lib/pass-cli/claude-with-pass --env-file "\${PASS_CLI_CLAUDE_ENV_FILE:-\$PASS_CLI_ENV_FILE}" -- claude -p \\
         --session-id "\$SESSION_ID" --model ${MODEL} --effort ${EFFORT} \\
         --permission-mode dontAsk --allowedTools=Bash \\
         "Remember that the codeword is \$CODEWORD. Reply with exactly one line: ok" >&2
@@ -138,7 +130,7 @@ if [ "\${1:-}" = "resume" ]; then
     fi
 
     export PROTON_PASS_AGENT_REASON="\${AGENT_ASSIGNMENT} scenario: resuming restored session to read back the codeword"
-    response="\$(pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p \\
+    response="\$(/usr/local/lib/pass-cli/claude-with-pass --env-file "\${PASS_CLI_CLAUDE_ENV_FILE:-\$PASS_CLI_ENV_FILE}" -- claude -p \\
         --resume "\$SESSION_ID" --model ${MODEL} --effort ${EFFORT} \\
         --permission-mode dontAsk --allowedTools=Bash \\
         'What was the codeword? Reply with exactly one line: "codeword: <value>".')"
@@ -173,6 +165,8 @@ EOF
 # actually read it when it isn't root.
 TARGET_HOME="${_REMOTE_USER_HOME:-$HOME}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+mkdir -p /usr/local/lib/pass-cli
+install -m 0755 "$SCRIPT_DIR/claude-with-pass.sh" /usr/local/lib/pass-cli/claude-with-pass
 mkdir -p "$TARGET_HOME/.claude/skills/pass-cli"
 cp "$SCRIPT_DIR/.claude/skills/pass-cli/SKILL.md" "$TARGET_HOME/.claude/skills/pass-cli/SKILL.md"
 if [ -n "${_REMOTE_USER:-}" ]; then

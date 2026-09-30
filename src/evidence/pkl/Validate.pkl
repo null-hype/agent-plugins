@@ -1,5 +1,0 @@
-/// CLI view of the same EvidenceFile contract consumed by the Python binding.
-module evidence.Validate
-import "Evidence.pkl"
-evidence = Evidence.fromJson(read(read("prop:evidence.uri")).text)
-output { value = evidence; renderer = new JsonRenderer {} }

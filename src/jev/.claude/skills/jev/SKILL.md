@@ -10,10 +10,9 @@ description: >-
 
 # jev — the Noul-judge client
 
-`jev` is the tail of the method chain. Upstream features produce state
-(playwright-cli traces, restic snapshot diffs) and `evidence-validate` (the
-`evidence` feature) checks the reasoning agent's evidence; `jev` then sends the
-fixture `state` to TypeSafe's Jev judge and returns one probability in `[0, 1]`
+Case features produce and check their own state (for example, noteexpand's Pkl
+evidence and observed canary). `jev` sends the supplied
+`state` to TypeSafe's Jev judge and returns one probability in `[0, 1]`
 per Noul question. `jev` deliberately does **not** capture state — it consumes
 what upstream produced and keeps `state` opaque.
 
@@ -70,12 +69,10 @@ printed request.
 
 ## Where this fits
 
-Deterministic contract scenarios (CIT-286) drive `jev` with canned evidence and
-the mock backend; one live smoke runs a real agent and a real Jev call on the
-toy case (CIT-285). What `state` should be for the reasoning-model → Jev contract
-(the `{diff_items, files}` shape the Noul questions assume vs. the evidence
-`{findings}` shape) is a CIT-286 decision; this client keeps `state` opaque and
-passes it through untouched.
+The noteexpand feature's `with_jev` scenario drives this client with recorded
+evidence and the mock backend. Each case owns its state projection and Pkl
+expectations; this client keeps state opaque. A real invocation uses this same
+client with explicit credentials. There is no separate live experiment workflow.
 
 > If TypeSafe publishes a fixed API-key env var name, change it in the `jev` bin,
 > this skill, and `src/jev/NOTES.md` together (currently `TYPESAFE_API_KEY`).

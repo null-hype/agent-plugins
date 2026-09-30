@@ -1,0 +1,15 @@
+{
+    "control": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "noteexpand": { "confineIncludes": true }
+        }
+    },
+    "with_jev": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "noteexpand": {},
+            "jev": {}
+        }
+    }
+}
