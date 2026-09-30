@@ -1,0 +1,13 @@
+{
+    "id": "noteexpand",
+    "version": "1.0.0",
+    "name": "Noteexpand composition case",
+    "description": "Toy application and Pkl evidence contract for the caller-supplied include case.",
+    "options": {
+        "confineIncludes": {
+            "type": "boolean",
+            "default": false,
+            "description": "Install the control consumer that refuses includes outside the note directory."
+        }
+    }
+}

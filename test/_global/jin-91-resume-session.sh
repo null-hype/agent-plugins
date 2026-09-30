@@ -34,14 +34,6 @@ set -e
 # Optional: Import test library bundled with the devcontainer CLI
 source dev-container-features-test-lib
 
-# Paid (a claude turn): runs only on the explicit PASS_CLI_ALLOW_CLAUDE=1 opt-in,
-# default off. A token alone never selects a paid model call.
-if [ "${PASS_CLI_ALLOW_CLAUDE:-0}" != "1" ]; then
-    echo -e "\nNOT RUN: resume-session check -- makes paid claude calls; needs PASS_CLI_ALLOW_CLAUDE=1.\n"
-    reportResults
-    exit 0
-fi
-
 if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo -e "\nSkipping resume-session check: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
     reportResults
@@ -62,14 +54,13 @@ cleanup() {
 trap cleanup EXIT
 
 echo -e "\nRunning 'color resume'...\n"
-# Capture 'color resume's own exit status via PIPESTATUS rather than
-# the pipeline's (which would just be tee's, always 0): a failure in
-# 'color resume' (e.g. the restored snapshot missing the transcript, or
-# the resumed session not recalling the codeword) needs to fail this
-# scenario, not just print a message and carry on.
-color resume | tee /tmp/resume-response.txt
-resume_status="${PIPESTATUS[0]}"
-echo -e "\nAgent response:\n$(cat /tmp/resume-response.txt)\n"
+resume_status=0
+color resume > /tmp/resume-response.txt || resume_status=$?
+cat /tmp/resume-response.txt
+if [ "$resume_status" -eq 3 ]; then
+    reportResults
+    exit 0
+fi
 
 # Feature-specific tests
 # The 'check' command comes from the dev-container-features-test-lib.

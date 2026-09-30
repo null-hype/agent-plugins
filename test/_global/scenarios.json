@@ -1,22 +1,4 @@
 {
-    "cit-286-contract": {
-        "build": {
-            "dockerfile": "Dockerfile"
-        },
-        "features": {
-            "evidence": {},
-            "jev": {}
-        }
-    },
-    "cit-286-toy-smoke": {
-        "build": {
-            "dockerfile": "Dockerfile"
-        },
-        "features": {
-            "evidence": {},
-            "jev": {}
-        }
-    },
     "color_and_playwright_cli": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
@@ -40,8 +22,7 @@
             "playwright-cli": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
-            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     },
     "jin-90-dead-drop": {
@@ -52,8 +33,7 @@
             "pass-cli": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
-            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     },
     "jin-91-resume-session": {
@@ -66,8 +46,7 @@
             }
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
-            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     }
 }

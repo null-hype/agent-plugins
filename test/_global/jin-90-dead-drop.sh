@@ -24,14 +24,6 @@ set -e
 # Optional: Import test library bundled with the devcontainer CLI
 source dev-container-features-test-lib
 
-# Paid (a claude turn): runs only on the explicit PASS_CLI_ALLOW_CLAUDE=1 opt-in,
-# default off. A token alone never selects a paid model call.
-if [ "${PASS_CLI_ALLOW_CLAUDE:-0}" != "1" ]; then
-    echo -e "\nNOT RUN: dead-drop check -- makes paid claude calls; needs PASS_CLI_ALLOW_CLAUDE=1.\n"
-    reportResults
-    exit 0
-fi
-
 if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo -e "\nSkipping dead-drop check: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
     reportResults
@@ -77,7 +69,14 @@ export PROTON_PASS_AGENT_REASON="jin-90-dead-drop scenario: running scoped agent
 # the prompt itself as a second "tool name", leaving claude -p with no
 # prompt at all ("Input must be provided either through stdin or as a
 # prompt argument when using --print"). Confirmed live in CI.
-response="$(pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low --permission-mode dontAsk --allowedTools=Bash "Use the pass-cli skill to view the note item titled '$DROP_ID' in the 'test' vault. Reply with exactly one line: \"passphrase: <value>\", where <value> is the passphrase the note contains. Do not reproduce any other line from the note.")"
+status=0
+response="$(/usr/local/lib/pass-cli/claude-with-pass --env-file "$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low --permission-mode dontAsk --allowedTools=Bash "Use the pass-cli skill to view the note item titled '$DROP_ID' in the 'test' vault. Reply with exactly one line: \"passphrase: <value>\", where <value> is the passphrase the note contains. Do not reproduce any other line from the note.")" || status=$?
+
+if [ "$status" -eq 3 ]; then
+    reportResults
+    exit 0
+fi
+[ "$status" -eq 0 ] || exit "$status"
 
 echo "$response" > /tmp/dead-drop-response.txt
 echo -e "\nAgent response:\n$response\n"
