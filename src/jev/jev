@@ -34,15 +34,17 @@ Design contract (see NOTES.md for the why):
 import argparse
 import json
 import os
-import shutil
-import subprocess
 import sys
-import tempfile
 # NB: urllib is imported lazily inside the transport, not here. Some devcontainer
 # base images ship a python3 whose stdlib lacks the 'http' package, so
 # `import urllib.request` raises at import time; keeping it out of module scope
 # means --help, --print-request, the mock backend, and all validation still work
 # there, and only a real HTTP call needs a working transport (urllib or curl).
+# shutil/subprocess/tempfile are lazy for the same reason: a python3-minimal
+# base (e.g. debian:latest) omits them, and they are only needed by the curl
+# fallback transport -- importing them at module scope would break --help and
+# the mock backend on such an image (seen on debian:latest: "No module named
+# 'shutil'"). They are imported inside _http_post_curl instead.
 
 DEFAULT_API_URL = os.environ.get("JEV_API_URL", "https://api.typesafe.ai/v1/systemone")
 DEFAULT_MODEL = os.environ.get("JEV_MODEL", "jev-latest")
@@ -172,6 +174,9 @@ def _http_post(url, api_key, payload):
 
 
 def _http_post_curl(url, api_key, payload):
+    import shutil
+    import subprocess
+    import tempfile
     if not shutil.which("curl"):
         die("no HTTP transport: python's urllib lacks the 'http' module and "
             "curl is not installed")
