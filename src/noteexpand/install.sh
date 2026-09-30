@@ -22,13 +22,10 @@ if ! command -v pkl >/dev/null 2>&1; then
     rm -f "$tmp"
 fi
 
-mkdir -p /opt/toy "$CASE_HOME/pkl" "$CASE_HOME/lib"
-install -m 0644 "$FEATURE_DIR/app/README.md" /opt/toy/README.md
-install -m 0755 "$FEATURE_DIR/app/expander.sh" "$FEATURE_DIR/app/service.sh" /opt/toy/
-if [ "${CONFINEINCLUDES:-false}" = "true" ]; then
-    install -m 0755 "$FEATURE_DIR/control/service.sh" /opt/toy/service.sh
-fi
+mkdir -p "$CASE_HOME/pkl" "$CASE_HOME/lib"
 install -m 0644 "$FEATURE_DIR"/pkl/*.pkl "$CASE_HOME/pkl/"
 install -m 0644 "$FEATURE_DIR"/lib/*.py "$CASE_HOME/lib/"
 python3 -m venv /usr/local/lib/noteexpand/venv
 /usr/local/lib/noteexpand/venv/bin/pip install --quiet "pkl-python==0.1.19"
+sed "1s|.*|#!/usr/local/lib/noteexpand/venv/bin/python|" "$FEATURE_DIR/noteexpand-detect" > /usr/local/bin/noteexpand-detect
+chmod 0755 /usr/local/bin/noteexpand-detect

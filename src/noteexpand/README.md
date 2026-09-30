@@ -1,32 +1,33 @@
-# Noteexpand composition case
+# Noteexpand detector
 
-This feature installs the toy note renderer at `/opt/toy`, its Pkl evidence
-and reconciliation contracts at `/usr/local/share/noteexpand/pkl`, and generated
-Python bindings at `/usr/local/share/noteexpand/lib`.
+This feature installs `noteexpand-detect`, its Pkl evidence/reconciliation
+contracts and generated Python bindings. The command takes a collector's
+claim and an independent observation and emits the case's diagnostic flags:
 
-The expander supports `@include PATH`. Its README warns that caller-supplied
-notes can read files outside their directory. The default consumer renders the
-caller input unchanged; `confineIncludes: true` installs the control consumer
-that refuses those includes.
+```bash
+noteexpand-detect evidence.json observation.json
+```
 
-The tests are owned by this feature:
+Pkl owns the types and reconciliation logic; the command consumes them through
+pkl-python and serializes the result. It flags the observed outside-file read
+and disagreement between an enforcement claim and that observation.
 
-- `test.sh` executes the installed default consumer with an outside-file marker.
-- `control` tests the `confineIncludes` option against the same canary.
-- `with_jev` installs this feature and Jev, checks the evidence with Pkl, and
-  sends the captured sources and claim to installed mock Jev.
+The application under test is a fixture in `test/noteexpand/toy-app/`. Its
+Dockerfile installs the positive consumer at `/opt/toy` and the control
+consumer at `/opt/toy-control`; the detector feature installs neither.
 
-The typed claim is a recorded test input. The canary supplies an independent
-observation; `Reconcile.pkl` exposes disagreement between them. Expected
-evidence, observed behavior and diagnostics are committed as Pkl golden files
-under `test/noteexpand`, outside the installed application.
+`test.sh` checks the detector by itself. The `toy-app` scenario installs the
+fixture application, the detector and Jev. It runs the positive/control
+canaries, invokes the installed detector, and compares its actual output,
+evidence and observations with committed `.pkl-expected.pcf` files. It also
+sends the captured sources and claim to installed mock Jev.
 
-Each run retains the application bytes, claim, observation, stdout/stderr and
-Pkl JUnit results in the test workspace's `noteexpand-records` directory. The
-Jev scenario also records the exact request, raw response and returned score.
-The tests make no model-service calls.
+Scenario runs retain source bytes, claim, observation, detector output,
+stdout/stderr and Pkl JUnit results in `noteexpand-records`. Exact Jev requests,
+raw responses and scores are retained too. The scenario makes no model-service
+calls.
 
 ```bash
 devcontainer features test -f noteexpand -i mcr.microsoft.com/devcontainers/base:ubuntu .
-pkl-gen-python -o src/noteexpand/lib src/noteexpand/pkl/Evidence.pkl
+pkl-gen-python -o src/noteexpand/lib src/noteexpand/pkl/Evidence.pkl src/noteexpand/pkl/Reconcile.pkl
 ```

@@ -29,7 +29,7 @@ it does not need to move to `_global` just because it has dependencies.
 ## Run the installed feature
 
 The CLI builds and starts the container, then executes the matching shell
-script. Use the installed application, commands, and contracts in that script.
+script. Test the commands and contracts installed by the feature.
 The CLI's helper is optional; the usual repository pattern is:
 
 ```bash
@@ -51,6 +51,12 @@ mount the entire repository. If a scenario needs additional image build files,
 put them in `test/<feature>/<scenario-name>/` and reference its `Dockerfile`
 through `build`. The CLI copies that directory into the intermediate build
 context; the Dockerfile must copy files needed in the image.
+
+For a detector feature, `src/<feature>` installs the detector and its contracts.
+The application under test belongs in `test/<feature>/<scenario-name>` and is
+installed by the scenario Dockerfile. Application variants belong to the test
+fixture, rather than detector feature options. The scenario calls the installed
+detector and compares its actual output with expectations.
 
 ## Run tests
 
