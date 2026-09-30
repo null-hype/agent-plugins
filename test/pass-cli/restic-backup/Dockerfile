@@ -15,13 +15,9 @@ ARG SCENARIO_NAME=restic-backup
 # to guess where the devcontainer CLI lands scenario files inside the
 # running container.
 COPY .env /opt/pass-cli/${SCENARIO_NAME}.env
-COPY claude.env /opt/pass-cli/${SCENARIO_NAME}-claude.env
 
 # This scenario's .env has no vault item of its own: the claude token
 # comes from the shared 'anthropic.ai' vault (one token, many scenarios)
 # and the restic/GCP secrets come from JIN-81's restic vault (shared
 # backup infra) - both referenced, not duplicated.
 ENV PASS_CLI_ENV_FILE="/opt/pass-cli/${SCENARIO_NAME}.env"
-
-# Claude and restic resolve independently, so denied Claude access leaves backup usable.
-ENV PASS_CLI_CLAUDE_ENV_FILE="/opt/pass-cli/${SCENARIO_NAME}-claude.env"

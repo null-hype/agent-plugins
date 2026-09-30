@@ -33,12 +33,9 @@ local envFiles: Listing<String> = new {
   // the devcontainer-level env files above.
   "../../../../.env"
   "../../../../test/pass-cli/restic-backup/.env"
-  "../../../../test/pass-cli/restic-backup/claude.env"
   "../../../../test/_global/jin-81-pass-cli/.env"
-  "../../../../test/_global/jin-81-pass-cli/claude.env"
   "../../../../test/_global/jin-90-dead-drop/.env"
   "../../../../test/_global/jin-91-resume-session/.env"
-  "../../../../test/_global/jin-91-resume-session/claude.env"
 }
 
 local refPattern = Regex(#"pass://([^/]+)/([^/]+)/([^/\s]+)"#)

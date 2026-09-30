@@ -69,14 +69,7 @@ export PROTON_PASS_AGENT_REASON="jin-90-dead-drop scenario: running scoped agent
 # the prompt itself as a second "tool name", leaving claude -p with no
 # prompt at all ("Input must be provided either through stdin or as a
 # prompt argument when using --print"). Confirmed live in CI.
-status=0
-response="$(/usr/local/lib/pass-cli/claude-with-pass --env-file "$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low --permission-mode dontAsk --allowedTools=Bash "Use the pass-cli skill to view the note item titled '$DROP_ID' in the 'test' vault. Reply with exactly one line: \"passphrase: <value>\", where <value> is the passphrase the note contains. Do not reproduce any other line from the note.")" || status=$?
-
-if [ "$status" -eq 3 ]; then
-    reportResults
-    exit 0
-fi
-[ "$status" -eq 0 ] || exit "$status"
+response="$(pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- claude -p --model haiku --effort low --permission-mode dontAsk --allowedTools=Bash "Use the pass-cli skill to view the note item titled '$DROP_ID' in the 'test' vault. Reply with exactly one line: \"passphrase: <value>\", where <value> is the passphrase the note contains. Do not reproduce any other line from the note.")"
 
 echo "$response" > /tmp/dead-drop-response.txt
 echo -e "\nAgent response:\n$response\n"
