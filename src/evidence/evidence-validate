@@ -4,55 +4,20 @@
 usage: evidence-validate [--root DIR] FILE
 
 Exit 0: valid (and grounded, if --root). Exit 1: invalid or ungrounded, with
-one line per problem on stderr. Exit 2: usage or unreadable input.
-The format is defined by evidence.schema.json next to this script's install
-location; this file enforces the same rules with the standard library only.
+the problems on stderr. Exit 2: usage.
+The format is defined by Evidence.pkl (evaluated by the pkl binary); this
+script is only the filesystem adapter: it runs pkl and checks grounding.
 """
-import json
 import os
 import sys
 
-FIELDS = {"component": str, "source_path": str, "excerpt": str, "never": str, "enforced": bool}
+_here = os.path.dirname(os.path.abspath(__file__))
+for _p in (os.environ.get("EVIDENCE_LIB"), "/usr/local/share/evidence/lib", os.path.join(_here, "lib")):
+    if _p and os.path.isdir(_p):
+        sys.path.insert(0, _p)
+        break
 
-
-def schema_errors(doc):
-    if not isinstance(doc, dict):
-        return ["top level must be an object"]
-    errs = [f"unexpected top-level key {k!r}" for k in doc if k != "findings"]
-    findings = doc.get("findings")
-    if not isinstance(findings, list):
-        return errs + ["'findings' must be an array"]
-    for i, f in enumerate(findings):
-        at = f"findings[{i}]"
-        if not isinstance(f, dict):
-            errs.append(f"{at} must be an object")
-            continue
-        errs += [f"{at}: unexpected key {k!r}" for k in f if k not in FIELDS]
-        for k, t in FIELDS.items():
-            if k not in f:
-                errs.append(f"{at}: missing {k!r}")
-            elif not isinstance(f[k], t):
-                errs.append(f"{at}: {k!r} must be {t.__name__}")
-            elif t is str and not f[k]:
-                errs.append(f"{at}: {k!r} must not be empty")
-    return errs
-
-
-def grounding_errors(doc, root):
-    errs = []
-    real_root = os.path.realpath(root)
-    for i, f in enumerate(doc["findings"]):
-        at = f"findings[{i}]"
-        path = os.path.realpath(os.path.join(real_root, f["source_path"].lstrip("/")))
-        if os.path.commonpath([real_root, path]) != real_root:
-            errs.append(f"{at}: source_path {f['source_path']!r} escapes the image root")
-        elif not os.path.isfile(path):
-            errs.append(f"{at}: no such file {f['source_path']!r} in the image")
-        else:
-            with open(path, encoding="utf-8", errors="replace") as fh:
-                if f["excerpt"] not in fh.read():
-                    errs.append(f"{at}: excerpt not found verbatim in {f['source_path']!r}")
-    return errs
+import evidence_contract  # noqa: E402
 
 
 def main(argv):
@@ -62,15 +27,7 @@ def main(argv):
     if len(argv) != 1:
         print(__doc__, file=sys.stderr)
         return 2
-    try:
-        with open(argv[0], encoding="utf-8") as fh:
-            doc = json.load(fh)
-    except (OSError, ValueError) as e:
-        print(f"cannot read {argv[0]}: {e}", file=sys.stderr)
-        return 1
-    errs = schema_errors(doc)
-    if not errs and root is not None:
-        errs = grounding_errors(doc, root)
+    errs, _ = evidence_contract.validate(argv[0], root)
     for e in errs:
         print(e, file=sys.stderr)
     return 1 if errs else 0

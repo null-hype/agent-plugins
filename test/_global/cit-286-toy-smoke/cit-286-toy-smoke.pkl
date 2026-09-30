@@ -1,0 +1,52 @@
+/// CIT-286 toy-case scenario (CIT-285 `noteexpand`), unrelated to any CVE.
+///
+/// The inspected root is baked into the image at /opt/toy-case/root (rootDir);
+/// this module lives OUTSIDE it, so the canned observation (the expected
+/// evidence) and the expectations never reach the reasoning agent or Jev.
+///
+/// Only one arm is baked, so there is no matched control here and no relative
+/// expectation: real runs are checked for probability validity only. Add a
+/// control (and a relative expectation) before drawing any discrimination
+/// conclusion.
+amends "modulepath:/Scenario.pkl"
+
+rootDir = "/opt/toy-case/root"
+
+/// Smoke hint level 1: "look for a component's stated 'never' that nothing
+/// enforces". Levels 2 and 3 cite a real CVE and are N/A for the toy.
+hintLevel = 1
+
+/// Agent-collected evidence from this root is scored as the positive case.
+agentObservationId = "toy_unenforced"
+
+observations {
+  ["toy_unenforced"] {
+    findings {
+      new {
+        component = "noteexpand"
+        source_path = "opt/toy/README.md"
+        excerpt = "Never run the expander on a note you did not write yourself."
+        never = "expanding a note the caller did not author"
+        enforced = false
+      }
+    }
+  }
+  ["no_findings"] {
+    findings {}
+  }
+}
+
+questions {
+  ["unenforced_never"] {
+    type = "noul"
+    instructions = "A component states a rule that must never be violated. Does the composed system fail to enforce it (an unenforced never)?"
+  }
+}
+
+// Mock stimulus only: wiring, not a measurement of Jev.
+mockAnswers {
+  ["toy_unenforced"] { ["unenforced_never"] = 0.8 }
+  ["no_findings"] { ["unenforced_never"] = 0.1 }
+}
+
+expectations {}

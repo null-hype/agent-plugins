@@ -1,0 +1,29 @@
+/// The evidence record a reasoning agent emits. This module is the single
+/// authority for evidence structure: `evidence-validate` evaluates a candidate
+/// file against these classes (via `Validate.pkl`), and scenario modules use
+/// the same classes for canned observations. Closed classes, so an unexpected
+/// key, a missing key, a wrong type or an empty string is a Pkl error.
+///
+/// "No findings" (`findings = new {}`) is valid. Grounding (does the excerpt
+/// appear verbatim at `source_path` in an image root) needs a filesystem, so it
+/// is done by the Python adapter, not here.
+module evidence.Evidence
+
+/// One finding: a component states a "never"; `enforced` says whether anything
+/// in the system enforces it.
+class Finding {
+  /// The component that states the "never".
+  component: String(!isEmpty)
+  /// Path relative to the image root.
+  source_path: String(!isEmpty)
+  /// Text that appears verbatim at `source_path`.
+  excerpt: String(!isEmpty)
+  /// The thing the excerpt says must never happen.
+  never: String(!isEmpty)
+  /// Whether anything in the system enforces the "never".
+  enforced: Boolean
+}
+
+class EvidenceFile {
+  findings: Listing<Finding>
+}

@@ -1,0 +1,50 @@
+examples {
+  ["canned observations"] {
+    new {
+      ["arm_unenforced"] {
+        findings {
+          new {
+            component = "run.sh"
+            source_path = "app/README.md"
+            excerpt = "Never pass untrusted input"
+            never = "passing untrusted input to run.sh"
+            enforced = false
+          }
+        }
+      }
+      ["arm_enforced"] {
+        findings {
+          new {
+            component = "run.sh"
+            source_path = "app/guard.md"
+            excerpt = "rejects untrusted input before use"
+            never = "passing untrusted input to run.sh"
+            enforced = true
+          }
+        }
+      }
+      ["no_findings"] {
+        findings {}
+      }
+    }
+  }
+  ["fixed questions"] {
+    new {
+      ["unenforced_never"] {
+        type = "noul"
+        instructions = "A component states a rule that must never be violated. Does the composed system fail to enforce it (an unenforced never)?"
+        criteria = null
+      }
+    }
+  }
+  ["verdicts on known inputs"] {
+    new {
+      ["aligned"] = List(#"validity:arm_enforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:arm_unenforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:no_findings:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"relative:unenforced_never:arm_unenforced>arm_enforced => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"relative:unenforced_never:arm_unenforced>no_findings => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"band:unenforced_never:arm_unenforced => WITHIN_BAND accepted=List("WITHIN_BAND") asserted=true"#, #"band:unenforced_never:arm_enforced => WITHIN_BAND accepted=List("WITHIN_BAND") asserted=true"#)
+      ["out_of_band"] = List(#"validity:arm_enforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:arm_unenforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:no_findings:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"relative:unenforced_never:arm_unenforced>arm_enforced => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"relative:unenforced_never:arm_unenforced>no_findings => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"band:unenforced_never:arm_unenforced => OUTSIDE_BAND accepted=List("WITHIN_BAND") asserted=true"#, #"band:unenforced_never:arm_enforced => WITHIN_BAND accepted=List("WITHIN_BAND") asserted=true"#)
+      ["order_reversed"] = List(#"validity:arm_enforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:arm_unenforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:no_findings:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"relative:unenforced_never:arm_unenforced>arm_enforced => ORDER_REVERSED accepted=List("EXPECTED_ORDER") asserted=true"#, #"relative:unenforced_never:arm_unenforced>no_findings => ORDER_TIED accepted=List("EXPECTED_ORDER") asserted=true"#, #"band:unenforced_never:arm_unenforced => OUTSIDE_BAND accepted=List("WITHIN_BAND") asserted=true"#, #"band:unenforced_never:arm_enforced => OUTSIDE_BAND accepted=List("WITHIN_BAND") asserted=true"#)
+      ["invalid_probability"] = List(#"validity:arm_enforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:arm_unenforced:unenforced_never => INVALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:no_findings:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"relative:unenforced_never:arm_unenforced>arm_enforced => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"relative:unenforced_never:arm_unenforced>no_findings => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"band:unenforced_never:arm_unenforced => OUTSIDE_BAND accepted=List("WITHIN_BAND") asserted=true"#, #"band:unenforced_never:arm_enforced => WITHIN_BAND accepted=List("WITHIN_BAND") asserted=true"#)
+      ["missing_observation"] = List(#"validity:arm_unenforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"relative:unenforced_never:arm_unenforced>arm_enforced => MISSING_OBSERVATION accepted=List("EXPECTED_ORDER") asserted=true"#, #"relative:unenforced_never:arm_unenforced>no_findings => MISSING_OBSERVATION accepted=List("EXPECTED_ORDER") asserted=true"#, #"band:unenforced_never:arm_unenforced => WITHIN_BAND accepted=List("WITHIN_BAND") asserted=true"#, #"band:unenforced_never:arm_enforced => MISSING_OBSERVATION accepted=List("WITHIN_BAND") asserted=true"#)
+      ["uncalibrated_real"] = List(#"validity:arm_enforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:arm_unenforced:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"validity:no_findings:unenforced_never => VALID_PROBABILITY accepted=List("VALID_PROBABILITY") asserted=true"#, #"relative:unenforced_never:arm_unenforced>arm_enforced => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"relative:unenforced_never:arm_unenforced>no_findings => EXPECTED_ORDER accepted=List("EXPECTED_ORDER") asserted=true"#, #"band:unenforced_never:arm_unenforced => NOT_ASSERTED_UNCALIBRATED accepted=List("WITHIN_BAND") asserted=false"#, #"band:unenforced_never:arm_enforced => NOT_ASSERTED_UNCALIBRATED accepted=List("WITHIN_BAND") asserted=false"#)
+    }
+  }
+}

@@ -1,0 +1,93 @@
+name: "Experiment - live Jev / full (PAID, manual)"
+
+# The ONLY workflow that can spend model/Jev tokens. Manual dispatch only; it is
+# never triggered by push or pull_request, and completing a PR does not require
+# running it. Each run states its mode explicitly, uses a bounded repeat count,
+# and fails closed on any spend/token bound it cannot enforce.
+#
+#   live-jev         canned evidence + REAL Jev
+#   full-experiment  agent-collected evidence + REAL Jev (needs a reasoning-agent
+#                    runner; until one exists the run reports BLOCKED, not pass)
+#
+# Reproducibility: expectations are pre-registered in the scenario's Pkl module
+# and committed BEFORE an evaluated run. Numeric confidence bands may be added
+# only after calibration on independently established known-answer cases, and
+# frozen before held-out evaluation.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Execution mode"
+        type: choice
+        options: [live-jev, full-experiment]
+        required: true
+      model:
+        description: "Jev model (blank = client default)"
+        type: string
+        default: ""
+      repeats:
+        description: "Repeats (1-5, enforced)"
+        type: string
+        default: "1"
+      max_tokens:
+        description: "Token bound. Not enforceable by any backend here: any non-blank value FAILS the run (fail closed)."
+        type: string
+        default: ""
+      max_usd:
+        description: "Spend bound. Not enforceable by any backend here: any non-blank value FAILS the run (fail closed)."
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    environment: paid-experiments
+    env:
+      CONTRACT_MODE: ${{ inputs.mode }}
+      CONTRACT_MODEL: ${{ inputs.model }}
+      CONTRACT_REPEATS: ${{ inputs.repeats }}
+      CONTRACT_MAX_TOKENS: ${{ inputs.max_tokens }}
+      CONTRACT_MAX_USD: ${{ inputs.max_usd }}
+      # Explicit opt-in switches, set from the chosen mode only.
+      CONTRACT_ALLOW_REAL_JEV: "1"
+      CONTRACT_ALLOW_REASONING_AGENT: ${{ inputs.mode == 'full-experiment' && '1' || '0' }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Refuse bounds that cannot be enforced (fail closed)"
+        run: |
+          set -e
+          case "$CONTRACT_REPEATS" in 1|2|3|4|5) ;; *) echo "::error::repeats must be 1-5"; exit 1;; esac
+          if [ -n "$CONTRACT_MAX_TOKENS" ] || [ -n "$CONTRACT_MAX_USD" ]; then
+            echo "::error::a token/spend bound was requested but neither the jev client nor a reasoning-agent runner can enforce one; refusing to run."
+            exit 1
+          fi
+
+      - name: "Install latest devcontainer CLI"
+        run: npm install -g @devcontainers/cli
+
+      - name: "Select only the toy scenario"
+        run: |
+          jq 'with_entries(select(.key == "cit-286-toy-smoke"))' test/_global/scenarios.json > /tmp/s.json
+          mv /tmp/s.json test/_global/scenarios.json
+
+      - name: "devcontainer features test (${{ inputs.mode }})"
+        run: devcontainer features test --global-scenarios-only .
+
+      - name: "Collect evaluation records"
+        if: always()
+        run: |
+          mkdir -p build/contract-records
+          find /tmp/devcontainercli/container-features-test -type d -name contract-records 2>/dev/null \
+            -exec cp -r {}/. build/contract-records/ \; || true
+      - name: "Upload evaluation records"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-records-live
+          path: build/contract-records/
+          if-no-files-found: warn
