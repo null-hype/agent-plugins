@@ -22,6 +22,11 @@ permissions:
 jobs:
   test-scenarios:
     runs-on: ubuntu-latest
+    env:
+      # Ordinary global runs are deterministic: the method scenarios run with
+      # canned evidence and mock Jev. Paid modes live only in
+      # experiment-live.yaml; credentials in this job never select a mode.
+      CONTRACT_MODE: deterministic
     steps:
       - uses: actions/checkout@v4
 

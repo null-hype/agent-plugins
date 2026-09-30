@@ -1,9 +1,15 @@
 {
     "name": "Evidence format and validator",
     "id": "evidence",
-    "version": "1.0.0",
-    "description": "The evidence record a reasoning agent emits (one finding per record: component, source path, excerpt, the implied 'never', whether anything enforces it), a JSON Schema for it, and an 'evidence-validate' bin with a grounding check that each excerpt appears verbatim at its source path in an image root. No case data.",
-    "options": {},
+    "version": "2.0.0",
+    "description": "The evidence contract for the reasoning-agent -> Jev method. Evidence structure and scenario contracts are defined in Pkl (Evidence.pkl, Scenario.pkl); the feature installs the pinned pkl runtime, those modules, an 'evidence-validate' bin (Pkl format check + filesystem grounding of each excerpt) and the Python adapter that runs Pkl-defined scenarios (mode guards, evidence-to-Jev transform). No case data.",
+    "options": {
+        "pklVersion": {
+            "type": "string",
+            "default": "0.32.1",
+            "description": "Pkl release to install (only the default is checksum-pinned)."
+        }
+    },
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"
     ]

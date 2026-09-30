@@ -1,0 +1,14 @@
+/// Scenario invariants + controlled golden example for cit-286-contract.
+/// Run: pkl test --module-path <evidence pkl dir> cit-286-contract.test.pkl
+/// The -expected.pcf records the CONTROLLED canned example; it is not an
+/// approved live finding.
+amends "pkl:test"
+
+import "cit-286-contract.pkl" as scenario
+
+facts = scenario.invariants()
+
+examples {
+  ["canned observations"] { scenario.observations }
+  ["fixed questions"] { scenario.questions }
+}

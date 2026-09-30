@@ -104,13 +104,14 @@ runtime.
 ## Method contract: reasoning model → Jev (Rule C, from CIT-286)
 
 The method pipeline is: a reasoning agent emits an **evidence file** →
-`evidence-validate` (schema + grounding) → only if valid, the **`jev`** client
+`evidence-validate` (Pkl format check + grounding) → only if valid, the **`jev`** client
 sends the fixture `state` to the Noul judge and returns one probability in
 `[0,1]` per question. Hint level is a *runtime parameter*, not a scenario (Rule
 D3). The contract scenarios to maintain:
 
-- **C1 — format.** Agent output validates against the evidence schema
-  (`src/evidence/evidence.schema.json`). An empty `{"findings":[]}` ("no
+- **C1 — format.** Agent output validates against the Pkl evidence
+  definition (`src/evidence/pkl/Evidence.pkl`; Pkl is authoritative, Python is
+  only the adapter). An empty `{"findings":[]}` ("no
   findings") is **valid** and must stay valid.
 - **C2 — grounding.** Every `excerpt` appears **verbatim** at its `source_path`
   under the image root (`evidence-validate --root <root>`); a path escaping the
@@ -128,20 +129,33 @@ D3). The contract scenarios to maintain:
   call count is **0** on the reject path and **≥1** on the accept path. A test
   that only checks the final exit code does not prove the seam.
 
-Deterministic contract scenarios (C1–C5) use **canned** evidence + the **mock**
-Jev backend and belong in `test/_global`. Exactly **one live smoke** scenario
-runs a **real agent + real Jev** on the toy case (CIT-285); see Rule M.
+Contract scenarios are **defined in Pkl** (a module that `amends
+"modulepath:/Scenario.pkl"`: canned observations, fixed Jev questions,
+pre-registered expectations; `pkl test` facts check invariants, the
+`-expected.pcf` is a controlled golden example, not an approved live finding).
+A global scenario `.sh` invokes `<scenario>_test.py`, which calls the shared
+adapter installed by the `evidence` feature (`contract_suite.main`). The adapter
+**transforms the validated evidence into the state sent to Jev**; assert that by
+capturing the actual request (PATH shim) with **distinguishable inputs**, never
+by a hardcoded state. Expectations, control identities and answers stay out of
+the agent's context and Jev's request; question templates are fixed.
+
+Modes (never chosen by credentials): `deterministic` (default, canned + mock, zero
+real calls, even with dummy credentials present), `live-jev` (canned + real Jev),
+`full-experiment` (agent-collected + real Jev). Live modes need explicit opt-in
+switches (`CONTRACT_ALLOW_REAL_JEV`, `CONTRACT_ALLOW_REASONING_AGENT`) and run
+only from `experiment-live.yaml`.
 
 ## Deterministic vs. live smoke (Rule M)
 
 - **M1.** Deterministic scenarios prove the *contract seams* with canned data and
   the mock backend. They are the default gate and run without credentials.
-- **M2.** The live smoke runs a real reasoning agent and a real Jev call on the
-  toy case. It needs Docker (to build the toy image), an agent, and
-  `TYPESAFE_API_KEY` (wrap with `pass-cli run --env-file <f> -- jev ...` — never
-  put the key in argv). When any prerequisite is missing, the scenario **skips
-  with the specific blocker printed** (mirror the `PROTON_PASS_...`-absent skip
-  in `test/_global/jin-81-pass-cli.sh`), and exits 0 — it does not fake a run.
+- **M2.** The live modes (real Jev; real agent + real Jev) are explicit opt-ins:
+  `CONTRACT_MODE` plus `CONTRACT_ALLOW_REAL_JEV` / `CONTRACT_ALLOW_REASONING_AGENT`,
+  launched from the manual `experiment-live.yaml`. **Credentials never select a
+  mode.** Disabled → `NOT RUN` (exit 0, not a pass). Requested but missing a
+  prerequisite (Jev key, runner) → `BLOCKED` (exit 1). Requested spend/token
+  bounds the backend cannot enforce → refused. Never put the key in argv.
 - **M3.** Report the two separately. "Deterministic contract scenarios pass" and
   "the live smoke ran (or was blocked by X)" are different claims; a green
   deterministic gate is not evidence the live method works, and successful
@@ -178,8 +192,10 @@ experiment.
       checkout-relative reads from a scenario script.
 - [ ] Contract scenarios cover C1–C5, with C5's Jev-invocation **observable** and
       asserted 0-on-reject / ≥1-on-accept.
-- [ ] Deterministic (canned + mock) and live-smoke (real agent + real Jev) are
-      separate scenarios; the smoke skips with a specific blocker when it can't run.
+- [ ] Contracts are defined in Pkl; deterministic (canned + mock) is the only
+      mode ordinary CI runs, with the mode pinned explicitly. Live modes are
+      opt-in, report NOT RUN when disabled (never a pass), and fail closed on
+      spend/token bounds they cannot enforce.
 - [ ] No CVE/case data, prompts, constants, or hint sweeps entered `src/evidence`
       or `src/jev` (Rule D); answer keys/labels stay out of the inspected root (D4).
 - [ ] The container evidence is a real `devcontainer features test` run (local or
