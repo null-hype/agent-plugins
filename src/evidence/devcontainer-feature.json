@@ -2,7 +2,7 @@
     "name": "Evidence format and validator",
     "id": "evidence",
     "version": "2.0.0",
-    "description": "The evidence contract for the reasoning-agent -> Jev method. Evidence structure and scenario contracts are defined in Pkl (Evidence.pkl, Scenario.pkl); the feature installs the pinned pkl runtime, those modules, an 'evidence-validate' bin (Pkl format check + filesystem grounding of each excerpt) and the Python adapter that runs Pkl-defined scenarios (mode guards, evidence-to-Jev transform). No case data.",
+    "description": "Pkl-defined evidence types and Python bindings, evidence-validate, filesystem grounding, evidence-to-Jev projection, and a compare-and-record matcher. No case data or experiment execution policy.",
     "options": {
         "pklVersion": {
             "type": "string",

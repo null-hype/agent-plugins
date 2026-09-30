@@ -77,3 +77,22 @@ function requestFromJson(stateJson: String, questionsJson: String, modelName: St
         .mapValues((_, q) -> question(q as Dynamic))
         .toMapping()
   }
+
+/// The observed API answer. Scores remain numbers; they are not classifications.
+class NoulAnswer {
+  type: "noul" = "noul"
+  noul: Number(isFinite, isBetween(0, 1))
+}
+class JevResponse {
+  model: String
+  answers: Mapping<String, NoulAnswer>
+}
+function responseFromJson(text: String, questionIdsJson: String, modelName: String): JevResponse =
+  let (raw = new json.Parser {}.parse(text) as Dynamic)
+  let (questionIds = new json.Parser {}.parse(questionIdsJson).toList().toSet())
+    new JevResponse {
+      model = raw.getPropertyOrNull("model") ?? modelName
+      answers = raw.answers.toMap()
+        .mapValues((_, answer) -> (answer as Dynamic).toTyped(NoulAnswer)).toMapping()
+        as Mapping<String, NoulAnswer>(keys == questionIds)
+    }

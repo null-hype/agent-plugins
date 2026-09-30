@@ -5,8 +5,8 @@ usage: evidence-validate [--root DIR] FILE
 
 Exit 0: valid (and grounded, if --root). Exit 1: invalid or ungrounded, with
 the problems on stderr. Exit 2: usage.
-The format is defined by Evidence.pkl (evaluated by the pkl binary); this
-script is only the filesystem adapter: it runs pkl and checks grounding.
+The format is defined by Evidence.pkl and loaded through pkl-python bindings.
+This script adds filesystem grounding.
 """
 import os
 import sys

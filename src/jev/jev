@@ -41,17 +41,6 @@ import dataclasses
 import json
 import os
 import sys
-# NB: urllib is imported lazily inside the transport, not here. Some devcontainer
-# base images ship a python3 whose stdlib lacks the 'http' package, so
-# `import urllib.request` raises at import time; keeping it out of module scope
-# means --help, --print-request, the mock backend, and all validation still work
-# there, and only a real HTTP call needs a working transport (urllib or curl).
-# shutil/subprocess/tempfile are lazy for the same reason: a python3-minimal
-# base (e.g. debian:latest) omits them, and they are only needed by the curl
-# fallback transport -- importing them at module scope would break --help and
-# the mock backend on such an image (seen on debian:latest: "No module named
-# 'shutil'"). They are imported inside _http_post_curl instead.
-
 DEFAULT_API_URL = os.environ.get("JEV_API_URL", "https://api.typesafe.ai/v1/systemone")
 DEFAULT_MODEL = os.environ.get("JEV_MODEL", "jev-latest")
 API_KEY_ENV = "TYPESAFE_API_KEY"  # chosen name; docs.typesafe.ai/api does not fix one.
@@ -132,37 +121,22 @@ def _wire(value):
     return value
 
 
-def finite_prob(value, qid):
+def load_response(body, questions, model):
+    base, pkl_path = _contract_dir()
+    sys.path.insert(0, base)
+    import jev_pkl
+    import pkl
+    options = pkl.PreconfiguredOptions(properties={
+        "jev.response": json.dumps(body),
+        "jev.questions": json.dumps(list(questions)), "jev.model": model})
     try:
-        prob = float(value)
-    except (TypeError, ValueError):
-        die("answer for %r is not a number: %r" % (qid, value))
-    # reject NaN/inf and out-of-range
-    if prob != prob or prob in (float("inf"), float("-inf")):
-        die("answer for %r is not finite: %r" % (qid, value))
-    if prob < 0.0 or prob > 1.0:
-        die("answer for %r is out of [0,1]: %r" % (qid, prob))
-    return prob
-
-
-def parse_answers(answers, questions):
-    """Map the API's answers object to {qid: prob}, with the contract enforced.
-
-    Exactly the input question ids, each a finite probability in [0, 1].
-    """
-    if not isinstance(answers, dict):
-        die("backend returned no \"answers\" object")
-    got = set(answers)
-    want = set(questions)
-    if got != want:
-        die("answer ids %s do not match question ids %s" % (sorted(got), sorted(want)))
-    out = {}
-    for qid in questions:
-        ans = answers[qid]
-        if not isinstance(ans, dict) or "noul" not in ans:
-            die("answer for %r has no \"noul\" field" % qid)
-        out[qid] = finite_prob(ans["noul"], qid)
-    return out
+        return pkl.load(pkl_path,
+            expr='responseFromJson(read("prop:jev.response"), '
+                 'read("prop:jev.questions"), '
+                 'read("prop:jev.model"))',
+            evaluator_options=options, parser=pkl.Parser(namespace=vars(jev_pkl)))
+    except pkl.PklError as exc:
+        die("response rejected by Jev.pkl:%s" % exc)
 
 
 def call_real(request, api_url):
@@ -176,60 +150,14 @@ def call_real(request, api_url):
 
 
 def _http_post(url, api_key, payload):
-    """POST JSON and return the parsed body. Prefer urllib; fall back to curl
-    where the interpreter's stdlib lacks the 'http' module."""
+    import requests
     try:
-        import urllib.error as _err
-        import urllib.request as _req
-    except ImportError:
-        return _http_post_curl(url, api_key, payload)
-    req = _req.Request(
-        url,
-        data=payload,
-        method="POST",
-        headers={
-            "Authorization": "Bearer %s" % api_key,
-            "Content-Type": "application/json",
-        },
-    )
-    try:
-        with _req.urlopen(req) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except _err.HTTPError as exc:
-        die("Jev API returned HTTP %s: %s" % (exc.code, exc.read().decode("utf-8", "replace")))
-    except (_err.URLError, ValueError) as exc:
+        response = requests.post(url, data=payload, headers={
+            "Authorization": "Bearer " + api_key, "Content-Type": "application/json"})
+        response.raise_for_status()
+        return response.json()
+    except (requests.RequestException, ValueError) as exc:
         die("Jev API call failed: %s" % exc)
-
-
-def _http_post_curl(url, api_key, payload):
-    import shutil
-    import subprocess
-    import tempfile
-    if not shutil.which("curl"):
-        die("no HTTP transport: python's urllib lacks the 'http' module and "
-            "curl is not installed")
-    # Keep the key out of argv/the process list: the Authorization header goes in
-    # a 0600 temp file (curl -H @file), the body on stdin (--data-binary @-).
-    fd, hdr_path = tempfile.mkstemp()
-    try:
-        os.write(fd, ("Authorization: Bearer %s\n" % api_key).encode("utf-8"))
-        os.close(fd)
-        proc = subprocess.run(
-            ["curl", "-fsS", "-X", "POST", url,
-             "-H", "@%s" % hdr_path, "-H", "Content-Type: application/json",
-             "--data-binary", "@-"],
-            input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    finally:
-        try:
-            os.unlink(hdr_path)
-        except OSError:
-            pass
-    if proc.returncode != 0:
-        die("Jev API call via curl failed: %s" % proc.stderr.decode("utf-8", "replace"))
-    try:
-        return json.loads(proc.stdout.decode("utf-8"))
-    except ValueError as exc:
-        die("Jev API returned non-JSON: %s" % exc)
 
 
 def call_mock(request, mock_answers_path, questions):
@@ -273,6 +201,8 @@ def main(argv):
     ap.add_argument("--print-request", action="store_true",
                     help="print the exact request body that WOULD be sent and "
                          "exit, without calling any backend (leak-check / debug)")
+    ap.add_argument("--request-out", help="save the exact outgoing request")
+    ap.add_argument("--response-out", help="save the raw backend response, including on contract failure")
     args = ap.parse_args(argv)
 
     document = load_json(args.state_file)
@@ -281,6 +211,9 @@ def main(argv):
     questions = typed.questions
     request = _wire(typed)
 
+    if args.request_out:
+        with open(args.request_out, "w") as fh:
+            json.dump(request, fh)
     if args.print_request:
         json.dump(request, sys.stdout, indent=2, sort_keys=True)
         sys.stdout.write("\n")
@@ -291,10 +224,14 @@ def main(argv):
     else:
         body = call_real(request, args.api_url)
 
-    probabilities = parse_answers(body.get("answers"), questions)
+    if args.response_out:
+        with open(args.response_out, "w") as fh:
+            json.dump(body, fh)
+    typed_response = load_response(body, questions, args.model)
+    probabilities = {qid: answer.noul for qid, answer in typed_response.answers.items()}
     result = {
         "backend": args.backend,
-        "model": body.get("model", args.model),
+        "model": typed_response.model,
         "probabilities": probabilities,
     }
     json.dump(result, sys.stdout, indent=2, sort_keys=True)

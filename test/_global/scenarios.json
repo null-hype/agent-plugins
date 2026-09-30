@@ -14,22 +14,7 @@
         },
         "features": {
             "evidence": {},
-            "jev": {},
-            "pass-cli": {
-                "tag": "cit-286-toy-smoke"
-            }
-        },
-        "containerEnv": {
-            "CONTRACT_MODE": "${localEnv:CONTRACT_MODE:deterministic}",
-            "CONTRACT_ALLOW_REAL_JEV": "${localEnv:CONTRACT_ALLOW_REAL_JEV:0}",
-            "CONTRACT_ALLOW_REASONING_AGENT": "${localEnv:CONTRACT_ALLOW_REASONING_AGENT:0}",
-            "CONTRACT_REPEATS": "${localEnv:CONTRACT_REPEATS:1}",
-            "CONTRACT_MODEL": "${localEnv:CONTRACT_MODEL:}",
-            "CONTRACT_MAX_TOKENS": "${localEnv:CONTRACT_MAX_TOKENS:}",
-            "CONTRACT_MAX_USD": "${localEnv:CONTRACT_MAX_USD:}",
-            "REASONING_AGENT_RUNNER": "${localEnv:REASONING_AGENT_RUNNER:}",
-            "TYPESAFE_API_KEY": "${localEnv:TYPESAFE_API_KEY:}",
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN:}"
+            "jev": {}
         }
     },
     "color_and_playwright_cli": {

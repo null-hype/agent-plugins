@@ -45,15 +45,15 @@ about pass-cli; the caller supplies it with
 `pass-cli run --env-file <f> -- jev ...`.
 
 `pkl/Jev.pkl` owns the request contract, the sibling of
-`tk-evidence-exporter/pkl/Evidence.pkl`. The bin builds every request through it
+`evidence/pkl/Evidence.pkl`. The bin builds every request through it
 with the [pkl-python](https://github.com/jw-y/pkl-python) binding
 (`pkl.load(..., expr="requestFromJson(...)")`) and reads the result as the
 dataclasses generated from the same file (`jev_pkl.py`, registered on the
 `pkl.Parser` namespace) — Python has no second copy of the rules. An invalid
 request fails Pkl evaluation before any transport is invoked
 (`test/jev/contract_test.py`). Python keeps transport, auth and serialization.
-The response contract (`JevResponse`) is still enforced by hand in `jev` and is
-the next change.
+`JevResponse` and `NoulAnswer` use the same binding; Pkl checks answer IDs,
+question type and finite probabilities in [0,1]. Scores remain numbers.
 
 Regenerate the types after editing `Jev.pkl` (`pkl-gen-python` fetches its
 generator package over HTTPS from GitHub; if that is blocked, unzip the
@@ -85,16 +85,11 @@ real transport is exercised only by the contract scenarios (CIT-286) once a key
 is available. The client never invents probabilities: the real backend with no
 key fails loudly, and the mock returns only what a canned file provides.
 
-## Open question for CIT-286: what is `state`?
+## Evidence projection
 
-The Noul questions (`docs/investigations/CIT-265/questions.json`) phrase
-themselves as "the changes in `diff_items`, using the code in `files`" — i.e.
-they expect a `{diff_items, files}` state. CIT-284 evidence is a different shape
-(`{findings:[...]}`). So a reasoning agent's evidence output is **not** directly
-the Jev `state`. The client keeps `state` opaque on purpose and passes it
-through untouched; deciding whether CIT-286 feeds Jev the `{diff_items, files}`
-state, or evidence-shaped questions, or an adapter between them, is a CIT-286
-decision, not something this client should bake in.
+The evidence adapter projects validated findings and their cited/supporting
+files into `{diff_items, files}`. The scenario's questions are fixed; expected
+answers and canary observations remain evaluator-side. Jev keeps state opaque.
 
 ## The "only state is sent" rule
 
@@ -110,3 +105,8 @@ a leak silently voids the hint-ladder experiment.
 ---
 
 _Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/null-hype/agent-plugins/blob/main/src/jev/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+
+The response is also typed in `Jev.pkl`; Python no longer duplicates probability
+or answer-ID validation. `--request-out FILE --response-out FILE` preserves the
+exact input and raw backend output for a scenario's records. Confidence is a
+number, not a method-wide verdict category.

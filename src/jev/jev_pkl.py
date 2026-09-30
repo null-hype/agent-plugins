@@ -39,6 +39,27 @@ class JevRequest:
     _registered_identifier = "jev#JevRequest"
 
 
+@dataclass
+class JevResponse:
+    model: str
+
+    answers: Dict[str, NoulAnswer]
+
+    _registered_identifier = "jev#JevResponse"
+
+
+# The observed API answer. Scores remain numbers; they are not classifications.
+
+
+@dataclass
+class NoulAnswer:
+    type: Literal["noul"]
+
+    noul: float
+
+    _registered_identifier = "jev#NoulAnswer"
+
+
 # One Noul question. `type` is always "noul"; `instructions` carries the whole
 # judgement (OWASP category semantics live in this text, not in any dedicated
 # field). `criteria` is optional.

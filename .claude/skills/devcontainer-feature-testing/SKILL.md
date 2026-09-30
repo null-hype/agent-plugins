@@ -117,8 +117,8 @@ D3). The contract scenarios to maintain:
   under the image root (`evidence-validate --root <root>`); a path escaping the
   root, a missing file, or a symlink out of the root is rejected.
 - **C3 — isolation.** The reasoning run's init event shows filesystem tools and
-  **no web tools**. Deterministically, assert this against the recorded init-event
-  manifest; the real manifest comes from the live harness (CIT-271).
+  **no web tools**. Check an actual recorded init event in the runner
+  tests (CIT-271); an adapter-generated declaration does not prove containment.
 - **C4 — Jev accepts.** Given valid evidence/state and Noul questions, `jev`
   returns exactly the input question ids, each a finite number in `[0,1]`.
   Out-of-range or non-finite answers are rejected; probabilities are never
@@ -129,44 +129,32 @@ D3). The contract scenarios to maintain:
   call count is **0** on the reject path and **≥1** on the accept path. A test
   that only checks the final exit code does not prove the seam.
 
-Contract scenarios are **defined in Pkl** (a module that `amends
-"modulepath:/Scenario.pkl"`: canned observations, fixed Jev questions,
-pre-registered expectations; `pkl test` facts check invariants, the
-`-expected.pcf` is a controlled golden example, not an approved live finding).
-A global scenario `.sh` invokes `<scenario>_test.py`, which calls the shared
-adapter installed by the `evidence` feature (`contract_suite.main`). The adapter
-**transforms the validated evidence into the state sent to Jev**; assert that by
-capturing the actual request (PATH shim) with **distinguishable inputs**, never
-by a hardcoded state. Expectations, control identities and answers stay out of
-the agent's context and Jev's request; question templates are fixed.
+Define the record types and case checks in Pkl and consume them through the
+existing language bindings. Generate consumer types from the owning module;
+do not maintain handwritten Python copies or custom subprocess/JSON evaluators.
+Use lesson 5 (`part-1/chapter-3/lesson-5`) end to end: independent records of the
+same event, a domain check over those records, and a compare-and-record matcher.
 
-Expectation semantics live in Pkl (`Verdicts.pkl`, `Scenario.evaluate`): Python
-supplies the observed world, a thin matcher compares verdict codes, and every
-evaluation is recorded to `evaluations.jsonl` (pass and fail) with a `worldRef`
-to preserved inputs; CI uploads them as artifacts. Do not re-implement band or
-ordering semantics in Python. Required checks fail on a missing observation;
-uncalibrated bands are recorded as not-asserted on real results.
+Each global `.sh` invokes its own `<scenario>_test.py` directly. Case-specific
+checks and expectations stay with the case. Capture the exact Jev request and
+raw response; preserve evidence, observed state and diagnostics in a fresh run
+directory. Append evaluations on pass and fail, and upload records even on
+failure. A correctly detected disagreement may be the expected test result.
 
-Modes (never chosen by credentials): `deterministic` (default, canned + mock, zero
-real calls, even with dummy credentials present), `live-jev` (canned + real Jev),
-`full-experiment` (agent-collected + real Jev). Live modes need explicit opt-in
-switches (`CONTRACT_ALLOW_REAL_JEV`, `CONTRACT_ALLOW_REASONING_AGENT`) and run
-only from `experiment-live.yaml`.
+Do not replace a domain check with a generic confidence classification. Keep
+Jev's numeric response. Any confidence predicate belongs to the experiment that
+explicitly declares it; supply no default score ordering or thresholds.
 
-## Deterministic vs. live smoke (Rule M)
+## Deterministic vs. live execution (Rule M)
 
-- **M1.** Deterministic scenarios prove the *contract seams* with canned data and
-  the mock backend. They are the default gate and run without credentials.
-- **M2.** The live modes (real Jev; real agent + real Jev) are explicit opt-ins:
-  `CONTRACT_MODE` plus `CONTRACT_ALLOW_REAL_JEV` / `CONTRACT_ALLOW_REASONING_AGENT`,
-  launched from the manual `experiment-live.yaml`. **Credentials never select a
-  mode.** Disabled → `NOT RUN` (exit 0, not a pass). Requested but missing a
-  prerequisite (Jev key, runner) → `BLOCKED` (exit 1). Requested spend/token
-  bounds the backend cannot enforce → refused. Never put the key in argv.
-- **M3.** Report the two separately. "Deterministic contract scenarios pass" and
-  "the live smoke ran (or was blocked by X)" are different claims; a green
-  deterministic gate is not evidence the live method works, and successful
-  contract tests do not resolve CIT-280's causal/contamination questions.
+- **M1.** Default test entry points use recorded evidence and mock Jev. They run
+  without model credentials and never select live execution from credentials.
+- **M2.** Put actual collection/real Jev in a separate, explicitly invoked live
+  entry point and a manual workflow. Caller supplies authentication and runner
+  isolation; preserve the runner init event and trace. Do not add a generic
+  mode/spend-policy engine to the contract library. Never put keys in argv.
+- **M3.** Report deterministic tests and live observations separately. A mock
+  response cannot establish model discrimination, calibration or containment.
 
 ## Dependency direction (Rule D, from CIT-265)
 
@@ -197,12 +185,12 @@ experiment.
       installed command **inside the container** (Rule T), self-contained (Rule S).
 - [ ] Feature/global scenarios are self-contained (Rule S) — no `docs/`- or
       checkout-relative reads from a scenario script.
-- [ ] Contract scenarios cover C1–C5, with C5's Jev-invocation **observable** and
-      asserted 0-on-reject / ≥1-on-accept.
-- [ ] Contracts are defined in Pkl; deterministic (canned + mock) is the only
-      mode ordinary CI runs, with the mode pinned explicitly. Live modes are
-      opt-in, report NOT RUN when disabled (never a pass), and fail closed on
-      spend/token bounds they cannot enforce.
+- [ ] Contract scenarios cover C1/C2/C4/C5, with Jev-invocation **observable**
+      and asserted 0-on-reject / ≥1-on-accept; C3 belongs to actual runner tests.
+- [ ] Pkl owns types/checks and existing bindings load them; scenario tests
+      directly use mock Jev. Live execution has a separate entry point.
+- [ ] Records connect the claim, independent observation, actual model input and
+      response to the case check; there is no invented global confidence rule.
 - [ ] No CVE/case data, prompts, constants, or hint sweeps entered `src/evidence`
       or `src/jev` (Rule D); answer keys/labels stay out of the inspected root (D4).
 - [ ] The container evidence is a real `devcontainer features test` run (local or

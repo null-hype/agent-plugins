@@ -9,7 +9,7 @@ echo "Activating feature 'evidence'"
 need=""
 # The adapter needs the full stdlib (subprocess, shutil, tempfile, http.server);
 # a python3-minimal base image lacks some of it, so probe rather than assume.
-python3 -c "import subprocess, shutil, tempfile, http.server" >/dev/null 2>&1 || need="$need python3"
+python3 -c "import subprocess, venv, ensurepip" >/dev/null 2>&1 || need="$need python3 python3-venv"
 command -v curl >/dev/null 2>&1 || need="$need curl"
 [ -d /etc/ssl/certs ] || need="$need ca-certificates"
 if [ -n "$need" ]; then
@@ -51,4 +51,8 @@ SHARE=/usr/local/share/evidence
 mkdir -p "$SHARE/pkl" "$SHARE/lib"
 install -m 0644 "$FEATURE_DIR"/pkl/*.pkl "$SHARE/pkl/"
 install -m 0644 "$FEATURE_DIR"/lib/*.py "$SHARE/lib/"
-install -m 0755 "$FEATURE_DIR/evidence-validate" /usr/local/bin/evidence-validate
+VENV=/usr/local/lib/evidence/venv
+python3 -m venv "$VENV"
+"$VENV/bin/pip" install --quiet "pkl-python==0.1.19"
+sed "1s|.*|#!$VENV/bin/python|" "$FEATURE_DIR/evidence-validate" > /usr/local/bin/evidence-validate
+chmod 0755 /usr/local/bin/evidence-validate

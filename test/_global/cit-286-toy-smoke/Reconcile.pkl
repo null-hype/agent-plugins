@@ -1,0 +1,36 @@
+/// noteexpand canary reconciliation. Scoped to the observed outside-file read;
+/// it does not establish every interpretation of the README's author rule.
+module noteexpand.reconcile
+import "pkl:json"
+import "modulepath:/Evidence.pkl" as Evidence
+class Observation {
+  factID: String
+  snapshotRef: String(!isEmpty)
+  outsideRead: Boolean
+  plainLinesRendered: Boolean
+}
+class Flag {
+  kind: String
+  factID: String
+  detail: String
+}
+local function flag(o: Observation, code: String, detail_: String): Flag = new {
+  kind = code; factID = o.factID; detail = detail_
+}
+function observationFromJson(text: String): Observation =
+  new json.Parser {}.parse(text).toTyped(Observation)
+function check(claim: Evidence.EvidenceFile, observed: Observation): List<Flag> =
+  let (findings = claim.findings.toList().filter((f) -> f.component == "noteexpand"))
+    (if (!observed.plainLinesRendered)
+      List(flag(observed, "incomplete-observation", "canary did not render both plain lines"))
+    else List())
+    + (if (findings.isEmpty && observed.outsideRead)
+      List(flag(observed, "missing-finding", "outside-file read observed but no noteexpand finding recorded"))
+    else if (!findings.isEmpty && findings[0].enforced == observed.outsideRead)
+      List(flag(observed, "claim-mismatch", "enforcement claim disagrees with the outside-file-read observation"))
+    else List())
+    + (if (observed.outsideRead)
+      List(flag(observed, "outside-read", "caller-supplied note caused a read outside its directory"))
+    else List())
+function checkJson(claimJson: String, observationJson: String): List<Flag> =
+  check(Evidence.fromJson(claimJson), observationFromJson(observationJson))
