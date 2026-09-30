@@ -1,6 +1,8 @@
 {
     "cit-286-contract": {
-        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
         "features": {
             "evidence": {},
             "jev": {}
@@ -18,7 +20,16 @@
             }
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "CONTRACT_MODE": "${localEnv:CONTRACT_MODE:deterministic}",
+            "CONTRACT_ALLOW_REAL_JEV": "${localEnv:CONTRACT_ALLOW_REAL_JEV:0}",
+            "CONTRACT_ALLOW_REASONING_AGENT": "${localEnv:CONTRACT_ALLOW_REASONING_AGENT:0}",
+            "CONTRACT_REPEATS": "${localEnv:CONTRACT_REPEATS:1}",
+            "CONTRACT_MODEL": "${localEnv:CONTRACT_MODEL:}",
+            "CONTRACT_MAX_TOKENS": "${localEnv:CONTRACT_MAX_TOKENS:}",
+            "CONTRACT_MAX_USD": "${localEnv:CONTRACT_MAX_USD:}",
+            "REASONING_AGENT_RUNNER": "${localEnv:REASONING_AGENT_RUNNER:}",
+            "TYPESAFE_API_KEY": "${localEnv:TYPESAFE_API_KEY:}",
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN:}"
         }
     },
     "color_and_playwright_cli": {
@@ -44,7 +55,8 @@
             "playwright-cli": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
         }
     },
     "jin-90-dead-drop": {
@@ -55,7 +67,8 @@
             "pass-cli": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
         }
     },
     "jin-91-resume-session": {
@@ -68,7 +81,8 @@
             }
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
         }
     }
 }
