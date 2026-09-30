@@ -58,7 +58,7 @@ check "output records the backend" bash -c "jev --backend mock --mock-answers '$
 
 # The request contract (Jev.pkl via pkl-python + generated types): a valid request
 # reaches a stubbed transport unchanged, an invalid one never does. No network.
-check "contract: typed request loads; invalid fails Pkl before transport" bash -c "python3 '$(dirname "$0")/contract_test.py' \$(command -v jev)"
+check "contract: typed request loads; invalid fails Pkl before transport" bash -c "/usr/local/lib/jev/venv/bin/python '$(dirname "$0")/contract_test.py' \$(command -v jev)"
 
 # Rejections happen before any backend call.
 check "malformed question (wrong type) rejected" bash -c "! jev --backend mock --mock-answers '$T/ans.json' -q '$T/bad-type.json' '$T/fixture.json'"
