@@ -9,6 +9,7 @@
     },
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils",
+        "ghcr.io/null-hype/agent-plugins/evidence",
         "ghcr.io/null-hype/agent-plugins/pass-cli",
         "ghcr.io/null-hype/agent-plugins/playwright-cli"
     ]

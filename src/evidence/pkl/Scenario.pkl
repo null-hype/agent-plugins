@@ -20,13 +20,8 @@ open module evidence.Scenario
 import "pkl:json"
 import "Evidence.pkl"
 import "Verdicts.pkl"
-
-/// A Noul question, in the shape the `jev` client accepts.
-class Question {
-  type: "noul"
-  instructions: String(!isEmpty)
-  criteria: Mapping<String, String>?
-}
+// Question type: Jev.pkl (the jev feature) owns the request contract; resolved from --module-path.
+import "modulepath:/Jev.pkl" as jev
 
 /// `higher` must receive a strictly higher probability than `lower` on
 /// `question` (both are observation ids). Relative assertions need no
@@ -123,7 +118,7 @@ ungrounded: Mapping<String, Evidence.EvidenceFile> = new {}
 malformed: Mapping<String, String> = new {}
 
 /// Fixed question templates.
-questions: Mapping<String, Question>
+questions: Mapping<String, jev.NoulQuestion>
 
 /// Canned Jev answers per observation id, for the mock backend only.
 mockAnswers: Mapping<String, Mapping<String, Number(isBetween(0, 1))>>
