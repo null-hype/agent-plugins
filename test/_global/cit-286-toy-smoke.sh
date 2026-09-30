@@ -35,7 +35,7 @@ check "toy inspected root baked in"  test -f "$ROOT/opt/toy/README.md"
 check "scenario answer material is OUTSIDE the inspected root (Rule D4)" \
     bash -c "test -f '$S/cit-286-toy-smoke.pkl' && ! grep -rq 'expectations\|toy_unenforced' '$ROOT'"
 check "scenario invariants hold (pkl test)" \
-    pkl test --module-path /usr/local/share/evidence/pkl "$S/cit-286-toy-smoke.test.pkl"
+    pkl test --module-path /usr/local/share/evidence/pkl:/usr/local/share/jev/pkl "$S/cit-286-toy-smoke.test.pkl"
 
 # Live modes call out (pass-cli login etc. is the caller's job); the driver
 # prints NOT RUN / BLOCKED / results itself and exits non-zero only on a failed

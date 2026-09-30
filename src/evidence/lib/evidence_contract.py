@@ -36,6 +36,12 @@ PKL_DIR = _first_existing(os.environ.get("EVIDENCE_PKL"), os.path.join(_INSTALLE
                           os.path.join(_HERE, "..", "pkl"))
 
 
+# Jev.pkl (the jev feature) owns the question/request types Scenario.pkl imports.
+JEV_PKL_DIR = _first_existing(os.environ.get("JEV_PKL"), "/usr/local/share/jev/pkl",
+                              os.path.join(_HERE, "..", "..", "jev", "pkl"))
+MODULE_PATH = os.pathsep.join([PKL_DIR, JEV_PKL_DIR])
+
+
 class Rejected(Exception):
     """Evidence failed format or grounding; raised before any Jev call."""
 
@@ -56,7 +62,7 @@ class BoundNotEnforceable(Exception):
 
 def pkl_eval(module, expression=None, props=None):
     """Evaluate a module to JSON. Returns (ok, parsed_json_or_None, stderr)."""
-    cmd = ["pkl", "eval", "-f", "json", "--module-path", PKL_DIR]
+    cmd = ["pkl", "eval", "-f", "json", "--module-path", MODULE_PATH]
     for k, v in (props or {}).items():
         cmd += ["-p", "%s=%s" % (k, v)]
     if expression:

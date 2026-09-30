@@ -84,14 +84,14 @@ def extract_state(document):
 
 
 def _contract_dir():
-    """Where Jev.pkl and its generated jev_pkl.py live: beside this file in the
-    source tree (pkl/Jev.pkl), or /usr/local/lib/jev once installed."""
+    """(dir holding jev_pkl.py, path of Jev.pkl): beside this file in the source
+    tree, else where the feature installed them."""
     here = os.path.dirname(os.path.realpath(__file__))
-    for base in (here, "/usr/local/lib/jev"):
-        for pkl_path in (os.path.join(base, "pkl", "Jev.pkl"), os.path.join(base, "Jev.pkl")):
-            if os.path.exists(pkl_path):
-                return base, pkl_path
-    die("Jev.pkl not found (looked beside %s and in /usr/local/lib/jev)" % here)
+    for base, pkl_path in ((here, os.path.join(here, "pkl", "Jev.pkl")),
+                           ("/usr/local/lib/jev", "/usr/local/share/jev/pkl/Jev.pkl")):
+        if os.path.exists(pkl_path):
+            return base, pkl_path
+    die("Jev.pkl not found (looked beside %s and in /usr/local/share/jev/pkl)" % here)
 
 
 def load_request(state, questions, model):

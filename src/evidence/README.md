@@ -16,7 +16,7 @@ Grounding: each `excerpt` must appear verbatim in the file at `source_path` unde
 | Path | What |
 |---|---|
 | `pkl` | pinned Pkl runtime (option `pklVersion`; default is checksum-pinned) |
-| `/usr/local/share/evidence/pkl/` | `Evidence.pkl`, `Validate.pkl`, `Scenario.pkl` (use `--module-path`, import as `modulepath:/Scenario.pkl`) |
+| `/usr/local/share/evidence/pkl/` | `Evidence.pkl`, `Validate.pkl`, `Scenario.pkl` (use `--module-path`, import as `modulepath:/Scenario.pkl`; `Scenario.pkl` imports the question type from the jev feature's `/usr/local/share/jev/pkl/Jev.pkl`, so put both on the path) |
 | `/usr/local/share/evidence/lib/` | `evidence_contract.py` (adapter), `contract_suite.py` (scenario driver) |
 | `evidence-validate` | format + grounding CLI |
 

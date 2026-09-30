@@ -7,7 +7,7 @@ echo "Activating feature 'jev'"
 # through the pkl-python binding, which drives the `pkl` binary and needs
 # msgpack/requests -- so the bin runs from its own venv rather than the system
 # python (PEP 668 images refuse a system-wide pip install).
-PKL_VERSION="0.29.1"      # keep in step with the repo's mise.toml pkl
+PKL_VERSION="0.32.1"      # same pin as the evidence feature (which installs pkl first when present)
 PKL_PYTHON_VERSION="0.1.19"  # the version jev_pkl.py was generated with
 JEV_HOME=/usr/local/lib/jev
 
@@ -37,7 +37,8 @@ mkdir -p "$JEV_HOME"
 python3 -m venv "$JEV_HOME/venv"
 "$JEV_HOME/venv/bin/pip" install --quiet "pkl-python==${PKL_PYTHON_VERSION}"
 # The contract and the Python types generated from it (regenerate jev_pkl.py per NOTES.md).
-install -m 0644 "$FEATURE_DIR/pkl/Jev.pkl" "$JEV_HOME/Jev.pkl"
+mkdir -p /usr/local/share/jev/pkl
+install -m 0644 "$FEATURE_DIR/pkl/Jev.pkl" /usr/local/share/jev/pkl/Jev.pkl   # on the evidence adapter's --module-path
 install -m 0644 "$FEATURE_DIR/jev_pkl.py" "$JEV_HOME/jev_pkl.py"
 
 # The client bin, running under the venv's python.
