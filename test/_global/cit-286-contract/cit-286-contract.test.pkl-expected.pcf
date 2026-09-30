@@ -1,0 +1,40 @@
+examples {
+  ["canned observations"] {
+    new {
+      ["arm_unenforced"] {
+        findings {
+          new {
+            component = "run.sh"
+            source_path = "app/README.md"
+            excerpt = "Never pass untrusted input"
+            never = "passing untrusted input to run.sh"
+            enforced = false
+          }
+        }
+      }
+      ["arm_enforced"] {
+        findings {
+          new {
+            component = "run.sh"
+            source_path = "app/guard.md"
+            excerpt = "rejects untrusted input before use"
+            never = "passing untrusted input to run.sh"
+            enforced = true
+          }
+        }
+      }
+      ["no_findings"] {
+        findings {}
+      }
+    }
+  }
+  ["fixed questions"] {
+    new {
+      ["unenforced_never"] {
+        type = "noul"
+        instructions = "A component states a rule that must never be violated. Does the composed system fail to enforce it (an unenforced never)?"
+        criteria = null
+      }
+    }
+  }
+}

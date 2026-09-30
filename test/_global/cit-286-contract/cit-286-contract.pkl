@@ -1,0 +1,93 @@
+/// CIT-286 deterministic contract scenario: reasoning model -> Jev.
+///
+/// Generic "stated never / enforced" evidence and generic Noul questions; no
+/// CVE or case data. The two observations are a matched pair (same shape, the
+/// enforcement answer differs), so the relative expectation has something to
+/// discriminate. The mock answers below only wire that pair through; they are
+/// NOT a measurement of Jev.
+amends "modulepath:/Scenario.pkl"
+
+groundingFiles {
+  ["app/README.md"] = "Never pass untrusted input to run.sh.\n"
+  ["app/guard.md"] = "run.sh rejects untrusted input before use.\n"
+}
+
+observations {
+  ["arm_unenforced"] {
+    findings {
+      new {
+        component = "run.sh"
+        source_path = "app/README.md"
+        excerpt = "Never pass untrusted input"
+        never = "passing untrusted input to run.sh"
+        enforced = false
+      }
+    }
+  }
+  ["arm_enforced"] {
+    findings {
+      new {
+        component = "run.sh"
+        source_path = "app/guard.md"
+        excerpt = "rejects untrusted input before use"
+        never = "passing untrusted input to run.sh"
+        enforced = true
+      }
+    }
+  }
+  ["no_findings"] {
+    findings {}
+  }
+}
+
+ungrounded {
+  ["excerpt_not_in_file"] {
+    findings {
+      new {
+        component = "run.sh"
+        source_path = "app/README.md"
+        excerpt = "Always pass untrusted input"
+        never = "passing untrusted input to run.sh"
+        enforced = false
+      }
+    }
+  }
+  ["file_not_in_root"] {
+    findings {
+      new {
+        component = "run.sh"
+        source_path = "app/missing.md"
+        excerpt = "x"
+        never = "passing untrusted input to run.sh"
+        enforced = false
+      }
+    }
+  }
+}
+
+malformed {
+  ["missing_keys"] = #"{"findings":[{"component":"run.sh"}]}"#
+  ["extra_key"] = #"{"findings":[],"answer":0.9}"#
+  ["not_json"] = "not json"
+}
+
+questions {
+  ["unenforced_never"] {
+    type = "noul"
+    instructions = "A component states a rule that must never be violated. Does the composed system fail to enforce it (an unenforced never)?"
+  }
+}
+
+// Mock stimulus only (see header).
+mockAnswers {
+  ["arm_unenforced"] { ["unenforced_never"] = 0.83 }
+  ["arm_enforced"] { ["unenforced_never"] = 0.12 }
+  ["no_findings"] { ["unenforced_never"] = 0.05 }
+}
+
+expectations {
+  relative {
+    new { question = "unenforced_never"; higher = "arm_unenforced"; lower = "arm_enforced" }
+    new { question = "unenforced_never"; higher = "arm_unenforced"; lower = "no_findings" }
+  }
+}

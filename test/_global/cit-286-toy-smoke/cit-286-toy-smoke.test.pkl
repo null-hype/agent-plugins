@@ -1,0 +1,7 @@
+/// Invariants for the toy scenario. Grounding is checked against the baked
+/// root inside the container (see cit-286-toy-smoke.sh), not here.
+amends "pkl:test"
+
+import "cit-286-toy-smoke.pkl" as scenario
+
+facts = scenario.invariants()

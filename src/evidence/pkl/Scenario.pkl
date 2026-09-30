@@ -1,0 +1,138 @@
+/// Contract for a method scenario: canned observations, fixed Jev questions
+/// and pre-registered expectations, all declared as data. A scenario module
+/// `amends` this. Case data lives in the scenario, never here.
+///
+/// The three views are kept apart on purpose and read separately by the
+/// Python adapter (`pkl eval -x <property>`):
+///
+///   agent/Jev side  : groundingFiles, observations, ungrounded, malformed,
+///                     questions, mockAnswers, hintLevel
+///   evaluator only  : expectations
+///
+/// `expectations` is never written to a file the reasoning agent or Jev can
+/// see, and `questions` are fixed templates: nothing in them is derived from
+/// an observation or an expectation (checked by `invariants`).
+///
+/// Mock answers are stimulus for the mock backend. Assertions over them prove
+/// wiring, not Jev's discrimination or calibration.
+open module evidence.Scenario
+
+import "Evidence.pkl"
+
+/// A Noul question, in the shape the `jev` client accepts.
+class Question {
+  type: "noul"
+  instructions: String(!isEmpty)
+  criteria: Mapping<String, String>?
+}
+
+/// `higher` must receive a strictly higher probability than `lower` on
+/// `question` (both are observation ids). Relative assertions need no
+/// calibration and are where a scenario starts.
+class Relative {
+  question: String
+  higher: String
+  lower: String
+}
+
+/// A numeric confidence band. Only add after calibration on independently
+/// established known-answer cases; freeze before held-out evaluation.
+class Band {
+  question: String
+  observation: String
+  min: Number(isBetween(0, 1))
+  max: Number(isBetween(0, 1))
+}
+
+/// Pre-registered before any evaluated live run. Probability validity
+/// (finite, in [0, 1], one per question) always applies and needs no entry.
+class Expectations {
+  relative: Listing<Relative>
+  bands: Listing<Band>
+}
+
+/// Files (path relative to the image root -> content) the adapter writes
+/// into a temp root, for self-contained grounding. Leave empty when the root
+/// is baked into the image and named by `rootDir`.
+groundingFiles: Mapping<String, String> = new {}
+
+/// Absolute path of a root baked into the scenario image (instead of
+/// `groundingFiles`).
+rootDir: String?
+
+/// Canned grounded observations (stand-in for agent-collected evidence).
+observations: Mapping<String, Evidence.EvidenceFile>
+
+/// Valid-shape evidence that is deliberately NOT grounded.
+ungrounded: Mapping<String, Evidence.EvidenceFile> = new {}
+
+/// Raw JSON text that is deliberately not valid evidence.
+malformed: Mapping<String, String> = new {}
+
+/// Fixed question templates.
+questions: Mapping<String, Question>
+
+/// Canned Jev answers per observation id, for the mock backend only.
+mockAnswers: Mapping<String, Mapping<String, Number(isBetween(0, 1))>>
+
+/// Runtime parameter passed to a reasoning agent in the full experiment.
+hintLevel: Int = 0
+
+/// Evaluator-only. Never sent to the agent or Jev.
+expectations: Expectations
+
+function isGrounded(f: Evidence.Finding): Boolean =
+  (groundingFiles.getOrNull(f.source_path)?.contains(f.excerpt)) ?? false
+
+local allFindings: List<Evidence.Finding> =
+  observations.toMap().values.flatMap((o) -> o.findings.toList())
+
+local questionIds: Set<String> = questions.keys
+
+/// Invariants for a `pkl:test` module: `facts = scenario.invariants()`.
+function invariants(): Mapping<String, Listing<Boolean>> = new Mapping<String, Listing<Boolean>> {
+  ["canned observations are grounded in groundingFiles"] {
+    when (rootDir == null) {
+      for (_, o in observations) {
+        for (f in o.findings) { isGrounded(f) }
+      }
+    }
+  }
+  ["ungrounded observations contain a finding that is not grounded"] {
+    when (rootDir == null) {
+      for (_, o in ungrounded) {
+        o.findings.toList().any((f) -> !isGrounded(f))
+      }
+    }
+  }
+  ["mock answers cover exactly the observations and exactly the question ids"] {
+    mockAnswers.keys == observations.keys
+    for (_, a in mockAnswers) { a.keys == questionIds }
+  }
+  ["non-empty observations carry distinguishable evidence"] {
+    let (excerpts = allFindings.map((f) -> f.excerpt))
+      excerpts.toSet().length == excerpts.length
+  }
+  ["expectations reference known observations and questions"] {
+    for (r in expectations.relative) {
+      questionIds.contains(r.question)
+      observations.containsKey(r.higher)
+      observations.containsKey(r.lower)
+      r.higher != r.lower
+    }
+    for (b in expectations.bands) {
+      questionIds.contains(b.question)
+      observations.containsKey(b.observation)
+      b.min <= b.max
+    }
+  }
+  ["question templates are fixed: no observation text or id leaks into them"] {
+    for (_, q in questions) {
+      for (f in allFindings) {
+        !q.instructions.contains(f.excerpt)
+        !q.instructions.contains(f.never)
+      }
+      for (id, _ in observations) { !q.instructions.contains(id) }
+    }
+  }
+}
