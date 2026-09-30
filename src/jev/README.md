@@ -44,12 +44,26 @@ seam: `jev` reads `TYPESAFE_API_KEY` from the environment and knows nothing
 about pass-cli; the caller supplies it with
 `pass-cli run --env-file <f> -- jev ...`.
 
-`pkl/Jev.pkl` models the request/response contract, the sibling of
-`tk-evidence-exporter/pkl/Evidence.pkl` (which models the snapshot-evidence
-package). It is documentation of the contract, not an install-time dependency —
-nothing here evaluates it, and the bin validates in Python (stdlib only). Wiring
-real pkl-go evaluation of live requests/responses into the pipeline, the way the
-exporter does for its package, is a follow-up.
+`pkl/Jev.pkl` owns the request contract, the sibling of
+`tk-evidence-exporter/pkl/Evidence.pkl`. The bin builds every request through it
+with the [pkl-python](https://github.com/jw-y/pkl-python) binding
+(`pkl.load(..., expr="requestFromJson(...)")`) and reads the result as the
+dataclasses generated from the same file (`jev_pkl.py`, registered on the
+`pkl.Parser` namespace) — Python has no second copy of the rules. An invalid
+request fails Pkl evaluation before any transport is invoked
+(`test/jev/contract_test.py`). Python keeps transport, auth and serialization.
+The response contract (`JevResponse`) is still enforced by hand in `jev` and is
+the next change.
+
+Regenerate the types after editing `Jev.pkl` (`pkl-gen-python` fetches its
+generator package over HTTPS from GitHub; if that is blocked, unzip the
+`pkl.python@<ver>.zip` release asset and point `generateScript` at its
+`Generator.pkl` in a `--generator-settings` file):
+
+```
+pip install pkl-python==0.1.19
+pkl-gen-python src/jev/pkl/Jev.pkl -o /tmp/gen && cp /tmp/gen/jev_pkl.py src/jev/jev_pkl.py
+```
 
 ## What was verified vs. stubbed
 

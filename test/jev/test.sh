@@ -56,6 +56,10 @@ check "request does NOT leak meta/expected" bash -c "! jev --print-request -q '$
 check "mock returns the question's probability" bash -c "jev --backend mock --mock-answers '$T/ans.json' -q '$T/questions.json' '$T/fixture.json' | grep -q '\"a02_security_misconfiguration\": 0.9'"
 check "output records the backend" bash -c "jev --backend mock --mock-answers '$T/ans.json' -q '$T/questions.json' '$T/fixture.json' | grep -q '\"backend\": \"mock\"'"
 
+# The request contract (Jev.pkl via pkl-python + generated types): a valid request
+# reaches a stubbed transport unchanged, an invalid one never does. No network.
+check "contract: typed request loads; invalid fails Pkl before transport" bash -c "python3 '$(dirname "$0")/contract_test.py' \$(command -v jev)"
+
 # Rejections happen before any backend call.
 check "malformed question (wrong type) rejected" bash -c "! jev --backend mock --mock-answers '$T/ans.json' -q '$T/bad-type.json' '$T/fixture.json'"
 check "malformed question (no instructions) rejected" bash -c "! jev --backend mock --mock-answers '$T/ans.json' -q '$T/bad-missing.json' '$T/fixture.json'"

@@ -21,9 +21,14 @@ Design contract (see NOTES.md for the why):
     `expected` are dropped. Use `--print-request` to see exactly what would go
     out without calling anything.
 
+  * The request contract lives in pkl/Jev.pkl, not here. The request is built
+    through it with the pkl-python binding (`load_request`) and comes back as
+    the dataclasses generated from that same file (jev_pkl.py), so a malformed
+    request fails Pkl evaluation BEFORE any backend call (the seam CIT-286
+    scenario 5 checks). Python keeps only transport, auth and serialization.
+
   * The output keys are exactly the input question ids, each value a finite
-    number in [0, 1]. Malformed questions are rejected BEFORE any backend call
-    (the seam CIT-286 scenario 5 checks).
+    number in [0, 1].
 
   * Backends are explicit and recorded. The real backend needs TYPESAFE_API_KEY
     in the environment (wrap the call with `pass-cli run --env-file ... -- jev`);
@@ -32,6 +37,7 @@ Design contract (see NOTES.md for the why):
 """
 
 import argparse
+import dataclasses
 import json
 import os
 import sys
@@ -77,31 +83,53 @@ def extract_state(document):
     return document
 
 
-def validate_questions(questions):
-    """Reject malformed Noul questions before any backend call.
+def _contract_dir():
+    """Where Jev.pkl and its generated jev_pkl.py live: beside this file in the
+    source tree (pkl/Jev.pkl), or /usr/local/lib/jev once installed."""
+    here = os.path.dirname(os.path.realpath(__file__))
+    for base in (here, "/usr/local/lib/jev"):
+        for pkl_path in (os.path.join(base, "pkl", "Jev.pkl"), os.path.join(base, "Jev.pkl")):
+            if os.path.exists(pkl_path):
+                return base, pkl_path
+    die("Jev.pkl not found (looked beside %s and in /usr/local/lib/jev)" % here)
 
-    Each question must be type == "noul" with a non-empty `instructions` string.
-    `criteria`, if present, must be an object (its true/false descriptions are
-    optional per the API). Returns the questions unchanged, or exits non-zero.
+
+def load_request(state, questions, model):
+    """Evaluate the request through pkl/Jev.pkl and return a generated JevRequest.
+
+    All structural rules (question type, non-empty instructions, no unknown
+    fields, non-empty question set) are Pkl's; a violation is a PklError here.
     """
-    if not isinstance(questions, dict) or not questions:
-        die("questions must be a non-empty JSON object keyed by question id")
-    for qid, q in questions.items():
-        if not isinstance(q, dict):
-            die("question %r is not an object" % qid)
-        if q.get("type") != "noul":
-            die("question %r: type must be \"noul\"" % qid)
-        instructions = q.get("instructions")
-        if not isinstance(instructions, str) or not instructions.strip():
-            die("question %r: non-empty string \"instructions\" is required" % qid)
-        if "criteria" in q and not isinstance(q["criteria"], dict):
-            die("question %r: \"criteria\" must be an object when present" % qid)
-    return questions
+    base, pkl_path = _contract_dir()
+    sys.path.insert(0, base)
+    import jev_pkl
+    import pkl
+    options = pkl.PreconfiguredOptions(properties={
+        "jev.state": json.dumps(state),
+        "jev.questions": json.dumps(questions),
+        "jev.model": model,
+    })
+    try:
+        return pkl.load(
+            pkl_path,
+            expr='requestFromJson(read("prop:jev.state"), '
+                 'read("prop:jev.questions"), read("prop:jev.model"))',
+            evaluator_options=options,
+            parser=pkl.Parser(namespace=vars(jev_pkl)))
+    except pkl.PklError as exc:
+        die("request rejected by Jev.pkl:%s" % exc)
 
 
-def build_request(state, questions, model):
-    """The exact body sent to Jev. Note: state and questions only -- no meta."""
-    return {"state": state, "model": model, "questions": questions}
+def _wire(value):
+    """Generated dataclasses -> the JSON body: dataclasses become objects and
+    unset optionals (None) are omitted, as the API defines them optional. Values
+    inside `state` are plain data and are left exactly as loaded."""
+    if dataclasses.is_dataclass(value):
+        return {f.name: _wire(getattr(value, f.name)) for f in dataclasses.fields(value)
+                if getattr(value, f.name) is not None}
+    if isinstance(value, dict):
+        return {k: _wire(v) for k, v in value.items()}
+    return value
 
 
 def finite_prob(value, qid):
@@ -249,8 +277,9 @@ def main(argv):
 
     document = load_json(args.state_file)
     state = extract_state(document)
-    questions = validate_questions(load_json(args.questions))
-    request = build_request(state, questions, args.model)
+    typed = load_request(state, load_json(args.questions), args.model)
+    questions = typed.questions
+    request = _wire(typed)
 
     if args.print_request:
         json.dump(request, sys.stdout, indent=2, sort_keys=True)
