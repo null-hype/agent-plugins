@@ -3,21 +3,46 @@ set -e
 
 echo "Activating feature 'jev'"
 
-# The 'jev' client is Python + stdlib only (urllib/json), matching the sibling
-# 'evidence' method feature -- no pip, no third-party runtime. Ensure python3.
-if ! command -v python3 >/dev/null 2>&1; then
+# The 'jev' client is Python. The request contract is Pkl (pkl/Jev.pkl), consumed
+# through the pkl-python binding, which drives the `pkl` binary and needs
+# msgpack/requests -- so the bin runs from its own venv rather than the system
+# python (PEP 668 images refuse a system-wide pip install).
+PKL_VERSION="0.29.1"      # keep in step with the repo's mise.toml pkl
+PKL_PYTHON_VERSION="0.1.19"  # the version jev_pkl.py was generated with
+JEV_HOME=/usr/local/lib/jev
+
+if ! command -v python3 >/dev/null 2>&1 || ! python3 -c 'import venv, ensurepip' >/dev/null 2>&1; then
     if command -v apt-get >/dev/null 2>&1; then
-        apt-get update -y && apt-get install -y --no-install-recommends python3
+        apt-get update -y && apt-get install -y --no-install-recommends python3 python3-venv curl ca-certificates
     else
-        echo "python3 is required and no supported package manager was found" >&2
+        echo "python3 (with venv) is required and no supported package manager was found" >&2
         exit 1
     fi
 fi
 
+case "$(uname -m)" in
+    x86_64)         PKL_ARCH=amd64 ;;
+    aarch64|arm64)  PKL_ARCH=aarch64 ;;
+    *) echo "unsupported architecture $(uname -m) for pkl" >&2; exit 1 ;;
+esac
+if ! command -v pkl >/dev/null 2>&1; then
+    curl -fsSL -o /usr/local/bin/pkl \
+        "https://github.com/apple/pkl/releases/download/${PKL_VERSION}/pkl-linux-${PKL_ARCH}"
+    chmod 0755 /usr/local/bin/pkl
+fi
+
 FEATURE_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# The client bin.
-install -m 0755 "$FEATURE_DIR/jev" /usr/local/bin/jev
+mkdir -p "$JEV_HOME"
+python3 -m venv "$JEV_HOME/venv"
+"$JEV_HOME/venv/bin/pip" install --quiet "pkl-python==${PKL_PYTHON_VERSION}"
+# The contract and the Python types generated from it (regenerate jev_pkl.py per NOTES.md).
+install -m 0644 "$FEATURE_DIR/pkl/Jev.pkl" "$JEV_HOME/Jev.pkl"
+install -m 0644 "$FEATURE_DIR/jev_pkl.py" "$JEV_HOME/jev_pkl.py"
+
+# The client bin, running under the venv's python.
+sed "1s|.*|#!$JEV_HOME/venv/bin/python|" "$FEATURE_DIR/jev" > /usr/local/bin/jev
+chmod 0755 /usr/local/bin/jev
 
 # install.sh always runs as root, so a plain '~' here resolves to /root -- a
 # different home than whichever user actually invokes 'jev' (and reads its
