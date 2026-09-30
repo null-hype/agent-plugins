@@ -56,19 +56,27 @@ if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
 
     export PROTON_PASS_AGENT_REASON="devcontainer scenario test: ask claude its favorite color"
 
-    status=0
-    color > /tmp/color-output.txt || status=$?
-    cat /tmp/color-output.txt
-    if [ "$status" -eq 3 ]; then
-        echo "Skipping Claude skill check: credential unavailable; restic backup completed."
-    else
-        check "color completed" test "$status" -eq 0
-        check "Claude reports the pass-cli skill" grep -i pass-cli /tmp/color-output.txt
-    fi
+    # 'color' answering at all proves auth worked; asking it to name its
+    # skills (rather than just checking SKILL.md landed on disk) proves
+    # the pass-cli skill is actually being picked up. 'color' also does
+    # the restic snapshot internally when it detects an active session.
+    # pipefail: without it, only grep's exit code would matter, so a
+    # failure inside color itself (e.g. the restic backup failing)
+    # wouldn't fail this check as long as "pass-cli" appeared somewhere
+    # in whatever partial output it produced before failing.
+    #
+    # grep -i without -q (not >/dev/null via -q's early exit): -q exits
+    # as soon as it finds a match, closing the pipe while color is still
+    # running its restic backup afterward - pass-cli's Rust binary then
+    # panics on the resulting broken pipe (SIGPIPE) instead of exiting
+    # cleanly, which pipefail then reports as a failure. Redirecting to
+    # /dev/null instead lets grep drain the rest of the output first.
+    check "color asks claude, reports the pass-cli skill, and snapshots to restic" bash -o pipefail -c \
+        "color | tee /tmp/color-output.txt | grep -i 'pass-cli' >/dev/null"
 
     pass-cli logout || true
 else
-    echo -e "\nSkipping credential checks: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
+    echo -e "\nSkipping 'ask claude its favorite color' check: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
 fi
 
 # Report result

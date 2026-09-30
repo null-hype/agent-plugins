@@ -54,13 +54,14 @@ cleanup() {
 trap cleanup EXIT
 
 echo -e "\nRunning 'color resume'...\n"
-resume_status=0
-color resume > /tmp/resume-response.txt || resume_status=$?
-cat /tmp/resume-response.txt
-if [ "$resume_status" -eq 3 ]; then
-    reportResults
-    exit 0
-fi
+# Capture 'color resume's own exit status via PIPESTATUS rather than
+# the pipeline's (which would just be tee's, always 0): a failure in
+# 'color resume' (e.g. the restored snapshot missing the transcript, or
+# the resumed session not recalling the codeword) needs to fail this
+# scenario, not just print a message and carry on.
+color resume | tee /tmp/resume-response.txt
+resume_status="${PIPESTATUS[0]}"
+echo -e "\nAgent response:\n$(cat /tmp/resume-response.txt)\n"
 
 # Feature-specific tests
 # The 'check' command comes from the dev-container-features-test-lib.

@@ -18,12 +18,8 @@ ARG SCENARIO_NAME=jin-81-pass-cli
 # have to guess where the devcontainer CLI lands scenario files
 # inside the running container.
 COPY .env /opt/pass-cli/${SCENARIO_NAME}.env
-COPY claude.env /opt/pass-cli/${SCENARIO_NAME}-claude.env
 
 # Picked up by the 'pass-cli' feature bin's own pass-cli/claude/restic
 # block (see src/pass-cli/install.sh) so invoking `color` in this scenario
 # exercises the pass-cli skill and restic snapshot automatically.
 ENV PASS_CLI_ENV_FILE="/opt/pass-cli/${SCENARIO_NAME}.env"
-
-# Claude and restic resolve independently, so denied Claude access leaves backup usable.
-ENV PASS_CLI_CLAUDE_ENV_FILE="/opt/pass-cli/${SCENARIO_NAME}-claude.env"

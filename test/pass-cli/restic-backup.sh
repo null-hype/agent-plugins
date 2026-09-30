@@ -98,13 +98,11 @@ COLOR_BACKUP_JSON="/tmp/pass-cli-restic-backup.json"
 rm -f "$COLOR_BACKUP_JSON"
 
 export PROTON_PASS_AGENT_REASON="pass-cli restic-backup feature test: exercising color's backup path"
-# Claude denial is a skipped model check; the independently resolved restic backup still runs.
-color_status=0
-color || color_status=$?
-case "$color_status" in
-    0|3) ;;
-    *) exit "$color_status" ;;
-esac
+# 'color' does the restic backup internally once it sees an active
+# pass-cli session (see src/pass-cli/install.sh). This is the only step
+# here that talks to a live claude - everything this test actually
+# asserts on is local file/restic state, not the reply's content.
+color
 
 # CIT-147: color's own restic backup call now writes its `--json` output
 # (including the exact snapshot_id it just produced, from the trailing
