@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Observe the installed case, then check its evidence against Pkl goldens."""
+"""Observe the scenario app and check the installed detector against Pkl goldens."""
 import argparse
 import dataclasses
 import hashlib
@@ -25,9 +25,10 @@ arm = "control" if options.control else "positive"
 run = HERE / "noteexpand-records" / (arm + "-" + uuid4().hex)
 snapshot = run / "snapshot" / "opt/toy"
 snapshot.mkdir(parents=True)
+consumer = Path("/opt/toy-control/service.sh" if options.control else "/opt/toy/service.sh")
 digest = hashlib.sha256()
 for source in sorted(Path("/opt/toy").iterdir()):
-    data = source.read_bytes()
+    data = consumer.read_bytes() if source.name == "service.sh" else source.read_bytes()
     (snapshot / source.name).write_bytes(data)
     digest.update(source.name.encode() + b"\0" + data)
 
@@ -37,7 +38,7 @@ marker = run / "marker.txt"
 marker.write_text("MARKER-8f3a\n")
 note = run / "inbox/note.txt"
 note.write_text("hello\n@include %s\nbye\n" % marker)
-proc = subprocess.run(["/opt/toy/service.sh"], env=dict(os.environ, NOTE=str(note)),
+proc = subprocess.run([str(consumer)], env=dict(os.environ, NOTE=str(note)),
                       capture_output=True, text=True)
 (run / "stdout.txt").write_text(proc.stdout)
 (run / "stderr.txt").write_text(proc.stderr)
@@ -53,9 +54,13 @@ claim = pkl.load(str(HERE / "Claims.pkl"), expr=arm,
 assert isinstance(claim, evidence_pkl.EvidenceFile)
 evidence = dataclasses.asdict(claim)
 (run / "evidence.json").write_text(json.dumps(evidence))
+with (run / "diagnostics.json").open("w") as result:
+    subprocess.run(["noteexpand-detect", str(run / "evidence.json"), str(run / "observation.json")],
+                   stdout=result, check=True)
 subprocess.run(["pkl", "test", "--module-path", str(CASE_HOME / "pkl"),
                 "-p", "claim=" + json.dumps(evidence),
                 "-p", "observation=" + json.dumps(observation),
+                "-p", "diagnostics=" + (run / "diagnostics.json").read_text(),
                 "-p", "snapshotRoot=" + str(run / "snapshot"),
                 "--junit-reports", str(run), str(HERE / (arm + ".test.pkl"))], check=True)
 

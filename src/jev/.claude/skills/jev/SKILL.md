@@ -69,7 +69,7 @@ printed request.
 
 ## Where this fits
 
-The noteexpand feature's `with_jev` scenario drives this client with recorded
+The noteexpand detector's `toy-app` scenario drives this client with recorded
 evidence and the mock backend. Each case owns its state projection and Pkl
 expectations; this client keeps state opaque. A real invocation uses this same
 client with explicit credentials. There is no separate live experiment workflow.

@@ -2,7 +2,7 @@
 
 Jev consumes a state document and Noul questions and returns numeric
 probabilities. Each case owns its evidence, observations and expectations;
-Jev keeps state opaque. The noteexpand feature's `with_jev` scenario is the
+Jev keeps state opaque. The noteexpand detector's `toy-app` scenario is the
 first connected example.
 
 `pkl/Jev.pkl` owns the request and response types. The client loads them through
