@@ -22,6 +22,10 @@ set -e
 source dev-container-features-test-lib
 
 S=/opt/scenarios/cit-286-contract
+# Evaluation records (evaluations.jsonl + preserved worlds) are written under the
+# bind-mounted script folder so they survive the container and can be exported
+# as CI artifacts on pass and fail alike.
+export CONTRACT_RECORDS_DIR="${SCRIPT_FOLDER:-/tmp}/contract-records"
 
 check "pkl runtime installed"           pkl --version
 check "evidence-validate on PATH"       bash -c "command -v evidence-validate"

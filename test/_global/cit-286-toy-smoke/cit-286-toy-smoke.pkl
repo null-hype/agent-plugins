@@ -16,6 +16,9 @@ rootDir = "/opt/toy-case/root"
 /// enforces". Levels 2 and 3 cite a real CVE and are N/A for the toy.
 hintLevel = 1
 
+/// Agent-collected evidence from this root is scored as the positive case.
+agentObservationId = "toy_unenforced"
+
 observations {
   ["toy_unenforced"] {
     findings {

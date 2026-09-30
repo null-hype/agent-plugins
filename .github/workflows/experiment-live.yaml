@@ -77,3 +77,17 @@ jobs:
 
       - name: "devcontainer features test (${{ inputs.mode }})"
         run: devcontainer features test --global-scenarios-only .
+
+      - name: "Collect evaluation records"
+        if: always()
+        run: |
+          mkdir -p build/contract-records
+          find /tmp/devcontainercli/container-features-test -type d -name contract-records 2>/dev/null \
+            -exec cp -r {}/. build/contract-records/ \; || true
+      - name: "Upload evaluation records"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-records-live
+          path: build/contract-records/
+          if-no-files-found: warn

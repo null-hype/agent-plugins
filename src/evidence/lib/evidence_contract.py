@@ -78,6 +78,16 @@ def scenario_view(module, prop):
     return val
 
 
+def evaluate_world(module, world_path):
+    """Registered expectations evaluated by Pkl (Scenario.evaluate) in the
+    observed world at `world_path`. Returns the list of evaluation dicts."""
+    ok, val, err = pkl_eval(module, expression="new JsonRenderer {}.renderValue(evaluations)",
+                            props={"world.uri": "file://" + os.path.abspath(world_path)})
+    if not ok:
+        raise RuntimeError("pkl failed evaluating expectations for %s: %s" % (world_path, err))
+    return val
+
+
 # --- format + grounding ----------------------------------------------------
 
 def format_errors(path):
