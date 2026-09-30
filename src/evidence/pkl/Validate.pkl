@@ -1,39 +1,5 @@
-/// Evaluate a candidate evidence JSON file against `Evidence.EvidenceFile`.
-///
-///   pkl eval -f json --module-path <pkl dir> -p evidence.uri=file:///abs/e.json Validate.pkl
-///
-/// Success renders the normalized evidence; any structural problem is a Pkl
-/// error (non-zero exit). Used by `evidence-validate`; not case-specific.
+/// CLI view of the same EvidenceFile contract consumed by the Python binding.
 module evidence.Validate
-
-import "pkl:json"
-import "pkl:reflect"
 import "Evidence.pkl"
-
-local uri: String = read("prop:evidence.uri")
-
-local raw: Any = new json.Parser {}.parse(read(uri).text)
-
-/// `toTyped` converts one Dynamic level, so each finding is converted
-/// individually; unknown or missing keys and wrong types are Pkl errors.
-local findingKeys: Set<String> = reflect.Class(Evidence.Finding).properties.keys
-
-local function finding(f: Any): Evidence.Finding =
-  if (!(f is Dynamic)) throw("finding must be an object, got \(f)")
-  else if (f.toMap().keys.any((k) -> !findingKeys.contains(k))) throw("unexpected key(s) in finding: \(f.toMap().keys.filter((k) -> !findingKeys.contains(k)))")
-  else f.toTyped(Evidence.Finding)
-
-local evidence: Evidence.EvidenceFile =
-  if (!(raw is Dynamic)) throw("top level must be an object")
-  else if (raw.toMap().keys != Set("findings")) throw("top level must have exactly the key 'findings'")
-  else if (!(raw.findings is Listing)) throw("'findings' must be an array")
-  else new Evidence.EvidenceFile {
-    findings {
-      for (f in raw.findings) { finding(f) }
-    }
-  }
-
-output {
-  value = evidence
-  renderer = new JsonRenderer {}
-}
+evidence = Evidence.fromJson(read(read("prop:evidence.uri")).text)
+output { value = evidence; renderer = new JsonRenderer {} }

@@ -1,11 +1,15 @@
 {
-    "findings": [
-        {
-            "component": "noteexpand",
-            "source_path": "opt/toy/README.md",
-            "excerpt": "Never run the expander on a note you did not write yourself.",
-            "never": "expanding a note the caller did not author",
-            "enforced": false
-        }
-    ]
+  "findings": [
+    {
+      "component": "noteexpand",
+      "source_path": "opt/toy/README.md",
+      "excerpt": "Never run the expander on a note you did not write yourself.",
+      "never": "expanding a note the caller did not author",
+      "enforced": false,
+      "supporting_paths": [
+        "opt/toy/service.sh",
+        "opt/toy/expander.sh"
+      ]
+    }
+  ]
 }

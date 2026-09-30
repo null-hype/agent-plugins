@@ -31,7 +31,7 @@ echo '[]' > "$T/not-object.json"
 
 check "pkl runtime installed" bash -c "pkl --version"
 check "Evidence.pkl installed" test -f /usr/local/share/evidence/pkl/Evidence.pkl
-check "Scenario.pkl installed" test -f /usr/local/share/evidence/pkl/Scenario.pkl
+check "Evidence Python bindings installed" test -f /usr/local/share/evidence/lib/evidence_Evidence_pkl.py
 check "adapter installed" test -f /usr/local/share/evidence/lib/evidence_contract.py
 check "valid evidence passes" evidence-validate "$T/good.json"
 check "no findings is valid" evidence-validate "$T/none.json"

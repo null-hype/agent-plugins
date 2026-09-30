@@ -1,53 +1,64 @@
-# Evidence contract (`evidence`)
+# Evidence contract
 
-The contract between the reasoning agent and everything downstream (Jev client, scoring). Contains no case data.
+`Evidence.pkl` defines the collector's evidence record. `pkl-python` loads it as
+Python classes generated from the same module. `evidence-validate` adds real
+filesystem grounding: the quotation must occur in its source file, and all
+cited/supporting paths must remain under the supplied root, including symlinks.
+No-findings is valid.
 
-**Pkl is authoritative for structure.** `pkl/Evidence.pkl` defines the evidence record: `{"findings": [...]}`, each finding a `component`, `source_path` (relative to the image root), `excerpt`, the `never` it implies and `enforced`. Classes are closed; `{"findings": []}` ("no findings") is valid. `pkl/Scenario.pkl` is the contract for a method scenario (canned observations, fixed Jev questions, pre-registered expectations, invariants for `pkl test`). Python is only the execution/filesystem adapter.
-
-```bash
-evidence-validate evidence.json                        # format (evaluated by Pkl)
-evidence-validate --root /path/to/image evidence.json  # format + grounding
+```sh
+evidence-validate --root /path/to/snapshot evidence.json
 ```
 
-Grounding: each `excerpt` must appear verbatim in the file at `source_path` under `--root`; paths that escape the root (including via symlinks) fail. Exit 0 = ok, 1 = invalid/ungrounded (problems on stderr), 2 = usage.
+`enforced` is the collector's claim. A grounded quotation verifies the quotation,
+not the enforcement claim. `supporting_paths` names additional code files that
+the projection includes in Jev's state alongside the cited rule. Jev types live
+in the Jev feature; the evidence feature does not depend on its schema.
 
-## Installed
+Installed: Pkl, the pinned Python binding in `/usr/local/lib/evidence/venv`,
+modules in `/usr/local/share/evidence/pkl`, generated classes and filesystem
+functions in `/usr/local/share/evidence/lib`, and `evidence-validate`.
 
-| Path | What |
-|---|---|
-| `pkl` | pinned Pkl runtime (option `pklVersion`; default is checksum-pinned) |
-| `/usr/local/share/evidence/pkl/` | `Evidence.pkl`, `Validate.pkl`, `Scenario.pkl` (use `--module-path`, import as `modulepath:/Scenario.pkl`; `Scenario.pkl` imports the question type from the jev feature's `/usr/local/share/jev/pkl/Jev.pkl`, so put both on the path) |
-| `/usr/local/share/evidence/lib/` | `evidence_contract.py` (adapter), `contract_suite.py` (scenario driver) |
-| `evidence-validate` | format + grounding CLI |
+## Concrete tests
 
-## Running a Pkl-defined scenario
+The global shell scripts invoke their own `[scenario]_test.py` directly:
 
-A scenario `amends "modulepath:/Scenario.pkl"`; a thin `<scenario>_test.py` calls `contract_suite.main(<module>)`. The adapter loads the evaluated Pkl, validates and grounds the evidence, **transforms the validated evidence into the state sent to Jev** (`evidence_to_state`), calls the installed `jev`, and asserts. Malformed or ungrounded evidence is rejected before `jev` is invoked. Expectations are evaluator-only: never in the agent's context or Jev's request; question templates are fixed.
+- `cit-286-contract`: typed evidence -> grounding -> installed mock Jev. Capture
+  the exact request; reject malformed/ungrounded input with zero Jev invocations.
+- `cit-286-toy-smoke`: execute the existing noteexpand canary against exported
+  positive/control fixture roots. Reconcile a separate claim with the observed
+  outside-file read using the case's `Reconcile.pkl`, as lesson 5 reconciles
+  requests, grants and observations. A correctly reported outside read is the
+  expected diagnostic; a false enforcement claim is a separate disagreement.
 
-## Execution modes and spend
+The canary maps only the expander executable's image-absolute path to the
+exported fixture root. Preserved sources, executed script and output show what
+ran. This establishes the scoped outside-file-read behavior, not all meanings
+of the README's author rule, agent containment, or Rails CVE detection.
 
-| Mode | Evidence | Jev | Needs |
-|---|---|---|---|
-| `deterministic` (default; ordinary CI) | canned | mock | nothing |
-| `live-jev` | canned | real | `CONTRACT_ALLOW_REAL_JEV=1` + a Jev credential |
-| `full-experiment` | agent-collected | real | both `CONTRACT_ALLOW_REAL_JEV=1` and `CONTRACT_ALLOW_REASONING_AGENT=1`, a Jev credential, `REASONING_AGENT_RUNNER` |
+Each invocation creates a fresh record directory under `CONTRACT_RECORDS_DIR`.
+The small `verdict_matcher.to_have_verdict` compares and records actual/expected
+results on pass and failure. It owns no check semantics. Records include source
+snapshots, claims, observations, exact Jev requests, raw responses, normalized
+results and diagnostics. CI uploads these even on failure.
 
-Select with `CONTRACT_MODE` / `--mode`. **Credentials never select a mode**; the opt-in switches default off even when credentials exist. Deterministic mode refuses any real call and never falls back from mock to real. A disabled live mode prints `NOT RUN`, separate from deterministic results; an explicitly requested mode whose prerequisite is missing is `BLOCKED` (exit 1). Bounds: `CONTRACT_REPEATS` (1..5) is enforced; `CONTRACT_MAX_TOKENS`/`CONTRACT_MAX_USD` are refused because neither the `jev` client nor a reasoning-agent runner can enforce them (fail closed). Mock assertions establish wiring, not Jev's discrimination or calibration.
+Confidence remains a numeric Jev observation. Any experiment-specific confidence
+expectation belongs in that experiment's Pkl check; no default ordering,
+threshold or confidence classification is supplied by the method.
 
-## Expectations, verdicts and records
+## Live execution
 
-**Pkl owns the semantics.** `pkl/Verdicts.pkl` defines the comparison functions and `Scenario.evaluate` applies a scenario's registered expectations to an observed world (Jev probabilities keyed by declared case identity), returning typed verdicts: `EXPECTED_ORDER` / `ORDER_REVERSED` / `ORDER_TIED`, `WITHIN_BAND` / `OUTSIDE_BAND`, `VALID_PROBABILITY` / `INVALID_PROBABILITY`, `MISSING_OBSERVATION`, `NOT_ASSERTED_UNCALIBRATED`. Python only supplies the world (`-p world.uri=`) and runs a thin matcher, the `expect(fact).toHaveVerdict(axiom, world, code)` shape used in `tutorial-app`: it compares the actual code with the registered one (`expected`; `accepted` lists the codes that pass) and records the evaluation.
+Default tests always invoke mock Jev. The separate
+`cit-286-toy-smoke_live.py` entry point invokes real Jev with a supplied evidence
+file or an explicitly supplied collector executable. The manual
+`experiment-live.yaml` calls it with recorded toy evidence. Credentials do not
+change what a default test executes. Pass-cli may wrap the live invocation to
+supply the key; model/hint/repeats are parameters of the live entry point.
 
-- **Required checks fail on a missing observation** (`required = true`, the default). Agent-collected evidence is scored as the scenario's declared `agentObservationId`, not a generic id.
-- **Calibration is explicit.** An uncalibrated band (`calibrated = false`, the default) is a mock wiring check; on a real result it yields the recorded status `not-asserted`, reported separately and never counted as verified.
-- **Every repeat is its own world**, evaluated independently (no aggregation rule is registered).
-- **Known inputs:** a scenario's `diagnostics` (aligned, out-of-band, reversed, tied, invalid, missing, uncalibrated) are checked by `pkl test` facts and a golden `-expected.pcf`, and re-asserted through the matcher; an expected diagnostic passes.
-- **Records:** every evaluation, pass or fail, is appended to `evaluations.jsonl` (run, repeat, caseId, checkId, axiom, worldRef, actual, expected, accepted, status, message). `worldRef` names a preserved `worlds/repeat-N/` directory holding the evidence, the state sent to Jev, the results and `world.json`. Records go to `CONTRACT_RECORDS_DIR` (default `/tmp/contract-records`) and CI uploads them as artifacts even on failure.
+Collector isolation and its trace remain runner requirements (CIT-271/CIT-288),
+not a policy engine in this contract library. Collected evidence, runner-init
+record, and each repeat's outputs are retained; a live run has not been performed
+as part of this refactor.
 
-## Agent isolation (prerequisite for `full-experiment`)
-
-The adapter runs the runner with an allowlisted environment (`PATH`, `HOME`, `LANG`, ... plus names in `REASONING_AGENT_ENV_ALLOW`), `cwd` = the root, and requires it to write an isolation manifest (`--isolation-manifest FILE`: `tools`, `disallowed`, `fs_roots`). Evidence is returned only if the manifest lists no web or shell tools and `fs_roots` is exactly the root; otherwise collection fails closed. This verifies the runner's **declared** contract. It does not prove containment: the runner must itself prevent reads outside its roots, and that needs recorded evidence (CIT-271/CIT-288) before isolation is claimed. The deterministic suite's fake runner tests the adapter, not any runner.
-
-## Other paid paths
-
-The `pass-cli` feature's `color` bin (and the legacy `jin-81/90/91`, `restic-backup` scenarios) make Claude calls only with `PASS_CLI_ALLOW_CLAUDE=1` (default off; `color resume` exits 3 without it). A live `pass-cli` session alone never enables a paid call.
+Regenerate evidence types with `pkl-gen-python src/evidence/pkl/Evidence.pkl` and
+copy `evidence_Evidence_pkl.py` into `lib/` (binding version 0.1.19).

@@ -61,6 +61,18 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(self.run_jev(STATE, GOOD_Q), 0)
         self.assertEqual(self.sent, [{"state": STATE, "model": "jev-latest", "questions": GOOD_Q}])
 
+    def test_response_uses_generated_types_and_pkl_constraints(self):
+        typed = jev.load_response({"answers": {"a02": {"type": "noul", "noul": 0.5}}}, GOOD_Q, "jev-latest")
+        import jev_pkl
+        self.assertIsInstance(typed, jev_pkl.JevResponse)
+        self.assertIsInstance(typed.answers["a02"], jev_pkl.NoulAnswer)
+        for body in ({"answers": {}}, {"answers": {"other": {"noul": 0.5}}},
+                     {"answers": {"a02": {"noul": 1.5}}},
+                     {"answers": {"a02": {"noul": "0.5"}}},
+                     {"answers": {"a02": {"type": "boolean", "noul": 0.5}}}):
+            with self.subTest(body=body), self.assertRaises(SystemExit):
+                jev.load_response(body, GOOD_Q, "jev-latest")
+
     def test_invalid_requests_fail_pkl_evaluation_before_transport(self):
         bad = {
             "wrong type": {"q": {"type": "boolean", "instructions": "x"}},

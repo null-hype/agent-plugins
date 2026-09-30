@@ -1,0 +1,7 @@
+examples {
+  ["known disagreements"] {
+    List("outside-read fact=positive: caller-supplied note caused a read outside its directory")
+    List("claim-mismatch fact=positive: enforcement claim disagrees with the outside-file-read observation", "outside-read fact=positive: caller-supplied note caused a read outside its directory")
+    List()
+  }
+}

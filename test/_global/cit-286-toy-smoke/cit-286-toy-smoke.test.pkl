@@ -1,7 +1,31 @@
-/// Invariants for the toy scenario. Grounding is checked against the baked
-/// root inside the container (see cit-286-toy-smoke.sh), not here.
 amends "pkl:test"
-
+import "Reconcile.pkl" as Reconcile
 import "cit-286-toy-smoke.pkl" as scenario
-
-facts = scenario.invariants()
+local positive: Reconcile.Observation = new {
+  factID = "positive"; snapshotRef = "fixture:positive"
+  outsideRead = true; plainLinesRendered = true
+}
+local control = (positive) { factID = "control"; outsideRead = false }
+local falseClaim = (scenario.claim) { findings { [0] { enforced = true } } }
+local trueControlClaim = (scenario.claim) { findings { [0] { enforced = true } } }
+facts {
+  ["outside read remains a diagnostic when the collector correctly reports it"] {
+    Reconcile.check(scenario.claim, positive).map((f) -> f.kind) == scenario.expected["positive"]
+  }
+  ["claim mismatch is exposed without editing the observation"] {
+    Reconcile.check(falseClaim, positive)[0].kind == "claim-mismatch"
+  }
+  ["control agrees about the scoped outside-file read"] {
+    Reconcile.check(trueControlClaim, control).isEmpty
+  }
+  ["failed canary is not evidence of enforcement"] {
+    Reconcile.check(trueControlClaim, (control) { plainLinesRendered = false })[0].kind == "incomplete-observation"
+  }
+}
+examples {
+  ["known disagreements"] {
+    Reconcile.check(scenario.claim, positive).map((f) -> "\(f.kind) fact=\(f.factID): \(f.detail)")
+    Reconcile.check(falseClaim, positive).map((f) -> "\(f.kind) fact=\(f.factID): \(f.detail)")
+    Reconcile.check(trueControlClaim, control).map((f) -> "\(f.kind) fact=\(f.factID): \(f.detail)")
+  }
+}

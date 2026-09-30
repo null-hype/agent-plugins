@@ -31,7 +31,6 @@ jobs:
       # Ordinary global runs are deterministic: the method scenarios run with
       # canned evidence and mock Jev. Paid modes live only in
       # experiment-live.yaml; credentials in this job never select a mode.
-      CONTRACT_MODE: deterministic
       # Legacy scenarios and the 'color' bin make paid Claude calls only when
       # this is explicitly "1"; otherwise they report NOT RUN.
       PASS_CLI_ALLOW_CLAUDE: ${{ inputs.allow_claude && '1' || '0' }}
