@@ -1,4 +1,26 @@
 {
+    "cit-286-contract": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "evidence": {},
+            "jev": {}
+        }
+    },
+    "cit-286-toy-smoke": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "evidence": {},
+            "jev": {},
+            "pass-cli": {
+                "tag": "cit-286-toy-smoke"
+            }
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
+    },
     "color_and_playwright_cli": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
