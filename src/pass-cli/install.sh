@@ -41,7 +41,15 @@ echo "my favorite color is ${FAVORITE}"
 # gets the plain favorite-color line, same as before.
 if [ -n "\${PASS_CLI_ENV_FILE:-}" ] && command -v pass-cli >/dev/null 2>&1 && pass-cli info >/dev/null 2>&1; then
     export PROTON_PASS_AGENT_REASON="\${AGENT_ASSIGNMENT} scenario: color bin asking claude its favorite color"
-    pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p --model ${MODEL} --effort ${EFFORT} "What is your favorite color? Also list the names of any skills you currently have available, one per line."
+    # Spending guard: a live pass-cli session (credentials) must never by
+    # itself cause a paid model call. The claude turn runs only on an explicit
+    # opt-in, default off; otherwise it is reported NOT RUN (the restic
+    # backup below costs no tokens and still runs).
+    if [ "\${PASS_CLI_ALLOW_CLAUDE:-0}" = "1" ]; then
+        pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- claude -p --model ${MODEL} --effort ${EFFORT} "What is your favorite color? Also list the names of any skills you currently have available, one per line."
+    else
+        echo "color: claude call NOT RUN (opt in with PASS_CLI_ALLOW_CLAUDE=1)" >&2
+    fi
 
     # The GCS backend restic uses wants GOOGLE_APPLICATION_CREDENTIALS
     # pointing at a key *file*, not the inline JSON pass-cli resolves
@@ -75,6 +83,12 @@ fi
 # of the feature would, the same way jin-81-pass-cli.sh exercises the
 # backup block above rather than reimplementing it.
 if [ "\${1:-}" = "resume" ]; then
+    # Every step below is a paid claude call: refuse (fail closed) unless
+    # explicitly opted in. Credentials never select spending.
+    if [ "\${PASS_CLI_ALLOW_CLAUDE:-0}" != "1" ]; then
+        echo "color resume: NOT RUN -- makes paid claude calls; opt in with PASS_CLI_ALLOW_CLAUDE=1" >&2
+        exit 3
+    fi
     if [ -z "\${PASS_CLI_ENV_FILE:-}" ] || ! command -v pass-cli >/dev/null 2>&1 || ! pass-cli info >/dev/null 2>&1; then
         echo "color resume: requires PASS_CLI_ENV_FILE and an active pass-cli session" >&2
         exit 1

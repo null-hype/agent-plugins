@@ -90,4 +90,10 @@ expectations {
     new { question = "unenforced_never"; higher = "arm_unenforced"; lower = "arm_enforced" }
     new { question = "unenforced_never"; higher = "arm_unenforced"; lower = "no_findings" }
   }
+  // Uncalibrated: exercises the band executor against mock answers only.
+  // Not a claim about where Jev's confidence should fall.
+  bands {
+    new { question = "unenforced_never"; observation = "arm_unenforced"; min = 0.5; max = 1.0 }
+    new { question = "unenforced_never"; observation = "arm_enforced"; min = 0.0; max = 0.5 }
+  }
 }

@@ -55,7 +55,8 @@
             "playwright-cli": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
         }
     },
     "jin-90-dead-drop": {
@@ -66,7 +67,8 @@
             "pass-cli": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
         }
     },
     "jin-91-resume-session": {
@@ -79,7 +81,8 @@
             }
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "PASS_CLI_ALLOW_CLAUDE": "${localEnv:PASS_CLI_ALLOW_CLAUDE:0}"
         }
     }
 }

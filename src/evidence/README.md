@@ -33,3 +33,15 @@ A scenario `amends "modulepath:/Scenario.pkl"`; a thin `<scenario>_test.py` call
 | `full-experiment` | agent-collected | real | both `CONTRACT_ALLOW_REAL_JEV=1` and `CONTRACT_ALLOW_REASONING_AGENT=1`, a Jev credential, `REASONING_AGENT_RUNNER` |
 
 Select with `CONTRACT_MODE` / `--mode`. **Credentials never select a mode**; the opt-in switches default off even when credentials exist. Deterministic mode refuses any real call and never falls back from mock to real. A disabled live mode prints `NOT RUN`, separate from deterministic results; an explicitly requested mode whose prerequisite is missing is `BLOCKED` (exit 1). Bounds: `CONTRACT_REPEATS` (1..5) is enforced; `CONTRACT_MAX_TOKENS`/`CONTRACT_MAX_USD` are refused because neither the `jev` client nor a reasoning-agent runner can enforce them (fail closed). Mock assertions establish wiring, not Jev's discrimination or calibration.
+
+## Expectations and repeats
+
+Relative expectations and bands are evaluated **per repeat**, and every repeat's results are printed (`RESULT repeat=N ...`), so a passing later repeat cannot hide a failing earlier one. An uncalibrated band (`calibrated = false`, the default) is asserted on mock answers only, as a wiring check, and reported as not asserted on real results.
+
+## Agent isolation (prerequisite for `full-experiment`)
+
+The adapter runs the runner with an allowlisted environment (`PATH`, `HOME`, `LANG`, ... plus names in `REASONING_AGENT_ENV_ALLOW`), `cwd` = the root, and requires it to write an isolation manifest (`--isolation-manifest FILE`: `tools`, `disallowed`, `fs_roots`). Evidence is returned only if the manifest lists no web or shell tools and `fs_roots` is exactly the root; otherwise collection fails closed. This verifies the runner's **declared** contract. It does not prove containment: the runner must itself prevent reads outside its roots, and that needs recorded evidence (CIT-271/CIT-288) before isolation is claimed. The deterministic suite's fake runner tests the adapter, not any runner.
+
+## Other paid paths
+
+The `pass-cli` feature's `color` bin (and the legacy `jin-81/90/91`, `restic-backup` scenarios) make Claude calls only with `PASS_CLI_ALLOW_CLAUDE=1` (default off; `color resume` exits 3 without it). A live `pass-cli` session alone never enables a paid call.

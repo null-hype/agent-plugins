@@ -184,16 +184,87 @@ def check_bounds(repeats, max_tokens=None, max_usd=None):
 
 # --- collection (agent) ----------------------------------------------------
 
-def collect_evidence(plan, runner, root, hint_level, out):
-    """Run the reasoning-agent runner over the snapshot root. The runner gets
-    only the root, the hint level and an output path -- never the scenario."""
+class IsolationViolation(Exception):
+    """The runner did not declare, or declared a violated, isolation contract."""
+
+
+#: Environment the runner may inherit. Everything else (CONTRACT_*, Jev and
+#: Proton credentials, evaluator variables) is withheld. Model credentials the
+#: runner itself needs must be named in REASONING_AGENT_ENV_ALLOW.
+BASE_ENV_ALLOW = ("PATH", "HOME", "LANG", "LC_ALL", "TERM", "TMPDIR")
+_SHELL_TOOLS = ("bash", "shell", "exec", "terminal", "sh")
+_WEB_TOOLS = ("web", "fetch", "http", "browser", "search")
+
+
+def runner_env(env=None):
+    env = os.environ if env is None else env
+    allow = set(BASE_ENV_ALLOW) | {v for v in env.get("REASONING_AGENT_ENV_ALLOW", "").split(",") if v}
+    return {k: v for k, v in env.items() if k in allow}
+
+
+def verify_isolation(manifest, root):
+    """Check the isolation contract a runner DECLARES in its manifest:
+    {"tools": [...], "disallowed": [...], "fs_roots": [<root>]}.
+
+    This verifies the declaration against what the adapter requires; it does
+    not prove containment. Containment (that the runner truly cannot read
+    files outside its roots) is the runner's responsibility and needs its own
+    recorded evidence before the full experiment's isolation is claimed.
+    Returns a list of violations.
+    """
+    errs = []
+    if not isinstance(manifest, dict):
+        return ["manifest is not an object"]
+    tools = manifest.get("tools")
+    if not isinstance(tools, list) or not tools:
+        errs.append("manifest lists no tools")
+        tools = []
+    for t in tools:
+        name = str(t).lower()
+        if any(w in name for w in _WEB_TOOLS):
+            errs.append("web/network tool offered: %r" % t)
+        if name in _SHELL_TOOLS or any(name.startswith(x + "_") for x in _SHELL_TOOLS):
+            errs.append("shell tool offered (would bypass filesystem scope): %r" % t)
+    if not isinstance(manifest.get("disallowed"), list):
+        errs.append("manifest does not state its disallowed tools")
+    roots = manifest.get("fs_roots")
+    if roots != [os.path.realpath(root)]:
+        errs.append("filesystem scope is %r, must be exactly [%r]" % (roots, os.path.realpath(root)))
+    return errs
+
+
+def collect_evidence(plan, runner, root, hint_level, out, env=None):
+    """Run the reasoning-agent runner over the snapshot root.
+
+    The runner gets the root, the hint level, an output path and a path to
+    write its isolation manifest -- never the scenario. It runs with an
+    allowlisted environment, and its evidence is returned only if its declared
+    isolation contract verifies; otherwise collection fails closed.
+    """
     if not plan.allow_agent:
         raise RealCallForbidden("reasoning agent may run only in full-experiment mode with its opt-in switch")
     if not runner or not shutil.which(runner):
         raise FileNotFoundError("REASONING_AGENT_RUNNER is not set to an executable")
-    subprocess.run([runner, "--root", root, "--hint-level", str(hint_level), "--out", out],
-                   check=True, cwd=root)
-    return out
+    manifest_path = out + ".isolation.json"
+    for p in (out, manifest_path):
+        if os.path.exists(p):
+            os.unlink(p)
+    subprocess.run([runner, "--root", root, "--hint-level", str(hint_level), "--out", out,
+                    "--isolation-manifest", manifest_path],
+                   check=True, cwd=root, env=runner_env(env))
+    if not os.path.isfile(manifest_path):
+        raise IsolationViolation("runner wrote no isolation manifest; refusing its evidence")
+    try:
+        with open(manifest_path) as fh:
+            manifest = json.load(fh)
+    except ValueError as e:
+        raise IsolationViolation("unreadable isolation manifest: %s" % e)
+    errs = verify_isolation(manifest, root)
+    if errs:
+        raise IsolationViolation("; ".join(errs))
+    if not os.path.isfile(out):
+        raise FileNotFoundError("runner wrote no evidence file")
+    return out, manifest
 
 
 # --- jev -------------------------------------------------------------------

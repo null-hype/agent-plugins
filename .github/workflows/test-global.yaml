@@ -9,6 +9,11 @@ name: "CI - Test Global Scenarios"
 # push/pull_request - only on explicit workflow_dispatch.
 on:
   workflow_dispatch:
+    inputs:
+      allow_claude:
+        description: "PAID: allow the legacy scenarios (jin-81/90/91, restic-backup) to make Claude calls. Default off; credentials alone never enable it."
+        type: boolean
+        default: false
 
 # CIT-147: the exporter step below reads this run's own job/step conclusions
 # via the GitHub Actions Jobs API (see tk-evidence-exporter/internal/
@@ -27,6 +32,9 @@ jobs:
       # canned evidence and mock Jev. Paid modes live only in
       # experiment-live.yaml; credentials in this job never select a mode.
       CONTRACT_MODE: deterministic
+      # Legacy scenarios and the 'color' bin make paid Claude calls only when
+      # this is explicitly "1"; otherwise they report NOT RUN.
+      PASS_CLI_ALLOW_CLAUDE: ${{ inputs.allow_claude && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
 
