@@ -26,6 +26,12 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: true,
+  projects: Object.entries(experiment.questions).map(([id, question]: [string, any]) => ({
+    name: id,
+    dependencies: question.dependencies,
+    grep: new RegExp(`(?:^|\\s)${id}$`),
+  })),
+  timeout: 150_000,
   metadata: { experiment, contractDigest, runId: process.env.JEV_RUN_ID },
   reporter: [
     ['list'],

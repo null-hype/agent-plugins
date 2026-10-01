@@ -30,7 +30,10 @@ export function reconcile(runDir) {
           evidenceId = evidence.questionId;
           evidenceKeys = Object.keys(evidence.state);
         }
-        executions.push({ questionId: spec.title, status: result?.status ?? 'missing',
+        const startedAt = result ? Date.parse(result.startTime) : null;
+        executions.push({ questionId: test.projectName, testTitle: spec.title,
+          status: result?.status ?? (test.status === 'skipped' ? 'skipped' : 'missing'),
+          startedAt, finishedAt: result ? startedAt + result.duration : null,
           evidenceId, evidenceKeys, attachmentCount: attachments.length });
       }
     }

@@ -1,19 +1,67 @@
 amends "pkl/Experiment.pkl"
 
 questions {
-  ["hotdog-is-sandwich"] {
+  ["vulnerability-reproduced"] {
     judge {
       type = "noul"
-      instructions = "Is the food described in the evidence a sandwich?"
+      instructions = "Does this local reproduction demonstrate broken object-level authorization: signed-in Alice can read a private document owned by Bob? Judge only the supplied HTTP observations and fixture state."
       criteria {
-        `true` = "A sandwich is a filling enclosed or partly enclosed by bread."
-        `false` = "The food does not meet that definition."
+        `true` = "The response to Alice contains Bob's private document, and fixture state identifies Bob as its owner."
+        `false` = "The request is denied, ownership or caller identity is unestablished, or no private content is returned."
       }
     }
-    collector = "food-description"
-    requiredEvidence { "food-description" }
+    collector = "reproduce-unauthorized-read"
+    requiredEvidence {
+      "http"
+      "fixtureState"
+      "authorizationPolicy"
+    }
     expected {
-      min = 0.75
+      min = 0.8
+      max = 1.0
+    }
+  }
+  ["exploit-prevented"] {
+    dependencies { "vulnerability-reproduced" }
+    judge {
+      type = "noul"
+      instructions = "Does the patched ownership check prevent the specific unauthorized document read demonstrated in the prerequisite evidence? Compare Alice's request and the document identity before and after the patch."
+      criteria {
+        `true` = "The same unauthorized read is forbidden after the owner check is enabled, with no private document content in the response."
+        `false` = "Private content remains accessible, a different action was tested, or the evidence cannot establish prevention."
+      }
+    }
+    collector = "verify-unauthorized-read-denied"
+    requiredEvidence {
+      "http"
+      "fixtureState"
+      "authorizationPolicy"
+      "prerequisites"
+    }
+    expected {
+      min = 0.8
+      max = 1.0
+    }
+  }
+  ["legitimate-access-preserved"] {
+    dependencies { "exploit-prevented" }
+    judge {
+      type = "noul"
+      instructions = "Does the patched application still allow document owner Bob to read his own private document, while the prerequisite evidence shows unauthorized access is blocked? Limit the conclusion to this tested owner-read flow."
+      criteria {
+        `true` = "Bob receives his document from the patched application and the prior unauthorized-read test was forbidden."
+        `false` = "Bob cannot retrieve his document, receives incorrect content, or the evidence does not establish the tested legitimate flow."
+      }
+    }
+    collector = "verify-owner-read"
+    requiredEvidence {
+      "http"
+      "fixtureState"
+      "authorizationPolicy"
+      "prerequisites"
+    }
+    expected {
+      min = 0.8
       max = 1.0
     }
   }
