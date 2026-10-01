@@ -31,7 +31,7 @@ try {
   const comparison = reconcile(runDir);
   success = child.status === 0 && comparison.passed;
   for (const [id, result] of Object.entries(comparison.questions)) {
-    console.log(`${id}: ${result.probability ?? 'no score'}; execution=${result.executionPassed}; expectation=${result.expectationPassed}`);
+    console.log(`${id}: ${result.probability ?? 'no score'}; ${result.outcome}${result.blockedBy.length ? `; blocked by ${result.blockedBy.join(', ')}` : ''}`);
   }
 } catch (error) {
   const message = error.stderr?.toString() || error.message;

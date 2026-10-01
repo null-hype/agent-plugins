@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -9,7 +9,10 @@ import * as pkl from '../pkl.mjs';
 import { reconcile } from '../reconcile.mjs';
 
 const here = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const id = 'hotdog-is-sandwich';
+const id = 'vulnerability-reproduced';
+const second = 'exploit-prevented';
+const third = 'legitimate-access-preserved';
+const good = { [id]: 0.95, [second]: 0.95, [third]: 0.95 };
 const read = file => JSON.parse(readFileSync(file, 'utf8'));
 const expected = pkl.load(path.join(here, 'report-expected.pcf'));
 
@@ -30,13 +33,22 @@ function run(answers, extraArgs = []) {
 }
 
 test('Pkl → Playwright → Jev → JSON reconciliation passes without leaking expectations', () => {
-  const result = run({ [id]: 0.9 });
+  const result = run(good);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.equal(result.comparison.passed, true);
   const request = read(path.join(result.runDir, 'questions', id, 'request.json'));
   assert.deepEqual(Object.keys(request).sort(), ['model', 'questions', 'state']);
   assert.deepEqual(request.questions, { [id]: expected.questions[id].judge });
-  assert.deepEqual(request.state, { 'food-description': 'A cooked sausage served in a split bread roll.' });
+  assert.equal(request.state.http.request.actor, 'alice');
+  assert.equal(request.state.http.response.status, 200);
+  assert.equal(request.state.http.response.body.owner, 'bob');
+  const patched = read(path.join(result.runDir, 'questions', second, 'request.json'));
+  assert.equal(patched.state.http.response.status, 403);
+  assert.deepEqual(patched.state.prerequisites[id], request.state);
+  const owner = read(path.join(result.runDir, 'questions', third, 'request.json'));
+  assert.equal(owner.state.http.request.actor, 'bob');
+  assert.equal(owner.state.http.response.status, 200);
+  assert.equal(result.comparison.graphConsistent, true);
 
   // Comparison really consumes the native report, not just the reporter ledger.
   const nativeFile = path.join(result.runDir, 'playwright-report.json');
@@ -47,10 +59,18 @@ test('Pkl → Playwright → Jev → JSON reconciliation passes without leaking 
 });
 
 test('a valid low score is an expectation failure, not an execution failure', () => {
-  const result = run({ [id]: 0.2 });
+  const result = run({ ...good, [id]: 0.2 });
   assert.equal(result.status, 1);
   assert.equal(result.comparison.questions[id].executionPassed, true);
   assert.equal(result.comparison.questions[id].expectationPassed, false);
+  assert.equal(result.comparison.questions[id].outcome, 'expectation-failed');
+  assert.equal(result.comparison.graphConsistent, true);
+  assert.deepEqual(Object.keys(read(path.join(result.runDir, 'scores.json')).scores), [id]);
+  for (const downstream of [second, third]) {
+    assert.equal(result.comparison.questions[downstream].outcome, 'dependency-skipped');
+    assert.equal(existsSync(path.join(result.runDir, 'questions', downstream)), false,
+      'Skipped projects must gather no evidence and make no Jev call');
+  }
 });
 
 test('adding a question only in Pkl registers and scores another test', () => {
@@ -59,9 +79,9 @@ test('adding a question only in Pkl registers and scores another test', () => {
     const contract = path.join(temp, 'two.pcf');
     const base = pathToFileURL(path.join(here, 'report-expected.pcf')).href;
     writeFileSync(contract, `amends "${base}"\nimport "${base}" as Base\nquestions { ["another-question"] = Base.questions["${id}"] }`);
-    const result = run({ [id]: 0.9, 'another-question': 0.85 }, ['--contract', contract]);
+    const result = run({ ...good, 'another-question': 0.85 }, ['--contract', contract]);
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.deepEqual(Object.keys(result.comparison.questions).sort(), ['another-question', id]);
+    assert.deepEqual(Object.keys(result.comparison.questions).sort(), ['another-question', id, second, third].sort());
     assert.equal(result.comparison.questions['another-question'].probability, 0.85);
   } finally {
     rmSync(temp, { recursive: true, force: true });
@@ -82,9 +102,13 @@ for (const [name, answers] of [['missing answer', {}], ['invalid probability', {
 function compare(change) {
   const observed = {
     runId: 'test-run', contractDigest: 'test-digest', runnerErrors: 0,
-    scores: { [id]: { backend: 'mock', model: 'jev-latest', probability: 0.9, error: null } },
-    executions: [{ questionId: id, status: 'passed', evidenceId: id,
-      evidenceKeys: ['food-description'], attachmentCount: 1 }],
+    scores: Object.fromEntries(Object.keys(expected.questions).map(key => [key,
+      { backend: 'mock', model: 'jev-latest', probability: 0.95, error: null }])),
+    executions: Object.entries(expected.questions).map(([key, q], index) => ({
+      questionId: key, testTitle: key, status: 'passed', evidenceId: key,
+      evidenceKeys: q.requiredEvidence, attachmentCount: 1,
+      startedAt: index * 100, finishedAt: index * 100 + 50,
+    })),
   };
   change(observed);
   const temp = mkdtempSync(path.join(tmpdir(), 'jev-compare-'));
@@ -108,6 +132,9 @@ for (const [name, change] of [
   ['skipped test', o => { o.executions[0].status = 'skipped'; o.executions[0].attachmentCount = 0; }],
   ['mismatched attachment', o => { o.executions[0].evidenceId = 'other'; }],
   ['runner error', o => { o.runnerErrors = 1; }],
+  ['premature dependent execution', o => { o.executions[1].startedAt = 0; }],
+  ['wrong project test', o => { o.executions[0].testTitle = 'other'; }],
+  ['dependent executed after failed prerequisite', o => { o.scores[id].probability = 0.2; o.executions[0].status = 'failed'; }],
 ]) {
   test(`Pkl rejects ${name}`, () => assert.equal(compare(change).passed, false));
 }
@@ -126,3 +153,20 @@ test('Pkl rejects reversed expected ranges before execution', () => {
     rmSync(temp, { recursive: true, force: true });
   }
 });
+
+for (const [name, dependency, message] of [
+  ['unknown dependency', 'not-declared', 'Unknown question dependency'],
+  ['cycle', third, 'Question dependency cycle'],
+]) {
+  test(`Pkl rejects ${name} before executing the graph`, () => {
+    const temp = mkdtempSync(path.join(tmpdir(), 'jev-invalid-graph-'));
+    try {
+      const contract = path.join(temp, 'invalid.pcf');
+      const base = pathToFileURL(path.join(here, 'report-expected.pcf')).href;
+      writeFileSync(contract, `amends "${base}"\nquestions { ["${id}"] { dependencies { "${dependency}" } } }`);
+      assert.throws(() => pkl.load(contract), error => error.stderr.includes(message));
+    } finally {
+      rmSync(temp, { recursive: true, force: true });
+    }
+  });
+}
