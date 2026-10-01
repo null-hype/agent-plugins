@@ -1,0 +1,20 @@
+module Experiment
+
+import "../../src/jev/pkl/Jev.pkl"
+
+typealias Id = String(matches(Regex("[a-z][a-z0-9-]{0,79}")))
+
+class Expectation {
+  min: Number(isFinite, isBetween(0, 1))
+  max: Number(isFinite, isBetween(min, 1))
+}
+
+class Question {
+  judge: Jev.NoulQuestion
+  collector: String(!isEmpty)
+  requiredEvidence: Listing<String(!isEmpty)>(!isEmpty)
+  expected: Expectation
+}
+
+model: String(!isEmpty) = "jev-latest"
+questions: Mapping<Id, Question>(!isEmpty)
