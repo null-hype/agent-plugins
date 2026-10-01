@@ -1,0 +1,20 @@
+amends "pkl/Experiment.pkl"
+
+questions {
+  ["hotdog-is-sandwich"] {
+    judge {
+      type = "noul"
+      instructions = "Is the food described in the evidence a sandwich?"
+      criteria {
+        `true` = "A sandwich is a filling enclosed or partly enclosed by bread."
+        `false` = "The food does not meet that definition."
+      }
+    }
+    collector = "food-description"
+    requiredEvidence { "food-description" }
+    expected {
+      min = 0.75
+      max = 1.0
+    }
+  }
+}
