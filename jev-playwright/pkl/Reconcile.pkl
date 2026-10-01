@@ -1,0 +1,68 @@
+module Reconcile
+
+import "pkl:json"
+import "Experiment.pkl"
+
+local expected = new json.Parser {}.parse(read(read("prop:expected")).text)
+local raw = new json.Parser {}.parse(read(read("prop:observed")).text)
+
+class Score {
+  backend: "mock"|"real"
+  model: String?
+  probability: Number(isFinite, isBetween(0, 1))?
+  error: String?
+}
+class Execution {
+  questionId: Experiment.Id
+  status: "passed"|"failed"|"timedOut"|"skipped"|"interrupted"|"missing"
+  evidenceId: String?
+  evidenceKeys: Listing<String>
+  attachmentCount: Int(isPositive)
+}
+
+local scores: Mapping<String, Score> = raw.scores.toMap()
+  .mapValues((_, value) -> value.toTyped(Score)).toMapping()
+local executions: Listing<Execution> = new Listing {
+  for (value in raw.executions) {
+    new Execution {
+      questionId = value.questionId
+      status = value.status
+      evidenceId = value.evidenceId
+      evidenceKeys = value.evidenceKeys.toList().toListing()
+      attachmentCount = value.attachmentCount
+    }
+  }
+}
+local expectedIds = expected.questions.toMap().keys
+local executedIds = executions.toList().map((e) -> e.questionId)
+
+runId: String(!isEmpty) = raw.runId
+contractDigest: String = raw.contractDigest
+executionComplete: Boolean = raw.runnerErrors == 0 &&
+  executedIds.length == expectedIds.length && executedIds.toSet() == expectedIds &&
+  scores.keys == expectedIds
+
+questions = new Mapping {
+  for (id, question in expected.questions) {
+    [id] = new {
+      local attempts = executions.toList().filter((e) -> e.questionId == id)
+      local answer = scores.getOrNull(id)
+      local expectation: Experiment.Expectation = question.expected.toTyped(Experiment.Expectation)
+      executionPassed = attempts.length == 1 &&
+        attempts[0].status == "passed" && attempts[0].attachmentCount == 1 &&
+        attempts[0].evidenceId == id &&
+        question.requiredEvidence.toList().every((key) -> attempts[0].evidenceKeys.toList().contains(key)) &&
+        answer != null && answer.error == null && answer.probability != null
+      probability = answer?.probability
+      expected = expectation
+      expectationPassed = executionPassed &&
+        probability >= expectation.min && probability <= expectation.max
+      error = answer?.error
+    }
+  }
+}
+passed: Boolean = executionComplete && questions.toMap().values.every((q) -> q.expectationPassed)
+
+output {
+  renderer = new JsonRenderer { omitNullProperties = false }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "jev-playwright",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node run.mjs --backend mock",
+    "test:contracts": "node --test test/*.test.mjs",
+    "score": "node run.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.59.1"
+  }
+}
