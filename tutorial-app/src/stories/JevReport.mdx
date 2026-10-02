@@ -1,0 +1,47 @@
+import { Controls, Meta, Story } from '@storybook/addon-docs/blocks';
+import * as JevStories from './JevReport.stories';
+
+<Meta of={JevStories} />
+
+# Who can read the private document?
+
+Follow a recorded Dagger / Playwright run through three dependent questions.
+Pkl defines the questions and expected score ranges; Jev evaluates the collected
+evidence. The editor shows fixture snapshots, rather than Git commit identifiers.
+
+Each lesson starts with evidence and a pending evaluation. Toggle **solved** to
+reveal the recorded answer, just as Solve reveals a TutorialKit lesson’s solution.
+The Agent pane contains the diagnostics report: snapshot history, evidence comparisons,
+and the selected evaluation. Evidence tabs switch between policy, HTTP, and fixture state.
+This replays the saved run; it does not call Jev again.
+
+## 1. Can Alice read Bob’s private document?
+
+The baseline policy allows every request. Alice receives Bob’s document.
+Does that evidence reproduce the authorization flaw? Solve reveals Jev’s evaluation.
+Click its diagnostic to inspect the evidence and Pkl expectation.
+
+<Story of={JevStories.ReproduceVulnerability} />
+<Controls of={JevStories.ReproduceVulnerability} />
+
+## 2. Does the ownership check block Alice?
+
+The patched policy compares the user with the document owner. Alice now receives
+403. The earlier evaluation stays attached to the baseline snapshot while this
+question awaits its own answer.
+
+<Story of={JevStories.PreventExploit} />
+<Controls of={JevStories.PreventExploit} />
+
+## 3. Can Bob still read his own document?
+
+Blocking Alice is only part of the requirement. Bob’s request must still succeed.
+Inspect the recorded 200 response, then reveal the final evaluation.
+
+<Story of={JevStories.PreserveAccess} />
+<Controls of={JevStories.PreserveAccess} />
+
+To inspect a turn, set **frameId** to a question id followed by `:evidence` or
+`:evaluation`, for example `exploit-prevented:evaluation` in the second lesson.
+The selected frame includes neighboring frames for context. Clear frameId to
+return to the Solve control.
