@@ -1,0 +1,93 @@
+module Reconcile
+
+import "pkl:json"
+import "Experiment.pkl"
+
+local expected = new json.Parser {}.parse(read(read("prop:expected")).text)
+local raw = new json.Parser {}.parse(read(read("prop:observed")).text)
+
+class Score {
+  backend: "mock"|"real"
+  model: String?
+  probability: Number(isFinite, isBetween(0, 1))?
+  error: String?
+}
+class Execution {
+  questionId: Experiment.Id
+  testTitle: String
+  status: "passed"|"failed"|"timedOut"|"skipped"|"interrupted"|"missing"
+  startedAt: Number?
+  finishedAt: Number?
+  evidenceId: String?
+  evidenceKeys: Listing<String>
+  attachmentCount: Int(isPositive)
+}
+
+local scores: Mapping<String, Score> = raw.scores.toMap()
+  .mapValues((_, value) -> value.toTyped(Score)).toMapping()
+local executions: Listing<Execution> = new Listing {
+  for (value in raw.executions) {
+    new Execution {
+      questionId = value.questionId
+      testTitle = value.testTitle
+      status = value.status
+      startedAt = value.startedAt
+      finishedAt = value.finishedAt
+      evidenceId = value.evidenceId
+      evidenceKeys = value.evidenceKeys.toList().toListing()
+      attachmentCount = value.attachmentCount
+    }
+  }
+}
+local expectedIds = expected.questions.toMap().keys
+local executedIds = executions.toList().map((e) -> e.questionId)
+local attemptedIds = executions.toList().filter((e) -> e.status != "skipped").map((e) -> e.questionId).toSet()
+
+runId: String(!isEmpty) = raw.runId
+contractDigest: String = raw.contractDigest
+executionComplete: Boolean = raw.runnerErrors == 0 &&
+  executedIds.length == expectedIds.length && executedIds.toSet() == expectedIds &&
+  scores.keys == attemptedIds
+
+questions = new Mapping {
+  for (id, question in expected.questions) {
+    [id] = new {
+      local attempts = executions.toList().filter((e) -> e.questionId == id)
+      local execution = if (attempts.length == 1) attempts[0] else null
+      local answer = scores.getOrNull(id)
+      local expectation: Experiment.Expectation = question.expected.toTyped(Experiment.Expectation)
+      dependencies = question.dependencies.toList()
+      blockedBy = dependencies.filter((dep) -> !questions[dep].accepted)
+      status = execution?.status ?? "missing"
+      startedAt = execution?.startedAt
+      finishedAt = execution?.finishedAt
+      // A low score can complete evaluation successfully while failing its
+      // expectation and therefore failing the native Playwright test.
+      executionPassed = execution != null && execution.testTitle == id &&
+        (status == "passed" || status == "failed") && execution.attachmentCount == 1 &&
+        execution.evidenceId == id &&
+        question.requiredEvidence.toList().every((key) -> execution.evidenceKeys.toList().contains(key)) &&
+        answer != null && answer.error == null && answer.probability != null && answer.model != null
+      probability = answer?.probability
+      expected = expectation
+      expectationPassed = executionPassed &&
+        probability >= expectation.min && probability <= expectation.max
+      dependencyOrderValid = if (status == "skipped")
+        !blockedBy.isEmpty && answer == null && execution.attachmentCount == 0
+        else blockedBy.isEmpty && startedAt != null && finishedAt != null && finishedAt >= startedAt &&
+          dependencies.every((dep) -> questions[dep].finishedAt != null && questions[dep].finishedAt <= startedAt)
+      accepted = status == "passed" && expectationPassed && dependencyOrderValid
+      outcome = if (status == "skipped" && !blockedBy.isEmpty) "dependency-skipped"
+        else if (!executionPassed || !dependencyOrderValid) "execution-failed"
+        else if (!expectationPassed) "expectation-failed"
+        else if (accepted) "passed" else "execution-failed"
+      error = answer?.error
+    }
+  }
+}
+graphConsistent: Boolean = executionComplete && questions.toMap().values.every((q) -> q.dependencyOrderValid)
+passed: Boolean = graphConsistent && questions.toMap().values.every((q) -> q.accepted)
+
+output {
+  renderer = new JsonRenderer { omitNullProperties = false }
+}

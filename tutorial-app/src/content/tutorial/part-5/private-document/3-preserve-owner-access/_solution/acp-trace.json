@@ -1,0 +1,12 @@
+{
+  "scenario": "jev-report-v1",
+  "frameIds": [
+    "vulnerability-reproduced:evidence",
+    "vulnerability-reproduced:evaluation",
+    "exploit-prevented:evidence",
+    "exploit-prevented:evaluation",
+    "legitimate-access-preserved:evidence",
+    "legitimate-access-preserved:evaluation"
+  ],
+  "nextTurn": null
+}

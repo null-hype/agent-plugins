@@ -1,0 +1,15 @@
+{
+    "name": "Jev client (TypeSafe Noul judge)",
+    "id": "jev",
+    "version": "0.1.0",
+    "description": "Method-layer client for TypeSafe's Jev. Given a fixture 'state' and a set of Noul questions, returns one probability in [0,1] per question. Installs the 'jev' bin, the third-party TypeSafe skill, and a first-party skill describing the capture -> validate -> jev -> probabilities chain. The API key is read from the environment (TYPESAFE_API_KEY) at call time, never baked into the image; wrap the call with pass-cli.",
+    "options": {},
+    "dependsOn": {
+        "ghcr.io/devcontainers/features/node:1": {}
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils",
+        "ghcr.io/null-hype/agent-plugins/pass-cli",
+        "ghcr.io/null-hype/agent-plugins/playwright-cli"
+    ]
+}

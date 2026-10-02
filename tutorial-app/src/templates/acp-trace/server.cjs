@@ -1,3 +1,4 @@
+const jevViewer = require('./jev-viewer.cjs');
 const verdictContract = require('./verdict-contract.json');
 // CIT-245: two independent HTTP servers in one process, one per preview
 // ("agent" and "client") -- TutorialKit/WebContainer watches for a server to
@@ -526,7 +527,7 @@ function renderClientPage() {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
         renderScripted(payload);
-        const records = payload.scenario === 'smuggling-v1' ? renderRebaseTodoRecords(payload) : renderRecords(payload);
+        const records = ['smuggling-v1', 'jev-report-v1'].includes(payload.scenario) ? renderRebaseTodoRecords(payload) : renderRecords(payload);
         await renderIntoEditor(records);
       }
 
@@ -555,7 +556,7 @@ function renderAgentPage() {
   return `${sharedHead('ACP Trace: Agent')}
   ${reasoningViewStyles()}
   <body>
-    <main class="agent"><section id="trace-view" aria-label="Agent reasoning" hidden></section><div id="monaco-root"></div></main>
+    <main class="agent"><section id="jev-view" aria-label="Jev diagnostics" hidden></section><section id="trace-view" aria-label="Agent reasoning" hidden></section><div id="monaco-root"></div></main>
     <script>
       ${monacoLoaderScript()}
 
@@ -694,6 +695,21 @@ function renderAgentPage() {
         return true;
       }
 
+      const jevViewer = ${jevViewer.viewer.toString()};
+      const jevHost = document.getElementById('jev-view');
+      const jevRoot = jevHost.attachShadow({ mode: 'open' });
+      jevRoot.innerHTML = ${JSON.stringify('<style>' + jevViewer.styles.replace(':root', ':host') + '\n:host{display:block;height:100%;overflow:auto}.workspace{min-height:100%;display:block}aside{padding:12px}aside h3{margin:12px 10px}#history{display:flex;flex-wrap:wrap}#history button{width:auto}#files{display:flex;flex-wrap:wrap}#files button{width:auto}#detail{border-left:0}#source{min-height:0}#detail h2{margin:16px 0}</style>' + jevViewer.markup)};
+      function renderJevView(payload) {
+        const active = payload.scenario === 'jev-report-v1';
+        jevHost.hidden = !active;
+        jevHost.style.display = active ? 'block' : 'none';
+        if (!active) return false;
+        const frame = [...payload.frames].reverse().find(frame => frame.reportView);
+        document.getElementById('trace-view').hidden = true;
+        if (frame) jevViewer(frame.reportView, jevRoot);
+        return true;
+      }
+
       let editor = null;
       let model = null;
       let currentRevision = null;
@@ -742,7 +758,7 @@ function renderAgentPage() {
       async function applyState(payload) {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
-        document.querySelector('main.agent').classList.toggle('reasoning', renderReasoningView(payload));
+        document.querySelector('main.agent').classList.toggle('reasoning', renderJevView(payload) || renderReasoningView(payload));
         await ensureEditor();
         const next = renderEnvelopes(payload);
         if (model.getValue() !== next) model.setValue(next);
