@@ -1,0 +1,8 @@
+{
+  "scenario": "jev-report-v1",
+  "frameIds": [
+    "vulnerability-reproduced:evidence",
+    "vulnerability-reproduced:evaluation"
+  ],
+  "nextTurn": null
+}

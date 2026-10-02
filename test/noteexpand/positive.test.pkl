@@ -1,0 +1,38 @@
+amends "pkl:test"
+import "pkl:json"
+import "modulepath:/Evidence.pkl" as Evidence
+import "modulepath:/Reconcile.pkl" as Reconcile
+
+local claim = Evidence.fromJson(read("prop:claim"))
+local observed = Reconcile.observationFromJson(read("prop:observation"))
+local flags = Reconcile.check(claim, observed)
+local actualFlags = new json.Parser {}.parse(read("prop:diagnostics")).toList()
+local root = read("prop:snapshotRoot")
+
+facts {
+  ["each quoted claim is grounded in the captured application"] {
+    for (f in claim.findings) {
+      read("\(root)/\(f.source_path)").text.contains(f.excerpt)
+    }
+  }
+  ["the canary rendered both ordinary lines"] { observed.plainLinesRendered }
+  ["installed detector returns the typed contract's flags"] {
+    actualFlags.map((f) -> "\(f.kind): \(f.detail)") == flags.map((f) -> "\(f.kind): \(f.detail)")
+  }
+  ["no findings is a valid evidence record"] {
+    Evidence.fromJson(#"{"findings":[]}"#).findings.isEmpty
+  }
+  ["changing the claim leaves the observation intact and exposes a mismatch"] {
+    Reconcile.check((claim) { findings { [0] { enforced = !claim.findings[0].enforced } } }, observed)
+      .any((f) -> f.kind == "claim-mismatch")
+  }
+}
+examples {
+  ["evidence"] {
+    claim.findings.toList().map((f) -> f.toMap().put("supporting_paths", f.supporting_paths.toList()))
+  }
+  ["observed behavior"] {
+    "outsideRead=\(observed.outsideRead), plainLinesRendered=\(observed.plainLinesRendered)"
+  }
+  ["diagnostics"] { actualFlags.map((f) -> "\(f.kind): \(f.detail)") }
+}

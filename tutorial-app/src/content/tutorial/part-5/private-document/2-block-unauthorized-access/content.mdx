@@ -1,0 +1,42 @@
+---
+type: lesson
+title: Does the ownership check block Alice?
+template: acp-trace
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+  - - 4174
+    - Agent
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+custom:
+  acpTrace:
+    traceFile: /acp-trace.json
+    scenario: jev-report-v1
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load />
+
+# Does the ownership check block Alice?
+
+The earlier question established the unauthorized read. Its evaluation remains
+attached to the baseline snapshot. Now the patched policy requires the signed-in
+user to match the document owner.
+
+In the Agent pane, compare **Authorization policy** before and after the patch.
+Switch to **HTTP observation**: Alice requests the same document, but receives
+**403 Forbidden** instead of Bob’s private content.
+
+Press **Solve** to reveal Jev’s recorded **97%** assessment. The Pkl expectation
+is **80–100%** for this question. The score and the expected range answer different
+questions: what Jev judged, and whether that judgment met the declared contract.
+
+Snapshot history lets you return to the baseline evidence. Reset returns this
+lesson to the pending evaluation while keeping the earlier result visible.
+This recorded check covers the demonstrated unauthorized read; it does not
+establish that every route or access pattern is protected.
