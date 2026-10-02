@@ -28,6 +28,12 @@ export async function score({ id, question, state, model, runDir }) {
     const selected = Object.hasOwn(answers, id) ? { [id]: answers[id] } : {};
     write('mock-answers.json', canned.answers ? { ...canned, answers: selected } : selected);
     args.push('--backend', 'mock', '--mock-answers', path.join(dir, 'mock-answers.json'));
+  } else if (backend === 'real' && process.env.JEV_CREDENTIALS === 'env') {
+    if (!process.env.TYPESAFE_API_KEY || process.env.TYPESAFE_API_KEY.startsWith('pass://')) {
+      throw new Error('Environment credentials require a resolved TYPESAFE_API_KEY');
+    }
+    // Dagger injects its Secret before launching the complete harness.
+    // Scoring runs the local Jev client; no Dagger or pass-cli subprocess here.
   } else if (backend === 'real') {
     if (!process.env.JEV_SECRET_REF?.startsWith('pass://')) throw new Error('Live scoring requires --secret-ref pass://vault/item/field');
     // Only forward host session/runtime variables; pass-cli must not resolve
@@ -43,7 +49,8 @@ export async function score({ id, question, state, model, runDir }) {
   } else {
     throw new Error(`Unknown backend: ${backend}`);
   }
-  write('invocation.json', { backend, reason, runId: process.env.JEV_RUN_ID, questionId: id });
+  write('invocation.json', { backend, reason, runId: process.env.JEV_RUN_ID, questionId: id,
+    credentialReason: process.env.JEV_CREDENTIALS === 'env' ? process.env.PROTON_PASS_AGENT_REASON : reason });
   const { stdout, stderr } = await exec(command, args, {
     env, timeout: 120_000, maxBuffer: 4 * 1024 * 1024,
   });

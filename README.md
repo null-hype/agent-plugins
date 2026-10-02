@@ -78,17 +78,78 @@ npm run score -- --backend real --secret-ref pass://vault/item/TYPESAFE_API_KEY
 plus the run and question IDs before invoking host `pass-cli run -- …`.
 It preserves `PROTON_PASS_SESSION_DIR` when provided. It neither installs
 `pass-cli` nor logs in or modifies your session. Real scoring requires a
-`pass://` reference and never silently falls back to mocks. This v0 runs on
-the host; the Dagger wrapper is deferred.
+`pass://` reference and never silently falls back to mocks.
 
 Audit the agent session separately with `pass-cli agent monitor --output json`.
 The reason correlates secret access with the local run; it is not goal-based
 access enforcement. Expected scores are never included in Jev requests.
 
+## Run the whole harness in Dagger
+
+```sh
+npm run dagger
+npm run dagger -- --backend real --secret-ref pass://vault/item/TYPESAFE_API_KEY
+npm run dagger -- --mock-answers fixtures/prerequisite-fails.json
+```
+
+The Dagger module owns the entire execution:
+
+```text
+Dagger Run
+  → container: Pkl evaluates the question graph
+  → Playwright runs its dependent projects
+      → collect evidence → local Jev client → assert score
+  → reporter writes the native JSON report and score ledger
+  → Pkl reconciles expected and observed ledgers
+  → export report, including failures
+```
+
+Playwright never invokes Dagger. The HTTP fixture, Pkl CLI, Playwright runner,
+Jev client, and reconciliation all execute inside the container. The example
+uses Playwright's HTTP client, so it needs no browser binaries. Dagger installs
+Node, Python, Pkl, and the pinned package dependencies. It does not install
+pass-cli or import your host session. The host needs Dagger; live runs also
+need your authenticated host pass-cli. `npm run dagger` itself needs Node,
+but does not need host Python, Pkl, or installed npm dependencies.
+
+For live runs, the small host launcher calls the module's `reason(runId)`
+function first, then sets `PROTON_PASS_AGENT_REASON` before `pass-cli run`
+resolves the API key. That process launches **one Dagger run for the entire
+experiment** and passes the key as a Dagger Secret. The module sets the same
+fixed run-level reason inside the container. Secret access is audited once
+per run; individual question IDs remain in the scoring ledger. Each question's
+`invocation.json` distinguishes its local `reason` from `credentialReason`.
+
+`dagger/.env.example` shows the optional `RUN_TOKEN=env://TYPESAFE_API_KEY`
+argument binding next to `dagger.json`. The launcher passes this binding
+explicitly and does not edit your `.env`. A function cannot retroactively set
+the reason for a secret resolved before that function starts; the separate
+`reason` call handles that ordering. These defaults and audit reasons are not
+access-control enforcement.
+
+You can also call the module directly from the repository root:
+
+```sh
+dagger -m jev-playwright/dagger call run \
+  --harness jev-playwright --client src/jev --run-id "$(uuidgen)" \
+  artifacts export --path /tmp/jev-report
+```
+
+Replace `artifacts export --path /tmp/jev-report` with `check` to make the
+Dagger call fail when the experiment fails. Export deliberately remains
+available for failed experiments; `exit-code.json` records their status.
+The npm launcher exports first, then exits with that recorded status.
+Use a fresh run ID for a new experiment: it is a Dagger cache input, so an
+identical invocation may reuse the earlier result.
+
 ## Artifacts
 
 Each invocation creates `runs/<uuid>/` containing:
 
+- `index.html`: standalone diagnostics viewer with snapshot navigation, recorded
+  policy/HTTP comparisons, and selectable evaluations with scores, expectations,
+  dependencies, and evidence links. Open directly in a browser. Snapshot labels
+  come from collected evidence; they do not imply recorded Git commit identities.
 - `report-expected.json`: evaluated Pkl contract used for this execution.
 - `playwright-report.json`: native report, including evidence attachments.
 - `questions/<id>/`: state, questions, exact Jev request, raw response, and result.
@@ -100,6 +161,8 @@ The ledgers and native report share a run ID and SHA-256 contract digest.
 Raw responses survive Jev contract failures. Setup or malformed-report errors
 are written to `validation-error.txt` if a comparison cannot be produced.
 Generated artifacts are ignored by Git; evidence may contain sensitive data.
+The HTML embeds evidence too, so keep it with the same audience as the JSON.
+To add the UI to an existing run: `node report-ui.mjs runs/<uuid>`.
 
 Add questions and dependencies in Pkl and implement referenced collectors in
 `collectors.ts`. The shared test registers each question; project filters
