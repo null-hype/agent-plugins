@@ -1,33 +1,151 @@
 {
   "meta": {
-    "case": "Negative control: libvips release with no loader or trust changes",
+    "case": "Matched negative control: the CIT-272 + CIT-277 state with variant_processor pinned to :mini_magick",
     "linear": "CIT-265",
-    "state_source": "CIT-272 snapshot diff (NOT YET RUN -- state below is a placeholder)",
+    "state_source": "CIT-272 + CIT-277, variant_processor pinned to :mini_magick",
     "hint_level": 0,
     "rules": [
-      "Only `state` may be sent to the model under test. `meta` and `expected` are harness-only and must never be included in a Jev/Noul prompt or a free-agent's context."
+      "Only `state` may be sent to the model under test. `meta` and `expected` (including `expected.rationale`, which names the real CVE/CWE) are harness-only and must never be included in a Jev/Noul prompt or a free-agent's context.",
+      "No CVE ID, advisory text, or fix commit in `state`.",
+      "diff_items carry package name and resolved versions only -- no summaries. A one-line summary drawn from release notes or commit bodies would itself be the level-3 hint (CIT-280 review, section 2).",
+      "files holds the full generator-produced new_framework_defaults_7_0.rb verbatim, not a hand-picked subset, so every Rails 7.0 default flip competes equally and variant_processor is not pre-highlighted (CIT-280 review, section 2).",
+      "This control is identical to fixture-active-storage.json except for the added active line pinning variant_processor to :mini_magick (files['config/initializers/active_storage_variant_processor.rb']). diff_items are byte-identical to the positive fixture on purpose: the two states differ only in the processor selection, not in the kind of diff."
     ]
   },
   "state": {
     "diff_items": [
       {
-        "component": "<package or component name>",
-        "kind": "<added | modified | removed>",
-        "from_version": "<old version or null>",
-        "to_version": "<new version or null>",
-        "summary": "<one line: what changed, from package metadata or release notes/commit bodies>"
+        "component": "libvips",
+        "kind": "modified",
+        "from_version": "8.12.2",
+        "to_version": "8.13.0"
+      },
+      {
+        "component": "actioncable",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "actionmailbox",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "actionmailer",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "actionpack",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "actiontext",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "actionview",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "activejob",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "activemodel",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "activerecord",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "activestorage",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "activesupport",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "jbuilder",
+        "kind": "modified",
+        "from_version": "2.13.0",
+        "to_version": "2.15.1"
+      },
+      {
+        "component": "rails",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "railties",
+        "kind": "modified",
+        "from_version": "6.1.7.10",
+        "to_version": "7.0.10"
+      },
+      {
+        "component": "benchmark",
+        "kind": "added",
+        "from_version": null,
+        "to_version": "0.5.0"
+      },
+      {
+        "component": "bigdecimal",
+        "kind": "added",
+        "from_version": null,
+        "to_version": "4.1.3"
+      },
+      {
+        "component": "drb",
+        "kind": "added",
+        "from_version": null,
+        "to_version": "2.2.3"
+      },
+      {
+        "component": "mutex_m",
+        "kind": "added",
+        "from_version": null,
+        "to_version": "0.3.0"
+      },
+      {
+        "component": "securerandom",
+        "kind": "added",
+        "from_version": null,
+        "to_version": "0.3.2"
       }
     ],
     "files": {
-      "<path>": "<file contents>"
+      "config/initializers/new_framework_defaults_7_0.rb": "# Be sure to restart your server when you modify this file.\n#\n# This file eases your Rails 7.0 framework defaults upgrade.\n#\n# Uncomment each configuration one by one to switch to the new default.\n# Once your application is ready to run with all new defaults, you can remove\n# this file and set the `config.load_defaults` to `7.0`.\n#\n# Read the Guide for Upgrading Ruby on Rails for more info on each option.\n# https://guides.rubyonrails.org/upgrading_ruby_on_rails.html\n\n# `button_to` view helper will render `<button>` element, regardless of whether\n# or not the content is passed as the first argument or as a block.\n# Rails.application.config.action_view.button_to_generates_button_tag = true\n\n# `stylesheet_link_tag` view helper will not render the media attribute by default.\n# Rails.application.config.action_view.apply_stylesheet_media_default = false\n\n# Change the digest class for the key generators to `OpenSSL::Digest::SHA256`.\n# Changing this default means invalidate all encrypted messages generated by\n# your application and, all the encrypted cookies. Only change this after you\n# rotated all the messages using the key rotator.\n#\n# See upgrading guide for more information on how to build a rotator.\n# https://guides.rubyonrails.org/v7.0/upgrading_ruby_on_rails.html\n# Rails.application.config.active_support.key_generator_hash_digest_class = OpenSSL::Digest::SHA256\n\n# Change the digest class for ActiveSupport::Digest.\n# Changing this default means that for example Etags change and\n# various cache keys leading to cache invalidation.\n# Rails.application.config.active_support.hash_digest_class = OpenSSL::Digest::SHA256\n\n# Don't override ActiveSupport::TimeWithZone.name and use the default Ruby\n# implementation.\n# Rails.application.config.active_support.remove_deprecated_time_with_zone_name = true\n\n# Calls `Rails.application.executor.wrap` around test cases.\n# This makes test cases behave closer to an actual request or job.\n# Several features that are normally disabled in test, such as Active Record query cache\n# and asynchronous queries will then be enabled.\n# Rails.application.config.active_support.executor_around_test_case = true\n\n# Set both the `:open_timeout` and `:read_timeout` values for `:smtp` delivery method.\n# Rails.application.config.action_mailer.smtp_timeout = 5\n\n# The ActiveStorage video previewer will now use scene change detection to generate\n# better preview images (rather than the previous default of using the first frame\n# of the video).\n# Rails.application.config.active_storage.video_preview_arguments =\n#   \"-vf 'select=eq(n\\\\,0)+eq(key\\\\,1)+gt(scene\\\\,0.015),loop=loop=-1:size=2,trim=start_frame=1' -frames:v 1 -f image2\"\n\n# Automatically infer `inverse_of` for associations with a scope.\n# Rails.application.config.active_record.automatic_scope_inversing = true\n\n# Raise when running tests if fixtures contained foreign key violations\n# Rails.application.config.active_record.verify_foreign_keys_for_fixtures = true\n\n# Disable partial inserts.\n# This default means that all columns will be referenced in INSERT queries\n# regardless of whether they have a default or not.\n# Rails.application.config.active_record.partial_inserts = false\n\n# Protect from open redirect attacks in `redirect_back_or_to` and `redirect_to`.\n# Rails.application.config.action_controller.raise_on_open_redirects = true\n\n# Change the variant processor for Active Storage.\n# Changing this default means updating all places in your code that\n# generate variants to use image processing macros and ruby-vips\n# operations. See the upgrading guide for detail on the changes required.\n# The `:mini_magick` option is not deprecated; it's fine to keep using it.\n# Rails.application.config.active_storage.variant_processor = :vips\n\n# Enable parameter wrapping for JSON.\n# Previously this was set in an initializer. It's fine to keep using that initializer if you've customized it.\n# To disable parameter wrapping entirely, set this config to `false`.\n# Rails.application.config.action_controller.wrap_parameters_by_default = true\n\n# Specifies whether generated namespaced UUIDs follow the RFC 4122 standard for namespace IDs provided as a\n# `String` to `Digest::UUID.uuid_v3` or `Digest::UUID.uuid_v5` method calls.\n#\n# See https://guides.rubyonrails.org/configuring.html#config-active-support-use-rfc4122-namespaced-uuids for\n# more information.\n# Rails.application.config.active_support.use_rfc4122_namespaced_uuids = true\n\n# Change the default headers to disable browsers' flawed legacy XSS protection.\n# Rails.application.config.action_dispatch.default_headers = {\n#   \"X-Frame-Options\" => \"SAMEORIGIN\",\n#   \"X-XSS-Protection\" => \"0\",\n#   \"X-Content-Type-Options\" => \"nosniff\",\n#   \"X-Download-Options\" => \"noopen\",\n#   \"X-Permitted-Cross-Domain-Policies\" => \"none\",\n#   \"Referrer-Policy\" => \"strict-origin-when-cross-origin\"\n# }\n\n\n# ** Please read carefully, this must be configured in config/application.rb **\n# Change the format of the cache entry.\n# Changing this default means that all new cache entries added to the cache\n# will have a different format that is not supported by Rails 6.1 applications.\n# Only change this value after your application is fully deployed to Rails 7.0\n# and you have no plans to rollback.\n# When you're ready to change format, add this to `config/application.rb` (NOT this file):\n#  config.active_support.cache_format_version = 7.0\n\n\n# Cookie serializer: 2 options\n#\n# If you're upgrading and haven't set `cookies_serializer` previously, your cookie serializer\n# is `:marshal`. The default for new apps is `:json`.\n#\n# Rails.application.config.action_dispatch.cookies_serializer = :json\n#\n#\n# To migrate an existing application to the `:json` serializer, use the `:hybrid` option.\n#\n# Rails transparently deserializes existing (Marshal-serialized) cookies on read and\n# re-writes them in the JSON format.\n#\n# It is fine to use `:hybrid` long term; you should do that until you're confident *all* your cookies\n# have been converted to JSON. To keep using `:hybrid` long term, move this config to its own\n# initializer or to `config/application.rb`.\n#\n# Rails.application.config.action_dispatch.cookies_serializer = :hybrid\n#\n#\n# If your cookies can't yet be serialized to JSON, keep using `:marshal` for backward-compatibility.\n#\n# If you have configured the serializer elsewhere, you can remove this section of the file.\n#\n# See https://guides.rubyonrails.org/action_controller_overview.html#cookies for more information.\n\n# Change the return value of `ActionDispatch::Request#content_type` to the Content-Type header without modification.\n# Rails.application.config.action_dispatch.return_only_request_media_type_on_content_type = false\n\n# Active Storage `has_many_attached` relationships will default to replacing the current collection instead of appending to it.\n# Thus, to support submitting an empty collection, the `file_field` helper will render an hidden field `include_hidden` by default when `multiple_file_field_include_hidden` is set to `true`.\n# See https://guides.rubyonrails.org/configuring.html#config-active-storage-multiple-file-field-include-hidden for more information.\n# Rails.application.config.active_storage.multiple_file_field_include_hidden = true\n\n# ** Please read carefully, this must be configured in config/application.rb (NOT this file) **\n# Disables the deprecated #to_s override in some Ruby core classes\n# See https://guides.rubyonrails.org/configuring.html#config-active-support-disable-to-s-conversion for more information.\n# config.active_support.disable_to_s_conversion = true\n",
+      "config/initializers/active_storage_variant_processor.rb": "# Pin Active Storage's variant processor to the pre-upgrade backend, so the\n# Rails 7.0 default flip to :vips does not take effect for this app.\nRails.application.config.active_storage.variant_processor = :mini_magick\n"
     }
   },
   "expected": {
     "decided": true,
-    "decided_by": "CIT-274",
+    "decided_by": "CIT-274 / CIT-281",
     "high": [],
     "ambiguous": [],
     "low": "all",
-    "rationale": "No loader-trust, default, or dependency-boundary change is present by construction (that is what makes this the negative control for the active-storage fixture's a02/a06/a03/a05 candidates) -- every category should score low. A high or ambiguous Jev answer here is a false positive, not a finding."
+    "rationale": "The Rails 7.0 default flip to :vips is neutralised: variant_processor is pinned back to :mini_magick, the pre-upgrade backend. libvips 8.13.0 is present (same as the positive), but uploads are not routed through its untrusted loaders, so the CWE-1188 insecure-default condition does not hold. Every category should score low. Because diff_items are identical to the positive fixture, a high or ambiguous answer here that is also high/ambiguous on the positive is not discrimination -- it is the model reacting to 'vips and uploads sound risky' regardless of which processor is live, which is exactly the failure mode the matched control exists to catch (CIT-280 review, 'what would make me abandon the thesis')."
   }
 }
