@@ -1,0 +1,6 @@
+{
+    "id": "noteexpand",
+    "version": "1.0.0",
+    "name": "Noteexpand detector",
+    "description": "Pkl-bound detector for the noteexpand outside-file-read claim and observation."
+}

@@ -1,0 +1,5 @@
+{
+  "vulnerability-reproduced": 0.95,
+  "exploit-prevented": 0.95,
+  "legitimate-access-preserved": 0.95
+}

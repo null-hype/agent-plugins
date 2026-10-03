@@ -1,0 +1,11 @@
+{
+    "toy-app": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "noteexpand": {},
+            "jev": {}
+        }
+    }
+}

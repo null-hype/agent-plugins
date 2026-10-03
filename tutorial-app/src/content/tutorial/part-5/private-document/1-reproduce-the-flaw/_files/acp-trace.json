@@ -1,0 +1,11 @@
+{
+  "scenario": "jev-report-v1",
+  "frameIds": [
+    "vulnerability-reproduced:evidence"
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "jev",
+    "action": "reveal recorded evaluation"
+  }
+}

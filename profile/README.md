@@ -2,7 +2,7 @@
 
 > *This profile is not a portfolio of promises; it is a log of evidence.*
 
-Agent capabilities and automated changes can merge cleanly and pass tests while violating the business and security rules they seem to satisfy. My work turns agent capability governance into inspectable, typed checks that evaluate proposals before acceptance, flag policy violations with their underlying evidence, and record human supervisor exceptions without overwriting audit history.
+Automated changes can each pass the same policy check and still violate it when merged cleanly. This project makes agent proposals reviewable through typed checks, linked evidence, and recorded supervisor exceptions that preserve prior verdicts.
 
 ---
 

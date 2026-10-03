@@ -1,62 +1,45 @@
-# Search Results, Metadata, and Stale Surfaces Audit (CIT-168)
+# Search, metadata, and stale surfaces (CIT-168)
 
-> **Status: VERIFIED for launch.**
+> **Status: IN PROGRESS.** Observations below were checked on 2026-10-03. Prepared changes are not deployed verification.
 
-This audit verifies that a visitor searching for the brand, project, or author from a cold start finds coherent, deliberate launch surfaces rather than abandoned scaffolding or contradictory positioning.
+## Cold-search observations
 
----
+| Query | Observed result | Limitation |
+|---|---|---|
+| `"null-hype" "agent-plugins"` | Returned the GitHub profile, but the retrieved search copy still showed the older Cyber Farm framing and 64-repository snapshot. | A subsequent live repository read shows the newer governance profile. Search cache refresh is still pending; the old snippet is not the live profile. |
+| `"Richard Anthony" "null-hype" LinkedIn` | No confidently matching personal LinkedIn profile was returned. | The user's exact profile URL is still needed for the publication check; no identity was guessed. |
+| `"null-hype.tidelands.dev"` | Returned the tutorial's current title and description. | Confirms one discoverable route, not universal ranking or indexing coverage. |
+| `"Agent decisions, checked against evidence"` | Returned the tutorial root and the clean-merge lesson on `www.tidelands.dev`. | The two domains and their canonical behavior need checking after publication. |
 
-## 1. Search Query Surface Analysis
+These are search observations, not assumed PASS outcomes. Broad search also returned unrelated uses of the Null Hype name.
 
-| Query / Term | Primary Target | Expected Result | Status |
-|---|---|---|---|
-| `null-hype` (GitHub) | `https://github.com/null-hype` | Profile README displaying frozen proposition, quick access links, and 13 intentional repositories. Zero test residue. | PASS (live) |
-| `null-hype/agent-plugins` | `https://github.com/null-hype/agent-plugins` | Main project repository with frozen description, Budget Authority guide, evidence table, and dual contact routes. | PASS |
-| `null-hype.github.io` | `https://github.com/null-hype/null-hype.github.io` | Technical landing page with architecture diagram, local quick start, and direct links to tidelands walkthrough. | PASS (live) |
-| `null-hype.tidelands.dev` | `https://null-hype.tidelands.dev` | Interactive TutorialKit walkthrough; root redirects to `/part-0/overview/start`. | PASS (live Netlify target) |
+## Rendered public metadata
 
----
+An HTTP fetch of [the landing page](https://null-hype.tidelands.dev/part-0/overview/start/) showed:
 
-## 2. Elimination of Stale Public Residue
+| Item | Live observation | This branch |
+|---|---|---|
+| Canonical URL | Present, points at the production landing page | Retains TutorialKit's canonical link |
+| OpenGraph title/description/site/type | Present | Retained |
+| OpenGraph URL | Missing | Adds page-specific URL matching the canonical |
+| Twitter title/description | Present through TutorialKit's default metadata slot | Retained; no duplicates added |
+| Twitter card | `summary` | `summary_large_image` |
+| Preview image | Missing | Adds loadable 1200 × 630 PNG, OpenGraph/Twitter image and alt text |
+| Favicon | Missing | Adds `favicon.svg`, linked by TutorialKit |
 
-- **Automated Test Repositories Retired (CIT-257):**
-  - Audited 64 public repositories on the `null-hype` account.
-  - Converted 50 disposable test fixtures and automated scratch repos to `private` (including `Real-E2E-Test-*`, `project-*`, `playwright-cli-demo-*`, `e2e-project-*`, `Hence-Phrasing`, `sprite`, `uplifted-evil`, `molecule-oozy`, etc.).
-  - Preserved only 13 deliberate, maintained repositories: `agent-plugins`, `null-hype.github.io`, `null-hype`, `playwright-cli`, `goose`, `bountytasks`, `tree-sitter-just`, `zed-just`, `vertex-ai-creative-studio`, `scaling-guide`, `veo-3-nano-banana-gemini-api-quickstart`, `codesandbox-sdk-example-1`, `codespaces-blank`.
+The new preview uses the actual airfare/ground spending-policy example and labels its synthetic scope. It does not claim an authorization exploit or a production control.
 
-- **Retirement of Outdated Framing (CIT-154):**
-  - Prior copy focused heavily on "The Cyber Farm", "auditing the void", and "high-frequency automated network scanning", which misdirected due diligence toward offensive bot operations rather than agent governance.
-  - Replaced across all profiles with the frozen capability governance proposition: *"a log of evidence, not promises."*
+## Existing cleanup and remaining public sync
 
-- **Website Repository Placeholder Removal (CIT-155):**
-  - Replaced the 2-line placeholder README with a complete technical overview, architecture diagram, local execution guide, and evidence links.
+The September 25 repository retirement and profile cleanup are retained as prior work, not re-certified repository counts. Current GitHub profile and website-repository README reads confirm that the old placeholder/Cyber Farm framing was replaced. Their published descriptions still need synchronization with the revised canonical copy in this PR. The website README also still calls its audit stream immutable and the prior verdict permanent; those descriptions must be corrected to retained evidence.
 
----
+## Reproduce after publication
 
-## 3. Metadata, OpenGraph & Social Preview Audit
+```bash
+cd tutorial-app
+npm ci
+npx playwright install chromium
+npx playwright test --config=playwright.launch.config.ts
+```
 
-- **Site Title:** `Agent decisions, checked against evidence`
-- **Site Description:** `Follow an agent proposal from confident answer to failed check and scoped approval. Inspect the rules, recorded decisions, and evidence behind each verdict.`
-- **OpenGraph Tags:**
-  - `og:site_name`: `Null Hype`
-  - `og:type`: `website`
-  - `og:title`: `Agent decisions, checked against evidence`
-  - `og:description`: `Follow an agent proposal from confident answer to failed check and scoped approval. Inspect the evidence behind each verdict.`
-- **Twitter Card:**
-  - `twitter:card`: `summary`
-  - `twitter:title`: `Agent decisions, checked against evidence`
-  - `twitter:description`: `Follow an agent proposal from confident answer to failed check and scoped approval. Inspect the rules, recorded decisions, and evidence behind each verdict.`
-- **Favicon & Web App:**
-  - `favicon.svg` present in `tutorial-app/public/`.
-- **Canonical Routing:**
-  - Root `/` emits immediate `<meta http-equiv="refresh" content="0;url=/part-0/overview/start">` to land visitors directly on the contextual introduction before interactive lessons.
-
----
-
-## 4. Link Integrity Audit
-
-All inter-document links and CTAs verified:
-- `docs/launch/claims-evidence.md` links to exact paths in `capability-spike/`, `tutorial-app/`, and `tk-evidence-exporter/`.
-- `docs/launch/demo.md` commands tested and verified locally.
-- Contact links resolve to `https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml` and `mailto:public.rant@pm.me`.
-- Zero broken relative markdown links in launch docs.
+This runs fresh desktop/mobile browser contexts against production, checking the journey and rendered metadata/assets. The default target is production; `LAUNCH_BASE_URL` can select a deploy preview. PR CI uses a locally built site and is not evidence of public publication. Keep CIT-168 open until the actual public page and remaining stale surfaces are checked.

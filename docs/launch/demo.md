@@ -10,21 +10,31 @@ or replayed via Storybook (`npm run storybook` in `tutorial-app`).
 A worker agent generates Proposal P for an upcoming business trip, stating that the proposed travel itinerary fits well within travel policy limits.
 
 ### 2. Introduce the second change / branch
-The proposal incorporates two distinct pull requests: a flight booking and a hotel reservation. Both branches pass syntax and linting checks.
+The proposal incorporates two distinct pull requests: a airfare 890 and ground travel 400. Both pass the same v1 budget check (limit 1200) when evaluated separately.
 
 ### 3. Reveal the composition conflict
-Git merges the two branches with zero conflicts (`clean · 0 conflicts`). But when the combined itinerary is evaluated against organizational policy, the total comes to **$1,290 against a hard policy cap of $1,200**. Ordinary git merge and test checks are completely blind to this semantic violation.
+Git merges the two branches with zero conflicts (`clean · 0 conflicts`). But when the combined itinerary is evaluated against organizational policy, the total comes to **$1,290 against a hard policy cap of $1,200**. The clean merge reports textual compatibility; the same budget check that passed each branch now fails the composed proposal.
 
 ### 4. Show diagnostic / evidence
-The governance layer intercepts the proposal pre-merge and emits a typed diagnostic: `FAIL @ v1`. Clicking the diagnostic reveals the exact calculation ($1,290 > $1,200), the proposal tree SHA, and the immutable rule version `v1`.
+The scripted replay evaluates the merged proposal before representing its acceptance and emits a typed diagnostic: `FAIL @ v1`. Clicking the diagnostic reveals the exact calculation ($1,290 > $1,200), the proposal tree SHA, and the original rule version `v1`.
 
 ### 5. Reconcile it via scoped supervisor exception
-A human supervisor reviews the operational context and grants a one-time budget exception ($1,200 → $1,300), scoped strictly to Proposal P.
+The scripted supervisor turn records a one-time budget exception ($1,200 → $1,300), scoped strictly to Proposal P.
 
 ### 6. End on the evidence trail
-Re-evaluation produces `PASS @ v2` beside the unchanged `FAIL @ v1`. The original violation is never erased or overwritten; every verdict permanently records the exact rule version, the proposal tree, and the human supervisor identity.
+Re-evaluation produces `PASS @ v2` beside the unchanged `FAIL @ v1`. The replay retains the prior verdict, proposal tree, rule versions, and scripted supervisor grant. This is retained evidence, not a claim of tamper-resistant or permanent storage. Authority enforcement is simulated.
 
 ---
+
+## Reproduce the composition witness
+
+```bash
+cd tutorial-app
+npm ci
+npm test -- tests/budget-authority/merge.spec.ts src/lib/budgetAuthorityStoryboard.spec.ts
+```
+
+This checks real base/A/B/merged Git commits against the same frozen rule. It does not run lint checks or discover an authorization vulnerability.
 
 ## Fallback CLI Demo: Green test, missing approval, diagnostic, repair
 

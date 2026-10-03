@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Reconcile a noteexpand evidence claim with an independent observation."""
+import argparse
+import dataclasses
+import json
+from pathlib import Path
+import sys
+
+import pkl
+
+CASE_HOME = Path("/usr/local/share/noteexpand")
+sys.path.insert(0, str(CASE_HOME / "lib"))
+import noteexpand_reconcile_pkl as reconcile_pkl
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("claim", type=Path)
+    parser.add_argument("observation", type=Path)
+    args = parser.parse_args()
+    flags = pkl.load(str(CASE_HOME / "pkl/Reconcile.pkl"),
+                     expr='checkJson(read("prop:claim"), read("prop:observation"))',
+                     evaluator_options=pkl.PreconfiguredOptions(properties={
+                         "claim": args.claim.read_text(), "observation": args.observation.read_text()}),
+                     parser=pkl.Parser(namespace=vars(reconcile_pkl)))
+    print(json.dumps([dataclasses.asdict(flag) for flag in flags]))
+
+
+if __name__ == "__main__":
+    main()

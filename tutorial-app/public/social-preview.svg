@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#172a31"/>
+  <text x="72" y="90" font-family="sans-serif" font-size="25" letter-spacing="4" fill="#8ce6ca">NULL HYPE</text>
+  <text x="72" y="177" font-family="sans-serif" font-size="52" font-weight="700" fill="#ffffff">A clean merge can break</text>
+  <text x="72" y="241" font-family="sans-serif" font-size="52" font-weight="700" fill="#ffffff">a shared rule.</text>
+  <text x="72" y="294" font-family="sans-serif" font-size="26" fill="#bdd0d7">Same budget check. Same limit: 1200.</text>
+  <rect x="72" y="334" width="510" height="68" rx="8" fill="#213c42"/>
+  <rect x="610" y="334" width="518" height="68" rx="8" fill="#213c42"/>
+  <text x="96" y="378" font-family="sans-serif" font-size="27" fill="#8ce6ca">A · airfare 890 · PASS</text>
+  <text x="634" y="378" font-family="sans-serif" font-size="27" fill="#8ce6ca">B · ground 400 · PASS</text>
+  <rect x="72" y="426" width="1056" height="76" rx="8" fill="#4c3036"/>
+  <text x="96" y="475" font-family="sans-serif" font-size="30" font-weight="700" fill="#ffbfbc">A + B · 1290 &gt; 1200 · FAIL</text>
+  <text x="72" y="564" font-family="sans-serif" font-size="23" fill="#bdd0d7">Synthetic fixture · computed Git merge and budget evaluations</text>
+</svg>

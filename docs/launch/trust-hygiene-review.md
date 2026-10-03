@@ -40,11 +40,11 @@ This review audits the public posture of the project to ensure that claims, code
 ---
 
 ## 5. Permission Boundaries & Sandbox Scope
-- **Status:** PASS
+- **Status:** MODELLED; host enforcement remains outside the demonstrated replay
 - **Audit:**
-  - Clear separation between the worker's mutable input and the supervisor's immutable ledger.
-  - Workers cannot edit `pkl/Ledger.pkl` or `pkl/GrantState.pkl` to force a test to pass.
-  - Bypassed gate tests (`bypassed_gate.pkl`) demonstrate that hardcoding `true` does not deceive the reconciliation engine.
+  - The capability model separates declared facts, grants, and observations; the reconciliation fixture detects the static absence of a gate call.
+  - Host integration must keep accepted policies/evaluators outside worker-writable checkouts. Running the repository alone does not establish that isolation.
+  - Budget Authority records a simulated supervisor boundary and retains prior verdicts. It does not establish immutable, append-only, or tamper-resistant history.
 
 ---
 
