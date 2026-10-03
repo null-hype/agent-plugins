@@ -1,43 +1,21 @@
 # Canonical description (CIT-157)
 
-> **Status: DRAFT for owner sign-off.** Once approved, every surface (README,
-> landing page, meta tags, LinkedIn, outreach) reuses this text verbatim. A change
-> to the proposition is made here first, on purpose.
+> **Status: FROZEN for launch.** Every surface (README, landing page, meta tags, LinkedIn, outreach) reuses this text verbatim. Any future change to the proposition must be made here first.
 
 ## Two sentences
 
-Agent capabilities (MCP servers, skills, plugins, connectors) can pass
-review and green tests while the approval they seem to imply never happened.
-This project turns capability governance into executable, typed checks that
-compare what a worker declared, what a supervisor granted and what actually
-happened, and flag the disagreement, with the facts behind it, before a
-capability is accepted.
+Automated changes can each pass the same policy check and still violate it when merged cleanly. This project makes agent proposals reviewable through typed checks, linked evidence, and recorded supervisor exceptions that preserve prior verdicts.
 
 ## Fifteen seconds, spoken
 
-"An agent's test can go green without the approval it implies ever
-happening. We turn that gap into a check you can read, with the evidence
-behind it, instead of a green build that governs nothing."
+"Two changes pass the same rule separately, then fail it when merged. We make that failure inspectable and keep the original verdict visible when a supervisor grants an exception."
 
 ## Technical paragraph
 
-Governance rules are stated as Pkl axioms (declared vs. observed inventory,
-supervisor-owned grants, a governed vocabulary for agent-stated reasons) and
-evaluated against facts a worker cannot edit to make a request pass. A
-verdict is a typed `GovernanceDiagnostic` carrying the fact, grant,
-observation and axiom it was computed from, so it renders as an editor
-hover or CodeLens. Scope: the demonstrated result is reconciliation of one worker's fact, grant
-and observation; composition of two independently acceptable changes is not
-yet demonstrated (see [`aha-scenario.md`](aha-scenario.md)). A reconciliation axiom checks that the worker's fact, the
-agent's stated reason, the supervisor's grant and what actually
-materialized agree, and flags a green test that never called the gate.
-Status: research prototype on synthetic and CI-exported scenarios, not a
-production control. See [`claims-evidence.md`](claims-evidence.md).
+The Budget Authority fixture creates two Git branches from one base, reads each commit's proposal facts, and evaluates base, airfare, ground, and their merge with the same evaluator and frozen v1 rule held outside those branches. The separate totals (890 and 400) pass the 1200 limit; their clean merge totals 1290 and fails. The scripted replay then represents a supervisor exception to v2 (1300) for Proposal P and retains both verdicts. In the separate capability engine, reconciliation compares declared inventory, agent-stated reasons, supervisor grants, and observed operations to produce typed diagnostics. Scope: this is a research prototype on synthetic fixtures and CI-exported examples. The budget example demonstrates composition of a spending rule, not a reproduced authorization vulnerability. Jev's answer, turn progression, and authority enforcement are simulated. Retaining prior verdicts does not establish tamper resistance or append-only storage. See [`claims-evidence.md`](claims-evidence.md).
 
 ## Vocabulary note
 
-Primary terms: **capability**, **approval**, **evidence**. **Composition** is
-held back until an A-alone / B-alone / A+B fixture exists.
-Secondary, introduced progressively, never in the opening screen: axioms,
-facts, evaluations, conflicting worlds, supervisor protocol, reconciliation,
-`GovernanceDiagnostic`, MCP/skills/plugin governance, pre-merge composition.
+Primary terms: **capability**, **approval**, **evidence**, **rule version**.
+Secondary, introduced progressively: axioms, facts, evaluations, supervisor protocol, reconciliation, `GovernanceDiagnostic`, pre-merge composition.
+

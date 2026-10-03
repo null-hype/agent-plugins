@@ -67,6 +67,10 @@ async function expectOnlyBudgetIsColoured(page: Page) {
 
 test('Proposal P against the budget', { tag: '@tutorial' }, async ({ page, context }, testInfo) => {
   const merge = mergeProposalBranches();
+  expect(merge.worlds.airfare.evaluation.status).toBe('pass');
+  expect(merge.worlds.ground.evaluation.status).toBe('pass');
+  expect(merge.worlds.merged.evaluation.status).toBe('fail');
+  await testInfo.attach('composition-evidence', { body: JSON.stringify(merge, null, 2), contentType: 'application/json' });
   const lessons = buildBudgetAuthorityLessons(merge);
   const shortTree = merge.tree.slice(0, 12);
   const pinSnapshots = new Map<string, string>();

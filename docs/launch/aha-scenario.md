@@ -1,35 +1,24 @@
 # Canonical "aha" scenario (CIT-161)
 
-> **Status: DRAFT for owner sign-off. First launch leads with the demonstrated reconciliation result, not composition.** Built from the existing
-> `capability-spike` and TutorialKit chapter 3, lesson 5. It does not add mechanism.
+> **Status: FROZEN for launch.** The canonical scenario is the Budget Authority walkthrough. Its composition witness is a synthetic spending-policy example; supervisor enforcement is simulated.
 
-## The story (no stack names)
+Two agents add costs to the same initially empty proposal: airfare 890 and ground travel 400. Each branch passes the same budget rule, `limit-v1` (1200). Git merges their non-overlapping files with zero conflicts. Evaluating the merged proposal with that same rule fails: 1290 > 1200. The replay represents a supervisor exception to v2 (1300), scoped to Proposal P, then shows `PASS @ v2` beside the retained `FAIL @ v1`.
 
-A worker agent asks for access to a secret and gives a reason. Its test is
-green. But the test never asked the gatekeeper: it hardcodes the pass, so the
-approval the green seems to imply does not exist. A normal merge check sees a
-green test and nothing else. The governance layer compares what the worker
-declared, the reason the agent gave, what the supervisor granted, and what
-actually happened. It flags the disagreement before the change is accepted and
-shows the facts behind the flag. "Green, and governed by nothing." Walkthrough
-with real output: [`demo.md`](demo.md).
+| World read from Git | Total | Rule | Verdict |
+|---|---:|---|---|
+| Base | 0 | v1, limit 1200 | PASS |
+| Base + airfare | 890 | v1, limit 1200 | PASS |
+| Base + ground | 400 | v1, limit 1200 | PASS |
+| Airfare + ground, clean merge | 1290 | v1, limit 1200 | FAIL |
 
-## Required shape, and where each part lives
+[`merge.ts`](../../tutorial-app/tests/budget-authority/merge.ts) creates real commits and reads their file contents. [`merge.spec.ts`](../../tutorial-app/tests/budget-authority/merge.spec.ts) verifies their common ancestor, merge parents, retained facts, and the invariant matrix. One frozen rule and evaluator are used for every world, outside the branch checkouts.
 
-| Requirement (CIT-161) | Evidence |
-|---|---|
-| Change A acceptable alone | Not demonstrated (no A/B fixture) |
-| Change B acceptable alone | Not demonstrated (no A/B fixture) |
-| Composition changes a property that matters | Not demonstrated; nearest: unapproved or missing materialization |
-| Ordinary checks miss it | `bypassed_gate.pkl` passes `pkl test` |
-| Governance flags it pre-acceptance | `capability-spike/pkl/Reconcile.pkl` (`boundary-bypassed`) |
-| Diagnostic makes reasons inspectable | `tutorial-app/src/lib/governanceDiagnostic.ts`, chapter 3 lessons 4-5 |
+```bash
+cd tutorial-app
+npm ci
+npm test -- tests/budget-authority/merge.spec.ts src/lib/budgetAuthorityStoryboard.spec.ts
+```
 
-Run: `cd capability-spike && pkl test pkl/Inventory.test.pkl pkl/Reconcile.test.pkl`
+Expected: base/A/B pass, A+B fails under v1; the replay retains the failing v1 verdict beside the passing v2 verdict. The Git merge and all budget evaluations are computed. Jev's answer, the supervisor identity/grant, and turn progression are scripted. This does not show a live approval gate, a real authorization exploit, passing lint checks, or tamper-resistant history.
 
-## Open item
-
-CIT-161 asks for a "two-world" composition example. The current material
-shows a fact vs. grant vs. observation disagreement, not two independently
-valid changes conflicting. Launch copy no longer claims composition. Adding a two-branch A/B/A+B
-fixture is the follow-up that would let it be claimed.
+Interactive replay: [Budget Authority](https://null-hype.tidelands.dev/part-3/proposal-p-against-the-budget/1-jev-types-the-answer). Use Solve to reveal a recorded turn and the next arrow to continue.

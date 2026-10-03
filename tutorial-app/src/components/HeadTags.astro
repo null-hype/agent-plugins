@@ -1,12 +1,26 @@
+---
+const title = 'Agent decisions, checked against evidence';
+const description = 'Follow an agent proposal from confident answer to failed check and scoped approval. Inspect the evidence behind each verdict.';
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://null-hype.tidelands.dev');
+const image = new URL('/social-preview.png', canonical.origin);
+---
+
 <slot name="title" />
+<!-- TutorialKit supplies canonical/favicon links and Twitter title/description. -->
 <slot name="links" />
 <slot name="meta" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Null Hype" />
-<meta property="og:title" content="Agent decisions, checked against evidence" />
-<meta property="og:description" content="Follow an agent proposal from confident answer to failed check and scoped approval. Inspect the evidence behind each verdict." />
-<meta name="twitter:card" content="summary" />
-<!-- TODO(CIT-168/169): add og:image, favicon and canonical once the visual kit and final site URL exist -->
+<meta property="og:url" content={canonical.href} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={image.href} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Airfare 890 and ground 400 each pass the 1200 budget check; their clean merge totals 1290 and fails the same rule." />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content={image.href} />
+<meta name="twitter:image:alt" content="Two passing branches, one failing composition under the same budget rule." />
 
 <style is:global>
   /* Reserve space for the fixed footer band */
@@ -67,8 +81,11 @@
       '<span class="gap-footer-sep">·</span>',
       '<a href="https://github.com/null-hype/agent-plugins" target="_blank" rel="noopener">Source</a>',
       '<span class="gap-footer-sep">·</span>',
+      '<a href="https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml" target="_blank" rel="noopener">Contact</a>',
+      '<span class="gap-footer-sep">·</span>',
       '<a href="https://github.com/null-hype" target="_blank" rel="noopener">Null Hype</a>',
     ].join('');
+
     if (document.body) {
       document.body.appendChild(footer);
     } else {
