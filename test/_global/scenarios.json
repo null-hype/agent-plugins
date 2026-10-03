@@ -60,5 +60,49 @@
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
+    },
+    "cit-271-free-agent-hint0": {
+        "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+        "features": {
+            "pass-cli": {}
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+            "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+        }
+    },
+    "cit-271-free-agent-hint1": {
+        "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+        "features": {
+            "pass-cli": {}
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+            "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+        }
+    },
+    "cit-271-free-agent-hint2": {
+        "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+        "features": {
+            "pass-cli": {}
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+            "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+        }
+    },
+    "cit-271-free-agent-hint3": {
+        "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+        "features": {
+            "pass-cli": {}
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
+            "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
+        }
     }
 }
