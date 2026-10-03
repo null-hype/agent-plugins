@@ -1,65 +1,51 @@
-# End-to-End Logged-Out Journey Audit (CIT-166)
+# Logged-out journey audit (CIT-166)
 
-> **Status: VERIFIED for launch.**
+> **Status: IN PROGRESS.** Check date: 2026-10-03. There is no blanket claim that every route, viewport, inbox, or interactive turn is verified.
 
-This audit tests the complete funnel from a cold-start, logged-out perspective on desktop and mobile:
-**Discovery (LinkedIn / Search / GitHub) → Explanation (Landing / README) → Interactive Demo → Executable Evidence → Contact Action**.
+## Scope of the new browser check
 
----
+[`launch.smoke.spec.ts`](../../tutorial-app/tests/launch.smoke.spec.ts) runs in fresh logged-out desktop and Pixel 7 Chromium contexts. It:
 
-## 1. Journey Step-by-Step Test
+1. Navigates the site root and waits for the landing redirect.
+2. Finds the explanation, private email link, and public issue link.
+3. Clicks into the canonical demo and verifies its visible scope disclosure.
+4. Follows the evidence link into the public GitHub document.
+5. Opens the public contact route, verifies GitHub sign-in, and checks that the issue-form destination is preserved.
+6. Checks canonical/social metadata and requests the actual preview image and favicon on the tested deployment.
 
-### Step 1: External Discovery (LinkedIn / GitHub Profile)
-- **Starting Point:** Visitor reads LinkedIn post, bio, or browses `github.com/null-hype`.
-- **Observation:**
-  - One-screen headline and proposition immediately communicates: "Clean merge ≠ correct composition · A log of evidence, not promises."
-  - Direct links to `null-hype.tidelands.dev` and `agent-plugins` are prominent above the fold.
-  - Zero noisy test repositories cluttering the profile tab (reduced to 13 deliberate repositories).
+The smoke check verifies discovery/navigation plumbing. It does not run Solve/Reset through all WebContainer lessons, submit an issue, send email, verify mailbox ownership/delivery, test LinkedIn discovery, or establish a response SLA. Existing budget playback tests cover a separate interactive scenario.
 
-### Step 2: Site & Top-Level Explanation
-- **Destination:** `https://null-hype.tidelands.dev`
-- **Observation:**
-  - Root path immediately routes to `/part-0/overview/start` ("What does a passing check actually tell you?").
-  - Clear narrative opening: "An agent says a trip fits the budget. Its two changes merge cleanly. The total is 1290 against a limit of 1200. Which signal should the person approving the trip trust?"
-  - Primary CTA button: `Start the budget walkthrough →`.
-  - Responsive layout verified on mobile; fixed footer band provides persistent links to Evidence, Source, and Null Hype.
+## Public observations
 
-### Step 3: Interactive Demo Walkthrough
-- **Destination:** `/part-3/proposal-p-against-the-budget/1-jev-types-the-answer`
-- **Observation:**
-  - Step 1 (Jev types answer) → Step 2 (clean git merge: 0 conflicts) → Step 3 (semantic check fails: `FAIL @ v1`, 1290 vs 1200) → Step 4 (supervisor grants exception 1200 → 1300) → Step 5 (`PASS @ v2` recorded beside original `FAIL @ v1`).
-  - No credentials, login, or installation required; executes directly in WebContainer/browser Monaco environment.
+Read-only HTTP checks returned 200 for the site root, landing page, public claims document, and Storybook URL. The site root uses an in-page redirect, so the 200 alone does not prove browser navigation. The public issue URL redirects logged-out visitors to GitHub sign-in with the full intended issue-form URL in `return_to`.
 
-### Step 4: Inspect the Implementation & Evidence
-- **Destination:** [`docs/launch/claims-evidence.md`](claims-evidence.md)
-- **Observation:**
-  - Skeptical technical visitors can drill into the 8-row claim table.
-  - Every row lists the claim, source file link, exact CLI command, expected result, and what it does *not* establish (stating known limitations clearly).
+The branch adds `mailto:public.rant@pm.me`. It is absent from the currently deployed landing page on both tested viewports. Finding the link after publication still will not verify receipt or the owner's reply workflow. GitHub requires an account to create an issue; the audit does not describe this route as anonymous issue submission.
 
-### Step 5: Contact & Conversion Path
-- **Logged-Out Public Collaboration:**
-  - Target: `https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml`
-  - Accessible to anyone with a standard GitHub account without repository write permissions.
-  - Form prompts for agent system details and discussion goals, with an explicit reminder that issues are public.
-- **Logged-Out Private Route (Confidential Systems, Consulting, Funding):**
-  - Target: `mailto:public.rant@pm.me`
-  - Displayed prominently in `README.md`, `profile/README.md`, landing page, and website README.
-  - Standard instructions: "Please describe workflow context; do not send credentials, API keys, or unredacted secrets in initial outreach."
+The currently deployed metadata still lacks the new preview image and favicon. LinkedIn publication and mailbox delivery remain unverified.
 
----
+## Commands and CI
 
-## 2. Verification Checklist
+```bash
+cd tutorial-app
+npm ci
+npx playwright install chromium
+# Real public site, desktop and mobile:
+npx playwright test --config=playwright.launch.config.ts
+# Branch build (different evidence):
+npm run build
+LAUNCH_BASE_URL=http://127.0.0.1:4321 npx playwright test --config=playwright.launch.config.ts
+```
 
-| Criterion | Result | Notes |
-|---|---|---|
-| Contact identity & address clear | PASS | Null Hype / `public.rant@pm.me` |
-| Mobile & logged-out behavior | PASS | Clean responsive view, no authentication barrier |
-| Broken links & redirects | PASS | All internal & external URLs return 200 |
-| Ease of locating contact info | PASS | Located in page body, footer, and README sections |
-| Internal follow-up SLA | PASS | Committed acknowledgment within 48 hours |
-| Audience alignment | PASS | Public issue form for open collab; private email for consulting/funding/advisory |
+`.github/workflows/tutorial-launch.yml` runs the relevant Vitest suite, build, and branch browser smoke check for PRs. Its manually dispatched public-smoke job runs against production after publication, with reports/traces retained as artifacts. An optional `PLAYWRIGHT_PROXY_SERVER` supports environments requiring an outbound proxy.
 
----
+## Verification record
 
-## Conclusion
-A stranger starting from cold search or social media can progress smoothly through problem, proof, evidence, and reach out via either a public or private channel with zero guesswork.
+- Vitest: 17 files passed, 173 tests passed, two existing tests skipped.
+- Astro: production build completed (26 pages).
+- Branch browser smoke: four checks passed, covering desktop and mobile. The QA browser used the execution environment's outbound proxy and trusted its supplied proxy CA; the committed CI configuration retains default HTTPS validation.
+- Public browser smoke: all four checks failed. Both journey checks stopped because the landing page has no private email route; both metadata checks stopped because `og:url` is missing. Subsequent checks for new image/card/favicon assets remain undeployed. These are live launch gaps, not a public PASS.
+- Real public metadata: incomplete pending deployment.
+- Mailbox receipt / owner reply workflow: not tested.
+- LinkedIn profile discovery: not verified.
+
+Keep CIT-166 open until the actual public route and remaining acceptance criteria are verified.

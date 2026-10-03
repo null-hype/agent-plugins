@@ -4,15 +4,15 @@
 
 ## Two sentences
 
-Agent capabilities and automated changes can merge cleanly and pass tests while violating the business and security rules they seem to satisfy. This project turns capability governance into inspectable, typed checks that evaluate proposals before acceptance, flag policy violations with their underlying evidence, and record human supervisor exceptions without overwriting audit history.
+Automated changes can each pass the same policy check and still violate it when merged cleanly. This project makes agent proposals reviewable through typed checks, linked evidence, and recorded supervisor exceptions that preserve prior verdicts.
 
 ## Fifteen seconds, spoken
 
-"An agent's changes can merge cleanly and go green without the rules actually being satisfied. We make agent decisions reviewable with inspectable checks and immutable evidence instead of blind trust in a green build."
+"Two changes pass the same rule separately, then fail it when merged. We make that failure inspectable and keep the original verdict visible when a supervisor grants an exception."
 
 ## Technical paragraph
 
-Governance rules are expressed as declarative policy checks and Pkl axioms evaluated against immutable facts that an agent cannot edit to force a pass. In the Budget Authority walkthrough, two independently acceptable branches merge with zero textual conflicts, but fail semantic evaluation (`FAIL @ v1`) because the combined travel cost exceeds policy ($1,290 vs $1,200). When a supervisor grants an exception, rule version `v2` is pinned specifically to that proposal, producing `PASS @ v2` while retaining the original `FAIL @ v1` on the audit trail. In the capability engine, reconciliation checks compare declared inventory, agent-stated reasons, supervisor grants, and observed operations, generating typed `GovernanceDiagnostic` annotations for any unapproved or bypassed access. Scope & limitations: research prototype evaluated on synthetic and CI-exported scenarios; turn sequences are scripted with computed git merges and budget evaluations; the approval boundary is simulated. See [`claims-evidence.md`](claims-evidence.md).
+The Budget Authority fixture creates two Git branches from one base, reads each commit's proposal facts, and evaluates base, airfare, ground, and their merge with the same evaluator and frozen v1 rule held outside those branches. The separate totals (890 and 400) pass the 1200 limit; their clean merge totals 1290 and fails. The scripted replay then represents a supervisor exception to v2 (1300) for Proposal P and retains both verdicts. In the separate capability engine, reconciliation compares declared inventory, agent-stated reasons, supervisor grants, and observed operations to produce typed diagnostics. Scope: this is a research prototype on synthetic fixtures and CI-exported examples. The budget example demonstrates composition of a spending rule, not a reproduced authorization vulnerability. Jev's answer, turn progression, and authority enforcement are simulated. Retaining prior verdicts does not establish tamper resistance or append-only storage. See [`claims-evidence.md`](claims-evidence.md).
 
 ## Vocabulary note
 

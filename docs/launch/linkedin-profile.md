@@ -1,6 +1,6 @@
 # LinkedIn Profile Alignment Package (CIT-159)
 
-> **Status: READY FOR COPY-PASTE.** Aligns the persistent profile page with the launch proposition so any visitor from any post immediately understands the project and reaches the evidence.
+> **Status: PREPARED; live profile publication is not verified.** Aligns the persistent profile page with the launch proposition so any visitor from any post immediately understands the project and reaches the evidence.
 
 ---
 
@@ -23,14 +23,14 @@
 ## 3. About Section
 
 ```markdown
-Agent capabilities (MCP servers, skills, plugins, connectors) and automated pull requests can merge cleanly and pass tests while violating the business and security rules they seem to satisfy.
+Automated changes can each pass the same policy check and still violate it when merged cleanly. This project makes agent proposals reviewable through typed checks, linked evidence, and recorded supervisor exceptions that preserve prior verdicts.
 
-At Null Hype, I build pre-merge capability governance and typed semantic verification for AI agents. Rather than relying on blind trust in a green build, we turn policy rules into inspectable checks that:
+At Null Hype, I research pre-merge capability governance and typed semantic verification for AI agents. The prototype explores checks that:
 1. Intercept proposals before acceptance.
 2. Flag semantic policy violations alongside their underlying evidence.
 3. Record human supervisor exceptions without erasing or overwriting audit history.
 
-Our primary interactive walkthrough demonstrates this in five turns: two branches (flight + hotel) merge with zero textual conflicts, but fail policy evaluation ($1,290 vs $1,200 limit; FAIL @ v1). When a supervisor grants an exception, the system records PASS @ v2 while permanently preserving the original violation on the immutable audit trail.
+Our synthetic Budget Authority fixture evaluates airfare 890 and ground 400 separately: each passes the same 1200 limit. Their clean Git merge totals 1290 and fails that rule. A five-turn scripted replay represents a supervisor exception to 1300 and retains PASS @ v2 beside FAIL @ v1. The merge and arithmetic are computed; Jev's answer and authority enforcement are simulated. This is a research prototype, not a production control or a reproduced authorization exploit.
 
 🔬 Explore the Work:
 • Interactive Walkthrough: https://null-hype.tidelands.dev

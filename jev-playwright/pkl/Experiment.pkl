@@ -1,0 +1,32 @@
+module Experiment
+
+import "../../src/jev/pkl/Jev.pkl"
+
+typealias Id = String(matches(Regex("[a-z][a-z0-9-]{0,79}")))
+
+class Expectation {
+  min: Number(isFinite, isBetween(0, 1))
+  max: Number(isFinite, isBetween(min, 1))
+}
+
+class Question {
+  dependencies: Listing<Id> = new Listing {}
+  judge: Jev.NoulQuestion
+  collector: String(!isEmpty)
+  requiredEvidence: Listing<String(!isEmpty)>(!isEmpty)
+  expected: Expectation
+}
+
+model: String(!isEmpty) = "jev-latest"
+// Validate the dependency graph before execution or secret access.
+local function visit(id: String, trail: List<String>): Boolean =
+  if (!questions.keys.contains(id)) throw("Unknown question dependency: \(id)")
+  else if (trail.contains(id)) throw("Question dependency cycle at \(id)")
+  else questions[id].dependencies.toList().every((dep) -> visit(dep, trail + List(id)))
+
+questions: Mapping<Id, Question>(!isEmpty)
+
+output {
+  value = if (questions.keys.every((id) -> visit(id, List()))) module
+    else throw("Invalid question dependency graph")
+}

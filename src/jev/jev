@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""jev -- method-layer client for TypeSafe's Jev (the Noul judge).
+
+Given a fixture 'state' and a set of Noul questions, return one probability in
+[0, 1] per question. This is the client CIT-289 asks for; the deterministic and
+live-smoke contract scenarios that drive it live in CIT-286, and the real Rails
+fixture run in CIT-275.
+
+Design contract (see NOTES.md for the why):
+
+  * state is OPAQUE. The client passes it through untouched and never assumes a
+    shape. In particular it does not assume CIT-284 evidence ({"findings":[...]});
+    the Noul questions phrase themselves in terms of `diff_items`/`files`, and
+    reconciling those two shapes is an open CIT-286 question, not this client's
+    job. See NOTES.md ("Open question: what is `state`?").
+
+  * Only `state` leaves the process. A fixture file carries harness-only `meta`
+    and `expected` (and `expected.rationale`, which names the real CVE) that must
+    NEVER reach the model -- leaking them voids the experiment. When the input
+    document has a top-level `state` key, only that value is sent; `meta` /
+    `expected` are dropped. Use `--print-request` to see exactly what would go
+    out without calling anything.
+
+  * The request contract lives in pkl/Jev.pkl, not here. The request is built
+    through it with the pkl-python binding (`load_request`) and comes back as
+    the dataclasses generated from that same file (jev_pkl.py), so a malformed
+    request fails Pkl evaluation BEFORE any backend call (the seam CIT-286
+    scenario 5 checks). Python keeps only transport, auth and serialization.
+
+  * The output keys are exactly the input question ids, each value a finite
+    number in [0, 1].
+
+  * Backends are explicit and recorded. The real backend needs TYPESAFE_API_KEY
+    in the environment (wrap the call with `pass-cli run --env-file ... -- jev`);
+    with no key it fails loudly and never invents probabilities. The mock backend
+    returns only what a canned answers file provides -- also never invented.
+"""
+
+import argparse
+import dataclasses
+import json
+import os
+import sys
+DEFAULT_API_URL = os.environ.get("JEV_API_URL", "https://api.typesafe.ai/v1/systemone")
+DEFAULT_MODEL = os.environ.get("JEV_MODEL", "jev-latest")
+API_KEY_ENV = "TYPESAFE_API_KEY"  # chosen name; docs.typesafe.ai/api does not fix one.
+
+
+def die(msg):
+    sys.stderr.write("jev: %s\n" % msg)
+    sys.exit(2)
+
+
+def load_json(path):
+    try:
+        if path == "-":
+            return json.load(sys.stdin)
+        with open(path, "r") as fh:
+            return json.load(fh)
+    except (OSError, ValueError) as exc:
+        die("could not read JSON from %s: %s" % (path, exc))
+
+
+def extract_state(document):
+    """Send only `.state` when present; otherwise treat the whole doc as state.
+
+    A fixture ({meta, state, expected}) yields just its state. A bare state
+    document is passed through. Either way, `meta`/`expected` never leave here.
+    """
+    if isinstance(document, dict) and "state" in document:
+        return document["state"]
+    return document
+
+
+def _contract_dir():
+    """(dir holding jev_pkl.py, path of Jev.pkl): beside this file in the source
+    tree, else where the feature installed them."""
+    here = os.path.dirname(os.path.realpath(__file__))
+    for base, pkl_path in ((here, os.path.join(here, "pkl", "Jev.pkl")),
+                           ("/usr/local/lib/jev", "/usr/local/share/jev/pkl/Jev.pkl")):
+        if os.path.exists(pkl_path):
+            return base, pkl_path
+    die("Jev.pkl not found (looked beside %s and in /usr/local/share/jev/pkl)" % here)
+
+
+def load_request(state, questions, model):
+    """Evaluate the request through pkl/Jev.pkl and return a generated JevRequest.
+
+    All structural rules (question type, non-empty instructions, no unknown
+    fields, non-empty question set) are Pkl's; a violation is a PklError here.
+    """
+    base, pkl_path = _contract_dir()
+    sys.path.insert(0, base)
+    import jev_pkl
+    import pkl
+    options = pkl.PreconfiguredOptions(properties={
+        "jev.state": json.dumps(state),
+        "jev.questions": json.dumps(questions),
+        "jev.model": model,
+    })
+    try:
+        return pkl.load(
+            pkl_path,
+            expr='requestFromJson(read("prop:jev.state"), '
+                 'read("prop:jev.questions"), read("prop:jev.model"))',
+            evaluator_options=options,
+            parser=pkl.Parser(namespace=vars(jev_pkl)))
+    except pkl.PklError as exc:
+        die("request rejected by Jev.pkl:%s" % exc)
+
+
+def _wire(value):
+    """Generated dataclasses -> the JSON body: dataclasses become objects and
+    unset optionals (None) are omitted, as the API defines them optional. Values
+    inside `state` are plain data and are left exactly as loaded."""
+    if dataclasses.is_dataclass(value):
+        return {f.name: _wire(getattr(value, f.name)) for f in dataclasses.fields(value)
+                if getattr(value, f.name) is not None}
+    if isinstance(value, dict):
+        return {k: _wire(v) for k, v in value.items()}
+    return value
+
+
+def load_response(body, questions, model):
+    base, pkl_path = _contract_dir()
+    sys.path.insert(0, base)
+    import jev_pkl
+    import pkl
+    options = pkl.PreconfiguredOptions(properties={
+        "jev.response": json.dumps(body),
+        "jev.questions": json.dumps(list(questions)), "jev.model": model})
+    try:
+        return pkl.load(pkl_path,
+            expr='responseFromJson(read("prop:jev.response"), '
+                 'read("prop:jev.questions"), '
+                 'read("prop:jev.model"))',
+            evaluator_options=options, parser=pkl.Parser(namespace=vars(jev_pkl)))
+    except pkl.PklError as exc:
+        die("response rejected by Jev.pkl:%s" % exc)
+
+
+def call_real(request, api_url):
+    api_key = os.environ.get(API_KEY_ENV)
+    if not api_key:
+        die("%s is not set. The real backend never invents probabilities; "
+            "wrap the call with pass-cli (e.g. `pass-cli run --env-file <f> -- "
+            "jev ...`) or pass --backend mock for tests." % API_KEY_ENV)
+    payload = json.dumps(request).encode("utf-8")
+    return _http_post(api_url, api_key, payload)
+
+
+def _http_post(url, api_key, payload):
+    import requests
+    try:
+        response = requests.post(url, data=payload, headers={
+            "Authorization": "Bearer " + api_key, "Content-Type": "application/json"})
+        response.raise_for_status()
+        return response.json()
+    except (requests.RequestException, ValueError) as exc:
+        die("Jev API call failed: %s" % exc)
+
+
+def call_mock(request, mock_answers_path, questions):
+    """Return probabilities from a canned file only -- never fabricated.
+
+    The file may be either {qid: prob} or a full API response
+    {"answers": {qid: {"noul": prob}}}.
+    """
+    if not mock_answers_path:
+        die("--backend mock requires --mock-answers FILE (probabilities are never "
+            "invented, not even in the mock)")
+    canned = load_json(mock_answers_path)
+    if isinstance(canned, dict) and "answers" in canned:
+        return canned
+    # bare {qid: prob} -> API-shaped answers
+    if not isinstance(canned, dict):
+        die("--mock-answers must be a JSON object")
+    return {"answers": {qid: {"type": "noul", "noul": v} for qid, v in canned.items()}}
+
+
+def main(argv):
+    ap = argparse.ArgumentParser(
+        prog="jev",
+        description="Send a fixture state and Noul questions to Jev; get one "
+                    "probability in [0,1] per question.",
+    )
+    ap.add_argument("state_file", metavar="FIXTURE_OR_STATE",
+                    help="fixture file (only its .state is sent) or a bare state "
+                         "file; '-' for stdin")
+    ap.add_argument("-q", "--questions", required=True, metavar="FILE",
+                    help="Noul questions JSON (map of id -> {type,instructions,criteria?})")
+    ap.add_argument("--backend", choices=("real", "mock"), default="real",
+                    help="'real' calls Jev (needs %s); 'mock' returns --mock-answers"
+                         % API_KEY_ENV)
+    ap.add_argument("--mock-answers", metavar="FILE",
+                    help="canned answers for --backend mock")
+    ap.add_argument("--model", default=DEFAULT_MODEL,
+                    help="Jev model (default %(default)s; or $JEV_MODEL)")
+    ap.add_argument("--api-url", default=DEFAULT_API_URL,
+                    help="Jev endpoint (default %(default)s; or $JEV_API_URL)")
+    ap.add_argument("--print-request", action="store_true",
+                    help="print the exact request body that WOULD be sent and "
+                         "exit, without calling any backend (leak-check / debug)")
+    ap.add_argument("--request-out", help="save the exact outgoing request")
+    ap.add_argument("--response-out", help="save the raw backend response, including on contract failure")
+    args = ap.parse_args(argv)
+
+    document = load_json(args.state_file)
+    state = extract_state(document)
+    typed = load_request(state, load_json(args.questions), args.model)
+    questions = typed.questions
+    request = _wire(typed)
+
+    if args.request_out:
+        with open(args.request_out, "w") as fh:
+            json.dump(request, fh)
+    if args.print_request:
+        json.dump(request, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return 0
+
+    if args.backend == "mock":
+        body = call_mock(request, args.mock_answers, questions)
+    else:
+        body = call_real(request, args.api_url)
+
+    if args.response_out:
+        with open(args.response_out, "w") as fh:
+            json.dump(body, fh)
+    typed_response = load_response(body, questions, args.model)
+    probabilities = {qid: answer.noul for qid, answer in typed_response.answers.items()}
+    result = {
+        "backend": args.backend,
+        "model": typed_response.model,
+        "probabilities": probabilities,
+    }
+    json.dump(result, sys.stdout, indent=2, sort_keys=True)
+    sys.stdout.write("\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

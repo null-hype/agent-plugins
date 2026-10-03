@@ -1,0 +1,14 @@
+/// Case-owned inputs and expectations. Never sent to the collector or Jev.
+module noteexpand.claims
+import "modulepath:/Evidence.pkl" as Evidence
+positive: Evidence.EvidenceFile = new {
+  findings { new {
+    component = "noteexpand"
+    source_path = "opt/toy/README.md"
+    excerpt = "Never run the expander on a note you did not write yourself."
+    never = "expanding caller-supplied includes outside the note directory"
+    enforced = false
+    supporting_paths { "opt/toy/service.sh"; "opt/toy/expander.sh" }
+  } }
+}
+control = (positive) { findings { [0] { enforced = true } } }

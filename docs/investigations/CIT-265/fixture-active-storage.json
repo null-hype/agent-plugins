@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "case": "CVE-2026-66066 (Active Storage + libvips, GHSA-xr9x-r78c-5hrm)",
+    "linear": "CIT-265",
+    "state_source": "CIT-270 snapshot diff (NOT YET RUN -- state below is a placeholder)",
+    "hint_level": 0,
+    "rules": [
+      "No CVE ID, advisory text, or fix commit in state.",
+      "diff_items come only from the restic diff and package metadata.",
+      "files: the Active Storage code that hands uploads to the image processor, and the config that selects vips.",
+      "Only `state` may be sent to the model under test. `meta` and `expected` (including `expected.rationale`, which names the real CVE/CWE) are harness-only and must never be included in a Jev/Noul prompt or a free-agent's context."
+    ]
+  },
+  "state": {
+    "diff_items": [
+      {
+        "component": "<package or component name>",
+        "kind": "<added | modified | removed>",
+        "from_version": "<old version or null>",
+        "to_version": "<new version or null>",
+        "summary": "<one line: what changed, from package metadata or release notes/commit bodies>"
+      }
+    ],
+    "files": {
+      "<path>": "<file contents>"
+    }
+  },
+  "expected": {
+    "decided": true,
+    "decided_by": "CIT-274",
+    "high": [
+      "a02_security_misconfiguration"
+    ],
+    "ambiguous": [
+      "a06_insecure_design",
+      "a03_software_supply_chain",
+      "a05_injection"
+    ],
+    "low": "all others (a01, a04, a07, a08, a09, a10)",
+    "rationale": {
+      "a02_security_misconfiguration": "Ground truth: the public advisory maps this CVE to CWE-1188, Initialization of a Resource with an Insecure Default -- Active Storage did not disable libvips's unfuzzed/untrusted-input loaders by default. That is a direct, textbook match to A02's definition (insecure default / missing hardening step), not an analogy. Kept high; the draft already had this right.",
+      "a06_insecure_design": "Accepting arbitrary user uploads and handing them to a native image library without an allowlist of vetted operations is a threat-model gap, not just a flippable setting -- same class as ImageTragick (2016), which the issue's own hint ladder cites at level 2. Overlaps conceptually with A02 (an insecure default is itself a design choice), which is exactly why this stays ambiguous rather than high: a reasonable grader could file it under either, and forcing a split would make the ground truth more confident than the category boundary actually is.",
+      "a03_software_supply_chain": "Downgraded from the draft's `high` to `ambiguous`. libvips is a legitimate, intentionally-included dependency; the flaw is Rails' own configuration of it, not a compromised, unvetted, or tampered dependency entering the build. The A03 fit requires reading 'the application does not account for [dependency] risk' broadly enough to cover 'inherits a large native attack surface via many third-party codec libraries' -- defensible, but weaker than A02's direct CWE match, so it is not high.",
+      "a05_injection": "Added as ambiguous (not in the draft). A crafted image file is untrusted data that ultimately drives unintended native code execution, which has injection-like shape (malicious input reaching an unintended execution path). But OWASP's Injection category is normally scoped to command/SQL/query interpretation, not memory-safety/parser exploitation in a native library -- so this is a plausible false-positive path for a grader to take, worth tracking as ambiguous rather than dismissing as clearly low.",
+      "low_categories": "a01 (no access-control bypass or SSRF described), a04 (no cryptography involved), a07 (no identity/session handling involved), a08 (integrity failures normally connote unsigned/unverified updates, not input validation -- would double-count what a02/a06 already cover), a09 (advisory doesn't describe a detection/logging gap), a10 (this is a missing safety control, not fail-open exception handling per se -- weaker fit than a02/a06)."
+    }
+  }
+}

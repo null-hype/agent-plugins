@@ -25,6 +25,8 @@ Select **Solve** to reveal the combination of `airfare 890` and `ground 400`.
 **Proposal P** now shows both costs and a tree ID identifying the merged content.
 **Merge** reads `clean · 0 conflicts`.
 
+Before the merge, the fixture reads each branch from Git and evaluates it against the same v1 limit of 1200. Airfare 890 passes; ground 400 passes. The combined proposal is checked in the next turn.
+
 Look at **Budget**: it still reads `not evaluated`.
 The changes combine successfully; the budget question is still unanswered.
 

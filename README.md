@@ -1,7 +1,7 @@
 # Agent capability governance: executable evidence
 
 <!-- CANONICAL DESCRIPTION: keep identical to docs/launch/canonical-description.md -->
-Agent capabilities and automated changes can merge cleanly and pass tests while violating the business and security rules they seem to satisfy. This project turns capability governance into inspectable, typed checks that evaluate proposals before acceptance, flag policy violations with their underlying evidence, and record human supervisor exceptions without overwriting audit history.
+Automated changes can each pass the same policy check and still violate it when merged cleanly. This project makes agent proposals reviewable through typed checks, linked evidence, and recorded supervisor exceptions that preserve prior verdicts.
 
 > Research prototype. Scenarios are either computed on synthetic fixtures or exported from this project's own CI runs. Not a production control. See [limitations](#limitations).
 

@@ -6,6 +6,7 @@ parts:
   - part-3
   - part-2
   - part-4
+  - part-5
   - part-1
 meta:
   image: ""
