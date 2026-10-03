@@ -1,0 +1,68 @@
+name: Tutorial launch checks
+
+on:
+  pull_request:
+    paths: ['tutorial-app/**', 'docs/launch/**', 'profile/**', 'README.md', 'SECURITY.md', '.github/ISSUE_TEMPLATE/**', '.github/workflows/tutorial-launch.yml']
+  push:
+    branches: [main]
+    paths: ['tutorial-app/**', 'docs/launch/**', 'profile/**', 'README.md', 'SECURITY.md', '.github/ISSUE_TEMPLATE/**', '.github/workflows/tutorial-launch.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  branch-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tutorial-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tutorial-app/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config=playwright.launch.config.ts
+        env:
+          LAUNCH_BASE_URL: http://127.0.0.1:4321
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tutorial-launch-branch
+          path: |
+            playwright-report/launch
+            test-results/launch
+          retention-days: 7
+
+  public-smoke:
+    # Dispatch after publication to verify the real public journey. A green
+    # branch build alone must never be reported as deployed verification.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tutorial-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tutorial-app/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config=playwright.launch.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tutorial-launch-public
+          path: |
+            playwright-report/launch
+            test-results/launch
+          retention-days: 7
