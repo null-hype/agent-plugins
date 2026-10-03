@@ -64,7 +64,7 @@ class ArticleRule {
 
 authorizationAnchor = new ArticleRule {
   phrase = "anhand ... Benutzer-ID"
-  governedCase = "Dative"
+  governedCase = "Genitive"
   requiredArticle = "der"
 }`;
 
@@ -84,7 +84,7 @@ const DEFAULT_RUNTIME: RuleTraceRuntime = {
   },
   peek: {
     explanation:
-      'This lesson models the authorization phrase `anhand ... Benutzer-ID` as a dative-governed anchor that requires `der`.',
+      'This lesson models the authorization phrase `anhand ... Benutzer-ID` as a genitive-governed anchor that requires `der`.',
     snippet: DEFAULT_PEEK_SNIPPET,
     source: 'AuthorizationGrammar.pkl',
     title: 'Peek: AuthorizationGrammar.pkl',

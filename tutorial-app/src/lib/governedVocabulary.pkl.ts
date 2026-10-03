@@ -9,7 +9,7 @@
 import * as pklTypescript from "@pkl-community/pkl-typescript"
 
 // Ref: Module root.
-// Modelled on tutorial-app's chapter-1 lesson-2 `PersonalVocabulary.pkl`,
+// Modelled on tutorial-app's chapter-1 lesson-1 `PersonalVocabulary.pkl`,
 // ownership inverted: the worker may only reference an admitted term,
 // never add one. `resolver.Resolve` (capability-spike/resolver/resolver.go)
 // is the only code that reads `admitted`.

@@ -1,4 +1,4 @@
-/// Modelled on tutorial-app's chapter-1 lesson-2 `PersonalVocabulary.pkl`
+/// Modelled on tutorial-app's chapter-1 lesson-1 `PersonalVocabulary.pkl`
 /// (part-1/chapter-1/lesson-2/_files/PersonalVocabulary.pkl in
 /// null-hype/null-hype.github.io), ownership inverted: that lesson lets
 /// the worker admit its own loanwords into its own vocabulary. Here the
