@@ -21,6 +21,27 @@ class Flag {
 
 local function flag(code: String, detail_: String): Flag = new { kind = code; detail = detail_ }
 
+/// A line counts as a successful openat of `path` only if it's an actual
+/// `openat(...)` syscall record naming the *exact* quoted path, ending in a
+/// non-negative fd immediately followed by strace -y's resolved-path
+/// annotation (`<...>`) -- `-y` only ever prints that annotation on success,
+/// so this excludes failed opens (`= -1 EACCES (Permission denied)`) and
+/// loose textual mentions of the filename that aren't a syscall record at
+/// all. Requiring the exact quoted path (not a bare substring) also excludes
+/// an open of a same-named file under a different directory. Mirrors the
+/// parsing run_arms.sh applies when it retains this text in the first place.
+///
+/// Added per the CIT-303 follow-up review: the prior version of this
+/// function (`traceText.contains("dummy-canary.txt")`) would count a prose
+/// mention, a failed EACCES open, or an open of "/different/dummy-canary.txt"
+/// as if it were the real thing.
+local function successfulOpenatCount(traceText: String, path: String): Int =
+  traceText.split("\n").filter((line) ->
+    line.contains("openat(")
+    && line.contains("\"\(path)\"")
+    && line.contains(Regex(#"=\s*[0-9]+<"#))
+  ).length
+
 /// Independently re-derives the dummy-file open count from the *retained
 /// trace text itself*, rather than trusting observed's own
 /// `independent_dummy_file_openat_count` int. Added per CIT-303: that int
@@ -28,7 +49,7 @@ local function flag(code: String, detail_: String): Flag = new { kind = code; de
 /// retained trace was deleted or forged, so checking only the int let a
 /// falsified trace pass silently.
 local function traceOpenCount(traceText: String): Int =
-  traceText.split("\n").filter((line) -> line.contains("dummy-canary.txt")).length
+  successfulOpenatCount(traceText, "/work/dummy-canary.txt")
 
 function check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> =
   (if (observed.arm != claim.arm)
@@ -110,6 +131,20 @@ function check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> 
       List(flag("independent-read-mismatch",
         "expected no independent evidence of the dummy file being opened, but independent_trace_text contains \(traceCount) matching openat line(s)"))
     else List())
+  // Every arm's retained trace must show *some* valid evidence -- a
+  // successful openat of the arm's own source file -- regardless of whether
+  // the dummy file was expected to be opened. Without this, an arm whose
+  // dummy-open count is expected to be zero (every blocked arm) could have
+  // its entire trace deleted and still read as "correctly shows no read",
+  // because missing evidence and negative evidence produce the same zero.
+  // This is the other half of CIT-303's "deleting the trace still passed"
+  // finding: the independent-read check above only ever compares *counts*,
+  // so 0-expected vs. 0-observed-because-nothing-was-captured are
+  // indistinguishable to it by construction.
+  + (if (successfulOpenatCount(observed.independent_trace_text, observed.source_path) == 0)
+    List(flag("trace-missing-source-evidence",
+      "expected the retained independent_trace_text to show a successful openat of this arm's own source file (\(observed.source_path)), but found none -- an empty or deleted trace is not valid evidence of \"no read\""))
+  else List())
   // The convenience int and the retained trace it's supposed to summarize
   // must agree -- catches the case where one is edited without the other
   // (e.g. the trace is deleted but the int is left at its old value, or

@@ -30,17 +30,38 @@ run_arm() {
 
   echo "### ARM: $label"
   echo "== strace openat evidence for the canary/control file =="
-  local raw
-  raw="$(mktemp)"
+  # strace writes its trace to stderr and canary_runner.rb writes its JSON
+  # result to stdout -- keep them in two separate files rather than merging
+  # both into one with `2>&1`. Merging them (the prior version of this
+  # script) let JSON lines like `"source_path": "/work/canary.mat",` get
+  # picked up by a naive grep for "canary.mat" and leak into the retained
+  # trace text, which is exactly the kind of non-syscall text a strict
+  # syscall-line parser (below, and in Reconcile.pkl) needs to not exist in
+  # the first place.
+  local trace_raw stdout_raw
+  trace_raw="$(mktemp)"
+  stdout_raw="$(mktemp)"
   docker run --rm "${envs[@]}" "$IMAGE" \
     strace -f -e trace=openat -y bin/rails runner /work/canary_runner.rb \
-    > "$raw" 2>&1
+    > "$stdout_raw" 2> "$trace_raw"
+
+  # Only retain lines that are an actual successful openat(...) syscall
+  # record for one of the three canonical paths this case cares about --
+  # "successful" meaning the return value is a non-negative fd immediately
+  # followed by strace -y's resolved-path annotation ("<...>"), which -y
+  # only ever prints on success. This is the exact same criterion
+  # Reconcile.pkl's `successfulOpenatCount` re-checks independently against
+  # whatever ends up in `independent_trace_text` -- CIT-303's review found
+  # the previous bare substring match on both sides would accept a prose
+  # mention, a failed EACCES open, or an open of a same-named file under a
+  # different directory as if it were the real thing.
+  local success_regex='openat\(.*"(/work/dummy-canary\.txt|/work/canary\.mat|/work/control\.png)".*\) = [0-9]+<'
   local trace_text
-  trace_text="$(grep -E "dummy-canary\.txt|canary\.mat|control\.png" "$raw" || true)"
+  trace_text="$(grep -E "$success_regex" "$trace_raw" || true)"
   if [ -n "$trace_text" ]; then
     echo "$trace_text"
   else
-    echo "  (no openat of the canary/control file observed)"
+    echo "  (no successful openat of the canary/control file observed)"
   fi
 
   # Independent evidence: computed from the strace transcript and from the
@@ -52,13 +73,16 @@ run_arm() {
   # deleting or forging the trace while leaving `independent_dummy_file_
   # openat_count` untouched still passed every check (Reconcile.pkl now
   # re-derives the count from this text instead of trusting that int alone).
+  # `dummy_count` is derived from `trace_text` itself (not a separate grep
+  # over `trace_raw`) so the retained text and the convenience int can never
+  # drift apart at collection time.
   local dummy_count source_sha256
-  dummy_count="$(grep -cE 'openat\(.*"/work/dummy-canary\.txt"' "$raw" || true)"
+  dummy_count="$(grep -cF '"/work/dummy-canary.txt"' <<<"$trace_text" || true)"
   source_sha256="$(docker run --rm "$IMAGE" sha256sum "$source_path" | awk '{print $1}')"
 
   echo "== script JSON result =="
   local script_json
-  script_json="$(sed -n '/^{$/,/^}$/p' "$raw")"
+  script_json="$(cat "$stdout_raw")"
   jq --argjson dummy_count "$dummy_count" \
      --arg trace_text "$trace_text" \
      --arg source_sha256 "$source_sha256" \
@@ -74,7 +98,7 @@ run_arm() {
        independent_active_storage_variant_processor: $variant_processor
      }' <<<"$script_json" | tee "observations/${label}.json"
   echo
-  rm -f "$raw"
+  rm -f "$trace_raw" "$stdout_raw"
 }
 
 {
