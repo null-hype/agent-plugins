@@ -1,7 +1,7 @@
 ### ARM: mat-unblocked
 == strace openat evidence for the canary/control file ==
-[pid    10] openat(AT_FDCWD</app>, "/work/canary.mat", O_RDONLY|O_CLOEXEC) = 6</work/canary.mat>
-[pid    16] openat(AT_FDCWD</app>, "/work/dummy-canary.txt", O_RDONLY) = 14</work/dummy-canary.txt>
+[pid     9] openat(AT_FDCWD</app>, "/work/canary.mat", O_RDONLY|O_CLOEXEC) = 6</work/canary.mat>
+[pid    15] openat(AT_FDCWD</app>, "/work/dummy-canary.txt", O_RDONLY) = 14</work/dummy-canary.txt>
   "source_path": "/work/canary.mat",
 == script JSON result ==
 {
@@ -18,7 +18,12 @@
   "returned_byte_count": 32,
   "matches_dummy_file": true,
   "recovered_text": "\"KR2S-CANARY-CIT294-0123456789abc\"",
-  "expected_text": "\"KR2S-CANARY-CIT294-0123456789abc\""
+  "expected_text": "\"KR2S-CANARY-CIT294-0123456789abc\"",
+  "independent_dummy_file_openat_count": 1,
+  "independent_source_sha256": "f1c62ebc5fb7ab50655d505f3c30498713cdef232d3bdef585935024bd007fcc",
+  "independent_image_id": "sha256:d57333cda1248a419cbe7cc5e34e31401d48b63ebc67edb4e78b6fa75c9ab47e",
+  "independent_rails_load_defaults": "7.0",
+  "independent_active_storage_variant_processor": "vips"
 }
 
 ### ARM: mat-blocked
@@ -38,7 +43,12 @@
   "loader_error": "matload: operation is blocked",
   "variant_succeeded": false,
   "variant_error_class": "Vips::Error",
-  "variant_error": "matload: operation is blocked"
+  "variant_error": "matload: operation is blocked",
+  "independent_dummy_file_openat_count": 0,
+  "independent_source_sha256": "f1c62ebc5fb7ab50655d505f3c30498713cdef232d3bdef585935024bd007fcc",
+  "independent_image_id": "sha256:d57333cda1248a419cbe7cc5e34e31401d48b63ebc67edb4e78b6fa75c9ab47e",
+  "independent_rails_load_defaults": "7.0",
+  "independent_active_storage_variant_processor": "vips"
 }
 
 ### ARM: png-unblocked
@@ -57,7 +67,12 @@
   "loader_selected": "pngload",
   "variant_succeeded": true,
   "returned_bytes_hex": "00000000",
-  "returned_byte_count": 4
+  "returned_byte_count": 4,
+  "independent_dummy_file_openat_count": 0,
+  "independent_source_sha256": "25d910af6444dbe465a02584c6bcebdd8387e27a45190aedf0c92fea788c82ce",
+  "independent_image_id": "sha256:d57333cda1248a419cbe7cc5e34e31401d48b63ebc67edb4e78b6fa75c9ab47e",
+  "independent_rails_load_defaults": "7.0",
+  "independent_active_storage_variant_processor": "vips"
 }
 
 ### ARM: png-blocked
@@ -76,6 +91,11 @@
   "loader_selected": "pngload",
   "variant_succeeded": true,
   "returned_bytes_hex": "00000000",
-  "returned_byte_count": 4
+  "returned_byte_count": 4,
+  "independent_dummy_file_openat_count": 0,
+  "independent_source_sha256": "25d910af6444dbe465a02584c6bcebdd8387e27a45190aedf0c92fea788c82ce",
+  "independent_image_id": "sha256:d57333cda1248a419cbe7cc5e34e31401d48b63ebc67edb4e78b6fa75c9ab47e",
+  "independent_rails_load_defaults": "7.0",
+  "independent_active_storage_variant_processor": "vips"
 }
 
