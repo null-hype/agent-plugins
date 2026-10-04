@@ -54,53 +54,39 @@ jobs:
           pass-cli login
           trap 'pass-cli logout >/dev/null 2>&1 || true' EXIT
 
-          netlify_token=""
-          netlify_field=""
-          for field in NETLIFY_PERSONAL_ACCESS_TOKEN NETLIFY_AUTH_TOKEN token password; do
-            if candidate="$(pass-cli item view \
-              --vault-name infra \
-              --item-title netlify \
-              --field "$field" 2>/dev/null)" && [ -n "$candidate" ]; then
-              netlify_token="$candidate"
-              netlify_field="$field"
-              break
-            fi
-          done
+          cat > /tmp/netlify.env <<'EOF'
+          NETLIFY_PERSONAL_ACCESS_TOKEN=pass://infra/netlify/NETLIFY_PERSONAL_ACCESS_TOKEN
+          EOF
 
-          if [ -z "$netlify_token" ]; then
-            echo "Could not resolve a Netlify access token from infra/netlify." >&2
-            exit 1
-          fi
+          pass-cli run --env-file /tmp/netlify.env -- bash -euo pipefail -c '
+            export NETLIFY_AUTH_TOKEN="$NETLIFY_PERSONAL_ACCESS_TOKEN"
 
-          echo "::add-mask::$netlify_token"
-          export NETLIFY_AUTH_TOKEN="$netlify_token"
-          echo "Resolved Netlify credential from infra/netlify field: $netlify_field"
+            sites="$(curl -fsSL \
+              -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              https://api.netlify.com/api/v1/sites)"
 
-          sites="$(curl -fsSL \
-            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
-            https://api.netlify.com/api/v1/sites)"
+            site="$(printf "%s" "$sites" | jq -c --arg repo "$GITHUB_REPOSITORY" '\''
+              ([.[] | select(.custom_domain? == "null-hype.tidelands.dev")] +
+               [.[] | select(.build_settings.repo_path? == $repo)])
+              | unique_by(.id)
+              | if length == 0 then error("no Netlify site found for " + $repo)
+                else .[0]
+                end
+            '\'')"
 
-          site="$(printf '%s' "$sites" | jq -c --arg repo "$GITHUB_REPOSITORY" '
-            ([.[] | select(.custom_domain? == "null-hype.tidelands.dev")] +
-             [.[] | select(.build_settings.repo_path? == $repo)])
-            | unique_by(.id)
-            | if length == 0 then error("no Netlify site found for " + $repo)
-              else .[0]
-              end
-          ')"
+            export NETLIFY_SITE_ID="$(printf "%s" "$site" | jq -r .id)"
+            site_name="$(printf "%s" "$site" | jq -r .name)"
+            alias="storybook-pr-${PR_NUMBER}"
+            preview_url="https://${alias}--${site_name}.netlify.app"
 
-          export NETLIFY_SITE_ID="$(printf '%s' "$site" | jq -r .id)"
-          site_name="$(printf '%s' "$site" | jq -r .name)"
-          alias="storybook-pr-${PR_NUMBER}"
-          preview_url="https://${alias}--${site_name}.netlify.app"
+            echo "Deploying Storybook to existing Netlify site ${site_name} as ${alias}"
+            npx netlify deploy \
+              --alias="$alias" \
+              --dir=storybook-static \
+              --no-build
 
-          echo "Deploying Storybook to existing Netlify site ${site_name} as ${alias}"
-          npx netlify deploy \
-            --alias="$alias" \
-            --dir=storybook-static \
-            --no-build
-
-          {
-            echo "### Storybook preview"
-            echo "$preview_url"
-          } >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "### Storybook preview"
+              echo "$preview_url"
+            } >> "$GITHUB_STEP_SUMMARY"
+          '
