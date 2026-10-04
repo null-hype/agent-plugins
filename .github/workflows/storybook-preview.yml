@@ -1,0 +1,48 @@
+name: Storybook PR Preview
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tutorial-app/**'
+      - '.github/workflows/storybook-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storybook-preview-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tutorial-app/package-lock.json
+
+      - name: Build Storybook
+        working-directory: tutorial-app
+        run: |
+          npm ci
+          npm run build-storybook
+
+      - name: Deploy PR preview to Netlify
+        if: github.event_name == 'pull_request'
+        working-directory: tutorial-app
+        run: |
+          npx netlify deploy \
+            --alias="pr-${{ github.event.pull_request.number }}" \
+            --dir=storybook-static \
+            --no-build
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
