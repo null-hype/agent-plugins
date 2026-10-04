@@ -1,0 +1,13 @@
+{
+  "arm": "png",
+  "block_untrusted_env": "1",
+  "source_path": "/work/control.png",
+  "declared_content_type": "image/png",
+  "stored_content_type": "image/png",
+  "identified": true,
+  "variable": true,
+  "loader_selected": "pngload",
+  "variant_succeeded": true,
+  "returned_bytes_hex": "00000000",
+  "returned_byte_count": 4
+}

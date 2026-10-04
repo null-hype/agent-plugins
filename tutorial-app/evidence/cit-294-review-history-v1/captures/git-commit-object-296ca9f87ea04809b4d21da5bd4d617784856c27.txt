@@ -1,0 +1,44 @@
+tree 6748aff429331d167843fa5cb147bbad61025d1e
+parent 9739b539de26919f1d1bb8129df8954de40dbfcd
+author Null Hype <public.rant@pm.me> 1791082427 +0000
+committer GitHub <noreply@github.com> 1791086238 +1100
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqwc6eCRC1aQ7uu5UhlAAAFLIQAH9F7VzErKGoh+iUTXZ0h98r
+ N2RrKW2NX0D73kjkSfID0G+++YOJHCpov3PvrKrSbG0rDBjo3eMsmrznL0pRWJDx
+ QdydlecteSN7mFXSmb2bdwkwfCfU968ABGoXTjNB21cf8H/v71Tokt2C9hicoYyP
+ XhfW9wEnLUcxZhp6T4PtsdleGrk5rXTGdLmsXx6fQbmv+Hx0HbVqT8I1MXKhBbzm
+ 7kNr7l61777E+CtO7+haQhph9Zq/a69EXXp1Fd/bqnu+qsSpgiY/q9oLhtHSr3+H
+ JU72+pAj2eVm4jtn2SY8CzaXFSFwnItko54jUx4W3YbJgO31r362cY1d30XSOIn/
+ fwZmQhvwGWC1qnQEyYtasfONlcR1FmFpkiSI4Qb7z/KvrtQ/C1fDJboXw1gKZX3T
+ chMl2RCt57qcbqPx8+dva6zge38mFOK5j7riC6vPIlrH8m3fd11oNE5CJVaWoIex
+ zmcbXU1xVU+tcBiKZDKf9GscGTklKf1T41GQFHBY1FdhoBLzhLpEcXrVP3m5OT/4
+ 9RoXD3TaktRiSvVDv3JbzSDUPN3x0lzxoqeI5xIvYff1Mdx8dVFYfrpTCv3OQeue
+ qWfrhkdC8rscSctFcPvpCIDM8b3aHM8thZMcVNFubaZDD1lUJZD0eo4PyQuAZhcX
+ vEqB9JdYUrSRF9c1s0HJ
+ =crcW
+ -----END PGP SIGNATURE-----
+ 
+
+CIT-303: bind evidence to retained trace text, pin per-arm identity, add tutorial hookup
+
+Closes three gaps a follow-up review found in CIT-297's fix:
+
+1. Reconcile now re-derives the independent open count from the retained
+   per-arm trace text itself (independent_trace_text), not a derived int
+   the trace could be deleted or forged without touching.
+2. Claims now pin the expected source-file hash and runtime config for
+   every arm, not just the unblocked MAT arm, so a blocked run can no
+   longer silently exercise a different file or config than its pair.
+3. Added a non-interactive TutorialKit lesson (part-4/rails-matlab-canary)
+   that links this write-up and the retained reports/, following CIT-255's
+   precedent for labeling a recorded execution as recorded.
+
+Verified by reproducing all four of the review's named mutations (deleted
+trace, forged blocked-arm trace, mismatched source hash, mismatched
+config) in a scratch copy -- each is now flagged -- then confirming the
+restored suite passes 25 facts / 71 asserts / 4 examples and the tutorial
+site builds cleanly.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VA8fpXPX82YTYrxHFTxZzz

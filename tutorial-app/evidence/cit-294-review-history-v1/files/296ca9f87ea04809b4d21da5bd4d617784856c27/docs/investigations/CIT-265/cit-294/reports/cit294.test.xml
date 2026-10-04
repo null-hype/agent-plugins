@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cit294.test" tests="29" failures="0">
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: content type retained as declared, despite the real bytes being the MAT/HDF5 payload"></testcase>
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: matload is the loader libvips actually selected"></testcase>
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: the dummy file&apos;s exact bytes and count are recoverable from the returned variant -- not just a trusted boolean"></testcase>
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: independently (via strace, outside the Ruby process) confirmed open of the dummy file"></testcase>
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: the retained trace text itself -- not just the derived count -- actually shows the dummy file&apos;s openat, so deleting it is detectable (CIT-303)"></testcase>
+    <testcase classname="cit294.test.facts" name="blocked MAT canary: no loader ran and the *actual variant call* raised the specific block error -- a generic crash does not satisfy this"></testcase>
+    <testcase classname="cit294.test.facts" name="blocked MAT canary: no disclosure field claims a match, and no returned bytes are present at all (refusal, not a silent empty read)"></testcase>
+    <testcase classname="cit294.test.facts" name="blocked MAT canary: independently (via strace) confirmed the dummy file was never opened -- not merely that the script didn&apos;t report it"></testcase>
+    <testcase classname="cit294.test.facts" name="blocked MAT canary: the retained trace text itself contains no dummy-canary.txt openat line -- not just a zero in a separately derived count (CIT-303)"></testcase>
+    <testcase classname="cit294.test.facts" name="PNG control processes normally whether or not untrusted loaders are blocked, with byte-exact pixel data in both cases"></testcase>
+    <testcase classname="cit294.test.facts" name="all four arms ran against the identical pinned image -- the verdict is about one configuration, not a drifting rebuild"></testcase>
+    <testcase classname="cit294.test.facts" name="the runtime configuration each verdict is bound to is recorded, not assumed -- checked for every arm, not just one (CIT-303: the prior version of this fact checked only the unblocked MAT arm, so a drifted blocked-arm config would have passed unnoticed)"></testcase>
+    <testcase classname="cit294.test.facts" name="each blocked/unblocked pair uploaded the identical source file -- the blocking comparison is about the same input, not two different files that happen to both be named canary.mat/control.png (CIT-303)"></testcase>
+    <testcase classname="cit294.test.facts" name="reconciling each observation against its declared claim raises no flags"></testcase>
+    <testcase classname="cit294.test.facts" name="a claim that disagrees with reality is exactly what gets flagged"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: a generic crash does not pass as a successful block, even with the blocking env var and no loader selected"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: the right error class with an unrelated message does not pass either"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: emptying the returned bytes/count is caught even though matches_dummy_file still says true"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: corrupting the blocked PNG control&apos;s pixels is caught, independent of the MAT canary&apos;s own checks"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: zeroing the convenience int while leaving the retained trace alone is caught as a self-inconsistent observation, not as a missing read -- CIT-303 found the prior version of this control mutated only the derived count, which does not reproduce an actually deleted/falsified trace"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: inflating the convenience int while leaving the retained trace alone is caught the same way for the blocked arm"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: actually deleting the retained trace text for the unblocked MAT arm is caught -- this is the exact CIT-303 finding (deleting canary-reads.txt, not just zeroing a derived count, previously still passed every assertion)"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: forging a dummy-file openat line into the blocked arm&apos;s retained trace text is caught -- the other half of the same CIT-303 finding"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: the blocked MAT arm silently running against a different (but validly-shaped) source file is caught -- CIT-303 found the source hash was only shape-checked, never compared to a pinned value, on any arm"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: the blocked MAT arm silently running under a different Rails/variant-processor configuration is caught -- CIT-303 found the configuration fact covered only the unblocked arm, so a drifted blocked-arm config passed with empty diagnostics"></testcase>
+    <testcase classname="cit294.test.examples" name="mat-unblocked"></testcase>
+    <testcase classname="cit294.test.examples" name="mat-blocked"></testcase>
+    <testcase classname="cit294.test.examples" name="png-unblocked"></testcase>
+    <testcase classname="cit294.test.examples" name="png-blocked"></testcase>
+</testsuite>

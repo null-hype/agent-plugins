@@ -1,0 +1,43 @@
+tree 9dddc5543bc0d12d827b20099aafe9ab83627738
+parent be95c86ea1fddd8913cab7577f2405c1a2e90205
+author Null Hype <public.rant@pm.me> 1791075586 +0000
+committer GitHub <noreply@github.com> 1791086237 +1100
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqwc6eCRC1aQ7uu5UhlAAA43QQABi++5BW4ZUhErpTKm/WLw/T
+ QM6Up3DyncCVo0ERxicdA78ejfy1obL4QK8H0AXeG4LMGxALBd7Odp7t/bo1KGIo
+ lUnsivGig72nTIsvmshnxOQeHoIINyOmKEtnHMs0FpFL5jcjk4vdOhKldEswSkLq
+ dgwDNrkDm8ixWauNoFuFzpvJaddi+N2koYvIX3nMbl27KA9vp5WZOaP7y5HxgIGR
+ EtjOzNU5fQVe+dqoXUJ6rlnQl+xvcXkRpKV40e5ohCdyTD41AQ+dMre2kzzXTMvF
+ 1CIZalZwusN+bvhyHGbSEZ30mHX4X4WoFi6e4oipLgEmziXFr4jQZto91RKcgkYb
+ r3QXXHyIs2iyS7Sjsco5IK7hJy/0cesgrGEvFHtESRFUQ/fkJHRoSFdkDbRe3qmQ
+ mW2KnAmbIP3eQzjFa5djCPSQDn7DpcsnjvmmRiiGe1vGPDjH/+jVtOXAKYYD0ei8
+ TICHIbdW4/L30LSEg3rzJfP12gFMWC6geOzijdZ0vpgzY4oIqkBxULgt0kkWX61F
+ ERPdeJ3kHtHMpR/FacAMMI504Ar6wA6AypswfgDza6ctz8nUfNcRswr4jq+aVjgi
+ GaK+MnvdkFkv93xPiL42+VW6H8d6geZdHmUtQJ1XhKjVBuqV2GY2zwHihhZlbkky
+ XlM5jSdoC3r8LOCRzKHg
+ =KNiO
+ -----END PGP SIGNATURE-----
+ 
+
+CIT-294: live MATLAB/HDF5 file-read path and blocking controls
+
+Runs the real Rails -> libvips matload -> libmatio/HDF5 -> dummy file
+bytes -> returned variant chain the merged forensics fixture couldn't
+(it synthesizes its PNGs rather than invoking libvips/libmatio at all).
+Four live runs on a pinned Rails 7.0.10/libvips 8.13.0 image: unblocked
+MAT canary (byte-exact disclosure through matload), blocked MAT canary
+(refused, no disclosure), and PNG control under both blocking states.
+Declared/observed/checked Pkl records (Claims/Observation/Reconcile)
+reconcile each run's own JSON output against independently-written
+expectations, following src/noteexpand's pattern.
+
+Along the way: isolated why this needs Debian bookworm rather than
+CIT-272/277/278's bullseye (bullseye's HDF5 1.10.6 can't resolve an
+HDF5 External File List dataset through libvips' info-only matio call,
+independent of libmatio's own version); and found that image_processing's
+default thumbnail sharpen convolution mutates pixel bytes even at 1:1
+scale, which would have made byte-exact recovery unverifiable.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VA8fpXPX82YTYrxHFTxZzz
