@@ -17,31 +17,8 @@ custom:
 ---
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+import LessonCopy from '../../../../../lesson-copy/recorded-repair.md';
 
 <AcpTraceBridge client:load />
 
-The same session now asks: **would buffering the events into sequence order
-have delivered the missing update?**
-
-Select **Solve** to reveal the recorded reply. This model waits for earlier
-sequence numbers before applying later events. For the same arrival order,
-`4,2,3,1`, the checker finds both required deliveries:
-
-- Sequence 1 → user 20.
-- Sequence 2 → user 10.
-
-The result is **PASS for this case**. The previous failure remains part of the
-exchange; it evaluated a different processing model against the same events.
-
-Open the new diagnostic's evidence. The passing reply carries the same subject,
-related-evidence fields, and evaluation ID structure as the failure. A pass
-needs an explanation too.
-
-**Evidence scope:** both turns were captured in the same test-agent session.
-The checker computed the verdict before capture; this page replays it. Passing
-this case does not establish correctness for every arrival order or trustworthy
-capture of an arbitrary production agent.
-
-[Inspect the capture and reproduction instructions](https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/evidence/ghost-trace-v1).
-
-Next, the merge experiment shows why the scope of a passing check matters.
+<LessonCopy />
