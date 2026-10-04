@@ -1,0 +1,26 @@
+tree 109acf24f7d7fb6f6c0a0e406d47dadab575aa2f
+parent e69901f6cec1c61d7e27a4cf6f91fc0f7f7c165a
+author Null Hype <public.rant@pm.me> 1791075586 +0000
+committer Null Hype <public.rant@pm.me> 1791075586 +0000
+
+CIT-294: live MATLAB/HDF5 file-read path and blocking controls
+
+Runs the real Rails -> libvips matload -> libmatio/HDF5 -> dummy file
+bytes -> returned variant chain the merged forensics fixture couldn't
+(it synthesizes its PNGs rather than invoking libvips/libmatio at all).
+Four live runs on a pinned Rails 7.0.10/libvips 8.13.0 image: unblocked
+MAT canary (byte-exact disclosure through matload), blocked MAT canary
+(refused, no disclosure), and PNG control under both blocking states.
+Declared/observed/checked Pkl records (Claims/Observation/Reconcile)
+reconcile each run's own JSON output against independently-written
+expectations, following src/noteexpand's pattern.
+
+Along the way: isolated why this needs Debian bookworm rather than
+CIT-272/277/278's bullseye (bullseye's HDF5 1.10.6 can't resolve an
+HDF5 External File List dataset through libvips' info-only matio call,
+independent of libmatio's own version); and found that image_processing's
+default thumbnail sharpen convolution mutates pixel bytes even at 1:1
+scale, which would have made byte-exact recovery unverifiable.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VA8fpXPX82YTYrxHFTxZzz

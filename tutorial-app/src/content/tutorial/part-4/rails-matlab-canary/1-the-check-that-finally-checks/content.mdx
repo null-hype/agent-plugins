@@ -7,9 +7,18 @@ previews: false
 ---
 
 **A green check only describes the cases someone thought to assert.** This
-case ran the same four Docker/Rails/libvips executions through three rounds
-of review, and each round found a way the checker could still be lied to
-without the suite turning red.
+case put the same four Rails/libvips/strace arms through three reviews. Each
+review found a way the checker could still be lied to without the suite
+turning red. The first three versions of the checker each drew a review that
+found it incomplete; the fourth and last has no recorded review.
+
+**The question, as written.** The case began as an issue. Its criteria, quoted
+from the issue text as retrieved: *Run one pinned Rails/libvips/libmatio/HDF5
+configuration against three inputs/arms* — an unblocked MATLAB canary whose
+dummy file's bytes are recoverable, a blocked one that refuses the path (*A
+generic crash alone is insufficient.*), and an ordinary PNG control. This is
+historical issue text, **not a sealed declaration**: nothing was registered
+before the run, and nothing is invented here to look as if it had been.
 
 The target is a real Rails → libvips `matload` → libmatio/HDF5 chain: a
 crafted MATLAB file whose header claims one version while its storage
@@ -26,28 +35,69 @@ simulation:
 | PNG control | `1` | `pngload` | succeeds | n/a | unchanged |
 
 **Round one** built the Pkl checker against the process's own self-report:
-`loader_error`, a `matches_dummy_file` boolean, a prose-only `strace` log.
-Review found it would certify a generic crash as a successful block, accept
-corrupted or emptied returned pixels since nothing checked the raw bytes,
-and never actually read the `strace` transcript at all — deleting it, or
-forging a dummy-file read into the blocked arm, still passed every
-assertion.
+`loader_error`, a `matches_dummy_file` boolean, a prose-only `strace` log. The
+write-up called the proof done, with 8 facts passing. Review 1 found four
+problems: the checker would certify a generic crash as a successful block;
+it accepted corrupted or emptied returned pixels, since nothing checked the
+raw bytes; it never read the `strace` transcript at all, so deleting it, or
+forging a dummy-file read into the blocked arm, still passed every assertion;
+and the tutorial and retained-report step the issue asked for was missing.
 
-**Round two** fixed the byte validation and the crash-specificity, and added
-independently-computed fields: a `strace`-derived open count, source file
-hash, and live Rails config, bound into the Pkl records. But the fix's own
-negative controls mutated the *derived count*, not the retained trace text
-behind it — so in a separate check, actually deleting the trace (not just
-zeroing a number) still passed with empty diagnostics. The source hash was
-also only checked for shape, never pinned to a known value, and the config
-check covered one arm out of four.
+**Round two** fixed the byte validation and the crash-specificity, added
+independently-computed fields (a `strace`-derived open count, source file
+hash, and live Rails config, bound into the Pkl records), and retained the
+checker's output under `reports/`. Its pull request said each of the review's
+five mutations now fails the suite. Review 2 agreed about two findings — the
+byte-validation and generic-crash ones are fixed — and called the claim
+inaccurate: the fix's own negative controls mutated the *derived count*, not
+the retained trace behind it, so deleting the trace (not just zeroing a
+number) still passed with empty diagnostics. The source hash was also only
+checked for shape, never pinned to a known value, the config check covered
+one arm out of four, and there was still no tutorial page.
 
-**Round three** closed both gaps: the checker now re-derives the open count
-from the retained trace text itself on every reconciliation, so a deleted or
-forged trace changes what gets computed, not just a number sitting next to
-it. The source hash and runtime config are now pinned per arm, so a blocked
-run silently exercising a different file or a different Rails version no
-longer passes as if it tested the same thing as its unblocked counterpart.
+**Round three** embedded the retained trace text in each observation and
+re-derived the open count from it, by matching the filename as a substring;
+pinned the source hash and runtime config per arm; and added this page. Its
+pull request said deleting or forging the retained trace text *is now caught;
+it wasn't before.* Review 3 contradicted that. Its own text could not be
+retrieved, so what follows is a second-hand account, from the final commit's
+message: the check still only did a bare substring match, and nothing
+required valid trace evidence to exist for an arm whose expected open count
+was already zero. So deleting a blocked arm's whole trace, or replacing the
+real evidence with a prose mention, a failed `EACCES` open, or a same-named
+file in another directory, still passed with empty diagnostics.
+
+**The follow-up** is the final correction. A line now counts as an open only
+if it is an `openat` record naming the exact quoted path with strace's
+success annotation, and every arm's trace must show a successful open of its
+own source file, so an empty trace is no longer taken as evidence that
+nothing was read. The write-up reports 29 facts / 75 asserts / 4 examples,
+and the retained JUnit report lists 33 tests, 0 failures. **No review of this
+revision is recorded.** It was merged.
+
+**Correction to an earlier version of this page.** That version stopped at
+the third round's correction and said that, with it, *a deleted or forged
+trace changes what gets computed*. That overstated the fix: the follow-up
+shows a wholly deleted blocked-arm trace and three forms of substring forgery
+still passed after it. The page now carries the third review and the final
+correction.
+
+**What is recorded, and what is not.**
+
+- Reviews 1 and 2 made their mutations in temporary copies, and no output of
+  those runs is retained anywhere retrievable. Review 3's runs are not
+  described at all, because its text is lost. So the findings above are
+  recorded review prose, not captured executions.
+- Review 3's original text is not retrievable; its findings are second-hand.
+- The retained `reports/diagnostics.json` is an empty list for every arm in
+  every version that retains one (the second to the fourth). The checker
+  flagged nothing in the recorded data; the findings came from the reviewers'
+  mutations, not from that report.
+- Reviews 1 and 2 cite commits `20aafd2` and `8d097c8`, which are not on main;
+  main holds rebased copies, identical for the files this case concerns. The
+  round-three and follow-up commits (`296ca9f`, `cc23e89`) are known only as
+  the copies GitHub re-created when the stack was merged; the commits they
+  replaced are not recorded.
 
 [Inspect the full write-up, the Pkl records, and the retained check
 output](https://github.com/null-hype/agent-plugins/blob/main/docs/investigations/CIT-265/CIT-294.md).
@@ -55,6 +105,10 @@ The actual detector output and authoritative test result are committed
 artifacts, not narrated pass/fail counts:
 [`reports/diagnostics.json`](https://github.com/null-hype/agent-plugins/blob/main/docs/investigations/CIT-265/cit-294/reports/diagnostics.json),
 [`reports/cit294.test.xml`](https://github.com/null-hype/agent-plugins/blob/main/docs/investigations/CIT-265/cit-294/reports/cit294.test.xml).
+The four states, the three reviews and their findings, and the pinned bytes
+behind this page are in
+[the evidence bundle](https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/evidence/cit-294-review-history-v1)
+and are checked by tests.
 
 To reproduce from the repository (after building the pinned image per the
 Dockerfile's own header comment):
@@ -64,10 +118,19 @@ cd docs/investigations/CIT-265/cit-294
 ./run_arms.sh
 ```
 
-**This is a recorded transcript of one live execution**, not a rerun: the
-table above, the committed `observations/*.json`, and the two report files
-linked are artifacts of that one Rails/libvips/strace run. Reading this
-lesson replays that record; it does not execute anything itself.
+**This is a recording, not a rerun.** The four arms were re-run against the
+same pinned image as the checker changed, and the committed files are the
+latest results: the table above, the committed `observations/*.json`, and
+the two report files linked. Reading this page replays that record; it does
+not execute anything itself.
+
+**What this page is.** A static narration of a recorded history. Selecting a
+question, stepping back and forward through the reviews, and opening the exact
+evidence at its recorded revision need the shared recorded-run inspector,
+which is not built yet; see
+[the walkthrough handoff](https://github.com/null-hype/agent-plugins/blob/main/tutorial-app/docs/review-history-walkthrough.md).
+Writing a new question, suggestions, and exploring other premises or commits
+are separate, later work.
 
 **For your workflow:** when a check passes, is it because the thing it's
 checking is actually fine, or because nobody yet wrote the mutation that

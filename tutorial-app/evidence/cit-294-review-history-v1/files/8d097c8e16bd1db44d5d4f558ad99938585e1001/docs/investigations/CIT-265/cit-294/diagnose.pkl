@@ -1,0 +1,29 @@
+/// This case's actual "detector output": `Reconcile.check`'s flags for each
+/// of the four arms, keyed by arm label, run against the real
+/// `observations/*.json` and serialized as the committed, authoritative
+/// record CIT-297 asked for (noteexpand's `diagnostics.json`, from a real
+/// `noteexpand-detect` invocation, is the pattern this follows -- CIT-294
+/// has no installed detector binary, so this module *is* the detector
+/// invocation). An empty list for an arm means Reconcile found no
+/// disagreement between that arm's Claim and its Observed run.
+///
+/// Run via `run_arms.sh`, which also runs `pkl test --junit-reports` for
+/// the authoritative pass/fail record alongside this file's flags:
+///   pkl eval -f json diagnose.pkl -o reports/diagnostics.json
+module cit294.diagnose
+
+import "Claims.pkl" as Claims
+import "Reconcile.pkl" as Reconcile
+import "Observation.pkl" as Observation
+
+local function load(name: String): Observation.Observed =
+  Observation.fromJson(read("observations/\(name).json").text)
+
+output {
+  value = new Mapping<String, List<Reconcile.Flag>> {
+    ["mat-unblocked"] = Reconcile.check(Claims.matUnblocked, load("mat-unblocked"))
+    ["mat-blocked"] = Reconcile.check(Claims.matBlocked, load("mat-blocked"))
+    ["png-unblocked"] = Reconcile.check(Claims.pngUnblocked, load("png-unblocked"))
+    ["png-blocked"] = Reconcile.check(Claims.pngBlocked, load("png-blocked"))
+  }
+}
