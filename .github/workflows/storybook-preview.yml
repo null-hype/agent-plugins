@@ -40,6 +40,10 @@ jobs:
           npm ci
           npm run build-storybook
 
+      - name: Build TutorialKit
+        working-directory: tutorial-app
+        run: npm run build
+
       - name: Deploy PR preview to existing Netlify site
         id: deploy
         working-directory: tutorial-app
@@ -90,10 +94,21 @@ jobs:
               --dir=storybook-static \
               --no-build
 
+            tutorial_alias="tutorial-pr-${PR_NUMBER}"
+            tutorial_preview_url="https://${tutorial_alias}--${site_name}.netlify.app"
+            echo "Deploying TutorialKit to existing Netlify site ${site_name} as ${tutorial_alias}"
+            npx netlify deploy \
+              --alias="$tutorial_alias" \
+              --dir=dist \
+              --no-build
+
             echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
+            echo "tutorial_preview_url=$tutorial_preview_url" >> "$GITHUB_OUTPUT"
             {
               echo "### Storybook preview"
               echo "$preview_url"
+              echo "### TutorialKit preview"
+              echo "$tutorial_preview_url"
             } >> "$GITHUB_STEP_SUMMARY"
           '
 
@@ -102,6 +117,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          TUTORIAL_PREVIEW_URL: ${{ steps.deploy.outputs.tutorial_preview_url }}
         run: |
           set -euo pipefail
 
@@ -110,6 +126,8 @@ jobs:
           ### Storybook preview
 
           [Open Storybook preview](${PREVIEW_URL})
+
+          [Open TutorialKit preview](${TUTORIAL_PREVIEW_URL})
 
           Updated for \`${GITHUB_SHA::7}\`.
           EOF

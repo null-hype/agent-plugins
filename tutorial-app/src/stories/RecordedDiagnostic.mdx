@@ -1,0 +1,26 @@
+import { Controls, Markdown, Meta, Story } from '@storybook/addon-docs/blocks';
+import * as RecordedDiagnosticStories from './RecordedDiagnostic.stories';
+import diagnosticCopy from '../lesson-copy/recorded-diagnostic.md?raw';
+import repairCopy from '../lesson-copy/recorded-repair.md?raw';
+
+<Meta of={RecordedDiagnosticStories} />
+
+# Evidence: a recorded diagnostic
+
+These are the two lessons in TutorialKit's **Evidence: a recorded diagnostic**
+part, in order. In Storybook, the **solved** control shows the state reached
+by TutorialKit's **Solve** button.
+
+## 1. Where did this diagnostic come from?
+
+<Markdown>{diagnosticCopy}</Markdown>
+
+<Story of={RecordedDiagnosticStories.WhereDidThisDiagnosticComeFrom} />
+<Controls of={RecordedDiagnosticStories.WhereDidThisDiagnosticComeFrom} include={['solved']} />
+
+## 2. Check a repair against the same case
+
+<Markdown>{repairCopy}</Markdown>
+
+<Story of={RecordedDiagnosticStories.CheckARepairAgainstTheSameCase} />
+<Controls of={RecordedDiagnosticStories.CheckARepairAgainstTheSameCase} include={['solved']} />
