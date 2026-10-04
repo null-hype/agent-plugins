@@ -1,0 +1,74 @@
+---
+type: lesson
+title: Three reviews to make one boolean honest
+editor: false
+terminal: false
+previews: false
+---
+
+**A green check only describes the cases someone thought to assert.** This
+case ran the same four Docker/Rails/libvips executions through three rounds
+of review, and each round found a way the checker could still be lied to
+without the suite turning red.
+
+The target is a real Rails → libvips `matload` → libmatio/HDF5 chain: a
+crafted MATLAB file whose header claims one version while its storage
+secretly points at a dummy file, uploaded with a declared content type Rails
+never re-sniffs. A PNG control runs the same code path as a sanity check.
+Each of the four arms below is one live `docker run` under `strace`, not a
+simulation:
+
+| Arm | `VIPS_BLOCK_UNTRUSTED` | Loader | Variant | Dummy file opened | Bytes recovered |
+| --- | --- | --- | --- | --- | --- |
+| MAT canary | unset | `matload` | succeeds | **yes** | byte-exact secret |
+| MAT canary | `1` | *(refused)* | `Vips::Error: ...blocked` | **no** | — |
+| PNG control | unset | `pngload` | succeeds | n/a | unchanged |
+| PNG control | `1` | `pngload` | succeeds | n/a | unchanged |
+
+**Round one** built the Pkl checker against the process's own self-report:
+`loader_error`, a `matches_dummy_file` boolean, a prose-only `strace` log.
+Review found it would certify a generic crash as a successful block, accept
+corrupted or emptied returned pixels since nothing checked the raw bytes,
+and never actually read the `strace` transcript at all — deleting it, or
+forging a dummy-file read into the blocked arm, still passed every
+assertion.
+
+**Round two** fixed the byte validation and the crash-specificity, and added
+independently-computed fields: a `strace`-derived open count, source file
+hash, and live Rails config, bound into the Pkl records. But the fix's own
+negative controls mutated the *derived count*, not the retained trace text
+behind it — so in a separate check, actually deleting the trace (not just
+zeroing a number) still passed with empty diagnostics. The source hash was
+also only checked for shape, never pinned to a known value, and the config
+check covered one arm out of four.
+
+**Round three** closed both gaps: the checker now re-derives the open count
+from the retained trace text itself on every reconciliation, so a deleted or
+forged trace changes what gets computed, not just a number sitting next to
+it. The source hash and runtime config are now pinned per arm, so a blocked
+run silently exercising a different file or a different Rails version no
+longer passes as if it tested the same thing as its unblocked counterpart.
+
+[Inspect the full write-up, the Pkl records, and the retained check
+output](https://github.com/null-hype/agent-plugins/blob/main/docs/investigations/CIT-265/CIT-294.md).
+The actual detector output and authoritative test result are committed
+artifacts, not narrated pass/fail counts:
+[`reports/diagnostics.json`](https://github.com/null-hype/agent-plugins/blob/main/docs/investigations/CIT-265/cit-294/reports/diagnostics.json),
+[`reports/cit294.test.xml`](https://github.com/null-hype/agent-plugins/blob/main/docs/investigations/CIT-265/cit-294/reports/cit294.test.xml).
+
+To reproduce from the repository (after building the pinned image per the
+Dockerfile's own header comment):
+
+```bash
+cd docs/investigations/CIT-265/cit-294
+./run_arms.sh
+```
+
+**This is a recorded transcript of one live execution**, not a rerun: the
+table above, the committed `observations/*.json`, and the two report files
+linked are artifacts of that one Rails/libvips/strace run. Reading this
+lesson replays that record; it does not execute anything itself.
+
+**For your workflow:** when a check passes, is it because the thing it's
+checking is actually fine, or because nobody yet wrote the mutation that
+would have shown it wasn't?
