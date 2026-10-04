@@ -1,0 +1,18 @@
+.evidence-inspector { border: 1px solid #cbc5b7; border-radius: 8px; overflow: hidden; color: #292721; background: #fffdf8; font: 13px/1.45 system-ui, sans-serif; }
+.evidence-inspector header { padding: 12px 14px; border-bottom: 1px solid #ded8ca; background: #f6f1e7; }
+.evidence-inspector header strong { color: #9d241e; }
+.evidence-inspector .identity { margin-top: 4px; color: #615d53; font-size: 11px; }
+.evidence-inspector nav { display: flex; gap: 6px; padding: 8px; overflow-x: auto; border-bottom: 1px solid #ded8ca; }
+.evidence-inspector button { min-width: 180px; padding: 7px 9px; text-align: left; color: inherit; border: 1px solid #c9c3b5; border-radius: 5px; background: #fff; cursor: pointer; }
+.evidence-inspector button[aria-pressed="true"] { border-color: #3568b8; box-shadow: inset 0 0 0 1px #3568b8; background: #eef4ff; }
+.evidence-inspector button span { color: #665c43; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.evidence-inspector button small { display: block; margin-top: 3px; color: #6c675d; }
+.evidence-inspector .artifact { min-height: 190px; background: #1e1e1e; color: #d4d4d4; }
+.evidence-inspector .artifact-heading { display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px; color: #ddd6c8; border-bottom: 1px solid #414141; }
+.evidence-inspector .artifact-heading code { color: #aaa; font-size: 10px; }
+.evidence-inspector pre { margin: 0; padding: 8px 0; overflow: auto; font: 12px/1.55 "Roboto Mono", Menlo, Consolas, monospace; }
+.evidence-inspector pre span { display: block; min-height: 1.55em; padding-right: 12px; }
+.evidence-inspector pre i { display: inline-block; width: 38px; margin-right: 12px; color: #767676; text-align: right; font-style: normal; user-select: none; }
+.evidence-inspector pre .highlight { background: #493f20; box-shadow: inset 3px 0 #e0b83c; }
+.evidence-inspector .artifact p { margin: 0; padding: 18px; }
+.evidence-inspector .artifact.error { color: #ffb4ae; }
