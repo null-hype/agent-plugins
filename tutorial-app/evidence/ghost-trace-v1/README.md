@@ -54,6 +54,19 @@ copied into both lessons' `_files`/`_solution` fixtures.
   fixtures; the other four are session setup both lessons' breakpoints start
   after.
 
+- `artifact-bundle.json`, `build-artifact-bundle.mjs` -- CIT-253's compact
+  portable evidence bundle: the exact bytes of `followerMaze.ts` and
+  `wire-transcript.jsonl`, addressed by the artifact IDs, frames, paths and
+  identities `src/lib/followerMazeReplay.ts` emits (rule pinned to commit
+  `be95c86ea1fddd8913cab7577f2405c1a2e90205`, transcript as the
+  `ghost-trace-v1` capture). The transcript is declared
+  `recordFormat: "acp-wire-transcript"`: record N is its Nth non-blank line,
+  written `<direction> <json>`, and `field` locators such as
+  `result._meta.diagnostic.related[1]` address the JSON after that prefix; the
+  prefix stays in the bytes shown. Regenerate with
+  `node build-artifact-bundle.mjs`; `evidenceArtifactResolver.spec.ts` fails if
+  the bundle drifts from these files.
+
 ## Reproduce
 
 Requires Node 22.6+ (for `--experimental-strip-types`, used to run

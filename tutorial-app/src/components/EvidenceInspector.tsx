@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { EvidenceRef, RecordedEvaluation, ReplayCursor, SuppliedArtifactResolver } from '../lib/acpReplayContract';
-import { describeArtifactIdentity } from '../lib/evidenceArtifactResolver';
+import type { ArtifactRef, EvidenceRef, RecordedEvaluation, ReplayCursor, SuppliedArtifactResolver } from '../lib/acpReplayContract';
+import { describeArtifactIdentity, recordLineNumber } from '../lib/evidenceArtifactResolver';
 import './EvidenceInspector.css';
 
 type Props = {
@@ -14,6 +14,11 @@ const decoder = new TextDecoder();
 function evidenceLabel(evidence: EvidenceRef) {
   if (evidence.availability.status === 'missing') return evidence.evidenceId;
   return evidence.availability.artifact.path;
+}
+
+function describeLocation(location: ArtifactRef['location']) {
+  if (location.kind === 'record') return `record ${location.record}${location.field ? ` · ${location.field}` : ''}`;
+  return location.startLine === location.endLine ? `line ${location.startLine}` : `lines ${location.startLine}–${location.endLine}`;
 }
 
 export default function EvidenceInspector({ evaluation, resolver, cursor }: Props) {
@@ -43,7 +48,11 @@ export default function EvidenceInspector({ evaluation, resolver, cursor }: Prop
   }, [resolver, selected]);
 
   const location = selected?.availability.status === 'captured' ? selected.availability.artifact.location : undefined;
-  const highlightedLine = location?.kind === 'source-range' ? location.startLine : location?.record;
+  // A record is the Nth non-blank line, which is not necessarily physical line N.
+  const recordLine = location?.kind === 'record' ? recordLineNumber(content.text, location.record) : null;
+  const highlight = location?.kind === 'source-range'
+    ? { from: location.startLine, to: location.endLine }
+    : recordLine ? { from: recordLine, to: recordLine } : undefined;
   const lines = content.text.split('\n');
 
   return (
@@ -65,10 +74,11 @@ export default function EvidenceInspector({ evaluation, resolver, cursor }: Prop
           <div className="artifact-heading">
             <strong>{selected.availability.artifact.path}</strong>
             <code>{selected.availability.artifact.recordingId}/{selected.availability.artifact.runId} · {describeArtifactIdentity(selected.availability.artifact.identity)}</code>
+            <code>{describeLocation(selected.availability.artifact.location)}</code>
           </div>
         )}
         {content.status === 'resolved' ? (
-          <pre>{lines.map((line, index) => <span key={index} className={index + 1 === highlightedLine ? 'highlight' : ''}><i>{index + 1}</i>{line}{'\n'}</span>)}</pre>
+          <pre>{lines.map((line, index) => <span key={index} className={highlight && index + 1 >= highlight.from && index + 1 <= highlight.to ? 'highlight' : ''}><i>{index + 1}</i>{line}{'\n'}</span>)}</pre>
         ) : <p>{content.text || 'No evidence is attached to this evaluation.'}</p>}
       </div>
     </section>
