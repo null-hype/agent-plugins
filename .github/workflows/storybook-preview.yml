@@ -11,6 +11,7 @@ permissions:
   contents: read
   deployments: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: storybook-preview-${{ github.event.pull_request.number }}
