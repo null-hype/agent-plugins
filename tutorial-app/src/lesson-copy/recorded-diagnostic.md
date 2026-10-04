@@ -8,7 +8,7 @@ The evidence opens inside the editor. Under `witness/arrival-order`, the
 diagnostic records the difference:
 
 - **Expected:** user 10 receives sequence 2 (`10 <- seq 2`).
-- **Actual:** that delivery is missing (`--missing--`).
+- **Actual:** that delivery is missing (`-- missing --`).
 
 The diagnostic and its explanation stay together: you can see what failed
 without leaving the exchange.
