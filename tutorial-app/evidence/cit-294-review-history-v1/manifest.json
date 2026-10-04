@@ -1,0 +1,748 @@
+{
+  "bundleId": "cit-294-review-history-v1",
+  "repository": "https://github.com/null-hype/agent-plugins",
+  "collectedOn": "2026-10-04",
+  "collector": "tutorial-app/evidence/cit-294-review-history-v1/collect.mjs",
+  "revisions": {
+    "S1": {
+      "label": "#117 as submitted and as review 1 saw it",
+      "pr": 117,
+      "pinned": "20aafd26372a832224be824f72f4a615ee671094",
+      "reviewed": {
+        "sha": "20aafd26372a832224be824f72f4a615ee671094",
+        "author": "Null Hype",
+        "authorTime": "2026-10-04T00:59:46+00:00",
+        "committer": "Null Hype",
+        "committerTime": "2026-10-04T00:59:46+00:00",
+        "signed": false,
+        "rewrittenByGitHub": false,
+        "parent": "e69901f6cec1c61d7e27a4cf6f91fc0f7f7c165a",
+        "reachableFromMain": false
+      },
+      "merged": {
+        "sha": "390a7873ea6fd639c1c735393848e03b05031cc3",
+        "author": "Null Hype",
+        "authorTime": "2026-10-04T00:59:46+00:00",
+        "committer": "GitHub",
+        "committerTime": "2026-10-04T14:57:17+11:00",
+        "signed": true,
+        "rewrittenByGitHub": true,
+        "parent": "be95c86ea1fddd8913cab7577f2405c1a2e90205",
+        "reachableFromMain": true
+      },
+      "patchId": {
+        "reviewed": "31fe06f313d3f78ffde9a8de78132295a058d238",
+        "merged": "31fe06f313d3f78ffde9a8de78132295a058d238"
+      },
+      "treeEquality": [
+        {
+          "path": "docs/investigations/CIT-265/cit-294",
+          "kind": "tree",
+          "reviewed": "67f1115f84415958fc070e804a054220eed4c92d",
+          "merged": "67f1115f84415958fc070e804a054220eed4c92d",
+          "equal": true
+        },
+        {
+          "path": "docs/investigations/CIT-265/CIT-294.md",
+          "kind": "blob",
+          "reviewed": "3103eefd32c0416d36ee86dcf4e03a5d5f934d4f",
+          "merged": "3103eefd32c0416d36ee86dcf4e03a5d5f934d4f",
+          "equal": true
+        }
+      ],
+      "counts": {
+        "facts": 8,
+        "examples": 4
+      }
+    },
+    "S2": {
+      "label": "#118 as submitted and as review 2 saw it",
+      "pr": 118,
+      "pinned": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "reviewed": {
+        "sha": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+        "author": "Null Hype",
+        "authorTime": "2026-10-04T02:06:44+00:00",
+        "committer": "Null Hype",
+        "committerTime": "2026-10-04T02:06:44+00:00",
+        "signed": false,
+        "rewrittenByGitHub": false,
+        "parent": "20aafd26372a832224be824f72f4a615ee671094",
+        "reachableFromMain": false
+      },
+      "merged": {
+        "sha": "9739b539de26919f1d1bb8129df8954de40dbfcd",
+        "author": "Null Hype",
+        "authorTime": "2026-10-04T02:06:44+00:00",
+        "committer": "GitHub",
+        "committerTime": "2026-10-04T14:57:18+11:00",
+        "signed": true,
+        "rewrittenByGitHub": true,
+        "parent": "390a7873ea6fd639c1c735393848e03b05031cc3",
+        "reachableFromMain": true
+      },
+      "patchId": {
+        "reviewed": "f5ad7e26814b0d9fa3cbb3566ebcd477d7075851",
+        "merged": "f5ad7e26814b0d9fa3cbb3566ebcd477d7075851"
+      },
+      "treeEquality": [
+        {
+          "path": "docs/investigations/CIT-265/cit-294",
+          "kind": "tree",
+          "reviewed": "141795b281330a5e21d3bac7062164124b90fee5",
+          "merged": "141795b281330a5e21d3bac7062164124b90fee5",
+          "equal": true
+        },
+        {
+          "path": "docs/investigations/CIT-265/CIT-294.md",
+          "kind": "blob",
+          "reviewed": "cdfb20701c5d9f3cfd963764124a76aac05fd374",
+          "merged": "cdfb20701c5d9f3cfd963764124a76aac05fd374",
+          "equal": true
+        }
+      ],
+      "counts": {
+        "facts": 18,
+        "examples": 4
+      }
+    },
+    "S3": {
+      "label": "first commit of #120",
+      "pr": 120,
+      "pinned": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "commit": {
+        "sha": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+        "author": "Null Hype",
+        "authorTime": "2026-10-04T02:53:47+00:00",
+        "committer": "GitHub",
+        "committerTime": "2026-10-04T14:57:18+11:00",
+        "signed": true,
+        "rewrittenByGitHub": true,
+        "parent": "9739b539de26919f1d1bb8129df8954de40dbfcd",
+        "reachableFromMain": true
+      },
+      "originalSha": null,
+      "originalShaNote": "GitHub re-created this commit when the stack was merged (committer GitHub, signed). The commit it replaced is not recorded in any source retrieved for this bundle, so what the reviewers saw cannot be compared byte for byte. Corroboration only, not proof: the author time is the original one, and the PR #120 body (written before the rewrite) reports the same fact totals that the pinned bytes recount to.",
+      "counts": {
+        "facts": 25,
+        "examples": 4
+      }
+    },
+    "S4": {
+      "label": "head of #120 (the final follow-up)",
+      "pr": 120,
+      "pinned": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "commit": {
+        "sha": "cc23e89297855dd07b1ee477ced455ab46a94738",
+        "author": "Null Hype",
+        "authorTime": "2026-10-04T03:27:25+00:00",
+        "committer": "GitHub",
+        "committerTime": "2026-10-04T14:57:18+11:00",
+        "signed": true,
+        "rewrittenByGitHub": true,
+        "parent": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+        "reachableFromMain": true
+      },
+      "originalSha": null,
+      "originalShaNote": "GitHub re-created this commit when the stack was merged (committer GitHub, signed). The commit it replaced is not recorded in any source retrieved for this bundle, so what the reviewers saw cannot be compared byte for byte. Corroboration only, not proof: the author time is the original one, and the PR #120 body (written before the rewrite) reports the same fact totals that the pinned bytes recount to.",
+      "counts": {
+        "facts": 29,
+        "examples": 4
+      }
+    },
+    "S5": {
+      "label": "merge commit of #120 on main",
+      "pr": null,
+      "pinned": "bc97c0e62fba3e66458e6b663ef4df5da37ebc31",
+      "commit": {
+        "sha": "bc97c0e62fba3e66458e6b663ef4df5da37ebc31",
+        "author": "Null Hype",
+        "authorTime": "2026-10-04T14:57:33+11:00",
+        "committer": "GitHub",
+        "committerTime": "2026-10-04T14:57:33+11:00",
+        "signed": true,
+        "rewrittenByGitHub": true,
+        "parent": "be95c86ea1fddd8913cab7577f2405c1a2e90205",
+        "reachableFromMain": true
+      }
+    }
+  },
+  "files": [
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/CIT-294.md",
+      "blobId": "3103eefd32c0416d36ee86dcf4e03a5d5f934d4f",
+      "sha256": "b4a69cfcc861d0b15676cb25f08a30a4aaea6e7da43430ad3717406cbd553b36",
+      "bytes": 16073,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/CIT-294.md"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+      "blobId": "efee9ff22bdf347d9a55c1a4e8e79261baba85c1",
+      "sha256": "8fa51c5d1ac8be79b37ff0c5ab82e6b213ad8a828ddf7ef4f0a9fa0a75cda7b6",
+      "bytes": 2370,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/Reconcile.pkl"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/cit294.test.pkl",
+      "blobId": "b16d9f875bd4650f25fc7fb87a05f70d34f6adcb",
+      "sha256": "7f0e9eeefbbe02d4481d09156d88cb568e5b91dbcf2ff3653d628c622955902c",
+      "bytes": 2669,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/cit294.test.pkl"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/run_arms.sh",
+      "blobId": "76361b9554c5013fe356cd4bae4ac9b1f39dfdc9",
+      "sha256": "303b2482411b0f5873942fadb433a432db6614c3bc4c0230a26fb320f5fe201f",
+      "bytes": 1368,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/run_arms.sh"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
+      "blobId": "173360554c299e0d1c9b2fd834b890bb93826923",
+      "sha256": "2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad",
+      "bytes": 2671,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json",
+      "blobId": "e004ce5ba7ec3137b8e835a9108d363cbbc8da58",
+      "sha256": "b2a0d27381b1a7deb7c89dea058d8eeba8f39af33997698aba5f81c2fd31554b",
+      "bytes": 538,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-blocked.json",
+      "blobId": "cecce99462f757b6cfb6e57df8a1d7dd692cb5de",
+      "sha256": "fdbc1a9b97a69c471cbce37175c78012b188d3d50571540e773f71981088cded",
+      "bytes": 406,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/mat-blocked.json"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-unblocked.json",
+      "blobId": "5db92dbc46636a17394f27e2a32301e23e348f10",
+      "sha256": "c16d25b3b11059e0fbf642e503c62fcdb6816f74253f795871900bcce24d616f",
+      "bytes": 333,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/png-unblocked.json"
+    },
+    {
+      "state": "S1",
+      "revision": "20aafd26372a832224be824f72f4a615ee671094",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-blocked.json",
+      "blobId": "c815474d2d958c723a81392d5a2c13b09693c5c2",
+      "sha256": "632646fe737f2b46cc8786122552e5bd21fe18236e6b6ff36a72effc9c3e6918",
+      "bytes": 332,
+      "file": "files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/png-blocked.json"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+      "blobId": "8c26d8305111a7bbf6e8eb3933ae10b90be12294",
+      "sha256": "cdd35aba32ec532f4649e73a32626b8e9712c7ddb35252d8a54eb545112be289",
+      "bytes": 6702,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/Reconcile.pkl"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/cit294.test.pkl",
+      "blobId": "a0109c3cf3d379bde05940025662aca508479a28",
+      "sha256": "d8343d26b019651154af5cf8dfa86a604df28eec395f8538c43e83138904203a",
+      "bytes": 6448,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/cit294.test.pkl"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/run_arms.sh",
+      "blobId": "65f1651966d680b26785ca8ea5ac6bf8ffe35240",
+      "sha256": "abb8671fbb619134f5d5905a35807a366d8822656c08520b111ae4057bacedf9",
+      "bytes": 3475,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/run_arms.sh"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/Observation.pkl",
+      "blobId": "c3d08eb41b2e5c793c78ca0a44a89e7d9ef206c4",
+      "sha256": "d87625d002954e54959284bb54e08ded819d01838ab71c0697e9043e1ca598ac",
+      "bytes": 3247,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/Observation.pkl"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/diagnose.pkl",
+      "blobId": "2800e32d0e0cdd41b9e7c4fa4a25b69a73a089c5",
+      "sha256": "b327f59232a4eb26d308f7c6e7fac4527643b79d5beca0708a2b8c5d56d75dd6",
+      "bytes": 1421,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/diagnose.pkl"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/reports/diagnostics.json",
+      "blobId": "3dc26135eb8509161108d44a79bbfcc1638b9ada",
+      "sha256": "cdcc8fcde0c6236b74faa01a4dcc47778d445dfe2e9eb33fc0d4ab184c5d6d6e",
+      "bytes": 91,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/reports/diagnostics.json"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/reports/cit294.test.xml",
+      "blobId": "fedcfbd74a895d23448411ec9845655f8c6fa27d",
+      "sha256": "a77fdd79443888775d5ff3ecdf09e87d84ab31894161afb25f3794403669f77d",
+      "bytes": 3633,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/reports/cit294.test.xml"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
+      "blobId": "16784c3297c6b7654a681850596b652b808ed2a3",
+      "sha256": "186a4dfd7713c1c147987337c16081630125c044e03bd7294f6b5b0f1fd93ec0",
+      "bytes": 4055,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json",
+      "blobId": "fcd25a065693102a979e159e753163348a7aa31d",
+      "sha256": "1b84ba8db8aa376e505f378c6ff758f48d890f7a5b0f8a17d2a0756ebee147ac",
+      "bytes": 884,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-blocked.json",
+      "blobId": "e790ca96d151f6a4ddcb475ac1e1240168d115f1",
+      "sha256": "a061d40afde25e8042bf6c4cd9c8b23ee55b0d4dba113c0812998de1743b7234",
+      "bytes": 752,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/mat-blocked.json"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-unblocked.json",
+      "blobId": "c834d447ff8b000f9cebd1cba5cf2cacb29bf60c",
+      "sha256": "ba09aae67edc1616f78360a75cbc944a277b6cce385453a2ee282eecbeebe133",
+      "bytes": 679,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/png-unblocked.json"
+    },
+    {
+      "state": "S2",
+      "revision": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-blocked.json",
+      "blobId": "6d4e507d450ac6ff1531dd4d7e8a6fda5dfb7548",
+      "sha256": "f65bd3e6ffd6a1c5653560ba04a4b119cb82c78b71f768223a4eda2b78edb14e",
+      "bytes": 678,
+      "file": "files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/png-blocked.json"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+      "blobId": "0d211791d5624ba751ee2388148112ac9db008f2",
+      "sha256": "72137db4412e309454e1283ba89b38e9a72d2573b80c652f6c573a43da3b713d",
+      "bytes": 9270,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/Reconcile.pkl"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/cit294.test.pkl",
+      "blobId": "6040b43b34b412806973755b1f6815fdab4db272",
+      "sha256": "c3d9be45313ea047ef02c496fbd0f38e93a5931875b6b5e1b29b9a23253aa540",
+      "bytes": 9738,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/cit294.test.pkl"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/run_arms.sh",
+      "blobId": "58a6bccb1e6d2d6ff6117fc5ec82b9746b560f9a",
+      "sha256": "061620a4a9689a9213904e84e302079e711f0a441dd5de2b6b7f033c4ed202e2",
+      "bytes": 4092,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/run_arms.sh"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/Observation.pkl",
+      "blobId": "2c43ce1e88ee7b7039f0ba1da9276d23cf18d65d",
+      "sha256": "2b59f77d7133397dc7e039672a3fa812720d68296e0887fcbe29197c9af0cc0b",
+      "bytes": 4203,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/Observation.pkl"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/Claims.pkl",
+      "blobId": "02d60a9ca312977d17de236bcbb4ce5b0d0f3b90",
+      "sha256": "6bc91afc8e1d55b417ea118f2ad61ecc0da6129d317bb1bbdb213742b21c9e69",
+      "bytes": 5636,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/Claims.pkl"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/reports/diagnostics.json",
+      "blobId": "3dc26135eb8509161108d44a79bbfcc1638b9ada",
+      "sha256": "cdcc8fcde0c6236b74faa01a4dcc47778d445dfe2e9eb33fc0d4ab184c5d6d6e",
+      "bytes": 91,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/reports/diagnostics.json"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/reports/cit294.test.xml",
+      "blobId": "5c2a69eaa63660adc44a1454e4733868cbd58ce4",
+      "sha256": "80fde053bf4d439a40096cf2c2529e6c6f9973dc36fc9d96728671ee54ca51bc",
+      "bytes": 5720,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/reports/cit294.test.xml"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
+      "blobId": "ca3576d9da6d9f2d826c8b070db57af16d8980eb",
+      "sha256": "f98f4ef88ed83decac048fc7171dfeae04f6d274d83d2a80ac80dff813bf7314",
+      "bytes": 4852,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json",
+      "blobId": "57c2d262555751b48a8539ed17e769df0bb842ff",
+      "sha256": "31052d385dfbb841a2525c191fa99c4b42330f28c08160ba272d7e7ff95af07f",
+      "bytes": 1159,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-blocked.json",
+      "blobId": "eb640b1229b1d1b6af0e89e7a245fd23278c9351",
+      "sha256": "9e9033c794694d5b38c64de12e49b63c22722d931aa04704c7485d5896b209aa",
+      "bytes": 924,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/observations/mat-blocked.json"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-unblocked.json",
+      "blobId": "326180530fcae1c823ce50ec03fd416bbad756e0",
+      "sha256": "dc5e7ba17dce9ac3cb4ca7ffc1a57848656863fc1c34991cf265d4c3279642e5",
+      "bytes": 854,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/observations/png-unblocked.json"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-blocked.json",
+      "blobId": "18961210e403930cd0eae3109e04d3551d77261d",
+      "sha256": "425593340b1c8d71f317fbc3fe9d072510475b1a2c846d7fed93b84e3d06c036",
+      "bytes": 853,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/docs/investigations/CIT-265/cit-294/observations/png-blocked.json"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "tutorial-app/src/content/tutorial/part-4/rails-matlab-canary/1-the-check-that-finally-checks/content.mdx",
+      "blobId": "80eb25678fad94e4ce23423c2163776612f9c0d4",
+      "sha256": "4d582cfd24e0d294882964feb6f19f53c21d68230f1dcd0ecfb60a4d46616e21",
+      "bytes": 3846,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/tutorial-app/src/content/tutorial/part-4/rails-matlab-canary/1-the-check-that-finally-checks/content.mdx"
+    },
+    {
+      "state": "S3",
+      "revision": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "path": "tutorial-app/src/content/tutorial/part-4/rails-matlab-canary/meta.md",
+      "blobId": "3bc9147ab9c79db76ebbd324e1cb4ec330a2dcde",
+      "sha256": "a0dbb469e442e78d38f7a2b01e3829d8c8dbbb4484e8d4beefd9c0587ce52d8c",
+      "bytes": 65,
+      "file": "files/296ca9f87ea04809b4d21da5bd4d617784856c27/tutorial-app/src/content/tutorial/part-4/rails-matlab-canary/meta.md"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/CIT-294.md",
+      "blobId": "e9ff74d9d4be710fefdfa114f37d112b54143093",
+      "sha256": "6b991a948f3f3850642342aab703dab2c1c94949e7cbe59688f7b0e275c97914",
+      "bytes": 28295,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/CIT-294.md"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+      "blobId": "8571c6946f41f2d31639d9db2a3ca77047e435d4",
+      "sha256": "175206f1a3ff0559197481b9cb6e6fa10d3d82c69155b429787207ba6a5a19a2",
+      "bytes": 11514,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/Reconcile.pkl"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/cit294.test.pkl",
+      "blobId": "b57310db6946c2195fb06372b7f6b85bd143337e",
+      "sha256": "e0be1012bafda71a427395b9bdb05eddc11442886b87264f76f8c66dfcc3b773",
+      "bytes": 11576,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/cit294.test.pkl"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/run_arms.sh",
+      "blobId": "d28a83bedf405e6b9660fc80a7ff65858b1647ec",
+      "sha256": "59a3c3bbfa1f20ec4fc2e65e10db9c420b2afead5d084f2ae08caf968d36c211",
+      "bytes": 5706,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/run_arms.sh"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/reports/diagnostics.json",
+      "blobId": "3dc26135eb8509161108d44a79bbfcc1638b9ada",
+      "sha256": "cdcc8fcde0c6236b74faa01a4dcc47778d445dfe2e9eb33fc0d4ab184c5d6d6e",
+      "bytes": 91,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/reports/diagnostics.json"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/reports/cit294.test.xml",
+      "blobId": "e8a2ac955df726a84fd1d09e07921d5efe14721d",
+      "sha256": "77200ed2fe550e5ca8f005edfe6e24d92274b1c71eaf68c5c689fc49a91d4bc4",
+      "bytes": 6921,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/reports/cit294.test.xml"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
+      "blobId": "9e1d631fe1bb3b582e18cb29795e743ca037f0ec",
+      "sha256": "1e7b082242f41fd97bf06122be6b19518b5c7c3df686047c01387b016d549fa5",
+      "bytes": 4532,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json",
+      "blobId": "f39513926eefe4eeeb68591b6cecf5a959d59cf8",
+      "sha256": "052d3e7b1ea1272e61fcf52bb9e13695bef235c7eede3da3c550abffafa540af",
+      "bytes": 1117,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/observations/mat-blocked.json",
+      "blobId": "9b195169e835250ec59e6cd17f266614c8a6b315",
+      "sha256": "2b88b2aea2f675dd6f9a01cf2ad29c08cbc0816e3d1bdee7e642a46d971bb50b",
+      "bytes": 882,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/observations/mat-blocked.json"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-unblocked.json",
+      "blobId": "cfae4adb116b97008370542f2fcda2cf99c4306e",
+      "sha256": "79f76ebfadc67524d389679fd32c9dac1ea664a0287ec603a100d0beda66adb8",
+      "bytes": 811,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/observations/png-unblocked.json"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "docs/investigations/CIT-265/cit-294/observations/png-blocked.json",
+      "blobId": "c2750e527530575de5e0f1f1fcab6533da7af7a7",
+      "sha256": "f75166139c01c08c47ab79a4fcfb8ee5c6e82d03992a862905524a040253b4e8",
+      "bytes": 810,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/observations/png-blocked.json"
+    },
+    {
+      "state": "S4",
+      "revision": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "path": "tutorial-app/src/content/tutorial/part-4/rails-matlab-canary/1-the-check-that-finally-checks/content.mdx",
+      "blobId": "80eb25678fad94e4ce23423c2163776612f9c0d4",
+      "sha256": "4d582cfd24e0d294882964feb6f19f53c21d68230f1dcd0ecfb60a4d46616e21",
+      "bytes": 3846,
+      "file": "files/cc23e89297855dd07b1ee477ced455ab46a94738/tutorial-app/src/content/tutorial/part-4/rails-matlab-canary/1-the-check-that-finally-checks/content.mdx"
+    }
+  ],
+  "captures": [
+    {
+      "captureId": "linear:CIT-294:description",
+      "file": "captures/linear-CIT-294-description.md",
+      "kind": "linear-issue-description",
+      "origin": "https://linear.app/citizen6librarian6refrain4/issue/CIT-294/demonstrate-the-live-matlabhdf5-file-read-path-and-blocking",
+      "note": "Q0. Retrieved 2026-10-04, after the issue reached Done (completedAt 2026-10-04T03:57:36Z); the description may have been edited since it was created (2026-10-03T22:56:40Z) and Linear history was not consulted, so this is the text as retrieved, not proven to be the text as first written. Mentions appear as <issue>/<pull-request> tags: that is how the connector serializes them.",
+      "sha256": "9467c853625d1f2eb515bae2ae7ad2520ab718e57fafe209f5391bc3c2519e33",
+      "bytes": 5257
+    },
+    {
+      "captureId": "linear:CIT-294:comment:97e70a90",
+      "file": "captures/linear-CIT-294-comment-97e70a90.md",
+      "kind": "linear-comment",
+      "origin": "https://linear.app/citizen6librarian6refrain4/issue/CIT-294/demonstrate-the-live-matlabhdf5-file-read-path-and-blocking#comment-97e70a90",
+      "note": "Review 1, of PR #117 at 20aafd26. Comment body as retrieved; the comment was edited 54s after it was created (createdAt 01:15:37Z, updatedAt 01:16:31Z).",
+      "sha256": "2fa2c33ed8fa9468afdba02e9fb3b015e3e60508e4bf51c43d4845a7bb28e6f1",
+      "bytes": 3970
+    },
+    {
+      "captureId": "linear:CIT-297:comment:271bc302",
+      "file": "captures/linear-CIT-297-comment-271bc302.md",
+      "kind": "linear-comment",
+      "origin": "https://linear.app/citizen6librarian6refrain4/issue/CIT-297/request-changes-to-strengthen-cit-294-evidence-validation#comment-271bc302",
+      "note": "Review 2, of PR #118 at 8d097c8e. Comment body as retrieved; edited 72s after it was created (createdAt 02:16:12Z, updatedAt 02:17:24Z).",
+      "sha256": "35e42cc45a9acf12fe0a1f63ea183910328ba89fd98eff59a29d0b2ee05df35f",
+      "bytes": 3415
+    },
+    {
+      "captureId": "github:pr:117:body",
+      "file": "captures/github-pr-117-body.md",
+      "kind": "github-pr-body",
+      "origin": "https://github.com/null-hype/agent-plugins/pull/117",
+      "note": "PR body as retrieved on 2026-10-04 (state: merged).",
+      "sha256": "645dd313cd115bab8aa1a42a4c2edb9347792cc60df8a888171bcac972571c5f",
+      "bytes": 1645
+    },
+    {
+      "captureId": "github:pr:118:body",
+      "file": "captures/github-pr-118-body.md",
+      "kind": "github-pr-body",
+      "origin": "https://github.com/null-hype/agent-plugins/pull/118",
+      "note": "PR body as retrieved on 2026-10-04 (state: merged). Carries the claim review 2 contested.",
+      "sha256": "5285efd972ebfe32c1daf0d642569694592a0a2080347ff66cceed115414e061",
+      "bytes": 2823
+    },
+    {
+      "captureId": "github:pr:120:body",
+      "file": "captures/github-pr-120-body.md",
+      "kind": "github-pr-body",
+      "origin": "https://github.com/null-hype/agent-plugins/pull/120",
+      "note": "PR body as retrieved on 2026-10-04 (state: merged). Describes 296ca9f (25 facts / 71 asserts); the merged head cc23e89 has 29 / 75.",
+      "sha256": "27e9296a296e2990092435d38f7e6a67f987be77c830402c62f31a32c3394291",
+      "bytes": 2287
+    },
+    {
+      "captureId": "git:commit-object:20aafd26372a832224be824f72f4a615ee671094",
+      "file": "captures/git-commit-object-20aafd26372a832224be824f72f4a615ee671094.txt",
+      "kind": "git-commit-object",
+      "commitId": "20aafd26372a832224be824f72f4a615ee671094",
+      "origin": "git cat-file commit 20aafd26372a832224be824f72f4a615ee671094",
+      "note": "Raw commit object: tree, parents, author, committer, message. sha1(\"commit <len>\\0\" + bytes) is the commit id.",
+      "sha256": "a4c0b77264d5b8b2c8883ff268ade40a03556fc1fbee3449794391757dd50bac",
+      "bytes": 1424
+    },
+    {
+      "captureId": "git:commit-object:390a7873ea6fd639c1c735393848e03b05031cc3",
+      "file": "captures/git-commit-object-390a7873ea6fd639c1c735393848e03b05031cc3.txt",
+      "kind": "git-commit-object",
+      "commitId": "390a7873ea6fd639c1c735393848e03b05031cc3",
+      "origin": "git cat-file commit 390a7873ea6fd639c1c735393848e03b05031cc3",
+      "note": "Raw commit object: tree, parents, author, committer, message. sha1(\"commit <len>\\0\" + bytes) is the commit id.",
+      "sha256": "f4042eee719e56f22218aaf43ffe136cb1c19ba61eebf06425c72326f37352a7",
+      "bytes": 2247
+    },
+    {
+      "captureId": "git:commit-object:8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "file": "captures/git-commit-object-8d097c8e16bd1db44d5d4f558ad99938585e1001.txt",
+      "kind": "git-commit-object",
+      "commitId": "8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "origin": "git cat-file commit 8d097c8e16bd1db44d5d4f558ad99938585e1001",
+      "note": "Raw commit object: tree, parents, author, committer, message. sha1(\"commit <len>\\0\" + bytes) is the commit id.",
+      "sha256": "fc70dd18ca439038266b09afbabf72ed080389e727de2aca230dc64c28309f43",
+      "bytes": 2482
+    },
+    {
+      "captureId": "git:commit-object:9739b539de26919f1d1bb8129df8954de40dbfcd",
+      "file": "captures/git-commit-object-9739b539de26919f1d1bb8129df8954de40dbfcd.txt",
+      "kind": "git-commit-object",
+      "commitId": "9739b539de26919f1d1bb8129df8954de40dbfcd",
+      "origin": "git cat-file commit 9739b539de26919f1d1bb8129df8954de40dbfcd",
+      "note": "Raw commit object: tree, parents, author, committer, message. sha1(\"commit <len>\\0\" + bytes) is the commit id.",
+      "sha256": "b275fe863a8928665fcdd3798ebeb1e1d2dffee630cecc24cf512eba80ffc4ea",
+      "bytes": 3305
+    },
+    {
+      "captureId": "git:commit-object:296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "file": "captures/git-commit-object-296ca9f87ea04809b4d21da5bd4d617784856c27.txt",
+      "kind": "git-commit-object",
+      "commitId": "296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "origin": "git cat-file commit 296ca9f87ea04809b4d21da5bd4d617784856c27",
+      "note": "Raw commit object: tree, parents, author, committer, message. sha1(\"commit <len>\\0\" + bytes) is the commit id.",
+      "sha256": "f8d5e6b35b6854092e65fc76ae84b5b74c3f173533f0b766ac4df03fc9d669c1",
+      "bytes": 2245
+    },
+    {
+      "captureId": "git:commit-object:cc23e89297855dd07b1ee477ced455ab46a94738",
+      "file": "captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt",
+      "kind": "git-commit-object",
+      "commitId": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "origin": "git cat-file commit cc23e89297855dd07b1ee477ced455ab46a94738",
+      "note": "Raw commit object: tree, parents, author, committer, message. sha1(\"commit <len>\\0\" + bytes) is the commit id.",
+      "sha256": "c772e964528c24dd557e6cdf7ac195bd0782db0c0925468d65f6845742ea85b7",
+      "bytes": 1920
+    },
+    {
+      "captureId": "git:commit-object:bc97c0e62fba3e66458e6b663ef4df5da37ebc31",
+      "file": "captures/git-commit-object-bc97c0e62fba3e66458e6b663ef4df5da37ebc31.txt",
+      "kind": "git-commit-object",
+      "commitId": "bc97c0e62fba3e66458e6b663ef4df5da37ebc31",
+      "origin": "git cat-file commit bc97c0e62fba3e66458e6b663ef4df5da37ebc31",
+      "note": "Raw commit object: tree, parents, author, committer, message. sha1(\"commit <len>\\0\" + bytes) is the commit id.",
+      "sha256": "8738096ac6b5363b232ff29f441c0e28b47a22e05b9ced0fcbe4f09dea4fe354",
+      "bytes": 1262
+    },
+    {
+      "file": "captures/git-landing-facts.json",
+      "captureId": "git:landing-facts",
+      "kind": "git-derived-facts",
+      "origin": "git rev-list / merge-base / rev-parse run by collect.mjs",
+      "note": "Derived by collect.mjs from git objects on the collection date.",
+      "sha256": "32d929b26147f9418353b1c70d2dadb027e0a11b810710a83a22defdd082fcaf",
+      "bytes": 653
+    },
+    {
+      "file": "captures/api-landing-facts.json",
+      "captureId": "api:landing-facts",
+      "kind": "api-derived-facts",
+      "origin": "GitHub pull_request_read(get) and Linear get_issue/list_comments connector responses, CIT-306 session, 2026-10-04",
+      "note": "Copied from connector responses; not re-derivable offline.",
+      "sha256": "b9619f844997fa1d487f455c0bde89fd7494eb27ecc6fee1a69271c4adbcf5f7",
+      "bytes": 2021
+    },
+    {
+      "file": "captures/review-3-retrieval-check.json",
+      "captureId": "cit-306:review-3-retrieval-check",
+      "kind": "retrieval-check",
+      "origin": "searches made during the CIT-306 session",
+      "note": "A negative result: where the original text of review 3 was looked for and not found.",
+      "sha256": "e3dc4adc79c6b6dd20c28f9e8a3960273f427129327be2c1a3f1e89b88eaa1bd",
+      "bytes": 1445
+    }
+  ]
+}

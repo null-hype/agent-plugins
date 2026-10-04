@@ -1,0 +1,69 @@
+/// The shape of one arm's recorded observation from the live run. Two
+/// sources are merged into each `observations/<arm>.json` file by
+/// `run_arms.sh`, and the `independent_*` field prefix keeps them
+/// distinguishable:
+///
+/// - Every field *without* that prefix is `canary_runner.rb`'s own
+///   self-report (its JSON stdout) -- what the Rails/libvips process says
+///   happened.
+/// - Every `independent_*` field is computed entirely outside that process
+///   -- parsed from the `strace` transcript of the *same* invocation, plus
+///   `docker image inspect`/`sha256sum` run against the pinned image
+///   afterward -- so a tampered or missing self-report cannot also
+///   fabricate this half. Added in response to CIT-297's review: this
+///   evidence previously existed only as grepped text in canary-reads.txt,
+///   which Pkl never consumed.
+module cit294.Observation
+
+import "pkl:json"
+
+// `pkl:json`'s `toTyped()` only converts one level deep (a nested
+// class-typed property is left as `Dynamic`, confirmed empirically against
+// Pkl 0.32.1 -- see CIT-297's PR discussion), so the independent-evidence
+// fields below are flat on `Observed` with an `independent_` prefix rather
+// than a nested class, even though they come from a different source than
+// everything above them in this class.
+
+class Observed {
+  arm: String(this == "mat" || this == "png")
+  block_untrusted_env: String?
+  source_path: String(!isEmpty)
+  declared_content_type: String(!isEmpty)
+  stored_content_type: String(!isEmpty)
+  identified: Boolean
+  variable: Boolean
+  loader_selected: String?
+  loader_error: String?
+  variant_succeeded: Boolean
+  variant_error_class: String?
+  variant_error: String?
+  returned_bytes_hex: String?
+  returned_byte_count: Int?
+  matches_dummy_file: Boolean?
+  recovered_text: String?
+  expected_text: String?
+
+  /// Count of `openat(..., "/work/dummy-canary.txt", ...)` lines in this
+  /// arm's own `strace -f -e trace=openat` transcript. The only legitimate
+  /// non-zero case is the unblocked MAT canary (one open, by the libvips
+  /// worker thread, no `O_CLOEXEC`); every other arm must be 0.
+  independent_dummy_file_openat_count: Int(this >= 0)
+  /// sha256 of the file this arm actually uploaded (`canary.mat` or
+  /// `control.png`), computed inside the pinned image right before the run
+  /// -- binds the verdict to the exact bytes exercised, not just a path.
+  independent_source_sha256: String(matches(Regex("[0-9a-f]{64}")))
+  /// `docker image inspect --format '{{.Id}}'` for the image this arm ran
+  /// in. All four arms must agree (cit294.test.pkl checks this): the
+  /// verdict is about one pinned configuration, not whatever happened to be
+  /// built most recently.
+  independent_image_id: String(matches(Regex("sha256:[0-9a-f]{64}")))
+  /// `config.load_defaults` from the app's own `config/application.rb`,
+  /// read live from the image rather than transcribed by hand.
+  independent_rails_load_defaults: String(!isEmpty)
+  /// `Rails.application.config.active_storage.variant_processor`, read live
+  /// from the running app.
+  independent_active_storage_variant_processor: String(!isEmpty)
+}
+
+function fromJson(text: String): Observed =
+  new json.Parser {}.parse(text).toTyped(Observed)

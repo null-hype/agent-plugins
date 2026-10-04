@@ -1,0 +1,40 @@
+{
+  "checkedOn": "2026-10-04",
+  "subject": "original text of the third review (the review of PR #120 at 296ca9f)",
+  "found": false,
+  "checks": [
+    {
+      "where": "GitHub PR #120 reviews (pull_request_read get_reviews)",
+      "result": "[] (none)"
+    },
+    {
+      "where": "GitHub PR #120 review threads (pull_request_read get_review_comments)",
+      "result": "totalCount 0"
+    },
+    {
+      "where": "GitHub PR #120 conversation comments (pull_request_read get_comments)",
+      "result": "one comment, by netlify[bot] (deploy preview)"
+    },
+    {
+      "where": "Linear diff threads for PR #117, #118 and #120 (get_diff_threads)",
+      "result": "one thread each, by netlify[bot] (deploy preview); no drafts"
+    },
+    {
+      "where": "Linear issue CIT-303 comments (list_comments)",
+      "result": "[] (none)"
+    },
+    {
+      "where": "Linear issue CIT-297 comments (list_comments)",
+      "result": "only 271bc302 (review 2)"
+    },
+    {
+      "where": "Linear issue CIT-294 comments (list_comments)",
+      "result": "only 97e70a90 (review 1)"
+    }
+  ],
+  "secondaryAccounts": [
+    "git commit cc23e89 message (captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt)",
+    "docs/investigations/CIT-265/CIT-294.md, section \"Strengthened per the CIT-303 PR follow-up review\", at cc23e89"
+  ],
+  "notChecked": "GitHub reviews on PR #117 and #118 were not re-queried here; CIT-305 reported none."
+}
