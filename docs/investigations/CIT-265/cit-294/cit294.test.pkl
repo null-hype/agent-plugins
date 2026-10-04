@@ -141,6 +141,25 @@ facts {
     })
     flags.filter((f) -> f.kind == "runtime-config-mismatch").length == 2
   }
+  ["negative control: deleting the blocked arm's entire retained trace is caught directly -- CIT-303's follow-up review found the prior fix only ever compared *counts*, so a wholly deleted trace on an arm whose expected count is already zero (every blocked arm) was indistinguishable from a correctly-empty one"] {
+    Reconcile.check(Claims.matBlocked, (matBlocked) { independent_trace_text = "" })
+      .any((f) -> f.kind == "trace-missing-source-evidence")
+  }
+  ["negative control: a prose mention of the filename, with no actual openat() syscall record, does not count as independent evidence -- CIT-303's follow-up review found the prior substring match (`contains(\"dummy-canary.txt\")`) would accept this"] {
+    Reconcile.check(Claims.matUnblocked, (matUnblocked) {
+      independent_trace_text = "note: the dummy-canary.txt file was opened by the worker"
+    }).any((f) -> f.kind == "independent-read-mismatch")
+  }
+  ["negative control: a *failed* openat (EACCES) of the dummy file does not count as a successful read -- same follow-up finding, the other failure mode of a bare substring match"] {
+    Reconcile.check(Claims.matUnblocked, (matUnblocked) {
+      independent_trace_text = "[pid    12] openat(AT_FDCWD</app>, \"/work/dummy-canary.txt\", O_RDONLY) = -1 EACCES (Permission denied)"
+    }).any((f) -> f.kind == "independent-read-mismatch")
+  }
+  ["negative control: a successful openat of a same-named file under a *different* directory does not count as opening the dummy file -- the check must match the exact quoted path, not just the filename"] {
+    Reconcile.check(Claims.matUnblocked, (matUnblocked) {
+      independent_trace_text = "[pid    12] openat(AT_FDCWD</app>, \"/different/dummy-canary.txt\", O_RDONLY) = 14</different/dummy-canary.txt>"
+    }).any((f) -> f.kind == "independent-read-mismatch")
+  }
 }
 
 examples {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="cit294.test" tests="29" failures="0">
+<testsuite name="cit294.test" tests="33" failures="0">
     <testcase classname="cit294.test.facts" name="unblocked MAT canary: content type retained as declared, despite the real bytes being the MAT/HDF5 payload"></testcase>
     <testcase classname="cit294.test.facts" name="unblocked MAT canary: matload is the loader libvips actually selected"></testcase>
     <testcase classname="cit294.test.facts" name="unblocked MAT canary: the dummy file&apos;s exact bytes and count are recoverable from the returned variant -- not just a trusted boolean"></testcase>
@@ -25,6 +25,10 @@
     <testcase classname="cit294.test.facts" name="negative control: forging a dummy-file openat line into the blocked arm&apos;s retained trace text is caught -- the other half of the same CIT-303 finding"></testcase>
     <testcase classname="cit294.test.facts" name="negative control: the blocked MAT arm silently running against a different (but validly-shaped) source file is caught -- CIT-303 found the source hash was only shape-checked, never compared to a pinned value, on any arm"></testcase>
     <testcase classname="cit294.test.facts" name="negative control: the blocked MAT arm silently running under a different Rails/variant-processor configuration is caught -- CIT-303 found the configuration fact covered only the unblocked arm, so a drifted blocked-arm config passed with empty diagnostics"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: deleting the blocked arm&apos;s entire retained trace is caught directly -- CIT-303&apos;s follow-up review found the prior fix only ever compared *counts*, so a wholly deleted trace on an arm whose expected count is already zero (every blocked arm) was indistinguishable from a correctly-empty one"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: a prose mention of the filename, with no actual openat() syscall record, does not count as independent evidence -- CIT-303&apos;s follow-up review found the prior substring match (`contains(&quot;dummy-canary.txt&quot;)`) would accept this"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: a *failed* openat (EACCES) of the dummy file does not count as a successful read -- same follow-up finding, the other failure mode of a bare substring match"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: a successful openat of a same-named file under a *different* directory does not count as opening the dummy file -- the check must match the exact quoted path, not just the filename"></testcase>
     <testcase classname="cit294.test.examples" name="mat-unblocked"></testcase>
     <testcase classname="cit294.test.examples" name="mat-blocked"></testcase>
     <testcase classname="cit294.test.examples" name="png-unblocked"></testcase>
