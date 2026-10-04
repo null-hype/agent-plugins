@@ -6,19 +6,23 @@ on:
     paths:
       - 'tutorial-app/**'
       - '.github/workflows/storybook-preview.yml'
-  workflow_dispatch:
 
 permissions:
   contents: read
+  deployments: write
+  issues: write
 
 concurrency:
-  group: storybook-preview-${{ github.event.pull_request.number || github.ref_name }}
+  group: storybook-preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   preview:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    environment:
+      name: storybook-pr-${{ github.event.pull_request.number }}
+      url: ${{ steps.deploy.outputs.preview_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +40,7 @@ jobs:
           npm run build-storybook
 
       - name: Deploy PR preview to existing Netlify site
-        if: github.event_name == 'pull_request'
+        id: deploy
         working-directory: tutorial-app
         env:
           PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
@@ -85,8 +89,43 @@ jobs:
               --dir=storybook-static \
               --no-build
 
+            echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
             {
               echo "### Storybook preview"
               echo "$preview_url"
             } >> "$GITHUB_STEP_SUMMARY"
           '
+
+      - name: Surface preview on pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        run: |
+          set -euo pipefail
+
+          body="$(cat <<EOF
+          <!-- storybook-preview -->
+          ### Storybook preview
+
+          [Open Storybook preview](${PREVIEW_URL})
+
+          Updated for \`${GITHUB_SHA::7}\`.
+          EOF
+          )"
+
+          comment_id="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --paginate \
+            --jq '.[] | select((.body // "") | contains("<!-- storybook-preview -->")) | .id' \
+            | head -n 1)"
+
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              -f body="$body" >/dev/null
+          else
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              -f body="$body" >/dev/null
+          fi
