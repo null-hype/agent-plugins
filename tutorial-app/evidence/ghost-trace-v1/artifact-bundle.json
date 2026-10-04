@@ -1,0 +1,32 @@
+{
+  "format": "governance-evidence-bundle/v1",
+  "artifacts": [
+    {
+      "artifactId": "arrival-source-be95c86",
+      "recordingId": "ghost-trace-v1",
+      "runId": "arrival-4231",
+      "frameId": "failure",
+      "path": "fixtures/arrivals/4231.json",
+      "identity": { "kind": "revision", "revision": "be95c86" },
+      "content": "{\n  \"connected\": [10, 20],\n  \"events\": [\"4|S|20\", \"2|S|20\", \"3|U|10|20\", \"1|F|10|20\"]\n}\n"
+    },
+    {
+      "artifactId": "arrival-source-repaired",
+      "recordingId": "ghost-trace-v1",
+      "runId": "arrival-repaired",
+      "frameId": "repair-pass",
+      "path": "fixtures/arrivals/4231.json",
+      "identity": { "kind": "revision", "revision": "repaired-revision" },
+      "content": "{\n  \"connected\": [10, 20],\n  \"events\": [\"1|F|10|20\", \"2|S|20\", \"3|U|10|20\", \"4|S|20\"]\n}\n"
+    },
+    {
+      "artifactId": "failure-observation",
+      "recordingId": "ghost-trace-v1",
+      "runId": "arrival-4231",
+      "frameId": "failure",
+      "path": "evidence/ghost-trace-v1/wire-transcript.jsonl",
+      "identity": { "kind": "capture", "captureId": "ghost-trace-v1" },
+      "content": "{\"direction\":\"client->agent\",\"method\":\"session/prompt\"}\n{\"direction\":\"agent->client\",\"result\":{\"_meta\":{\"diagnostic\":{\"code\":\"fm-missing-delivery\"}}}}\n"
+    }
+  ]
+}
