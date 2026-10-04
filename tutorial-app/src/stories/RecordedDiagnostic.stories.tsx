@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useState, type ComponentProps } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import type { ComponentProps } from 'react';
+import { expect, waitFor } from 'storybook/test';
 import AcpTracePreview from './AcpTracePreview';
 import { clickInFrame, clientDocument, clientText, editorsReady, expectClientShows } from './acpTracePlay';
 import { deriveAcpTraceState, loadLesson } from './lessonFixtures';
@@ -25,39 +25,29 @@ const repair = loadLesson('part-2/chapter-1/lesson-2');
 // Smuggling docs, each preview receives its own payload so the two lessons
 // can coexist on the part's docs page without sharing a TutorialKit store.
 
-// TutorialKit's Solve/Reset controls, standing in for the lesson chrome so the
-// story can perform the "Select Solve" step the lesson copy describes. The
-// `solved` arg only sets the starting state; play() drives it from there.
-function SolveFrame({ lesson, initiallySolved }: { lesson: typeof diagnostic; initiallySolved: boolean }) {
-	const [solved, setSolved] = useState(initiallySolved);
-	useEffect(() => setSolved(initiallySolved), [initiallySolved]);
-	return (
-		<>
-			<div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-				<button type="button" onClick={() => setSolved(true)}>Solve</button>
-				<button type="button" onClick={() => setSolved(false)}>Reset</button>
-			</div>
-			<AcpTracePreview payload={deriveAcpTraceState(lesson, solved ? lesson.solved : lesson.files)} height={640} />
-		</>
-	);
-}
-
 export const WhereDidThisDiagnosticComeFrom: Story = {
 	name: 'Where did this diagnostic come from?',
-	render: ({ solved }) => <SolveFrame lesson={diagnostic} initiallySolved={solved} />,
-	play: async ({ canvasElement, step }) => {
-		const page = within(canvasElement);
+	render: ({ solved }) => (
+		<AcpTracePreview
+			payload={deriveAcpTraceState(diagnostic, solved ? diagnostic.solved : diagnostic.files)}
+			height={640}
+		/>
+	),
+	// The `solved` control is TutorialKit's Solve button: unsolved shows the
+	// pending reply, solved shows the recorded one with its evidence.
+	play: async ({ args, canvasElement, step }) => {
 		await editorsReady(canvasElement);
-		await userEvent.click(page.getByRole('button', { name: 'Reset' }));
 
-		await step('The reply is pending: the case is arrival order 4,2,3,1', async () => {
-			await expectClientShows(canvasElement, "Why didn't user 10 get the status update from arrival order 4,2,3,1?");
-			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)');
-			await expect(clientText(canvasElement)).not.toContain('fm-missing-delivery');
-		});
+		if (!args.solved) {
+			await step('The reply is pending: the case is arrival order 4,2,3,1', async () => {
+				await expectClientShows(canvasElement, "Why didn't user 10 get the status update from arrival order 4,2,3,1?");
+				await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  awaiting recorded turn (Solve replays it)');
+				await expect(clientText(canvasElement)).not.toContain('fm-missing-delivery');
+			});
+			return;
+		}
 
-		await step('Select Solve: the recorded reply appears in the Client pane', async () => {
-			await userEvent.click(page.getByRole('button', { name: 'Solve' }));
+		await step('Solved: the recorded reply appears in the Client pane', async () => {
 			await expectClientShows(canvasElement, 'agent: reply with diagnostic  ->  fm-missing-delivery');
 		});
 
