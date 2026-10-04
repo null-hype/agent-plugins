@@ -1,0 +1,8 @@
+ruby: ruby 3.1.7p261 (2025-03-26 revision 0a3704f218) [x86_64-linux]
+rails: 7.0.10
+activestorage: 7.0.10
+ruby-vips gem: 2.3.0
+libvips: vips-8.13.0-Thu Jul 21 13:59:28 UTC 2022
+Matlab load with matio: yes
+libmatio: Version: 1.5.23-2+deb12u1
+hdf5: Version: 1.10.8+repack1-1
