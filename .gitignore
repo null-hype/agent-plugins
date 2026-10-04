@@ -15,3 +15,6 @@ test-results/budget-authority/.last-run.json
 /test-results/launch/
 
 /playwright-report/launch/
+
+# CIT-306: the review-history acceptance target writes its run state here.
+/test-results/review-history/
