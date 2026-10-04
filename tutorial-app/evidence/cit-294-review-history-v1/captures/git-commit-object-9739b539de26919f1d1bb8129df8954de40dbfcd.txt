@@ -1,0 +1,64 @@
+tree 5842404abb7949d347e36edf6d291f1125a91320
+parent 390a7873ea6fd639c1c735393848e03b05031cc3
+author Null Hype <public.rant@pm.me> 1791079604 +0000
+committer GitHub <noreply@github.com> 1791086238 +1100
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqwc6eCRC1aQ7uu5UhlAAAM0cQAEqOlQYHFCxAf4V1gL+Mxzh3
+ G5J4G1VUWyJtapjLIugN08zuvEFEIyWtw7XOFjwhqSXe09U/SWdVOvCLW/NjcZ96
+ B+/fzzkqRnRWxeI+LPyrP8norMmCq7EQD/OnTQF8QvgxogVRjeDaxId4BjUSgfQY
+ P6FaAvUAC5nVW/nm2uWVGpANSti4nD2rQaMNA8LGoLnOrYcNNsN+6zGREWs7jDDT
+ 3KpUdWpCnS2CoB0F0fmrTaJsPXLoCvqDMKLV11Hvqr8f6lbODM3vM+phV1KZirnd
+ oGxu8vSy1Q3f9c6ThuicSB5OVfh0sLxrvFDBzV2a9IYD6z06efXIKLZFqqKcheZn
+ d9nS3zH3N9RsAu5DLYK86a30Kzzh76aqC+kHa+Gu3IDMAxqjx4oUn1OmprlrEuCB
+ VHSL8NDNmfVaRj2iNS54TAov67MwPoLHmEl9BQzSl4fTFayL4YaxEgmx6o1uIpKx
+ nbEDMj9+lRR99SpPZOjWSOqrxTA3QnyG/AmpSo+uIwk0qeS/lOtvse5kmzbK2u4e
+ jaagrCVY4utxoLbqbM3kaHTxRq9EOJYHpiGZHZpyr7y0+uCJT1i4rxVyOmwvgLh+
+ rnuDEJOReP9vnr/DfgoAAp6uAv45K/UMoPh/HL8MNq9t5oKpChubHBYFCyxERcER
+ y0cNsn2LKlb3777R2+YW
+ =xlfw
+ -----END PGP SIGNATURE-----
+ 
+
+CIT-297: strengthen CIT-294 evidence validation per review
+
+Fixes four gaps CIT-297's review found in the CIT-294 checker, each
+reproduced and independently re-verified fixed against the real
+observations/*.json (not just inline Pkl literals):
+
+1. The independent strace evidence never reached Pkl. Deleting the trace,
+   or forging a dummy-file read into the blocked arm, still passed all 28
+   assertions. run_arms.sh now derives independent_dummy_file_openat_count
+   (plus source/image identity and the live load_defaults/variant_processor
+   config) entirely outside canary_runner.rb's own process, merges it into
+   each arm's JSON, and Reconcile.pkl checks it against Claims.pkl's
+   independentReadExpected.
+
+2. A generic crash (e.g. RuntimeError: disk full) passed as a successful
+   block, because the check read the preliminary loader-probe's
+   loader_error instead of the actual variant call's own error.
+   Reconcile.pkl now requires the real variant_error_class/variant_error to
+   match the claimed refusal specifically.
+
+3. matches_dummy_file was trusted as a boolean with no validation of the
+   underlying bytes -- emptying the hex/count, or corrupting the blocked
+   PNG control's pixels, still passed. Reconcile.pkl now checks
+   returned_bytes_hex/returned_byte_count directly against pinned expected
+   values in Claims.pkl, plus a dedicated check that the raw bytes and the
+   self-reported boolean agree.
+
+4. No actual detector output or authoritative check result was retained --
+   only prose narrating "8 facts / 28 asserts passing". Added diagnose.pkl
+   (Reconcile.check's flags per arm, written to reports/diagnostics.json,
+   following noteexpand's diagnostics.json pattern) and wired
+   `pkl test --junit-reports` into run_arms.sh, committing the real JUnit
+   result to reports/cit294.test.xml.
+
+cit294.test.pkl gained eight negative-control facts covering the review's
+five exact mutations plus the two direct-Reconcile.check attacks it named;
+all are now flagged. Suite: 18 facts / 56 asserts / 4 examples, 100% pass,
+re-run against the same already-built, already-proven cit294:live image
+(no rebuild needed).
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VA8fpXPX82YTYrxHFTxZzz

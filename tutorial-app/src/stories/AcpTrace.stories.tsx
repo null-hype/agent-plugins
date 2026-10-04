@@ -4,6 +4,9 @@ import { expect, waitFor } from 'storybook/test';
 import AcpTracePreview from './AcpTracePreview';
 import AcpTraceBridge from '../components/AcpTraceBridge';
 import { deriveAcpTraceState, loadLesson } from './lessonFixtures';
+import RecordedRunDebuggerView from './RecordedRunDebugger';
+import { parseAcpTraceFixture } from '../lib/acpTraceProtocol';
+import { createFollowerMazeReplayRecording } from '../lib/followerMazeReplay';
 import tutorialStore, { resetTutorialStore, seedTutorialStore } from '../../.storybook/tutorialkit-store';
 
 const meta = {
@@ -18,6 +21,23 @@ type Story = StoryObj<typeof meta>;
 
 const lesson = loadLesson('part-2/chapter-1/lesson-1');
 const lesson2 = loadLesson('part-2/chapter-1/lesson-2');
+const followerMazeRecording = createFollowerMazeReplayRecording(parseAcpTraceFixture(lesson2.solved['/acp-trace.json']).frames);
+
+/** CIT-300 development surface; CIT-301 will reuse the controller in both hosts. */
+export const RecordedRunDebugger: Story = {
+	render: () => {
+		const requestedFrame = new URLSearchParams(window.location.search).get('frame') ?? 'request';
+		return <RecordedRunDebuggerView recording={followerMazeRecording} initialFrameId={requestedFrame} />;
+	},
+	play: async ({ canvasElement, step }) => {
+		const region = canvasElement.querySelector('[aria-label="Recorded run"]');
+		if (!region) throw new Error('recorded run controller did not render');
+		await step('future diagnostics are excluded at request', async () => {
+			await expect(region.textContent).toContain('Frame request of 4');
+			await expect(region.textContent).not.toContain('fm-missing-delivery');
+		});
+	},
+};
 
 const editorsReady = (canvasElement: HTMLElement) =>
 	waitFor(

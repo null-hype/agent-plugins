@@ -1,0 +1,178 @@
+/// Checks a CIT-294 Claim against its Observed run. Scoped to the four arms
+/// this case runs (unblocked/blocked MAT canary, unblocked/blocked PNG
+/// control) -- it does not generalize to other loaders or canaries.
+///
+/// Strengthened per CIT-297 review: the blocking checks now require the
+/// *actual variant's* specific error (not the preliminary loader-probe's
+/// error), the disclosure checks now validate raw byte count and hex content
+/// directly against pinned expected values (not a trusted self-reported
+/// boolean alone), and an independent-read check binds each verdict to the
+/// strace-derived evidence rather than letting Pkl ignore it.
+module cit294.Reconcile
+
+import "pkl:json"
+import "Claims.pkl" as Claims
+import "Observation.pkl" as Observation
+
+class Flag {
+  kind: String
+  detail: String
+}
+
+local function flag(code: String, detail_: String): Flag = new { kind = code; detail = detail_ }
+
+/// A line counts as a successful openat of `path` only if it's an actual
+/// `openat(...)` syscall record naming the *exact* quoted path, ending in a
+/// non-negative fd immediately followed by strace -y's resolved-path
+/// annotation (`<...>`) -- `-y` only ever prints that annotation on success,
+/// so this excludes failed opens (`= -1 EACCES (Permission denied)`) and
+/// loose textual mentions of the filename that aren't a syscall record at
+/// all. Requiring the exact quoted path (not a bare substring) also excludes
+/// an open of a same-named file under a different directory. Mirrors the
+/// parsing run_arms.sh applies when it retains this text in the first place.
+///
+/// Added per the CIT-303 follow-up review: the prior version of this
+/// function (`traceText.contains("dummy-canary.txt")`) would count a prose
+/// mention, a failed EACCES open, or an open of "/different/dummy-canary.txt"
+/// as if it were the real thing.
+local function successfulOpenatCount(traceText: String, path: String): Int =
+  traceText.split("\n").filter((line) ->
+    line.contains("openat(")
+    && line.contains("\"\(path)\"")
+    && line.contains(Regex(#"=\s*[0-9]+<"#))
+  ).length
+
+/// Independently re-derives the dummy-file open count from the *retained
+/// trace text itself*, rather than trusting observed's own
+/// `independent_dummy_file_openat_count` int. Added per CIT-303: that int
+/// could be (and, under adversarial test, was) left untouched while the
+/// retained trace was deleted or forged, so checking only the int let a
+/// falsified trace pass silently.
+local function traceOpenCount(traceText: String): Int =
+  successfulOpenatCount(traceText, "/work/dummy-canary.txt")
+
+function check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> =
+  (if (observed.arm != claim.arm)
+    List(flag("arm-mismatch", "claim is for arm \(claim.arm) but observation is for \(observed.arm)"))
+  else List())
+  + (if (observed.block_untrusted_env != claim.blockUntrustedEnv)
+    List(flag("block-env-mismatch", "expected VIPS_BLOCK_UNTRUSTED=\(claim.blockUntrustedEnv), observed \(observed.block_untrusted_env)"))
+  else List())
+  + (if (claim.contentTypeRetained && observed.stored_content_type != observed.declared_content_type)
+    List(flag("content-type-not-retained", "declared \(observed.declared_content_type) but stored \(observed.stored_content_type)"))
+  else List())
+  + (if (observed.variant_succeeded != claim.variantSucceedsExpected)
+    List(flag("variant-outcome-mismatch", "expected variant_succeeded=\(claim.variantSucceedsExpected), observed \(observed.variant_succeeded)"))
+  else List())
+  + (if (!claim.variantSucceedsExpected && observed.loader_selected != null)
+    List(flag("unexpected-loader", "expected no loader to run (blocked), but loader_selected=\(observed.loader_selected)"))
+  else if (claim.variantSucceedsExpected && observed.loader_selected != claim.loaderExpected)
+    List(flag("loader-mismatch", "expected loader \(claim.loaderExpected), observed \(observed.loader_selected)"))
+  else List())
+  // A generic crash (wrong class, or the right class with an unrelated
+  // message) must not read as a successful block -- this is the issue's
+  // explicit "a generic crash alone is insufficient" requirement, checked
+  // against the *variant's* own error fields, not the preliminary
+  // loader-probe's `loader_error`.
+  + (if (!claim.variantSucceedsExpected && claim.variantErrorClassExpected != null
+      && observed.variant_error_class != claim.variantErrorClassExpected)
+    List(flag("generic-crash-not-specific-block",
+      "expected variant_error_class=\(claim.variantErrorClassExpected), observed \(observed.variant_error_class)"))
+  else List())
+  + (if (!claim.variantSucceedsExpected && claim.variantErrorContains != null
+      && !(observed.variant_error ?? "").contains(claim.variantErrorContains))
+    List(flag("block-reason-not-confirmed",
+      "expected variant_error to mention \"\(claim.variantErrorContains)\", observed \(observed.variant_error)"))
+  else List())
+  + (if (!claim.variantSucceedsExpected && observed.returned_bytes_hex != null)
+    List(flag("unexpected-returned-bytes", "expected no bytes returned (blocked), but returned_bytes_hex is present"))
+  else List())
+  // Raw byte validation: the returned variant's bytes and count must equal
+  // the pinned expected values exactly -- not inferred from a self-reported
+  // boolean. Catches emptied/zeroed/corrupted pixel data directly.
+  + (if (claim.returnedByteCountExpected != null && observed.returned_byte_count != claim.returnedByteCountExpected)
+    List(flag("byte-count-mismatch",
+      "expected returned_byte_count=\(claim.returnedByteCountExpected), observed \(observed.returned_byte_count)"))
+  else List())
+  + (if (claim.expectedBytesHex != null && observed.returned_bytes_hex != claim.expectedBytesHex)
+    List(flag("returned-bytes-mismatch",
+      "expected returned_bytes_hex=\(claim.expectedBytesHex), observed \(observed.returned_bytes_hex)"))
+  else List())
+  // Disclosure is about the dummy-file *secret* specifically (only declared
+  // for the MAT arms); keep it a separate flag from the generic byte checks
+  // above so a PNG control's own (non-secret) pixel data is never read as
+  // "disclosure".
+  + (if (claim.discloseExpected && observed.matches_dummy_file != true)
+    List(flag("disclosure-not-observed", "expected the dummy file's bytes to come back, matches_dummy_file=\(observed.matches_dummy_file)"))
+  else if (!claim.discloseExpected && observed.matches_dummy_file == true)
+    List(flag("unexpected-disclosure", "expected no disclosure, but matches_dummy_file=true"))
+  else List())
+  // Consistency between the raw returned bytes and the derived
+  // `matches_dummy_file` self-report -- only meaningful where that field is
+  // populated at all (the MAT arms; it is absent/null for PNG). Catches a
+  // self-report that disagrees with the very bytes it's supposedly
+  // describing (e.g. matches_dummy_file=true alongside emptied hex).
+  + (if (observed.matches_dummy_file != null && claim.expectedBytesHex != null
+      && observed.matches_dummy_file != (observed.returned_bytes_hex == claim.expectedBytesHex
+        && observed.returned_byte_count == claim.returnedByteCountExpected))
+    List(flag("self-report-inconsistent",
+      "matches_dummy_file=\(observed.matches_dummy_file) disagrees with the observation's own returned_bytes_hex/returned_byte_count"))
+  else List())
+  // Independent evidence: re-derived from the *retained trace text itself*
+  // (not the bare int -- see traceOpenCount above and CIT-303), must agree
+  // with whether a read was expected. This is what actually catches a
+  // deleted or forged trace now; CIT-297's int-only version did not (the
+  // int survives untouched when only the trace is altered).
+  + (let (traceCount = traceOpenCount(observed.independent_trace_text))
+    if (claim.independentReadExpected && traceCount == 0)
+      List(flag("independent-read-mismatch",
+        "expected the retained trace evidence to show the dummy file opened, but independent_trace_text contains no matching openat line"))
+    else if (!claim.independentReadExpected && traceCount > 0)
+      List(flag("independent-read-mismatch",
+        "expected no independent evidence of the dummy file being opened, but independent_trace_text contains \(traceCount) matching openat line(s)"))
+    else List())
+  // Every arm's retained trace must show *some* valid evidence -- a
+  // successful openat of the arm's own source file -- regardless of whether
+  // the dummy file was expected to be opened. Without this, an arm whose
+  // dummy-open count is expected to be zero (every blocked arm) could have
+  // its entire trace deleted and still read as "correctly shows no read",
+  // because missing evidence and negative evidence produce the same zero.
+  // This is the other half of CIT-303's "deleting the trace still passed"
+  // finding: the independent-read check above only ever compares *counts*,
+  // so 0-expected vs. 0-observed-because-nothing-was-captured are
+  // indistinguishable to it by construction.
+  + (if (successfulOpenatCount(observed.independent_trace_text, observed.source_path) == 0)
+    List(flag("trace-missing-source-evidence",
+      "expected the retained independent_trace_text to show a successful openat of this arm's own source file (\(observed.source_path)), but found none -- an empty or deleted trace is not valid evidence of \"no read\""))
+  else List())
+  // The convenience int and the retained trace it's supposed to summarize
+  // must agree -- catches the case where one is edited without the other
+  // (e.g. the trace is deleted but the int is left at its old value, or
+  // vice versa), independent of whether either alone happens to match the
+  // claim above.
+  + (let (traceCount = traceOpenCount(observed.independent_trace_text))
+    if (traceCount != observed.independent_dummy_file_openat_count)
+      List(flag("trace-count-mismatch",
+        "retained independent_trace_text contains \(traceCount) matching openat line(s) but independent_dummy_file_openat_count=\(observed.independent_dummy_file_openat_count)"))
+    else List())
+  // Input/configuration identity: every arm (not just one) must be pinned
+  // to the same known-good source file and runtime config. Added per
+  // CIT-303 -- previously a blocked arm's source hash was only shape
+  // checked, and the load_defaults/variant_processor fact covered one arm
+  // only, so a blocked arm could silently run a different input or config
+  // than its unblocked counterpart and still pass.
+  + (if (observed.independent_source_sha256 != claim.expectedSourceSha256)
+    List(flag("source-identity-mismatch",
+      "expected independent_source_sha256=\(claim.expectedSourceSha256), observed \(observed.independent_source_sha256)"))
+  else List())
+  + (if (observed.independent_rails_load_defaults != claim.expectedRailsLoadDefaults)
+    List(flag("runtime-config-mismatch",
+      "expected independent_rails_load_defaults=\(claim.expectedRailsLoadDefaults), observed \(observed.independent_rails_load_defaults)"))
+  else List())
+  + (if (observed.independent_active_storage_variant_processor != claim.expectedVariantProcessor)
+    List(flag("runtime-config-mismatch",
+      "expected independent_active_storage_variant_processor=\(claim.expectedVariantProcessor), observed \(observed.independent_active_storage_variant_processor)"))
+  else List())
+
+function checkJson(claim: Claims.Claim, observationJson: String): List<Flag> =
+  check(claim, Observation.fromJson(observationJson))

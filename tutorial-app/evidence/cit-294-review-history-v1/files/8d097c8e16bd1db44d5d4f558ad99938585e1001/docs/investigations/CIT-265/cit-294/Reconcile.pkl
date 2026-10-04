@@ -1,0 +1,104 @@
+/// Checks a CIT-294 Claim against its Observed run. Scoped to the four arms
+/// this case runs (unblocked/blocked MAT canary, unblocked/blocked PNG
+/// control) -- it does not generalize to other loaders or canaries.
+///
+/// Strengthened per CIT-297 review: the blocking checks now require the
+/// *actual variant's* specific error (not the preliminary loader-probe's
+/// error), the disclosure checks now validate raw byte count and hex content
+/// directly against pinned expected values (not a trusted self-reported
+/// boolean alone), and an independent-read check binds each verdict to the
+/// strace-derived evidence rather than letting Pkl ignore it.
+module cit294.Reconcile
+
+import "pkl:json"
+import "Claims.pkl" as Claims
+import "Observation.pkl" as Observation
+
+class Flag {
+  kind: String
+  detail: String
+}
+
+local function flag(code: String, detail_: String): Flag = new { kind = code; detail = detail_ }
+
+function check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> =
+  (if (observed.arm != claim.arm)
+    List(flag("arm-mismatch", "claim is for arm \(claim.arm) but observation is for \(observed.arm)"))
+  else List())
+  + (if (observed.block_untrusted_env != claim.blockUntrustedEnv)
+    List(flag("block-env-mismatch", "expected VIPS_BLOCK_UNTRUSTED=\(claim.blockUntrustedEnv), observed \(observed.block_untrusted_env)"))
+  else List())
+  + (if (claim.contentTypeRetained && observed.stored_content_type != observed.declared_content_type)
+    List(flag("content-type-not-retained", "declared \(observed.declared_content_type) but stored \(observed.stored_content_type)"))
+  else List())
+  + (if (observed.variant_succeeded != claim.variantSucceedsExpected)
+    List(flag("variant-outcome-mismatch", "expected variant_succeeded=\(claim.variantSucceedsExpected), observed \(observed.variant_succeeded)"))
+  else List())
+  + (if (!claim.variantSucceedsExpected && observed.loader_selected != null)
+    List(flag("unexpected-loader", "expected no loader to run (blocked), but loader_selected=\(observed.loader_selected)"))
+  else if (claim.variantSucceedsExpected && observed.loader_selected != claim.loaderExpected)
+    List(flag("loader-mismatch", "expected loader \(claim.loaderExpected), observed \(observed.loader_selected)"))
+  else List())
+  // A generic crash (wrong class, or the right class with an unrelated
+  // message) must not read as a successful block -- this is the issue's
+  // explicit "a generic crash alone is insufficient" requirement, checked
+  // against the *variant's* own error fields, not the preliminary
+  // loader-probe's `loader_error`.
+  + (if (!claim.variantSucceedsExpected && claim.variantErrorClassExpected != null
+      && observed.variant_error_class != claim.variantErrorClassExpected)
+    List(flag("generic-crash-not-specific-block",
+      "expected variant_error_class=\(claim.variantErrorClassExpected), observed \(observed.variant_error_class)"))
+  else List())
+  + (if (!claim.variantSucceedsExpected && claim.variantErrorContains != null
+      && !(observed.variant_error ?? "").contains(claim.variantErrorContains))
+    List(flag("block-reason-not-confirmed",
+      "expected variant_error to mention \"\(claim.variantErrorContains)\", observed \(observed.variant_error)"))
+  else List())
+  + (if (!claim.variantSucceedsExpected && observed.returned_bytes_hex != null)
+    List(flag("unexpected-returned-bytes", "expected no bytes returned (blocked), but returned_bytes_hex is present"))
+  else List())
+  // Raw byte validation: the returned variant's bytes and count must equal
+  // the pinned expected values exactly -- not inferred from a self-reported
+  // boolean. Catches emptied/zeroed/corrupted pixel data directly.
+  + (if (claim.returnedByteCountExpected != null && observed.returned_byte_count != claim.returnedByteCountExpected)
+    List(flag("byte-count-mismatch",
+      "expected returned_byte_count=\(claim.returnedByteCountExpected), observed \(observed.returned_byte_count)"))
+  else List())
+  + (if (claim.expectedBytesHex != null && observed.returned_bytes_hex != claim.expectedBytesHex)
+    List(flag("returned-bytes-mismatch",
+      "expected returned_bytes_hex=\(claim.expectedBytesHex), observed \(observed.returned_bytes_hex)"))
+  else List())
+  // Disclosure is about the dummy-file *secret* specifically (only declared
+  // for the MAT arms); keep it a separate flag from the generic byte checks
+  // above so a PNG control's own (non-secret) pixel data is never read as
+  // "disclosure".
+  + (if (claim.discloseExpected && observed.matches_dummy_file != true)
+    List(flag("disclosure-not-observed", "expected the dummy file's bytes to come back, matches_dummy_file=\(observed.matches_dummy_file)"))
+  else if (!claim.discloseExpected && observed.matches_dummy_file == true)
+    List(flag("unexpected-disclosure", "expected no disclosure, but matches_dummy_file=true"))
+  else List())
+  // Consistency between the raw returned bytes and the derived
+  // `matches_dummy_file` self-report -- only meaningful where that field is
+  // populated at all (the MAT arms; it is absent/null for PNG). Catches a
+  // self-report that disagrees with the very bytes it's supposedly
+  // describing (e.g. matches_dummy_file=true alongside emptied hex).
+  + (if (observed.matches_dummy_file != null && claim.expectedBytesHex != null
+      && observed.matches_dummy_file != (observed.returned_bytes_hex == claim.expectedBytesHex
+        && observed.returned_byte_count == claim.returnedByteCountExpected))
+    List(flag("self-report-inconsistent",
+      "matches_dummy_file=\(observed.matches_dummy_file) disagrees with the observation's own returned_bytes_hex/returned_byte_count"))
+  else List())
+  // Independent evidence: the strace-derived open count, computed outside
+  // the Ruby process, must agree with whether a read was expected. This is
+  // the field CIT-297 added specifically so a deleted or falsified trace
+  // can no longer pass silently (previously nothing in Pkl consumed it).
+  + (if (claim.independentReadExpected && observed.independent_dummy_file_openat_count == 0)
+    List(flag("independent-read-mismatch",
+      "expected the independent strace evidence to show the dummy file opened, but independent_dummy_file_openat_count=0"))
+  else if (!claim.independentReadExpected && observed.independent_dummy_file_openat_count > 0)
+    List(flag("independent-read-mismatch",
+      "expected no independent evidence of the dummy file being opened, but independent_dummy_file_openat_count=\(observed.independent_dummy_file_openat_count)"))
+  else List())
+
+function checkJson(claim: Claims.Claim, observationJson: String): List<Flag> =
+  check(claim, Observation.fromJson(observationJson))
