@@ -21,22 +21,45 @@ facts {
   ["unblocked MAT canary: matload is the loader libvips actually selected"] {
     matUnblocked.loader_selected == "matload"
   }
-  ["unblocked MAT canary: the dummy file's bytes are recoverable from the returned variant"] {
+  ["unblocked MAT canary: the dummy file's exact bytes and count are recoverable from the returned variant -- not just a trusted boolean"] {
+    matUnblocked.returned_byte_count == 32
+    matUnblocked.returned_bytes_hex == "4b5232532d43414e4152592d4349543239342d30313233343536373839616263"
     matUnblocked.matches_dummy_file == true
   }
-  ["blocked MAT canary: no loader ran and the variant was refused, not merely slow or truncated"] {
+  ["unblocked MAT canary: independently (via strace, outside the Ruby process) confirmed open of the dummy file"] {
+    matUnblocked.independent_dummy_file_openat_count > 0
+  }
+  ["blocked MAT canary: no loader ran and the *actual variant call* raised the specific block error -- a generic crash does not satisfy this"] {
     matBlocked.loader_selected == null
     matBlocked.variant_succeeded == false
-    (matBlocked.loader_error ?? "").contains("blocked")
+    matBlocked.variant_error_class == "Vips::Error"
+    (matBlocked.variant_error ?? "").contains("blocked")
   }
-  ["blocked MAT canary: no disclosure field claims a match (refusal, not a silent empty read)"] {
+  ["blocked MAT canary: no disclosure field claims a match, and no returned bytes are present at all (refusal, not a silent empty read)"] {
     matBlocked.matches_dummy_file != true
+    matBlocked.returned_bytes_hex == null
   }
-  ["PNG control processes normally whether or not untrusted loaders are blocked"] {
+  ["blocked MAT canary: independently (via strace) confirmed the dummy file was never opened -- not merely that the script didn't report it"] {
+    matBlocked.independent_dummy_file_openat_count == 0
+  }
+  ["PNG control processes normally whether or not untrusted loaders are blocked, with byte-exact pixel data in both cases"] {
     pngUnblocked.variant_succeeded == true
     pngBlocked.variant_succeeded == true
     pngUnblocked.loader_selected == "pngload"
     pngBlocked.loader_selected == "pngload"
+    pngUnblocked.returned_bytes_hex == "00000000"
+    pngBlocked.returned_bytes_hex == "00000000"
+    pngUnblocked.independent_dummy_file_openat_count == 0
+    pngBlocked.independent_dummy_file_openat_count == 0
+  }
+  ["all four arms ran against the identical pinned image -- the verdict is about one configuration, not a drifting rebuild"] {
+    matUnblocked.independent_image_id == matBlocked.independent_image_id
+    matBlocked.independent_image_id == pngUnblocked.independent_image_id
+    pngUnblocked.independent_image_id == pngBlocked.independent_image_id
+  }
+  ["the runtime configuration each verdict is bound to is recorded, not assumed"] {
+    matUnblocked.independent_rails_load_defaults == "7.0"
+    matUnblocked.independent_active_storage_variant_processor == "vips"
   }
   ["reconciling each observation against its declared claim raises no flags"] {
     Reconcile.check(Claims.matUnblocked, matUnblocked).isEmpty
@@ -50,11 +73,41 @@ facts {
     Reconcile.check((Claims.matBlocked) { variantSucceedsExpected = true }, matBlocked)
       .any((f) -> f.kind == "variant-outcome-mismatch")
   }
+  ["negative control: a generic crash does not pass as a successful block, even with the blocking env var and no loader selected"] {
+    Reconcile.check(Claims.matBlocked, (matBlocked) {
+      variant_error_class = "RuntimeError"
+      variant_error = "disk full"
+    }).any((f) -> f.kind == "generic-crash-not-specific-block")
+  }
+  ["negative control: the right error class with an unrelated message does not pass either"] {
+    Reconcile.check(Claims.matBlocked, (matBlocked) {
+      variant_error = "jpegload: unsupported colour profile"
+    }).any((f) -> f.kind == "block-reason-not-confirmed")
+  }
+  ["negative control: emptying the returned bytes/count is caught even though matches_dummy_file still says true"] {
+    local tampered = (matUnblocked) { returned_bytes_hex = ""; returned_byte_count = 0 }
+    local flags = Reconcile.check(Claims.matUnblocked, tampered)
+    flags.any((f) -> f.kind == "byte-count-mismatch")
+    flags.any((f) -> f.kind == "returned-bytes-mismatch")
+    flags.any((f) -> f.kind == "self-report-inconsistent")
+  }
+  ["negative control: corrupting the blocked PNG control's pixels is caught, independent of the MAT canary's own checks"] {
+    Reconcile.check(Claims.pngBlocked, (pngBlocked) { returned_bytes_hex = "ffffffff" })
+      .any((f) -> f.kind == "returned-bytes-mismatch")
+  }
+  ["negative control: a deleted/zeroed independent trace for the unblocked MAT arm is caught -- this is the exact CIT-297 finding (an empty or falsified strace trace previously still passed all 28 assertions)"] {
+    Reconcile.check(Claims.matUnblocked, (matUnblocked) { independent_dummy_file_openat_count = 0 })
+      .any((f) -> f.kind == "independent-read-mismatch")
+  }
+  ["negative control: a trace falsely reporting a dummy-file read during the blocked arm is caught -- the other half of the same CIT-297 finding"] {
+    Reconcile.check(Claims.matBlocked, (matBlocked) { independent_dummy_file_openat_count = 1 })
+      .any((f) -> f.kind == "independent-read-mismatch")
+  }
 }
 
 examples {
-  ["mat-unblocked"] { matUnblocked.loader_selected; matUnblocked.matches_dummy_file; matUnblocked.recovered_text }
-  ["mat-blocked"] { matBlocked.loader_selected; matBlocked.variant_succeeded; matBlocked.loader_error }
-  ["png-unblocked"] { pngUnblocked.loader_selected; pngUnblocked.variant_succeeded }
-  ["png-blocked"] { pngBlocked.loader_selected; pngBlocked.variant_succeeded }
+  ["mat-unblocked"] { matUnblocked.loader_selected; matUnblocked.matches_dummy_file; matUnblocked.recovered_text; matUnblocked.independent_dummy_file_openat_count }
+  ["mat-blocked"] { matBlocked.loader_selected; matBlocked.variant_succeeded; matBlocked.variant_error_class; matBlocked.variant_error; matBlocked.independent_dummy_file_openat_count }
+  ["png-unblocked"] { pngUnblocked.loader_selected; pngUnblocked.variant_succeeded; pngUnblocked.returned_bytes_hex }
+  ["png-blocked"] { pngBlocked.loader_selected; pngBlocked.variant_succeeded; pngBlocked.returned_bytes_hex }
 }

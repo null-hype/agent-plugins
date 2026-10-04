@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cit294.test" tests="22" failures="0">
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: content type retained as declared, despite the real bytes being the MAT/HDF5 payload"></testcase>
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: matload is the loader libvips actually selected"></testcase>
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: the dummy file&apos;s exact bytes and count are recoverable from the returned variant -- not just a trusted boolean"></testcase>
+    <testcase classname="cit294.test.facts" name="unblocked MAT canary: independently (via strace, outside the Ruby process) confirmed open of the dummy file"></testcase>
+    <testcase classname="cit294.test.facts" name="blocked MAT canary: no loader ran and the *actual variant call* raised the specific block error -- a generic crash does not satisfy this"></testcase>
+    <testcase classname="cit294.test.facts" name="blocked MAT canary: no disclosure field claims a match, and no returned bytes are present at all (refusal, not a silent empty read)"></testcase>
+    <testcase classname="cit294.test.facts" name="blocked MAT canary: independently (via strace) confirmed the dummy file was never opened -- not merely that the script didn&apos;t report it"></testcase>
+    <testcase classname="cit294.test.facts" name="PNG control processes normally whether or not untrusted loaders are blocked, with byte-exact pixel data in both cases"></testcase>
+    <testcase classname="cit294.test.facts" name="all four arms ran against the identical pinned image -- the verdict is about one configuration, not a drifting rebuild"></testcase>
+    <testcase classname="cit294.test.facts" name="the runtime configuration each verdict is bound to is recorded, not assumed"></testcase>
+    <testcase classname="cit294.test.facts" name="reconciling each observation against its declared claim raises no flags"></testcase>
+    <testcase classname="cit294.test.facts" name="a claim that disagrees with reality is exactly what gets flagged"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: a generic crash does not pass as a successful block, even with the blocking env var and no loader selected"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: the right error class with an unrelated message does not pass either"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: emptying the returned bytes/count is caught even though matches_dummy_file still says true"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: corrupting the blocked PNG control&apos;s pixels is caught, independent of the MAT canary&apos;s own checks"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: a deleted/zeroed independent trace for the unblocked MAT arm is caught -- this is the exact CIT-297 finding (an empty or falsified strace trace previously still passed all 28 assertions)"></testcase>
+    <testcase classname="cit294.test.facts" name="negative control: a trace falsely reporting a dummy-file read during the blocked arm is caught -- the other half of the same CIT-297 finding"></testcase>
+    <testcase classname="cit294.test.examples" name="mat-unblocked"></testcase>
+    <testcase classname="cit294.test.examples" name="mat-blocked"></testcase>
+    <testcase classname="cit294.test.examples" name="png-unblocked"></testcase>
+    <testcase classname="cit294.test.examples" name="png-blocked"></testcase>
+</testsuite>
