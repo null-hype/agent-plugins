@@ -35,14 +35,58 @@ jobs:
           npm ci
           npm run build-storybook
 
-      - name: Deploy PR preview to Netlify
+      - name: Deploy PR preview to existing Netlify site
         if: github.event_name == 'pull_request'
         working-directory: tutorial-app
-        run: |
-          npx netlify deploy \
-            --alias="pr-${{ github.event.pull_request.number }}" \
-            --dir=storybook-static \
-            --no-build
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+          PROTON_PASS_KEY_PROVIDER: fs
+          PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
+          PROTON_PASS_AGENT_REASON: "GitHub Actions Storybook PR preview: resolve Netlify deployment credentials"
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if ! command -v pass-cli >/dev/null 2>&1; then
+            curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          fi
+
+          pass-cli login
+          cat > /tmp/netlify.env <<'EOF'
+          NETLIFY_PERSONAL_ACCESS_TOKEN=pass://Test/netlify.env/NETLIFY_PERSONAL_ACCESS_TOKEN
+          EOF
+
+          pass-cli run --env-file /tmp/netlify.env -- bash -euo pipefail -c '
+            export NETLIFY_AUTH_TOKEN="$NETLIFY_PERSONAL_ACCESS_TOKEN"
+
+            sites="$(curl -fsSL \
+              -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              https://api.netlify.com/api/v1/sites)"
+
+            site="$(printf "%s" "$sites" | jq -c --arg repo "$GITHUB_REPOSITORY" '\''
+              ([.[] | select(.custom_domain? == "null-hype.tidelands.dev")] +
+               [.[] | select(.build_settings.repo_path? == $repo)])
+              | unique_by(.id)
+              | if length == 0 then error("no Netlify site found for " + $repo)
+                else .[0]
+                end
+            '\'')"
+
+            export NETLIFY_SITE_ID="$(printf "%s" "$site" | jq -r .id)"
+            site_name="$(printf "%s" "$site" | jq -r .name)"
+            alias="storybook-pr-${PR_NUMBER}"
+            preview_url="https://${alias}--${site_name}.netlify.app"
+
+            echo "Deploying Storybook to existing Netlify site ${site_name} as ${alias}"
+            npx netlify deploy \
+              --alias="$alias" \
+              --dir=storybook-static \
+              --no-build
+
+            {
+              echo "### Storybook preview"
+              echo "$preview_url"
+            } >> "$GITHUB_STEP_SUMMARY"
+          '
+
+          pass-cli logout || true
