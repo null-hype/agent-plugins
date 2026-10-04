@@ -21,6 +21,15 @@ class Flag {
 
 local function flag(code: String, detail_: String): Flag = new { kind = code; detail = detail_ }
 
+/// Independently re-derives the dummy-file open count from the *retained
+/// trace text itself*, rather than trusting observed's own
+/// `independent_dummy_file_openat_count` int. Added per CIT-303: that int
+/// could be (and, under adversarial test, was) left untouched while the
+/// retained trace was deleted or forged, so checking only the int let a
+/// falsified trace pass silently.
+local function traceOpenCount(traceText: String): Int =
+  traceText.split("\n").filter((line) -> line.contains("dummy-canary.txt")).length
+
 function check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> =
   (if (observed.arm != claim.arm)
     List(flag("arm-mismatch", "claim is for arm \(claim.arm) but observation is for \(observed.arm)"))
@@ -88,16 +97,46 @@ function check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> 
     List(flag("self-report-inconsistent",
       "matches_dummy_file=\(observed.matches_dummy_file) disagrees with the observation's own returned_bytes_hex/returned_byte_count"))
   else List())
-  // Independent evidence: the strace-derived open count, computed outside
-  // the Ruby process, must agree with whether a read was expected. This is
-  // the field CIT-297 added specifically so a deleted or falsified trace
-  // can no longer pass silently (previously nothing in Pkl consumed it).
-  + (if (claim.independentReadExpected && observed.independent_dummy_file_openat_count == 0)
-    List(flag("independent-read-mismatch",
-      "expected the independent strace evidence to show the dummy file opened, but independent_dummy_file_openat_count=0"))
-  else if (!claim.independentReadExpected && observed.independent_dummy_file_openat_count > 0)
-    List(flag("independent-read-mismatch",
-      "expected no independent evidence of the dummy file being opened, but independent_dummy_file_openat_count=\(observed.independent_dummy_file_openat_count)"))
+  // Independent evidence: re-derived from the *retained trace text itself*
+  // (not the bare int -- see traceOpenCount above and CIT-303), must agree
+  // with whether a read was expected. This is what actually catches a
+  // deleted or forged trace now; CIT-297's int-only version did not (the
+  // int survives untouched when only the trace is altered).
+  + (let (traceCount = traceOpenCount(observed.independent_trace_text))
+    if (claim.independentReadExpected && traceCount == 0)
+      List(flag("independent-read-mismatch",
+        "expected the retained trace evidence to show the dummy file opened, but independent_trace_text contains no matching openat line"))
+    else if (!claim.independentReadExpected && traceCount > 0)
+      List(flag("independent-read-mismatch",
+        "expected no independent evidence of the dummy file being opened, but independent_trace_text contains \(traceCount) matching openat line(s)"))
+    else List())
+  // The convenience int and the retained trace it's supposed to summarize
+  // must agree -- catches the case where one is edited without the other
+  // (e.g. the trace is deleted but the int is left at its old value, or
+  // vice versa), independent of whether either alone happens to match the
+  // claim above.
+  + (let (traceCount = traceOpenCount(observed.independent_trace_text))
+    if (traceCount != observed.independent_dummy_file_openat_count)
+      List(flag("trace-count-mismatch",
+        "retained independent_trace_text contains \(traceCount) matching openat line(s) but independent_dummy_file_openat_count=\(observed.independent_dummy_file_openat_count)"))
+    else List())
+  // Input/configuration identity: every arm (not just one) must be pinned
+  // to the same known-good source file and runtime config. Added per
+  // CIT-303 -- previously a blocked arm's source hash was only shape
+  // checked, and the load_defaults/variant_processor fact covered one arm
+  // only, so a blocked arm could silently run a different input or config
+  // than its unblocked counterpart and still pass.
+  + (if (observed.independent_source_sha256 != claim.expectedSourceSha256)
+    List(flag("source-identity-mismatch",
+      "expected independent_source_sha256=\(claim.expectedSourceSha256), observed \(observed.independent_source_sha256)"))
+  else List())
+  + (if (observed.independent_rails_load_defaults != claim.expectedRailsLoadDefaults)
+    List(flag("runtime-config-mismatch",
+      "expected independent_rails_load_defaults=\(claim.expectedRailsLoadDefaults), observed \(observed.independent_rails_load_defaults)"))
+  else List())
+  + (if (observed.independent_active_storage_variant_processor != claim.expectedVariantProcessor)
+    List(flag("runtime-config-mismatch",
+      "expected independent_active_storage_variant_processor=\(claim.expectedVariantProcessor), observed \(observed.independent_active_storage_variant_processor)"))
   else List())
 
 function checkJson(claim: Claims.Claim, observationJson: String): List<Flag> =

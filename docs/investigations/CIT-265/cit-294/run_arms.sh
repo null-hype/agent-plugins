@@ -35,13 +35,23 @@ run_arm() {
   docker run --rm "${envs[@]}" "$IMAGE" \
     strace -f -e trace=openat -y bin/rails runner /work/canary_runner.rb \
     > "$raw" 2>&1
-  grep -E "dummy-canary\.txt|canary\.mat|control\.png" "$raw" \
-    || echo "  (no openat of the canary/control file observed)"
+  local trace_text
+  trace_text="$(grep -E "dummy-canary\.txt|canary\.mat|control\.png" "$raw" || true)"
+  if [ -n "$trace_text" ]; then
+    echo "$trace_text"
+  else
+    echo "  (no openat of the canary/control file observed)"
+  fi
 
   # Independent evidence: computed from the strace transcript and from the
   # pinned image directly -- nothing here comes from canary_runner.rb's own
   # stdout, so a tampered or absent self-report can't also fake this half
-  # (CIT-297).
+  # (CIT-297). `independent_trace_text` retains the filtered trace itself,
+  # per-arm, inside the committed observation -- not just the combined,
+  # unconsumed canary-reads.txt log -- because CIT-303's review showed that
+  # deleting or forging the trace while leaving `independent_dummy_file_
+  # openat_count` untouched still passed every check (Reconcile.pkl now
+  # re-derives the count from this text instead of trusting that int alone).
   local dummy_count source_sha256
   dummy_count="$(grep -cE 'openat\(.*"/work/dummy-canary\.txt"' "$raw" || true)"
   source_sha256="$(docker run --rm "$IMAGE" sha256sum "$source_path" | awk '{print $1}')"
@@ -50,12 +60,14 @@ run_arm() {
   local script_json
   script_json="$(sed -n '/^{$/,/^}$/p' "$raw")"
   jq --argjson dummy_count "$dummy_count" \
+     --arg trace_text "$trace_text" \
      --arg source_sha256 "$source_sha256" \
      --arg image_id "$IMAGE_ID" \
      --arg load_defaults "$LOAD_DEFAULTS" \
      --arg variant_processor "$VARIANT_PROCESSOR" \
      '. + {
        independent_dummy_file_openat_count: $dummy_count,
+       independent_trace_text: $trace_text,
        independent_source_sha256: $source_sha256,
        independent_image_id: $image_id,
        independent_rails_load_defaults: $load_defaults,

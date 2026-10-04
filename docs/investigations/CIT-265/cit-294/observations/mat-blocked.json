@@ -12,6 +12,7 @@
   "variant_error_class": "Vips::Error",
   "variant_error": "matload: operation is blocked",
   "independent_dummy_file_openat_count": 0,
+  "independent_trace_text": "[pid     9] openat(AT_FDCWD</app>, \"/work/canary.mat\", O_RDONLY|O_CLOEXEC) = 6</work/canary.mat>\n  \"source_path\": \"/work/canary.mat\",",
   "independent_source_sha256": "f1c62ebc5fb7ab50655d505f3c30498713cdef232d3bdef585935024bd007fcc",
   "independent_image_id": "sha256:d57333cda1248a419cbe7cc5e34e31401d48b63ebc67edb4e78b6fa75c9ab47e",
   "independent_rails_load_defaults": "7.0",

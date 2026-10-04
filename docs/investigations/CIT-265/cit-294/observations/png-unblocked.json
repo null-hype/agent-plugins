@@ -11,6 +11,7 @@
   "returned_bytes_hex": "00000000",
   "returned_byte_count": 4,
   "independent_dummy_file_openat_count": 0,
+  "independent_trace_text": "[pid     9] openat(AT_FDCWD</app>, \"/work/control.png\", O_RDONLY|O_CLOEXEC) = 6</work/control.png>\n  \"source_path\": \"/work/control.png\",",
   "independent_source_sha256": "25d910af6444dbe465a02584c6bcebdd8387e27a45190aedf0c92fea788c82ce",
   "independent_image_id": "sha256:d57333cda1248a419cbe7cc5e34e31401d48b63ebc67edb4e78b6fa75c9ab47e",
   "independent_rails_load_defaults": "7.0",

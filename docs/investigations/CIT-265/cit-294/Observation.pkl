@@ -46,8 +46,22 @@ class Observed {
   /// Count of `openat(..., "/work/dummy-canary.txt", ...)` lines in this
   /// arm's own `strace -f -e trace=openat` transcript. The only legitimate
   /// non-zero case is the unblocked MAT canary (one open, by the libvips
-  /// worker thread, no `O_CLOEXEC`); every other arm must be 0.
+  /// worker thread, no `O_CLOEXEC`); every other arm must be 0. Kept as a
+  /// convenience summary; `independent_trace_text` below is the field
+  /// Reconcile actually treats as authoritative (CIT-303), since this int
+  /// alone can be edited without touching any retained trace evidence.
   independent_dummy_file_openat_count: Int(this >= 0)
+  /// The retained per-arm `strace -f -e trace=openat -y` lines matching the
+  /// canary/control/dummy files (same filter `run_arms.sh` already prints
+  /// to canary-reads.txt), embedded directly in this arm's own observation
+  /// rather than left only in that combined, unconsumed log. Empty string
+  /// means no matching openat line was observed. Reconcile derives its own
+  /// open-count from this text -- CIT-297 bound the verdict to a bare int
+  /// Pkl never checked against retained evidence; CIT-303's review showed
+  /// deleting or forging that evidence (while leaving the int alone) still
+  /// passed, so the int is no longer the authoritative source (see
+  /// Reconcile.pkl).
+  independent_trace_text: String
   /// sha256 of the file this arm actually uploaded (`canary.mat` or
   /// `control.png`), computed inside the pinned image right before the run
   /// -- binds the verdict to the exact bytes exercised, not just a path.
