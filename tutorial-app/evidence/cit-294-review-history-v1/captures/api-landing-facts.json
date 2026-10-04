@@ -1,0 +1,66 @@
+{
+  "source": "GitHub pull_request_read(get) and Linear get_issue/list_comments connector responses, CIT-306 session, 2026-10-04",
+  "githubPullRequests": {
+    "117": {
+      "base": {
+        "ref": "main",
+        "sha": "be95c86ea1fddd8913cab7577f2405c1a2e90205"
+      },
+      "head": "390a7873ea6fd639c1c735393848e03b05031cc3",
+      "createdAt": "2026-10-04T01:04:29Z",
+      "mergedAt": "2026-10-04T03:57:33Z",
+      "commits": 1
+    },
+    "118": {
+      "base": {
+        "ref": "cit-294-demonstrate-the-live-matlabhdf5-file-read-path-and-blocking",
+        "sha": "390a7873ea6fd639c1c735393848e03b05031cc3"
+      },
+      "head": "9739b539de26919f1d1bb8129df8954de40dbfcd",
+      "createdAt": "2026-10-04T02:07:28Z",
+      "mergedAt": "2026-10-04T03:57:34Z",
+      "commits": 1
+    },
+    "120": {
+      "base": {
+        "ref": "cit-297-request-changes-to-strengthen-cit-294-evidence-validation",
+        "sha": "9739b539de26919f1d1bb8129df8954de40dbfcd"
+      },
+      "head": "cc23e89297855dd07b1ee477ced455ab46a94738",
+      "createdAt": "2026-10-04T02:54:49Z",
+      "mergedAt": "2026-10-04T03:57:35Z",
+      "commits": 2
+    }
+  },
+  "linearIssues": {
+    "CIT-294": {
+      "createdAt": "2026-10-03T22:56:40.809Z",
+      "completedAt": "2026-10-04T03:57:36.339Z",
+      "status": "Done"
+    },
+    "CIT-297": {
+      "createdAt": "2026-10-04T01:16:30.258Z",
+      "completedAt": "2026-10-04T03:57:37.260Z",
+      "status": "Done"
+    },
+    "CIT-303": {
+      "createdAt": "2026-10-04T02:17:24.340Z",
+      "completedAt": "2026-10-04T03:57:37.233Z",
+      "status": "Done"
+    }
+  },
+  "linearComments": {
+    "review-1": {
+      "id": "97e70a90-aae8-4bc2-90fa-1219f3584631",
+      "issue": "CIT-294",
+      "createdAt": "2026-10-04T01:15:37.196Z",
+      "updatedAt": "2026-10-04T01:16:31.064Z"
+    },
+    "review-2": {
+      "id": "271bc302-e4a6-4e08-8577-f06b68805b74",
+      "issue": "CIT-297",
+      "createdAt": "2026-10-04T02:16:12.197Z",
+      "updatedAt": "2026-10-04T02:17:24.404Z"
+    }
+  }
+}
