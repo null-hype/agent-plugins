@@ -1,4 +1,6 @@
 import { expect, test, type TestInfo } from '@playwright/test';
+import path from 'node:path';
+import { REPRODUCTION_DIR, SOLVED_FIXTURE, applyReproduction, committed, readSolvedFixture, serialize, type ProbeName } from './fixture';
 import {
   CHECKED_REVISION,
   FORGED_LINE,
@@ -60,6 +62,7 @@ test('Do the probes get past the PR 117 checker', { tag: '@tutorial' }, async ({
   const pinned = loadPinnedChecker();
   const trace = pinned.get('canary-reads.txt')!.toString('utf8');
   const state = new Map<string, string>();
+  const runs = {} as Record<ProbeName, CheckerRun>;
 
   await test.step('The checker passes on the retained evidence', async () => {
     const baseline = runChecker(pinned);
@@ -81,6 +84,7 @@ test('Do the probes get past the PR 117 checker', { tag: '@tutorial' }, async ({
     const files = deletedTrace(pinned);
     expect(files.has('canary-reads.txt')).toBe(false);
     const run = runChecker(files);
+    runs['deleted-trace'] = run;
     // The flaw: the checker never reads the trace, so nothing changes.
     expect(run.exitCode).toBe(0);
     expect([run.assertsPassed, run.assertsTotal]).toEqual([28, 28]);
@@ -102,6 +106,7 @@ test('Do the probes get past the PR 117 checker', { tag: '@tutorial' }, async ({
     arms[2] = arms[2].replace(`${FORGED_LINE}\n`, '');
     expect(arms.join('### ARM: ')).toBe(trace);
     const run = runChecker(files);
+    runs['forged-read'] = run;
     expect(run.exitCode).toBe(0);
     expect([run.assertsPassed, run.assertsTotal]).toEqual([28, 28]);
 
@@ -113,6 +118,17 @@ test('Do the probes get past the PR 117 checker', { tag: '@tutorial' }, async ({
       'probes/forged-read/result.txt': result('forged-read', run, 'dummy-file openat added to the mat-blocked arm'),
     });
   });
+
+  // The committed reproduction and the Storybook fixture must say what the
+  // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
+  const drift: string[] = [];
+  for (const [file, body] of state) {
+    if (file === 'canary-reads.txt') continue; // the pinned input, not output
+    if (!committed(path.join(REPRODUCTION_DIR, file), body).matches) drift.push(`reproduction/${file}`);
+  }
+  const fixture = serialize(applyReproduction(readSolvedFixture(), runs));
+  if (!committed(SOLVED_FIXTURE, fixture).matches) drift.push('stories/fixtures/rails-matlab-review-1.solved.json');
+  expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
   await testInfo.attach('environment.json', {
     body: JSON.stringify({ reproduction: REPRODUCTION_ID, pkl: pklVersion() }, null, 2),
