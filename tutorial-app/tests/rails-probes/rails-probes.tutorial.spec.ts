@@ -1,6 +1,7 @@
 import { expect, test, type TestInfo } from '@playwright/test';
 import path from 'node:path';
-import { REPRODUCTION_DIR, SOLVED_FIXTURE, applyReproduction, committed, readSolvedFixture, serialize, type ProbeName } from './fixture';
+import { readFileSync } from 'node:fs';
+import { REPRODUCTION_DIR, SOLVED_FIXTURE, STARTER_FIXTURE, applyReproduction, committed, readSolvedFixture, serialize, type ProbeName } from './fixture';
 import {
   CHECKED_REVISION,
   FORGED_LINE,
@@ -17,7 +18,9 @@ import {
 // CIT-307: review 1 of PR 117 said that deleting the retained strace transcript,
 // or replacing it with a dummy-file read in the blocked arm, "still left all 28
 // assertions passing". This runs both for real against the pinned checker, one
-// isolated copy each, and compiles the result into lessons.
+// isolated copy each, and compiles the review-1 lesson from the result: the
+// starter and solved traces the Client/Agent previews play, plus the retained
+// reproduction files the solution reveals.
 //
 // Both probes ASSERT THE FLAW: the checker still passes. A passing test is what
 // lets the tutorial reporter write lessons (it writes nothing for a failed
@@ -30,20 +33,8 @@ import {
 
 test.skip(pklVersion() === null, 'pkl is not on PATH');
 
-const text = (body: string) => ({ body, contentType: 'text/plain' });
 async function attachTutorial(testInfo: TestInfo, index: number, name: string, body: string, contentType = 'text/plain') {
   await testInfo.attach(`tutorial:${index}:${name}`, { body, contentType });
-}
-
-/** Declare the whole file state a step starts from (the previous step's end state). */
-async function declareBefore(testInfo: TestInfo, index: number, state: Map<string, string>) {
-  for (const [file, body] of state) await attachTutorial(testInfo, index, `before/file/${file}`, body);
-}
-async function declareEnd(testInfo: TestInfo, index: number, state: Map<string, string>, added: Record<string, string>) {
-  for (const [file, body] of Object.entries(added)) {
-    state.set(file, body);
-    await attachTutorial(testInfo, index, `file/${file}`, body);
-  }
 }
 
 const result = (probe: string, run: CheckerRun, what: string) =>
@@ -58,77 +49,63 @@ const result = (probe: string, run: CheckerRun, what: string) =>
     '',
   ].join('\n');
 
-test('Do the probes get past the PR 117 checker', { tag: '@tutorial' }, async ({}, testInfo) => {
+test('Can the check in 117 be trusted', { tag: '@tutorial' }, async ({}, testInfo) => {
   const pinned = loadPinnedChecker();
   const trace = pinned.get('canary-reads.txt')!.toString('utf8');
-  const state = new Map<string, string>();
   const runs = {} as Record<ProbeName, CheckerRun>;
+  const reproduction = new Map<string, string>();
 
-  await test.step('The checker passes on the retained evidence', async () => {
+  await test.step('Can the check tell a real file read from a forged one', async () => {
     const baseline = runChecker(pinned);
     expect(baseline.exitCode).toBe(0);
     expect([baseline.testsPassed, baseline.testsTotal]).toEqual([12, 12]);
     expect([baseline.assertsPassed, baseline.assertsTotal]).toEqual([28, 28]);
     // The unmodified transcript has no dummy-file read in the blocked arm.
     expect(trace.split('### ARM: ')[2]).not.toContain('dummy-canary.txt');
+    reproduction.set('runs/baseline/result.txt', result('none', baseline, 'none (retained evidence as pinned)'));
 
-    state.set('canary-reads.txt', trace);
-    await declareBefore(testInfo, 1, state);
-    await attachTutorial(testInfo, 1, 'prose', PROSE[0], 'text/markdown');
-    // The reporter's end state is built from file/ attachments alone, so the
-    // untouched transcript must be restated or step 2 would start without it.
-    await declareEnd(testInfo, 1, state, { 'canary-reads.txt': trace, 'runs/baseline/result.txt': result('none', baseline, 'none (retained evidence as pinned)') });
-  });
+    // Probe 1. The flaw: the checker never reads the trace, so nothing changes.
+    const deleted = deletedTrace(pinned);
+    expect(deleted.has('canary-reads.txt')).toBe(false);
+    runs['deleted-trace'] = runChecker(deleted);
+    expect(runs['deleted-trace'].exitCode).toBe(0);
+    expect([runs['deleted-trace'].assertsPassed, runs['deleted-trace'].assertsTotal]).toEqual([28, 28]);
+    reproduction.set('probes/deleted-trace/mutation.txt', 'removed: canary-reads.txt (the whole retained strace transcript)\n');
+    reproduction.set('probes/deleted-trace/result.txt', result('deleted-trace', runs['deleted-trace'], 'canary-reads.txt removed'));
 
-  await test.step('Delete the retained trace', async () => {
-    const files = deletedTrace(pinned);
-    expect(files.has('canary-reads.txt')).toBe(false);
-    const run = runChecker(files);
-    runs['deleted-trace'] = run;
-    // The flaw: the checker never reads the trace, so nothing changes.
-    expect(run.exitCode).toBe(0);
-    expect([run.assertsPassed, run.assertsTotal]).toEqual([28, 28]);
-
-    await declareBefore(testInfo, 2, state);
-    await attachTutorial(testInfo, 2, 'prose', PROSE[1], 'text/markdown');
-    await declareEnd(testInfo, 2, state, {
-      'probes/deleted-trace/mutation.txt': 'removed: canary-reads.txt (the whole retained strace transcript)\n',
-      'probes/deleted-trace/result.txt': result('deleted-trace', run, 'canary-reads.txt removed'),
-    });
-  });
-
-  await test.step('Forge a dummy-file read into the blocked arm', async () => {
-    const files = forgedRead(pinned);
-    const forged = files.get('canary-reads.txt')!.toString('utf8');
+    // Probe 2: a dummy-file read in the blocked arm, which blocking should prevent.
+    const forgedFiles = forgedRead(pinned);
+    const forged = forgedFiles.get('canary-reads.txt')!.toString('utf8');
     expect(forged.split('### ARM: ')[2]).toContain('dummy-canary.txt');
     // The only difference from the pinned transcript is the one added line.
     const arms = forged.split('### ARM: ');
     arms[2] = arms[2].replace(`${FORGED_LINE}\n`, '');
     expect(arms.join('### ARM: ')).toBe(trace);
-    const run = runChecker(files);
-    runs['forged-read'] = run;
-    expect(run.exitCode).toBe(0);
-    expect([run.assertsPassed, run.assertsTotal]).toEqual([28, 28]);
+    runs['forged-read'] = runChecker(forgedFiles);
+    expect(runs['forged-read'].exitCode).toBe(0);
+    expect([runs['forged-read'].assertsPassed, runs['forged-read'].assertsTotal]).toEqual([28, 28]);
+    reproduction.set('probes/forged-read/canary-reads.txt', forged);
+    reproduction.set('probes/forged-read/mutation.txt', `added to the mat-blocked arm of canary-reads.txt:\n+${FORGED_LINE}\n`);
+    reproduction.set('probes/forged-read/result.txt', result('forged-read', runs['forged-read'], 'dummy-file openat added to the mat-blocked arm'));
 
-    await declareBefore(testInfo, 3, state);
-    await attachTutorial(testInfo, 3, 'prose', PROSE[2], 'text/markdown');
-    await declareEnd(testInfo, 3, state, {
-      'probes/forged-read/canary-reads.txt': forged,
-      'probes/forged-read/mutation.txt': `added to the mat-blocked arm of canary-reads.txt:\n+${FORGED_LINE}\n`,
-      'probes/forged-read/result.txt': result('forged-read', run, 'dummy-file openat added to the mat-blocked arm'),
-    });
+    // The committed reproduction and the Storybook fixture must say what the
+    // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
+    const solved = serialize(applyReproduction(readSolvedFixture(), runs));
+    const drift: string[] = [];
+    for (const [file, body] of reproduction) {
+      if (!committed(path.join(REPRODUCTION_DIR, file), body).matches) drift.push(`reproduction/${file}`);
+    }
+    if (!committed(SOLVED_FIXTURE, solved).matches) drift.push('stories/fixtures/rails-matlab-review-1.solved.json');
+    expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
+
+    // The lesson: the Client/Agent trace goes from the starter to the solved
+    // fixture, and Solve also reveals the reproduction files.
+    await attachTutorial(testInfo, 1, 'before/file/acp-trace.json', readFileSync(STARTER_FIXTURE, 'utf8'), 'application/json');
+    await attachTutorial(testInfo, 1, 'file/acp-trace.json', solved, 'application/json');
+    for (const [file, body] of reproduction) await attachTutorial(testInfo, 1, `file/reproduction/${file}`, body);
+    await attachTutorial(testInfo, 1, 'prose', PROSE, 'text/markdown');
+    await attachTutorial(testInfo, 1, 'meta', JSON.stringify(LESSON_META), 'application/json');
   });
-
-  // The committed reproduction and the Storybook fixture must say what the
-  // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
-  const drift: string[] = [];
-  for (const [file, body] of state) {
-    if (file === 'canary-reads.txt') continue; // the pinned input, not output
-    if (!committed(path.join(REPRODUCTION_DIR, file), body).matches) drift.push(`reproduction/${file}`);
-  }
-  const fixture = serialize(applyReproduction(readSolvedFixture(), runs));
-  if (!committed(SOLVED_FIXTURE, fixture).matches) drift.push('stories/fixtures/rails-matlab-review-1.solved.json');
-  expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
   await testInfo.attach('environment.json', {
     body: JSON.stringify({ reproduction: REPRODUCTION_ID, pkl: pklVersion() }, null, 2),
@@ -146,36 +123,42 @@ test('the harness can fail: a mutation the checker does see is reported', () => 
   expect(run.assertsPassed).toBeLessThan(run.assertsTotal);
 });
 
-const PROSE = [
-  `# Start from a passing checker
 
-**Reproduction \`${REPRODUCTION_ID}\`.** The files here are the retained evidence
-from PR 117 (\`${CHECKED_REVISION.slice(0, 8)}\`). \`canary-reads.txt\` is the
-\`strace\` transcript of the four arms. The Pkl suite passes: 12 tests, 28
-assertions.
+// The same previews the budget-authority lessons use: Client is the commit-message
+// editor, Agent is the reviewer. Solve swaps the starter trace for the solved one.
+const LESSON_META = {
+  template: 'acp-trace',
+  prepareCommands: ['npm install'],
+  mainCommand: 'npm run dev',
+  previews: [
+    [4173, 'Client'],
+    [4174, 'Agent'],
+  ],
+  editor: true,
+  terminal: false,
+};
 
-The question for the next two steps is the one review 1 asked: **does the check
-notice if that transcript is missing or wrong?**
+const PROSE = `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-**Evidence scope:** the checker output is real, produced by running \`pkl test\`
-on these bytes. It is a new run, not the reviewers' own output; theirs was not
-retained.
-`,
-  `# Delete the trace
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 
-\`probes/deleted-trace/\` holds what was done and what the checker said. The
-transcript is gone, and the suite still passes all 28 assertions.
+# Can the check tell a real file read from a forged one?
 
-Nothing in the Pkl modules reads \`canary-reads.txt\`; the read/no-read evidence
-never reaches the checker.
-`,
-  `# Forge a read
+Pull request #117 passed its check. The **Client** holds the commit that change
+was written as, in the form this case gives every change: a message whose
+subject line is a question. Unfold it to read the body.
 
-\`probes/forged-read/canary-reads.txt\` is the transcript with a dummy-file read
-added to the **blocked** arm, which is exactly what blocking is supposed to
-prevent. The suite still passes all 28 assertions.
+Select **Solve** to ask the reviewer. Grey suggested lines appear below the
+commit: the questions it asked itself to split yours, one by deleting the trace
+and one by forging a read. Press **Tab** to accept the one shown, or **Alt+]** to
+switch to the other first. You can take either, or both. Each accepted line
+becomes text in your editor, and each is checked. The **Agent** shows what the
+reviewer was deciding to check, and its finding only after you accept.
 
-The checker trusts the observation JSON's own booleans and never consults the
-independent evidence.
-`,
-];
+Click the lens above an accepted line, **\`review-1.finding-1.deleted-trace\`**
+or **\`review-1.finding-1.forged-read\`**, to open the evidence behind it. One row
+is the part nobody kept: the output of the review's own test run. Next to it is a
+**reproduction**: the same probe run again, for real, against the checker as
+submitted. It is a new run, not the reviewers' output, and it shows the checker
+still passing all 28 assertions. The files for it appear in the editor after Solve.
+`;

@@ -9,9 +9,9 @@ import { defineConfig } from '@playwright/test';
 //
 // Project `probes` needs only `pkl`. Project `editor` needs a browser and the
 // acp-trace server (started below on its own ports); it depends on `probes`, so
-// it never runs against a fixture the checker no longer supports. The generated
-// lessons go to test-results/, not into src/content/tutorial: promoting them
-// into the course is a separate decision (tests/rails-probes/README.md).
+// it never runs against a fixture the checker no longer supports. The tutorial
+// reporter writes the lesson into src/content/tutorial/part-4 (the chapter
+// directory is rewritten on every compile; commit what it produces).
 const launchOptions = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
   : {};
@@ -22,7 +22,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   workers: 1,
-  reporter: [['list'], ['./reporters/tutorial.ts', { outDir: '../test-results/rails-probes/tutorial' }]],
+  reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/part-4' }]],
   projects: [
     { name: 'probes', testMatch: 'rails-probes.tutorial.spec.ts' },
     {
@@ -31,12 +31,28 @@ export default defineConfig({
       dependencies: ['probes'],
       use: { baseURL: 'http://127.0.0.1:4383', headless: true, viewport: { width: 1400, height: 900 }, launchOptions },
     },
+    {
+      // Needs the TutorialKit dev server and network (WebContainer runs npm install).
+      name: 'playback',
+      testMatch: 'rails-probes.playback.spec.ts',
+      dependencies: ['probes'],
+      use: { baseURL: 'http://localhost:4321', headless: true, viewport: { width: 1440, height: 900 }, launchOptions, screenshot: 'only-on-failure' },
+    },
   ],
-  webServer: {
-    command: 'node src/templates/acp-trace/server.cjs',
-    url: 'http://127.0.0.1:4383',
-    env: { PORT: '4383', AGENT_PORT: '4384' },
-    reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
-  },
+  webServer: [
+    {
+      command: 'node src/templates/acp-trace/server.cjs',
+      url: 'http://127.0.0.1:4383',
+      env: { PORT: '4383', AGENT_PORT: '4384' },
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command: 'npm run dev -- --host 127.0.0.1',
+      url: 'http://localhost:4321',
+      env: { ASTRO_TELEMETRY_DISABLED: '1' },
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 });

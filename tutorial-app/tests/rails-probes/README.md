@@ -11,9 +11,10 @@ npx playwright test --config=playwright.rails-probes.config.ts
 ```
 
 The `probes` project needs only `pkl` on PATH (the spec skips without it): no browser, no servers, no
-Docker, no credentials. Lessons are compiled to `../test-results/rails-probes/tutorial`,
-not into `src/content/tutorial`: promoting them into the course is a product
-decision this change does not make.
+Docker, no credentials. The `@tutorial` test compiles the lesson into
+`src/content/tutorial/part-4/can-the-check-in-117-be-trusted` (the chapter
+directory is rewritten on every run; the chapter is listed in part 4's `meta.md`).
+Commit what it produces.
 
 ## What runs for real
 
@@ -51,10 +52,26 @@ then flip.
   `evidence/cit-294-probe-reproduction-v1/` from `390a787`, which has the same
   `cit-294/` tree as `20aafd26`. Every input is hash-checked before running.
 
+## The generated lesson
+
+One `@tutorial` test, one step, one lesson: **Can the check tell a real file read
+from a forged one?** Its `_files/acp-trace.json` is the starter trace and its
+`_solution/acp-trace.json` is the solved fixture (executed numbers included), so
+TutorialKit's own Solve plays the Storybook flow in the Client and Agent
+previews. Solve also reveals the reproduction files (`_solution/reproduction/…`).
+`AcpTraceBridge` now relays the Client's acceptance to the Agent pane, so the
+Agent shows "Deciding what to check…" until a suggestion is accepted, as in
+Storybook.
+
+The `playback` project plays the generated lesson in the real TutorialKit dev
+server (WebContainer previews; needs network for `npm install`): the Agent is
+still deciding after Solve and diagnoses after Tab. Roughly 15 s once booted.
+
 ## Findings about the reporter and the existing machinery
 
 1. **Compiles, and is deterministic.** Two consecutive runs produce a
-   byte-identical lesson tree.
+   byte-identical lesson tree. The earlier three-step file lessons were folded
+   into this single lesson; the probes now run inside its one step.
 2. **Continuity is real, and it caught a mistake of mine.** `before/` files
    declared for step 1 do not carry into its end state; the untouched
    `canary-reads.txt` had to be restated as a `file/` attachment or step 2
