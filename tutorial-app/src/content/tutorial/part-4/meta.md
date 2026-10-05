@@ -5,4 +5,5 @@ chapters:
   - experiment
   - smuggling-survives-the-merge
   - rails-matlab-canary
+  - can-the-checker-be-trusted
 ---

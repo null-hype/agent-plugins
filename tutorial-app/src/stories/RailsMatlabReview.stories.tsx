@@ -4,6 +4,8 @@ import AcpTracePreview from './AcpTracePreview';
 import { deriveAcpTraceState, type Lesson } from './lessonFixtures';
 import starter from './fixtures/rails-matlab-review-1.starter.json';
 import solved from './fixtures/rails-matlab-review-1.solved.json';
+import starterTwo from './fixtures/rails-matlab-review-2.starter.json';
+import solvedTwo from './fixtures/rails-matlab-review-2.solved.json';
 
 type StoryArgs = { solved: boolean };
 
@@ -32,23 +34,14 @@ export const ReviewOneOfPullRequest117: Story = {
 	),
 };
 
-// Placeholder: still review 1's fixtures. Lesson 2 gets its own pair for PR 118.
+// The same two questions, asked of the checker as PR 118 submitted it. The solved
+// fixture's numbers come from the CIT-307 probe run (tests/rails-probes).
 export const ReviewTwoOfPullRequest118: Story = {
-    args: {
-        solved: true
-    },
-
-    name: "Can the fix in #118 be trusted? (placeholder)",
-
-    render: (
-        {
-            solved: isSolved
-        }
-    ) => (<AcpTracePreview
-        payload={deriveAcpTraceState(fixture, {
-            "/acp-trace.json": JSON.stringify(isSolved ? solved : starter)
-        }, {
-            config
-        })}
-        height={640} />)
+	name: 'Can the fix in #118 be trusted?',
+	render: ({ solved: isSolved }) => (
+		<AcpTracePreview
+			payload={deriveAcpTraceState(fixture, { '/acp-trace.json': JSON.stringify(isSolved ? solvedTwo : starterTwo) }, { config })}
+			height={640}
+		/>
+	),
 };

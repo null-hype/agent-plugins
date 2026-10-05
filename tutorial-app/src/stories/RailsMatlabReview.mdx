@@ -1,6 +1,7 @@
 import { Controls, Markdown, Meta, Story } from '@storybook/addon-docs/blocks';
 import * as RailsMatlabReviewStories from './RailsMatlabReview.stories';
 import reviewCopy from '../lesson-copy/rails-matlab-review.md?raw';
+import reviewTwoCopy from '../lesson-copy/rails-matlab-review-2.md?raw';
 
 <Meta of={RailsMatlabReviewStories} />
 
@@ -12,3 +13,10 @@ import reviewCopy from '../lesson-copy/rails-matlab-review.md?raw';
 
 <Story of={RailsMatlabReviewStories.ReviewOneOfPullRequest117} />
 <Controls of={RailsMatlabReviewStories.ReviewOneOfPullRequest117} include={['solved']} />
+
+## 2. Can the fix in #118 be trusted?
+
+<Markdown>{reviewTwoCopy}</Markdown>
+
+<Story of={RailsMatlabReviewStories.ReviewTwoOfPullRequest118} />
+<Controls of={RailsMatlabReviewStories.ReviewTwoOfPullRequest118} include={['solved']} />
