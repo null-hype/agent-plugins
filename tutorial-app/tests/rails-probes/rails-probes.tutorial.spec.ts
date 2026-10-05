@@ -1,16 +1,11 @@
 import { expect, test, type TestInfo } from '@playwright/test';
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
-  PKL_AUTHORED,
   answerJson,
   answerText,
-  applyReproduction,
   committed,
-  readSolvedFixture,
   renderTraces,
   reproductionDir,
-  serialize,
   solvedFixture,
   starterFixture,
   type ProbeName,
@@ -128,11 +123,8 @@ function ask(key: RevisionKey) {
     test.info().annotations.push({ type: `${key} ${probe}`, description: `${noticed(runs[probe]) ? 'noticed' : 'not noticed'}: ${runs[probe].summary}` });
   }
 
-  // A Pkl-authored state renders both traces from its claims and this run's
-  // answers (CIT-312); the others patch this run into the committed fixture.
-  const { starter, solved } = PKL_AUTHORED.has(key)
-    ? renderTraces(key, answers)
-    : { starter: readFileSync(starterFixture(key), 'utf8'), solved: serialize(applyReproduction(key, readSolvedFixture(key), runs)) };
+  // Both traces render from the state's claims and this run's answers (CIT-312).
+  const { starter, solved } = renderTraces(key, answers);
 
   // The committed reproduction and the Storybook fixtures must say what the
   // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
@@ -140,8 +132,7 @@ function ask(key: RevisionKey) {
   for (const [file, body] of [...files, ...answers]) {
     if (!committed(path.join(reproductionDir(key), file), body).matches) drift.push(`reproduction/${key}/${file}`);
   }
-  const fixtures = PKL_AUTHORED.has(key) ? [[starterFixture(key), starter], [solvedFixture(key), solved]] : [[solvedFixture(key), solved]];
-  for (const [file, body] of fixtures) if (!committed(file, body).matches) drift.push(path.basename(file));
+  for (const [file, body] of [[starterFixture(key), starter], [solvedFixture(key), solved]]) if (!committed(file, body).matches) drift.push(path.basename(file));
   expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
   return { files, starter, solved, runs };
@@ -194,9 +185,7 @@ for (const key of ORDER) {
     expect(run.assertsPassed).toBeLessThan(run.assertsTotal!);
     // And a "noticed" answer is written up as data, not rejected: the fixture says what failed.
     expect(noticed(run)).toBe(true);
-    const messages = PKL_AUTHORED.has(key)
-      ? renderTraces(key, new Map((['deleted-trace', 'forged-read'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved
-      : JSON.stringify(applyReproduction(key, readSolvedFixture(key), { 'deleted-trace': run, 'forged-read': run }));
+    const messages = renderTraces(key, new Map((['deleted-trace', 'forged-read'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
     expect(messages).toContain(answerText('deleted-trace', run));
     expect(messages).toContain(`${run.assertsPassed} of ${run.assertsTotal} assertions pass`);
     expect(messages).not.toContain(`Deleting the trace still left all ${run.assertsTotal} assertions passing.`);

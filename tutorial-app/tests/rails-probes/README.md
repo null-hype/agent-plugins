@@ -99,9 +99,9 @@ The `playback` project plays the generated lesson in the real TutorialKit dev
 server (WebContainer previews; needs network for `npm install`): the Agent is
 still deciding after Solve and diagnoses after Tab. Roughly 15 s once booted.
 
-## Lesson 1's traces are authored in Pkl (CIT-312)
+## The lessons' traces are authored in Pkl (CIT-312)
 
-The S1 starter and solved traces are rendered from
+The S1 and S2 starter and solved traces are rendered from
 `traces/CheckerProbes.pkl` (shape in `traces/AcpTrace.pkl`) instead of being
 patched into a hand-written fixture. The module holds what is claimed: the
 questions, the ids, the review's own words and the trace structure, with the
@@ -117,9 +117,10 @@ committed beside the reproduction but are not copied into the lesson. The
 `block_untrusted_env` control renders a "noticed" answer through the module
 too.
 
-The first render is byte-identical to the fixture it replaces. S2 still goes
-through `applyReproduction` (`PKL_AUTHORED` in `fixture.ts`); moving it over
-is one more entry in `revisions`.
+Each state's first render was byte-identical to the fixture it replaces (S1
+first, then S2 as one more entry in `revisions`). With both states in the
+module, the old path that patched a run into a hand-written fixture
+(`applyReproduction`) is gone. A new revision is one more entry.
 
 ## Findings about the reporter and the existing machinery
 
@@ -145,10 +146,10 @@ is one more entry in `revisions`.
 ## Integrated with the CIT-253 review-1 UX
 
 This branch builds on CIT-253 (PR 125). The Storybook fixture
-`src/stories/fixtures/rails-matlab-review-1.solved.json` is no longer only
+`src/stories/fixtures/rails-matlab-review-1.solved.json` is no longer
 hand-written: the assertion counts in each probe's diagnostic and a labelled
-**REPRODUCTION** evidence row per probe come from the executed run
-(`tests/rails-probes/fixture.ts`; the rest stays authored). The reviewers' own
+**REPRODUCTION** evidence row per probe come from the executed run, and the
+rest is authored in `traces/CheckerProbes.pkl` (see above). The reviewers' own
 "not retained" row is kept beside it. The exact bytes each row points at are
 committed under `evidence/cit-294-probe-reproduction-v1/reproduction/<S1|S2>/`.
 
