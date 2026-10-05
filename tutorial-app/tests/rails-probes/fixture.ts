@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REPRODUCTION_ID, REVISIONS, type CheckerRun, type RevisionKey } from './probes';
+import { REPRODUCTION_ID, REVISIONS, assertionCounts, noticed, type CheckerRun, type RevisionKey } from './probes';
 
 // CIT-307 x CIT-253: the Rails/MATLAB review-1 solved fixture is no longer only
 // hand-written. The numbers in each probe's diagnostic, and the rows that show
@@ -21,10 +21,16 @@ type Fixture = { frames: { envelope: { result?: { _meta?: any } } }[] };
 
 export type ProbeName = 'deleted-trace' | 'forged-read';
 
-const STILL_PASSING: Record<ProbeName, (n: number) => string> = {
-  'deleted-trace': (n) => `Deleting the trace still left all ${n} assertions passing.`,
-  'forged-read': (n) => `Forging a dummy-file read still left all ${n} assertions passing.`,
+const DID: Record<ProbeName, string> = {
+  'deleted-trace': 'Deleting the trace',
+  'forged-read': 'Forging a dummy-file read',
 };
+
+/** What the checker said to a probe, in the words of the diagnostic: either answer is data (CIT-311). */
+export const answerText = (probe: ProbeName, run: CheckerRun) =>
+  noticed(run)
+    ? `${DID[probe]} made the check fail${run.assertsTotal === null ? '' : `: ${run.assertsPassed} of ${run.assertsTotal} assertions passed`} (pkl test exit ${run.exitCode}).`
+    : `${DID[probe]} still left all ${run.assertsTotal} assertions passing.`;
 
 const WHAT: Record<ProbeName, string> = {
   'deleted-trace': 'canary-reads.txt removed',
@@ -39,7 +45,7 @@ export function reproductionRow(key: RevisionKey, probe: ProbeName, run: Checker
     detail:
       `REPRODUCTION ${REPRODUCTION_ID} (a new run, not the reviewers' own output): ` +
       `${WHAT[probe]}; checker ${REVISIONS[key].revision.slice(0, 8)}; pkl test exit ${run.exitCode}, ` +
-      `${run.assertsPassed} of ${run.assertsTotal} assertions pass`,
+      assertionCounts(run),
   };
 }
 
@@ -65,7 +71,7 @@ export function applyReproduction(key: RevisionKey, base: Fixture, runs: Record<
     const probe = probes.find((p) => p.diagnostic.code === `review-${review}.finding-1.${name}`);
     if (!probe) throw new Error(`no ${name} probe in the solved fixture`);
     const run = runs[name];
-    probe.diagnostic.message = `${probe.diagnostic.code}: ${STILL_PASSING[name](run.assertsTotal)}`;
+    probe.diagnostic.message = `${probe.diagnostic.code}: ${answerText(name, run)}`;
     // Deleted-trace shows the reviewers' missing output next to the new run; forged-read has none.
     probe.diagnostic.related = withRow(probe.diagnostic.related, reproductionRow(key, name, run), (r) =>
       name === 'deleted-trace' ? missingOutput(r) : r.uri.startsWith('docs/investigations/CIT-265/cit-294/Reconcile.pkl') || r.role === 'axiom',

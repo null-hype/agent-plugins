@@ -53,12 +53,22 @@ of a quoted sentence; at S2 it agrees with review 2. A further test per revision
 proves the harness can fail: flipping an observed field the checker *does* read
 (`block_untrusted_env`) makes the suite fail.
 
-The spec **asserts the flaw**, so a passing test means "the checker did not
-notice". The reporter writes nothing for a failed test, so this is also what
-lets the lessons exist. The inputs are pinned by blob id, so a fix to the
-checker cannot change these runs; only adding a revision can. If that revision
-catches a probe, this assertion fails and no lesson is written. Whether a "no"
-answer should instead be recorded as data is an open decision (CIT-310 finding 1).
+The spec **records the answer** (CIT-311). For each probe it writes down the
+exit code and the assertion counts and does not assert them, so "the checker
+still passes" and "the checker now fails" are both data and both produce a
+lesson (the lesson prose and the diagnostic say which). A failed test means
+only that the answer could not be collected: an input does not hash, the
+retained checker does not pass as retained, a mutation does not apply, or
+`pkl test` exits cleanly without a readable summary. A checker that exits
+non-zero before it prints any summary counts as having noticed the probe, with
+no assertion counts. The annotations on the test report each answer.
+
+The `block_untrusted_env` test is the control: it shows the harness can see a
+difference when there is one, and that a "noticed" answer is written into the
+fixture as data. The inputs are pinned by blob id, so a fix to the checker
+cannot change these runs; only adding a revision can. If its checker catches a
+probe, the reproduction files for it do not exist yet, so the drift check names
+them until `CIT307_UPDATE=1` writes them.
 
 ## Provenance
 
@@ -104,8 +114,11 @@ still deciding after Solve and diagnoses after Tab. Roughly 15 s once booted.
    the "deleted trace" lesson still shows `canary-reads.txt` and records the
    deletion in `probes/deleted-trace/mutation.txt`. A lesson that should *show*
    the file gone needs reporter support (an explicit tombstone attachment).
-5. **Expected failure is fine.** An asserted "the checker does not notice" is a
-   passing test, so the reporter emits lessons.
+5. **A failed test writes nothing, so a "no" cannot be a failure.** The reporter
+   emits lessons only for passing tests. The spec used to assert "the checker
+   does not notice", which made a fixed checker the one answer that wrote no
+   lesson. It now records the answer either way and fails only when it cannot
+   collect one (CIT-311).
 
 ## Integrated with the CIT-253 review-1 UX
 
