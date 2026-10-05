@@ -4,6 +4,7 @@ import {
   answerJson,
   answerText,
   committed,
+  evidenceBundleFor,
   renderTraces,
   reproductionDir,
   solvedFixture,
@@ -133,6 +134,14 @@ function ask(key: RevisionKey) {
   const { diagnostic } = JSON.parse(solved).frames[1].envelope.result._meta;
   expect(diagnostic).toMatchObject({ code: finding!.code, message: `${finding!.code}: ${finding!.message}`, evaluationId: evaluationIdOf(finding!.id) });
 
+  // CIT-301: a row that cites a captured file is opened from the file's own
+  // bytes. The row says the line is the checker's `check` function; the pinned
+  // bytes must agree before the claim ships.
+  const bundle = evidenceBundleFor(key, solved, pinned);
+  if (bundle) {
+    for (const { content } of JSON.parse(bundle).artifacts) expect(content.split('\n')[16], `${key}: Reconcile.pkl line 17`).toMatch(/^function check\(claim/);
+  }
+
   // The committed reproduction and the Storybook fixtures must say what the
   // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
   const drift: string[] = [];
@@ -142,7 +151,7 @@ function ask(key: RevisionKey) {
   for (const [file, body] of [[starterFixture(key), starter], [solvedFixture(key), solved]]) if (!committed(file, body).matches) drift.push(path.basename(file));
   expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
-  return { files, starter, solved, runs };
+  return { files, starter, solved, runs, bundle };
 }
 
 test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) => {
@@ -154,10 +163,12 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
   for (const [i, key] of ORDER.entries()) {
     const index = i + 1;
     await test.step(TITLES[key], async () => {
-      const { files, starter, solved, runs } = ask(key);
+      const { files, starter, solved, runs, bundle } = ask(key);
 
       const before = new Map(end);
       before.set('acp-trace.json', starter);
+      // CIT-301: the bytes behind the rows that cite a captured file ship with the lesson, not with its solution.
+      if (bundle) before.set('evidence-bundle.json', bundle);
       if (index > 1) await attachTutorial(testInfo, index, 'incoming/file/acp-trace.json', starter, 'application/json');
       for (const [file, body] of before) await attachTutorial(testInfo, index, `before/file/${file}`, body, file.endsWith('.json') ? 'application/json' : 'text/plain');
 
@@ -248,6 +259,13 @@ is the part nobody kept: the output of the review's own test run. Next to it is 
 **reproduction**: the same probe run again, for real, against the checker as
 submitted. It is a new run, not the reviewers' output, and it shows the checker
 ${found(runs).text}. The files for it appear in the editor after Solve.
+
+On **\`review-1.finding-1.forged-read\`**, the \`Reconcile.pkl\` row has an **Open
+captured file** control. It opens the checker as review 1 read it, at the commit
+the review cited, with the line the row points at marked: the checker's
+\`check\` function, which takes a claim and an observation and nothing else.
+This lesson opens that one row's file so far. The other rows are summary text
+here, and the one marked *not retained* is the only part nobody kept.
 `,
   S2: (runs) => `${BRIDGE}
 # Can the strengthened check tell a real file read from a forged one?

@@ -25,6 +25,12 @@ export type BundledArtifact = {
   path: string;
   identity: ArtifactRef['identity'];
   recordFormat?: RecordFormat;
+  /**
+   * SHA-256 of `content`'s UTF-8 bytes, recorded when the bundle was built. A
+   * bundle can travel as an editable file, so when present it is checked on every
+   * resolve and a mismatch is refused rather than shown under the captured identity.
+   */
+  sha256?: string;
   /** The captured bytes, encoded as UTF-8 text for a portable browser bundle. Never normalised. */
   content: string;
 };
@@ -35,6 +41,14 @@ export type EvidenceBundle = {
 };
 
 const encoder = new TextEncoder();
+
+/** Lowercase hex SHA-256, or null where this context has no Web Crypto (so a digest cannot be checked). */
+async function sha256Hex(bytes: Uint8Array): Promise<string | null> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) return null;
+  const digest = new Uint8Array(await subtle.digest('SHA-256', bytes));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 const WIRE_DIRECTIONS = ['client->agent', 'agent->client'] as const;
 
 export function describeArtifactIdentity(identity: ArtifactRef['identity']): string {
@@ -186,8 +200,22 @@ export class BundleArtifactResolver implements SuppliedArtifactResolver {
       }
       return { status: 'artifact-not-found', artifact: ref };
     }
+    const bytes = encoder.encode(artifact.content);
+    if (artifact.sha256 !== undefined) {
+      // Fail closed: bytes whose digest cannot be checked are not shown as the capture.
+      const actual = await sha256Hex(bytes);
+      if (actual !== artifact.sha256) {
+        return {
+          status: 'artifact-identity-mismatch',
+          artifact: ref,
+          actualIdentity: actual === null
+            ? `bytes whose sha256:${artifact.sha256} cannot be checked here`
+            : `bytes with sha256:${actual}, not the recorded sha256:${artifact.sha256}`,
+        };
+      }
+    }
     const reason = locationFailure(ref, artifact);
     if (reason) return { status: 'artifact-location-mismatch', artifact: ref, reason };
-    return { status: 'resolved', artifact: ref, bytes: encoder.encode(artifact.content) };
+    return { status: 'resolved', artifact: ref, bytes };
   }
 }

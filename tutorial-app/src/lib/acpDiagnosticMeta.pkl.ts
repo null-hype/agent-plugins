@@ -73,6 +73,62 @@ export interface EvidenceLocation {
   revision: string|null
 
   line: number|null
+
+  // CIT-301: the exact captured bytes behind this row, when this recording
+  // can open them. Absent means the row cannot be opened here -- it is summary
+  // text, which says nothing about whether the evidence exists elsewhere -- and
+  // no host may reconstruct bytes from `uri` or `revision`.
+  artifact: CapturedArtifact|null
+}
+
+// Ref: Pkl class `acpDiagnosticMeta.CapturedArtifact`.
+// Mirrors `ArtifactRef` in acpReplayContract.ts: which recording, run and
+// frame captured it, under what identity, and where the row points inside
+// it. A resolver matches every field exactly and never falls back to another
+// revision, run or capture.
+export interface CapturedArtifact {
+  artifactId: string
+
+  recordingId: string
+
+  runId: string
+
+  frameId: string
+
+  path: string
+
+  identity: ArtifactIdentity
+
+  location: ArtifactLocation
+}
+
+// Ref: Pkl class `acpDiagnosticMeta.ArtifactIdentity`.
+// `kind` picks which one of the three identity fields is set.
+export interface ArtifactIdentity {
+  kind: "revision" | "snapshot" | "capture"
+
+  // The full commit, never an abbreviation.
+  revision: string|null
+
+  snapshotId: string|null
+
+  captureId: string|null
+}
+
+// Ref: Pkl class `acpDiagnosticMeta.ArtifactLocation`.
+// `source-range` is lines `startLine` to `endLine` of a source file;
+// `record` is the `record`th record of a captured log, optionally narrowed
+// to a structured `field`.
+export interface ArtifactLocation {
+  kind: "source-range" | "record"
+
+  startLine: number|null
+
+  endLine: number|null
+
+  record: number|null
+
+  field: string|null
 }
 
 // Ref: Pkl type `acpDiagnosticMeta.EvidenceRole`.

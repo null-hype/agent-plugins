@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { buildAcpTraceState } from '../../src/lib/acpTraceProtocol';
+import { answerOpenRequest } from '../../src/lib/artifactOpen';
+import { BundleArtifactResolver, type EvidenceBundle } from '../../src/lib/evidenceArtifactResolver';
 import { solvedFixture } from './fixture';
 import { REPRODUCTION_ID, REVISIONS, type RevisionKey } from './probes';
 
@@ -11,6 +13,12 @@ import { REPRODUCTION_ID, REVISIONS, type RevisionKey } from './probes';
 // after accepting a probe, in the real Client and Agent pages (server.cjs).
 
 const AGENT_URL = 'http://127.0.0.1:4384/';
+
+// CIT-301: the bundle the review-1 lesson ships, which the host resolves rows from.
+const BUNDLE = JSON.parse(
+  readFileSync(new URL('../../src/content/tutorial/part-4/can-the-checker-be-trusted/1-can-the-check-tell-a-real-file-read-from-a-forged-one/_files/evidence-bundle.json', import.meta.url), 'utf8'),
+) as EvidenceBundle;
+const RECONCILE = 'docs/investigations/CIT-265/cit-294/Reconcile.pkl';
 
 let revision = 0;
 async function show(pages: Page[], fixture: Parameters<typeof buildAcpTraceState>[0]["fixture"]) {
@@ -51,6 +59,15 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
   await page.evaluate(() => {
     window.addEventListener('message', (event) => {
       if (event.data?.type === 'acp-trace-suggestion-accepted') (window as any).relayAccepted(event.data.accepted);
+    });
+  });
+
+  // The page's host is itself in this harness, so play the host: answer a request
+  // to open a row's captured file the way AcpTracePreview and AcpTraceBridge do.
+  await page.exposeFunction('hostAnswer', (request: Parameters<typeof answerOpenRequest>[1]) => answerOpenRequest(new BundleArtifactResolver(BUNDLE), request));
+  await page.evaluate(() => {
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'acp-trace-open-artifact') (window as any).hostAnswer(event.data).then((reply: unknown) => window.postMessage(reply, '*'));
     });
   });
 
@@ -96,6 +113,35 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
     const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
     await expect(widget).toContainText('a dummy-file openat added to the mat-blocked arm');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
+  });
+
+  await test.step(key === 'S1' ? 'the Reconcile.pkl row opens the exact file review 1 read, at its pinned commit' : 'a review with no captured file offers nothing to open', async () => {
+    const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
+    const open = widget.getByRole('button', { name: /Open captured file/ });
+    if (key === 'S2') {
+      // Review 2's rows are summary text only: nothing is made up for them.
+      await expect(open).toHaveCount(0);
+      return;
+    }
+    // Only the row that cites a file has the control; the reproduction, the review's
+    // words and the missing output stay as the summary text they are.
+    await expect(open).toHaveCount(1);
+    const typed = await modelText(page);
+    await open.click();
+    const file = page.getByRole('region', { name: `Captured file ${RECONCILE}` });
+    await expect(file).toContainText(RECONCILE);
+    await expect(file).toContainText('cit-294-review-history-v1/cit-294-117-118-120');
+    await expect(file).toContainText(`revision:${REVISIONS[key].revision}`);
+    await expect(file).toContainText('line 17');
+    const marked = file.locator('.highlight');
+    await expect(marked).toHaveCount(1);
+    await expect(marked).toContainText('function check(claim: Claims.Claim, observed: Observation.Observed)');
+    // Opening a file is not a step in the exchange: what the viewer typed is untouched.
+    expect(await modelText(page)).toBe(typed);
+    if (process.env.STORYBOARD_SCREENSHOTS) await page.screenshot({ path: 'reconcile-opened.png' });
+    // Closing it folds it away again.
+    await open.click();
+    await expect(file).toBeHidden();
   });
 
   await test.step('the Agent diagnoses only after an accept', async () => {

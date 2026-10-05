@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ArtifactRef, EvidenceRef, RecordedEvaluation, ReplayCursor, SuppliedArtifactResolver } from '../lib/acpReplayContract';
+import { resolutionFailureMessage } from '../lib/artifactOpen';
 import { describeArtifactIdentity, recordLineNumber } from '../lib/evidenceArtifactResolver';
 import './EvidenceInspector.css';
 
@@ -40,9 +41,7 @@ export default function EvidenceInspector({ evaluation, resolver, cursor }: Prop
     resolver.resolve(selected.availability.artifact).then((resolution) => {
       if (!active) return;
       if (resolution.status === 'resolved') setContent({ status: 'resolved', text: decoder.decode(resolution.bytes) });
-      else if (resolution.status === 'artifact-identity-mismatch') setContent({ status: 'error', text: `Identity mismatch: bundle has ${resolution.actualIdentity}; requested ${describeArtifactIdentity(resolution.artifact.identity)}.` });
-      else if (resolution.status === 'artifact-location-mismatch') setContent({ status: 'error', text: `Location mismatch: ${resolution.reason}.` });
-      else setContent({ status: 'error', text: 'Unavailable: captured artifact was not found in this bundle.' });
+      else setContent({ status: 'error', text: resolutionFailureMessage(resolution) });
     });
     return () => { active = false; };
   }, [resolver, selected]);

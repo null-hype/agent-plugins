@@ -16,3 +16,10 @@ row is the part nobody kept: the output of the review's own test run. Next to it
 is a **reproduction**: the same probe run again, for real, against the checker as
 submitted. It is a new run, not the reviewers' output, and it shows the checker
 still passing all 28 assertions.
+
+On **`review-1.finding-1.forged-read`**, the `Reconcile.pkl` row has an **Open
+captured file** control. It opens the checker as review 1 read it, at the commit
+the review cited, with the line the row points at marked: the checker's `check`
+function, which takes a claim and an observation and nothing else. This lesson
+opens that one row's file so far. The other rows are summary text here, and the
+one marked *not retained* is the only part nobody kept.

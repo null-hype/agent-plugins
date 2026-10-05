@@ -57,7 +57,23 @@
                   "uri": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
                   "revision": "20aafd26",
                   "line": 17,
-                  "detail": "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it"
+                  "detail": "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it",
+                  "artifact": {
+                    "artifactId": "artifact:review-1.finding-1/reconcile-check",
+                    "recordingId": "cit-294-review-history-v1",
+                    "runId": "cit-294-117-118-120",
+                    "frameId": "r1-review",
+                    "path": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+                    "identity": {
+                      "kind": "revision",
+                      "revision": "20aafd26372a832224be824f72f4a615ee671094"
+                    },
+                    "location": {
+                      "kind": "source-range",
+                      "startLine": 17,
+                      "endLine": 17
+                    }
+                  }
                 },
                 {
                   "role": "observation",
@@ -140,7 +156,23 @@
                       "uri": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
                       "revision": "20aafd26",
                       "line": 17,
-                      "detail": "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it"
+                      "detail": "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it",
+                      "artifact": {
+                        "artifactId": "artifact:review-1.finding-1/reconcile-check",
+                        "recordingId": "cit-294-review-history-v1",
+                        "runId": "cit-294-117-118-120",
+                        "frameId": "r1-review",
+                        "path": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+                        "identity": {
+                          "kind": "revision",
+                          "revision": "20aafd26372a832224be824f72f4a615ee671094"
+                        },
+                        "location": {
+                          "kind": "source-range",
+                          "startLine": 17,
+                          "endLine": 17
+                        }
+                      }
                     },
                     {
                       "role": "observation",

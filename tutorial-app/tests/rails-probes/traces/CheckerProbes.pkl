@@ -100,6 +100,24 @@ revisions: Mapping<String, Revision> = new {
       line = 17
       detail =
         "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it"
+      // CIT-301: the exact file this row cites, at the commit review 1 read it.
+      // The bytes are in the lesson's evidence bundle; S2's row stays summary-only.
+      artifact {
+        artifactId = "artifact:review-1.finding-1/reconcile-check"
+        recordingId = "cit-294-review-history-v1"
+        runId = historyRun
+        frameId = "r1-review"
+        path = "\(checkerDir)/Reconcile.pkl"
+        identity {
+          kind = "revision"
+          revision = checker
+        }
+        location {
+          kind = "source-range"
+          startLine = 17
+          endLine = 17
+        }
+      }
     }
     promptScripted =
       "ACP framing and the subject question authored; the body is condensed from the PR 117 description."
