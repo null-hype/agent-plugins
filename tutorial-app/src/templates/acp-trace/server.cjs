@@ -144,6 +144,20 @@ function reasoningViewStyles() {
       #trace-view .entry .caption { display: block; font-family: system-ui, sans-serif; font-weight: 600; }
       #trace-view .empty { color: #8a8575; font-style: italic; padding: 2px 0; }
       #trace-view .latest { border-left-color: #3b6fd4; }
+      /* The review scenario's Agent pane: the ACP messages as a chat thread. */
+      #chat-view { width: 100%; height: 100%; overflow: auto; padding: 12px; background: #faf7ef; display: flex; flex-direction: column; gap: 10px; font: 13px/1.4 system-ui, sans-serif; color: #2b2a26; box-sizing: border-box; }
+      #chat-view[hidden], main.agent.reasoning #monaco-root { display: none; }
+      #chat-view .msg { max-width: 86%; padding: 8px 11px; border-radius: 10px; border: 1px solid #d8d4c8; background: #fff; }
+      #chat-view .msg.from-client { align-self: flex-end; background: #eaf0fb; border-color: #c3d2ee; }
+      #chat-view .msg.waiting { color: #8a8575; font-style: italic; background: transparent; border-style: dashed; }
+      #chat-view .who { font-size: 11px; font-weight: 600; color: #6f6a5c; margin-bottom: 3px; display: flex; gap: 6px; align-items: center; }
+      #chat-view .who .method { font: 10.5px "Roboto Mono", Menlo, monospace; font-weight: 400; color: #8a8575; }
+      #chat-view .badge { display: inline-block; padding: 0 6px; border-radius: 9px; font: 600 11px "Roboto Mono", Menlo, monospace; color: #8c1d18; background: #fde8e6; border: 1px solid #f0b9b4; margin-bottom: 4px; }
+      #chat-view .divergence { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+      #chat-view .divergence li { padding-left: 8px; border-left: 3px solid #d9d4c3; font-size: 12.5px; line-height: 1.35; }
+      #chat-view .divergence li:last-child { border-left-color: #e0a29c; }
+      #chat-view .divergence .source { display: block; font: 600 10.5px "Roboto Mono", Menlo, monospace; color: #7a7461; text-transform: uppercase; letter-spacing: .03em; }
+      #chat-view .subject { margin-top: 6px; font: 11.5px "Roboto Mono", Menlo, monospace; color: #5b5646; overflow-wrap: anywhere; }
     </style>`;
 }
 
@@ -192,6 +206,17 @@ function renderClientPage() {
       let confirmedGates = new Set();
       let lastRecords = [];
       let gateDecorationIds = [];
+      let lensChanged = null;
+      // cit294-review-v1 only: the agent's answer arrives as ghost text after the
+      // question (an inline completion); Tab accepts it into the editor.
+      let suggestion = null;
+      // cit294-review-v1: the commit message (subject + body) spans lines
+      // 1..commitEnd and is folded under its subject; the suggestion lands below it.
+      let commitEnd = 0;
+      let commitFolded = false;
+      // Accepting the suggestion (Tab) is what applies its diagnostics.
+      let accepted = false;
+      let lastState = null;
       const RUN_GATE_COMMAND = 'acp-trace.runGate';
       const gateKey = (diagnostic) => diagnostic.evaluationId || diagnostic.code;
 
@@ -281,7 +306,28 @@ function renderClientPage() {
           renderIntoEditor(lastRecords).catch(() => {});
         });
 
+        monaco.languages.registerInlineCompletionsProvider(languageId, {
+          provideInlineCompletions(suggestModel) {
+            if (!suggestion || suggestModel.getValue() !== suggestion.prefix) return { items: [] };
+            const last = suggestModel.getLineCount();
+            return { items: [{ insertText: suggestion.text, range: new monaco.Range(last, 1, last, 1) }] };
+          },
+          freeInlineCompletions() {},
+        });
+
+        monaco.languages.registerFoldingRangeProvider(languageId, {
+          provideFoldingRanges() {
+            return commitEnd > 1 ? [{ start: 1, end: commitEnd }] : [];
+          },
+        });
+
+        // Lenses are recomputed only when Monaco is told they changed. Most
+        // scenarios change the line text with each state, which refreshes them
+        // as a side effect; cit294-review-v1 keeps the question line identical
+        // between unsolved and solved, so renderIntoEditor fires this instead.
+        lensChanged = new monaco.Emitter();
         monaco.languages.registerCodeLensProvider(languageId, {
+          onDidChange: lensChanged.event,
           provideCodeLenses(lensModel) {
             const lenses = [];
             for (let lineNumber = 1; lineNumber <= lensModel.getLineCount(); lineNumber += 1) {
@@ -338,6 +384,17 @@ function renderClientPage() {
           wordWrap: 'on',
         });
         editor.onDidLayoutChange(revealNewest);
+        // The only edit a viewer may make is accepting the agent's suggestion,
+        // and accepting it is what applies its diagnostics. Anything else is
+        // taken back.
+        editor.onDidChangeModelContent(() => {
+          if (!suggestion || !suggestion.prefix || !lastState) return;
+          const value = model.getValue();
+          const full = suggestion.prefix + suggestion.text;
+          if (value === (accepted ? full : suggestion.prefix)) return;
+          accepted = value === full;
+          setTimeout(() => renderIntoEditor(renderReviewRecords(lastState)).catch(() => {}), 0);
+        });
         editor.onMouseDown((e) => {
           if (e.target.type !== window.monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
           const lineNumber = e.target.position && e.target.position.lineNumber;
@@ -401,6 +458,42 @@ function renderClientPage() {
         return records;
       }
 
+      // The review scenario's client is a text editor, not a chat log: it holds
+      // a commit message whose subject line is the question, and the agent's finding is a marker on that line (with its
+      // evidence lens) rather than a reply line below it.
+      function renderReviewRecords(state) {
+        const records = [];
+        for (const frame of state.frames || []) {
+          const promptText = frame.actor === 'client' ? extractPromptText((frame.envelope || {}).params) : null;
+          if (promptText) promptText.split('\\n').forEach((line) => records.push({ raw: line, diagnostic: null, related: [] }));
+        }
+        if (records.length === 0) return renderRecords(null);
+        // The commit ends here. Below it is where suggestions go: an empty line
+        // until they are accepted, then the accepted lines, each diagnosed.
+        commitEnd = records.length;
+        const probes = accepted ? reviewProbes(state) : [];
+        if (probes.length === 0) records.push({ raw: '', diagnostic: null, related: [] });
+        probes.forEach((probe) => records.push({ raw: probe.question, diagnostic: probe.diagnostic || null, related: (probe.diagnostic && probe.diagnostic.related) || [] }));
+        return records;
+      }
+
+      // The probes the agent ran to split the question (agent frame _meta).
+      function reviewProbes(state) {
+        for (const frame of state.frames || []) {
+          const meta = frame.actor === 'agent' ? metaOf(frame.envelope || {}) : null;
+          if (meta && meta.diagnostic) return (meta.probes || []).slice(0, 2);
+        }
+        return [];
+      }
+
+      // What the agent offers after the commit: the two probes it ran to split
+      // the question, each phrased as a question, at the commit's own level. Shown as ghost text; Tab accepts it. Null until
+      // the agent has answered.
+      function reviewCompletion(state) {
+        const probes = reviewProbes(state).map((probe) => probe.question);
+        return probes.length ? { text: probes.join('\\n') } : null;
+      }
+
       // A git rebase -i todo buffer instead of a session log: the frame
       // that most recently carried a rebaseTodo block (newest first) is
       // the buffer as it stands -- squashing/rewriting replaces it wholesale,
@@ -453,8 +546,20 @@ function renderClientPage() {
       function renderScripted(state) {
         const root = document.getElementById('scripted');
         const frame = ((state && state.frames) || []).find((f) => f.provenance && f.provenance.scripted);
-        root.hidden = !frame;
+        root.hidden = !frame || (state && state.scenario === 'cit294-review-v1');
         root.textContent = frame ? 'Scripted replay (' + frame.provenance.scripted + ') · not a live capture' : '';
+      }
+
+      // Monaco computes fold ranges asynchronously after a text change.
+      function foldCommit() {
+        let tries = 0;
+        const attempt = () => {
+          editor.trigger('acp-trace', 'editor.fold', { levels: 1, selectionLines: [0] });
+          const visible = editor.getVisibleRanges()[0];
+          if (visible && visible.startLineNumber === 1 && model.getLineCount() > commitEnd && visible.endLineNumber <= 1 + (model.getLineCount() - commitEnd)) return;
+          if ((tries += 1) < 40) setTimeout(attempt, 50);
+        };
+        attempt();
       }
 
       async function renderIntoEditor(records) {
@@ -517,8 +622,28 @@ function renderClientPage() {
         });
 
         const nextText = lines.join('\\n');
-        if (model.getValue() !== nextText) model.setValue(nextText);
+        if (suggestion) suggestion.prefix = lines.slice(0, commitEnd).join('\\n') + '\\n';
+        // Ghost text only renders in an editable editor; the guard on
+        // onDidChangeModelContent keeps it from being a real one.
+        editor.updateOptions({ readOnly: !suggestion, dragAndDrop: false });
+        if (model.getValue() !== nextText) {
+          model.setValue(nextText);
+          commitFolded = false;
+        }
         window.monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
+        if (lensChanged) lensChanged.fire(undefined);
+        if (commitEnd > 1 && !commitFolded && model.getLineCount() > commitEnd) {
+          commitFolded = true;
+          foldCommit();
+        }
+        if (suggestion && !accepted && model.getValue() === suggestion.prefix) {
+          // Offer the answer as ghost text on the line below the commit.
+          setTimeout(() => {
+            editor.setPosition({ lineNumber: model.getLineCount(), column: 1 });
+            editor.focus();
+            editor.trigger('acp-trace', 'editor.action.inlineSuggest.trigger', {});
+          }, 150);
+        }
         gateDecorationIds = editor.deltaDecorations(gateDecorationIds, glyphDecorations);
         revealNewest();
       }
@@ -527,7 +652,15 @@ function renderClientPage() {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
         renderScripted(payload);
-        const records = ['smuggling-v1', 'jev-report-v1'].includes(payload.scenario) ? renderRebaseTodoRecords(payload) : renderRecords(payload);
+        lastState = payload;
+        suggestion = payload.scenario === 'cit294-review-v1' ? reviewCompletion(payload) : null;
+        if (!suggestion) accepted = false;
+        if (payload.scenario !== 'cit294-review-v1') commitEnd = 0;
+        const records = ['smuggling-v1', 'jev-report-v1'].includes(payload.scenario)
+          ? renderRebaseTodoRecords(payload)
+          : payload.scenario === 'cit294-review-v1'
+            ? renderReviewRecords(payload)
+            : renderRecords(payload);
         await renderIntoEditor(records);
       }
 
@@ -556,7 +689,7 @@ function renderAgentPage() {
   return `${sharedHead('ACP Trace: Agent')}
   ${reasoningViewStyles()}
   <body>
-    <main class="agent"><section id="jev-view" aria-label="Jev diagnostics" hidden></section><section id="trace-view" aria-label="Agent reasoning" hidden></section><div id="monaco-root"></div></main>
+    <main class="agent"><section id="jev-view" aria-label="Jev diagnostics" hidden></section><section id="trace-view" aria-label="Agent reasoning" hidden></section><section id="chat-view" aria-label="Agent conversation" hidden></section><div id="monaco-root"></div></main>
     <script>
       ${monacoLoaderScript()}
 
@@ -695,6 +828,55 @@ function renderAgentPage() {
         return true;
       }
 
+      /** The review scenario: the ACP messages as a chat thread, not JSON lines. */
+      function renderChatView(state) {
+        const root = document.getElementById('chat-view');
+        const active = Boolean(state) && state.scenario === 'cit294-review-v1';
+        root.hidden = !active;
+        root.replaceChildren();
+        if (!active) return false;
+        for (const frame of state.frames || []) {
+          const envelope = frame.envelope || {};
+          const fromClient = frame.actor === 'client';
+          const message = el('article', 'msg ' + (fromClient ? 'from-client' : 'from-agent'));
+          const who = el('div', 'who', fromClient ? 'You' : frame.speaker || 'Agent');
+          who.appendChild(el('span', 'method', envelope.method || (envelope.result && envelope.result.stopReason) || ''));
+          message.appendChild(who);
+          const diagnostic = (metaOf(envelope) || {}).diagnostic;
+          if (diagnostic) {
+            message.appendChild(el('div', 'badge', diagnostic.severity + ' · ' + diagnostic.code));
+            const prefix = diagnostic.code + ': ';
+            const text = diagnostic.message.startsWith(prefix) ? diagnostic.message.slice(prefix.length) : diagnostic.message;
+            message.appendChild(el('div', 'text', text));
+            const probes = (metaOf(envelope) || {}).probes;
+            if (probes && probes.length) {
+              const list = el('ul', 'divergence');
+              probes.slice(0, 2).forEach((probe, index) => {
+                const item = el('li', '');
+                item.appendChild(el('span', 'source', 'Probe ' + (index + 1) + ' \u00b7 ' + probe.action));
+                item.appendChild(document.createTextNode(probe.question));
+                list.appendChild(item);
+              });
+              message.appendChild(list);
+            } else {
+              const subject = diagnostic.subject;
+              if (subject) message.appendChild(el('div', 'subject', subject.uri + (subject.line ? ':' + subject.line : '') + (subject.detail ? ' \u2014 ' + subject.detail : '')));
+            }
+          } else {
+            const blocks = (envelope.params && envelope.params.prompt) || [];
+            message.appendChild(el('div', 'text', blocks.filter((b) => b && b.type === 'text').map((b) => b.text).join(' ')));
+          }
+          root.appendChild(message);
+        }
+        if (state.nextTurn) {
+          const waiting = el('article', 'msg from-agent waiting');
+          waiting.appendChild(el('div', 'who', state.nextTurn.speaker || 'Agent'));
+          waiting.appendChild(el('div', 'text', 'Reviewing\u2026'));
+          root.appendChild(waiting);
+        }
+        return true;
+      }
+
       const jevViewer = ${jevViewer.viewer.toString()};
       const jevHost = document.getElementById('jev-view');
       const jevRoot = jevHost.attachShadow({ mode: 'open' });
@@ -758,7 +940,7 @@ function renderAgentPage() {
       async function applyState(payload) {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
-        document.querySelector('main.agent').classList.toggle('reasoning', renderJevView(payload) || renderReasoningView(payload));
+        document.querySelector('main.agent').classList.toggle('reasoning', renderJevView(payload) || renderChatView(payload) || renderReasoningView(payload));
         await ensureEditor();
         const next = renderEnvelopes(payload);
         if (model.getValue() !== next) model.setValue(next);
