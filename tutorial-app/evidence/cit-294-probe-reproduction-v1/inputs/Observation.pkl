@@ -1,0 +1,31 @@
+/// The shape of one arm's recorded, independent observation from the live
+/// run (canary_runner.rb's JSON output, one file per arm under
+/// observations/). Nothing here is declared or expected -- it is what the
+/// real Rails/libvips/libmatio process actually reported about itself,
+/// decoded from its own output, not retyped by hand.
+module cit294.Observation
+
+import "pkl:json"
+
+class Observed {
+  arm: String(this == "mat" || this == "png")
+  block_untrusted_env: String?
+  source_path: String(!isEmpty)
+  declared_content_type: String(!isEmpty)
+  stored_content_type: String(!isEmpty)
+  identified: Boolean
+  variable: Boolean
+  loader_selected: String?
+  loader_error: String?
+  variant_succeeded: Boolean
+  variant_error_class: String?
+  variant_error: String?
+  returned_bytes_hex: String?
+  returned_byte_count: Int?
+  matches_dummy_file: Boolean?
+  recovered_text: String?
+  expected_text: String?
+}
+
+function fromJson(text: String): Observed =
+  new json.Parser {}.parse(text).toTyped(Observed)
