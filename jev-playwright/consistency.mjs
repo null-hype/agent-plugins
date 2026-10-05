@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import path from 'node:path';
@@ -70,13 +71,13 @@ export function facts(runDir, backend) {
         'the state in request.json is not the evidence attached to the test');
       const sent = request?.questions ?? {};
       rules['question-sent'] = rule(
-        isDeepStrictEqual(Object.keys(sent), [id]) && sent[id]?.instructions === question.judge.instructions &&
+        isDeepStrictEqual(Object.keys(sent), [id]) && isDeepStrictEqual(sent[id], question.judge) &&
           request.model === expected.model && !Object.hasOwn(sent[id], 'expected') &&
           isDeepStrictEqual(Object.keys(request).sort(), ['model', 'questions', 'state']),
         'request.json does not ask exactly the declared question, or it leaks the expected range');
       rules['score-on-record'] = rule(
         response?.answers?.[id]?.noul === score.probability && result?.probabilities?.[id] === score.probability &&
-          result?.model === score.model,
+          result?.model === score.model && (response?.model ?? request?.model) === score.model,
         `ledger ${score.probability} (${score.model}) does not match response.json/result.json`);
       rules['backend-labelled'] = rule(score.backend === backend && result?.backend === backend,
         `the answer is labelled ${score.backend}, the run used ${backend}`);
@@ -95,12 +96,16 @@ export function facts(runDir, backend) {
     };
   }
 
+  // The contract this run was asked of, recomputed rather than taken from an
+  // earlier reconcile, so records changed after it are still caught.
+  const digest = createHash('sha256').update(JSON.stringify(expected)).digest('hex');
+  const metadata = report.config?.metadata ?? {};
   return {
     runId: ledger.runId,
     runRules: {
-      // reconcile.mjs writes comparison.json only after the run, the ledger and
-      // the contract digest agree (it throws otherwise).
-      'same-contract': rule(comparison != null, 'reconcile.mjs did not accept the run; see validation-error.txt'),
+      'same-contract': rule(
+        comparison != null && digest === ledger.contractDigest && digest === metadata.contractDigest && ledger.runId === metadata.runId,
+        'the contract digest or run id differs between report-expected.json, scores.json and the Playwright report, or reconcile.mjs did not accept the run'),
       coverage: rule(comparison?.executionComplete === true, 'a declared question has no execution or answer, or an undeclared one appeared'),
     },
     findings,

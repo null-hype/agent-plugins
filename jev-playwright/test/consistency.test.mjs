@@ -72,9 +72,24 @@ test('records that contradict each other make the run inconsistent', () => {
   assert.deepEqual(broken(tamper(`${second}/request.json`, (r) => { r.state.http.response.status = 200; })), [`${second}: evidence-sent`]);
   // The expected range reached Jev.
   assert.deepEqual(broken(tamper(`${id}/request.json`, (r) => { r.questions[id].expected = { min: 0.8, max: 1 }; })), [`${id}: question-sent`]);
+  // The judge was asked something other than the declared question.
+  assert.deepEqual(broken(tamper(`${id}/request.json`, (r) => { r.questions[id].criteria = { true: 'anything', false: 'nothing' }; })), [`${id}: question-sent`]);
+  // The raw response names another model than the ledger.
+  assert.deepEqual(broken(tamper(`${id}/response.json`, (r) => { r.model = 'jev-other'; })), [`${id}: score-on-record`]);
   // A canned answer presented as a real one.
   assert.deepEqual(broken(checkConsistency(runDir, 'real')).sort(),
     Object.keys(good).map((q) => `${q}: backend-labelled`).sort());
+  // The contract changed after the run was reconciled.
+  const contract = path.join(runDir, 'report-expected.json');
+  const original = readFileSync(contract, 'utf8');
+  const changed = JSON.parse(original);
+  changed.questions[id].expected.min = 0.1;
+  writeFileSync(contract, JSON.stringify(changed));
+  try {
+    assert.ok(broken(checkConsistency(runDir, 'mock')).includes('run: same-contract'));
+  } finally {
+    writeFileSync(contract, original);
+  }
   // And untouched, it is consistent again.
   assert.equal(checkConsistency(runDir, 'mock').consistent, true);
 });
