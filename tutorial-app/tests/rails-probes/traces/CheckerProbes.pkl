@@ -47,6 +47,9 @@ class Revision {
   /// The commit message the Client holds: the subject question, then the PR's claims.
   prompt: String
   capturedAt: String
+  /// The finding's id in the recorded review history
+  /// (`src/lib/reviewHistory/declarations.ts`), verbatim (CIT-313).
+  findingId: String
   /// The finding, in the review's words.
   finding: String
   /// Where the review points.
@@ -74,6 +77,7 @@ revisions: Mapping<String, Revision> = new {
       pkl test: 8 facts, 28 asserts, all passing.
       """
     capturedAt = "2026-10-04T01:15:37.196Z"
+    findingId = "review-1.finding-1"
     finding = "The independent file-read evidence never reaches the checker."
     subject {
       role = "observation"
@@ -115,6 +119,7 @@ revisions: Mapping<String, Revision> = new {
       pkl test: 18 facts, 56 asserts, all passing.
       """
     capturedAt = "2026-10-04"
+    findingId = "review-2.gap-1"
     finding = "The trace negative controls mutate the derived count, not the retained trace."
     subject {
       role = "observation"
@@ -152,7 +157,10 @@ local claims =
 local short = checker.take(8)
 local checkerDir = "docs/investigations/CIT-265/cit-294"
 local reproductionUri = "evidence/cit-294-probe-reproduction-v1/reproduction/\(state)"
-local finding = "review-\(claims.review).finding-1"
+local finding = claims.findingId
+/// The history's run id (`REVIEW_HISTORY_RUN_ID` in `src/lib/reviewHistory/identity.ts`):
+/// evaluation ids are `<run>:<finding id>`, as the history spells them (CIT-313).
+local historyRun = "cit-294-117-118-120"
 
 // The two questions, the same at every revision.
 local class Question {
@@ -216,7 +224,7 @@ local transcript: AcpTrace.Row = new {
 
 local notRetained: AcpTrace.Row = new {
   role = "observation"
-  uri = "review-\(claims.review)/finding-1/mutation-output"
+  uri = "\(finding)/mutation-output"
   detail = "expected the deleted-trace run's output | actual -- not retained -- [missing]"
 }
 
@@ -226,7 +234,7 @@ local function probe(q: Question, rows: Listing<AcpTrace.Row>): AcpTrace.Probe =
   diagnostic {
     code = "\(finding).\(q.name)"
     message = "\(code): \(answerText(q))"
-    evaluationId = "cit294.review-\(claims.review):finding-1:\(q.name)"
+    evaluationId = "\(historyRun):\(code)"
     related = rows
   }
 }
@@ -280,7 +288,7 @@ solved: AcpTrace.Trace = new {
                 reproduction(deletedTrace)
                 reproduction(forgedRead)
               }
-              evaluationId = "cit294.review-\(claims.review):finding-1"
+              evaluationId = "\(historyRun):\(finding)"
             }
             probes {
               probe(deletedTrace, new Listing {
