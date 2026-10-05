@@ -1,4 +1,6 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPRODUCTION_ID, REVISIONS, assertionCounts, noticed, type CheckerRun, type RevisionKey } from './probes';
@@ -85,6 +87,45 @@ export function applyReproduction(key: RevisionKey, base: Fixture, runs: Record<
   rows.splice(at === -1 ? rows.length : at + 1, 0, reproductionRow(key, 'deleted-trace', runs['deleted-trace']), reproductionRow(key, 'forged-read', runs['forged-read']));
   finding.related = rows;
   return fixture;
+}
+
+/** What the runner records for one probe: the only measured input to a Pkl-authored trace (CIT-312). */
+export const answerJson = (run: CheckerRun) =>
+  `${JSON.stringify(
+    { exitCode: run.exitCode, testsPassed: run.testsPassed, testsTotal: run.testsTotal, assertsPassed: run.assertsPassed, assertsTotal: run.assertsTotal },
+    null,
+    2,
+  )}\n`;
+
+/**
+ * States whose starter and solved traces are rendered from
+ * `traces/CheckerProbes.pkl` instead of patched into the committed fixture
+ * (CIT-312). The rest still go through `applyReproduction`.
+ */
+export const PKL_AUTHORED = new Set<RevisionKey>(['S1']);
+
+/**
+ * Render one state's traces from the Pkl claims and a run's answers. `files`
+ * holds each probe's `answer.json` by its path under `reproductionDir(key)`;
+ * the module reads those and nothing else measured.
+ */
+export function renderTraces(key: RevisionKey, files: Map<string, string>): { starter: string; solved: string } {
+  const dir = mkdtempSync(path.join(tmpdir(), 'cit-312-'));
+  try {
+    const run = path.join(dir, 'run');
+    for (const [file, body] of files) {
+      mkdirSync(path.dirname(path.join(run, file)), { recursive: true });
+      writeFileSync(path.join(run, file), body);
+    }
+    const out = path.join(dir, 'out');
+    const props = { state: key, checker: REVISIONS[key].revision, reproductionId: REPRODUCTION_ID, run };
+    execFileSync('pkl', ['eval', '-m', out, path.join(APP, 'tests/rails-probes/traces/CheckerProbes.pkl'), ...Object.entries(props).flatMap(([k, v]) => ['-p', `${k}=${v}`])], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    return { starter: readFileSync(path.join(out, 'starter.json'), 'utf8'), solved: readFileSync(path.join(out, 'solved.json'), 'utf8') };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 export const readSolvedFixture = (key: RevisionKey): Fixture => JSON.parse(readFileSync(solvedFixture(key), 'utf8'));
