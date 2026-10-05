@@ -124,3 +124,38 @@ export async function deriveLoanwordState(lesson: Lesson, files: Record<string, 
 		storyFile: config.storyFile,
 	};
 }
+
+// Markdown a lesson imports as a component (`import LessonCopy from '.../x.md'`).
+const imported = import.meta.glob('../lesson-copy/*.md', { eager: true, query: '?raw', import: 'default' }) as Record<string, string>;
+
+const BRIDGE = /<AcpTraceBridge\b([^>]*)\/>/;
+const attribute = (attrs: string, name: string) => new RegExp(`\\b${name}="([^"]*)"`).exec(attrs)?.[1];
+
+/** The trace config the lesson's AcpTraceBridge runs with: frontmatter, else its props, else the bridge's defaults. */
+export function acpTraceConfig(lesson: Lesson): AcpTraceConfig | null {
+	if (lesson.data.template !== 'acp-trace') return null;
+	const custom = resolveAcpTraceConfig(lesson.data.custom);
+	if (custom) return custom;
+	const attrs = BRIDGE.exec(lesson.body)?.[1] ?? '';
+	return {
+		traceFile: attribute(attrs, 'traceFile') ?? '/acp-trace.json',
+		scenario: attribute(attrs, 'scenario') ?? 'ghost-trace-diagnostic-v1',
+	};
+}
+
+/** The lesson's prose as TutorialKit renders it: imports dropped, imported Markdown inlined, the headless bridge removed. */
+export function lessonProse(lesson: Lesson): string {
+	const components = new Map<string, string>();
+	const lines = lesson.body.split('\n').filter((line) => {
+		const match = /^import\s+(\w+)\s+from\s+['"](.+)['"];?\s*$/.exec(line);
+		if (!match) return true;
+		const copy = /lesson-copy\/([^/]+\.md)$/.exec(match[2]);
+		if (copy) components.set(match[1], imported[`../lesson-copy/${copy[1]}`] ?? '');
+		return false;
+	});
+	return lines
+		.join('\n')
+		.replace(BRIDGE, '')
+		.replace(/<(\w+)\s*\/>/g, (tag, name: string) => components.get(name) ?? tag)
+		.trim();
+}
