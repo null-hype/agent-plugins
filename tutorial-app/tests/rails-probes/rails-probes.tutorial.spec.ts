@@ -133,7 +133,7 @@ function ask(key: RevisionKey) {
   const { diagnostic } = JSON.parse(solved).frames[1].envelope.result._meta;
   expect(diagnostic).toMatchObject({ code: finding!.code, message: `${finding!.code}: ${finding!.message}`, evaluationId: evaluationIdOf(finding!.id) });
 
-  // The committed reproduction and the Storybook fixtures must say what the
+  // The committed reproduction and the lesson traces must say what the
   // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
   const drift: string[] = [];
   for (const [file, body] of [...files, ...answers]) {

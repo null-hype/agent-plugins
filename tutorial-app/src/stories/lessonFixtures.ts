@@ -21,26 +21,14 @@ import {
 // A lesson as TutorialKit loads it: frontmatter, starter `_files`, and the
 // `_solution` files that Solve writes over them. Read straight from
 // src/content, so stories exercise the lesson's own data, not copies of it.
-const raw = import.meta.glob(
-	[
-		'../content/tutorial/part-5/private-document/1-reproduce-the-flaw/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-5/private-document/2-block-unauthorized-access/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-5/private-document/3-preserve-owner-access/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-1/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-1/chapter-2/lesson-1/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-2/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-2/chapter-1/lesson-2/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-3/proposal-p-against-the-budget/1-jev-types-the-answer/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-3/proposal-p-against-the-budget/2-git-merges-the-two-branches/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-3/proposal-p-against-the-budget/3-checks-evaluate-p-under-v1/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-3/proposal-p-against-the-budget/4-supervisor-grants-1200-1300/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-3/proposal-p-against-the-budget/5-checks-re-evaluate-p-under-v2/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-4/smuggling-survives-the-merge/1-two-patches-reviewed-independently/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-4/smuggling-survives-the-merge/2-gitbutler-applies-both/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-4/smuggling-survives-the-merge/3-bootstrap-finds-it-reopened/{content.mdx,_files/*,_solution/*}',
-	],
-	{ eager: true, query: '?raw', import: 'default' },
-) as Record<string, string>;
+// Every lesson is globbed, so a newly generated one needs no edit here.
+const raw = import.meta.glob('../content/tutorial/**/{content.mdx,_files/**,_solution/**}', {
+	eager: true,
+	query: '?raw',
+	import: 'default',
+}) as Record<string, string>;
+
+const ROOT = '../content/tutorial/';
 
 export type Lesson = {
 	// Frontmatter, i.e. what TutorialKit exposes as `lesson.data`.
@@ -50,27 +38,13 @@ export type Lesson = {
 	// Files after Solve: starter files with `_solution` written over them.
 	solved: Record<string, string>;
 	focus: string;
+	// The MDX after the frontmatter: the lesson's imports, bridge and prose.
+	body: string;
 };
 
-export function loadLesson(
-	dir:
-		| 'part-5/private-document/1-reproduce-the-flaw'
-		| 'part-5/private-document/2-block-unauthorized-access'
-		| 'part-5/private-document/3-preserve-owner-access'
-		| 'part-1/chapter-1/lesson-1'
-		| 'part-1/chapter-2/lesson-1'
-		| 'part-2/chapter-1/lesson-1'
-		| 'part-2/chapter-1/lesson-2'
-		| 'part-3/proposal-p-against-the-budget/1-jev-types-the-answer'
-		| 'part-3/proposal-p-against-the-budget/2-git-merges-the-two-branches'
-		| 'part-3/proposal-p-against-the-budget/3-checks-evaluate-p-under-v1'
-		| 'part-3/proposal-p-against-the-budget/4-supervisor-grants-1200-1300'
-		| 'part-3/proposal-p-against-the-budget/5-checks-re-evaluate-p-under-v2'
-		| 'part-4/smuggling-survives-the-merge/1-two-patches-reviewed-independently'
-		| 'part-4/smuggling-survives-the-merge/2-gitbutler-applies-both'
-		| 'part-4/smuggling-survives-the-merge/3-bootstrap-finds-it-reopened',
-): Lesson {
-	const base = `../content/tutorial/${dir}/`;
+/** `dir` is the lesson's directory under src/content/tutorial, e.g. `part-2/chapter-1/lesson-1`. */
+export function loadLesson(dir: string): Lesson {
+	const base = `${ROOT}${dir}/`;
 	const collect = (folder: string) =>
 		Object.fromEntries(
 			Object.entries(raw)
@@ -83,7 +57,15 @@ export function loadLesson(
 	const data = load(frontmatter[1]) as Record<string, unknown>;
 	const files = collect('_files');
 
-	return { data, files, solved: { ...files, ...collect('_solution') }, focus: String(data.focus) };
+	return { data, files, solved: { ...files, ...collect('_solution') }, focus: String(data.focus), body: raw[`${base}content.mdx`].slice(frontmatter[0].length) };
+}
+
+/** Every lesson directory under src/content/tutorial, in TutorialKit's order (part, chapter, lesson). */
+export function lessonDirs(): string[] {
+	return Object.keys(raw)
+		.filter((path) => path.endsWith('/content.mdx'))
+		.map((path) => path.slice(ROOT.length, -'/content.mdx'.length))
+		.sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
 }
 
 // The lesson's own derivation, called the way its bridge calls it: the
