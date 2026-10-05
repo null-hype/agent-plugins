@@ -20,6 +20,7 @@ module CheckerProbes
 import "pkl:json"
 
 import "AcpTrace.pkl"
+import "../../../../src/jev/pkl/Question.pkl"
 
 /// The checker state the probes were asked of (S1 = PR 117, S2 = PR 118).
 state: String = read("prop:state")
@@ -28,15 +29,6 @@ checker: String = read("prop:checker")
 reproductionId: String = read("prop:reproductionId")
 /// Where the runner wrote this state's answers.
 run: String = read("prop:run")
-
-/// What the runner recorded for one probe. Read, never declared here.
-class Answer {
-  exitCode: Int
-  testsPassed: Int?
-  testsTotal: Int?
-  assertsPassed: Int?
-  assertsTotal: Int?
-}
 
 /// One revision's amendment: what its PR and its review say. Nothing measured.
 class Revision {
@@ -162,22 +154,30 @@ local finding = claims.findingId
 /// evaluation ids are `<run>:<finding id>`, as the history spells them (CIT-313).
 local historyRun = "cit-294-117-118-120"
 
-// The two questions, the same at every revision.
-local class Question {
-  name: String
+// The two questions, the same at every revision. Each is a shared Question
+// (CIT-315) the checker answers: a checker that can be trusted notices the
+// probe, so `expected` is "noticed". An answer outside that is still an answer,
+// told in the lesson; only an `answer.json` that is not there fails.
+// The lesson text beside it stays here until it moves into the Question (CIT-316).
+local class Probe extends Question.Question {
+  name: Question.Id
   action: String
   question: String
   did: String
   what: String
+  judge = new Question.Checker {}
+  collector = name
+  requiredEvidence { "exitCode" }
+  expected { min = 1; max = 1 }
 }
-local deletedTrace = new Question {
+local deletedTrace = new Probe {
   name = "deleted-trace"
   action = "removed canary-reads.txt, the whole retained trace"
   question = "Does the check fail when the trace is deleted?"
   did = "Deleting the trace"
   what = "canary-reads.txt removed"
 }
-local forgedRead = new Question {
+local forgedRead = new Probe {
   name = "forged-read"
   action = "forged a dummy-file read into the blocked arm"
   question = "Does the check fail when a dummy-file read is forged?"
@@ -185,27 +185,25 @@ local forgedRead = new Question {
   what = "a dummy-file openat added to the mat-blocked arm of canary-reads.txt"
 }
 
-local function answer(q: Question): Answer =
-  new json.Parser {}.parse(read("\(run)/probes/\(q.name)/answer.json")).toTyped(Answer)
+local function answer(q: Probe): Question.CheckerAnswer =
+  new json.Parser {}.parse(read("\(run)/probes/\(q.name)/answer.json")).toTyped(Question.CheckerAnswer)
 
-local function noticed(a: Answer): Boolean = a.exitCode != 0 || a.assertsPassed != a.assertsTotal
-
-local function counts(a: Answer): String =
+local function counts(a: Question.CheckerAnswer): String =
   if (a.assertsTotal == null)
     "no assertion count (the checker stopped before counting)"
   else
     "\(a.assertsPassed) of \(a.assertsTotal) assertions pass"
 
 /// What the checker said to a probe. Either answer is data (CIT-311).
-local function answerText(q: Question): String =
+local function answerText(q: Probe): String =
   let (a = answer(q))
-    if (noticed(a))
+    if (Question.noticed(a))
       "\(q.did) made the check fail\(if (a.assertsTotal == null) "" else ": \(a.assertsPassed) of \(a.assertsTotal) assertions passed") (pkl test exit \(a.exitCode))."
     else
       "\(q.did) still left all \(a.assertsTotal) assertions passing."
 
 /// The row that shows what a probe produced. Labelled a reproduction, never the reviewers' own output.
-local function reproduction(q: Question): AcpTrace.Row =
+local function reproduction(q: Probe): AcpTrace.Row =
   let (a = answer(q))
     new {
       role = "observation"
@@ -228,7 +226,7 @@ local notRetained: AcpTrace.Row = new {
   detail = "expected the deleted-trace run's output | actual -- not retained -- [missing]"
 }
 
-local function probe(q: Question, rows: Listing<AcpTrace.Row>): AcpTrace.Probe = new {
+local function probe(q: Probe, rows: Listing<AcpTrace.Row>): AcpTrace.Probe = new {
   action = q.action
   question = q.question
   diagnostic {

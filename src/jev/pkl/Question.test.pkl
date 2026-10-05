@@ -1,0 +1,56 @@
+/// CIT-315: an answer outside its expected range is data; only a missing one fails.
+///
+///   pkl test src/jev/pkl/Question.test.pkl
+amends "pkl:test"
+
+import "Jev.pkl"
+import "Question.pkl"
+
+local jev = new Question.Question {
+  judge { type = "noul"; instructions = "Is it?" }
+  collector = "c"
+  requiredEvidence { "http" }
+  expected { min = 0.8; max = 1 }
+}
+local checker = (jev) {
+  judge = new Question.Checker {}
+  expected { min = 1; max = 1 }
+}
+local stillPasses = new Question.CheckerAnswer { exitCode = 0; assertsPassed = 28; assertsTotal = 28 }
+local failed = new Question.CheckerAnswer { exitCode = 1; assertsPassed = 27; assertsTotal = 28 }
+local stoppedEarly = new Question.CheckerAnswer { exitCode = 1 }
+
+facts {
+  ["A Jev answer in range"] {
+    Question.outcome(jev, 0.95) == "in-range"
+    Question.outcome(jev, 0.8) == "in-range"
+  }
+  ["A Jev answer out of range is recorded, not failed"] {
+    Question.outcome(jev, 0.1) == "out-of-range"
+    !Question.failsRun(Question.outcome(jev, 0.1))
+  }
+  ["A checker that notices is in range"] {
+    Question.outcome(checker, failed) == "in-range"
+    Question.outcome(checker, stoppedEarly) == "in-range"
+  }
+  ["A checker that still passes is out of range, and does not fail the run"] {
+    Question.outcome(checker, stillPasses) == "out-of-range"
+    !Question.failsRun(Question.outcome(checker, stillPasses))
+  }
+  ["Only an answer that could not be collected fails"] {
+    Question.outcome(jev, null) == "not-collected"
+    Question.outcome(checker, null) == "not-collected"
+    Question.failsRun(Question.outcome(checker, null))
+  }
+  ["A Question is answered by a Jev judge unless it says otherwise"] {
+    jev.judge is Jev.NoulQuestion
+    checker.judge is Question.Checker
+  }
+  ["The dependency graph is checked"] {
+    Question.validGraph(new Mapping { ["a"] = jev; ["b"] = (jev) { dependencies { "a" } } })
+    module.catch(() -> Question.validGraph(new Mapping { ["a"] = (jev) { dependencies { "a" } } }))
+      == "Question dependency cycle at a"
+    module.catch(() -> Question.validGraph(new Mapping { ["a"] = (jev) { dependencies { "zz" } } }))
+      == "Unknown question dependency: zz"
+  }
+}
