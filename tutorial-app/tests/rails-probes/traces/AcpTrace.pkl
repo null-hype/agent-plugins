@@ -1,0 +1,115 @@
+/// The shape of an ACP trace fixture as the Client and Agent previews play it
+/// (`src/stories/fixtures/*.json`, a lesson's `acp-trace.json`). Property order
+/// is the order the JSON is written in.
+module AcpTrace
+
+class Trace {
+  scenario: String
+  frames: Listing<Frame>
+  nextTurn: NextTurn?
+}
+
+abstract class Frame {
+  actor: String
+  action: String
+}
+
+class ClientFrame extends Frame {
+  actor = "client"
+  envelope: PromptEnvelope
+  provenance: Provenance
+}
+
+class AgentFrame extends Frame {
+  actor = "agent"
+  speaker: String
+  envelope: ResultEnvelope
+  provenance: Provenance
+}
+
+class PromptEnvelope {
+  jsonrpc = "2.0"
+  id: Int
+  method = "session/prompt"
+  params: PromptParams
+}
+
+class PromptParams {
+  sessionId: String
+  prompt: Listing<TextBlock>
+}
+
+class TextBlock {
+  type = "text"
+  text: String
+}
+
+class ResultEnvelope {
+  jsonrpc = "2.0"
+  id: Int
+  result: Result
+}
+
+class Result {
+  stopReason = "end_turn"
+  _meta: Meta
+}
+
+class Meta {
+  diagnostic: Finding
+  probes: Listing<Probe>
+}
+
+class Finding {
+  code: String
+  severity = "error"
+  message: String
+  subject: Row
+  related: Listing<Row>
+  evaluationId: String
+}
+
+class Probe {
+  action: String
+  question: String
+  diagnostic: ProbeDiagnostic
+}
+
+class ProbeDiagnostic {
+  severity = "error"
+  code: String
+  message: String
+  evaluationId: String
+  related: Listing<Row>
+}
+
+/// One evidence row. `revision` and `line` are left out of the JSON when unset.
+class Row {
+  role: String
+  uri: String
+  revision: String?
+  line: Int?
+  detail: String
+}
+
+class Provenance {
+  recordingId: String
+  capturedAt: String
+  scripted: String
+}
+
+class NextTurn {
+  actor: String
+  speaker: String
+  action: String
+}
+
+/// JSON as `JSON.stringify(trace, null, 2)` writes it, so a rendered trace is
+/// byte-comparable with the committed fixture: `nextTurn: null` is kept, a
+/// row's unset `revision`/`line` are dropped.
+renderer: JsonRenderer = new {
+  omitNullProperties = false
+  converters {
+    [Row] = (row) -> row.toMap().filter((_, value) -> value != null)
+  }
+}

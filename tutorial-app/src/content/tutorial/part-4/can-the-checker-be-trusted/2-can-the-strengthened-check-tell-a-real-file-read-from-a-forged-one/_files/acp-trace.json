@@ -1,0 +1,33 @@
+{
+  "scenario": "cit294-review-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_cit294-02",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "CIT-297: Can the strengthened check tell a real file read from a forged one?\n\nIndependent read evidence now reaches the checker: run_arms.sh derives the dummy-file open count outside the Ruby process.\nDeleting the trace, or forging a dummy-file read into the blocked arm, is now flagged.\npkl test: 18 facts, 56 asserts, all passing."
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "cit294-review-2#0",
+        "capturedAt": "2026-10-04",
+        "scripted": "ACP framing and the subject question authored; the body is condensed from the PR 118 description. capturedAt is the evidence bundle's collection date."
+      }
+    }
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "reviewer",
+    "action": "review PR 118"
+  }
+}
