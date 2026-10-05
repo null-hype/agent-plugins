@@ -10,6 +10,7 @@ import { CHECKED_REVISION, REPRODUCTION_ID, type CheckerRun } from './probes';
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const SOLVED_FIXTURE = path.join(APP, 'src/stories/fixtures/rails-matlab-review-1.solved.json');
+export const STARTER_FIXTURE = path.join(APP, 'src/stories/fixtures/rails-matlab-review-1.starter.json');
 export const REPRODUCTION_DIR = path.join(APP, 'evidence/cit-294-probe-reproduction-v1/reproduction');
 const REPRODUCTION_URI = 'evidence/cit-294-probe-reproduction-v1/reproduction';
 

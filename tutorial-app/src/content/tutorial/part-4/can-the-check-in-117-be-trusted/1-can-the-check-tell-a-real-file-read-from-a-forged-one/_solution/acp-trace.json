@@ -1,0 +1,165 @@
+{
+  "scenario": "cit294-review-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_cit294-01",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "CIT-294: Can the check tell a real file read from a forged one?\n\nRun the Rails → libvips → libmatio/HDF5 chain live, under strace.\nFour arms: MAT canary and PNG control, each unblocked and blocked.\npkl test: 8 facts, 28 asserts, all passing."
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "cit294-review-1#0",
+        "capturedAt": "2026-10-04T01:15:37.196Z",
+        "scripted": "ACP framing and the subject question authored; the body is condensed from the PR 117 description."
+      }
+    },
+    {
+      "actor": "agent",
+      "action": "reply with finding",
+      "speaker": "reviewer",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "stopReason": "end_turn",
+          "_meta": {
+            "diagnostic": {
+              "code": "review-1.finding-1",
+              "severity": "error",
+              "message": "review-1.finding-1: The independent file-read evidence never reaches the checker.",
+              "subject": {
+                "role": "observation",
+                "uri": "docs/investigations/CIT-265/cit-294/run_arms.sh",
+                "revision": "20aafd26",
+                "line": 21,
+                "detail": "run_arms.sh:21-30 prints filtered strace output, but Pkl never consumes it"
+              },
+              "related": [
+                {
+                  "role": "observation",
+                  "uri": "evidence/cit-294-review-history-v1/captures/linear-CIT-294-comment-97e70a90.md",
+                  "line": 5,
+                  "detail": "deleting the trace entirely, or replacing it with a dummy-file read in the blocked arm, still left all 28 assertions passing"
+                },
+                {
+                  "role": "axiom",
+                  "uri": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+                  "revision": "20aafd26",
+                  "line": 17,
+                  "detail": "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it"
+                },
+                {
+                  "role": "observation",
+                  "uri": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
+                  "revision": "20aafd26",
+                  "line": 1,
+                  "detail": "the strace transcript of the four arms: committed, and read by no check"
+                },
+                {
+                  "role": "observation",
+                  "uri": "review-1/finding-1/mutation-output",
+                  "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
+                },
+                {
+                  "role": "observation",
+                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/probes/deleted-trace/result.txt",
+                  "detail": "REPRODUCTION cit-294-117-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/probes/forged-read/result.txt",
+                  "detail": "REPRODUCTION cit-294-117-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
+                }
+              ],
+              "evaluationId": "cit294.review-1:finding-1"
+            },
+            "probes": [
+              {
+                "action": "deleted the retained trace from the blocked arm",
+                "question": "Does the check fail when the trace is deleted?",
+                "diagnostic": {
+                  "severity": "error",
+                  "code": "review-1.finding-1.deleted-trace",
+                  "message": "review-1.finding-1.deleted-trace: Deleting the trace still left all 28 assertions passing.",
+                  "evaluationId": "cit294.review-1:finding-1:deleted-trace",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/linear-CIT-294-comment-97e70a90.md",
+                      "line": 5,
+                      "detail": "deleting the trace entirely, or replacing it with a dummy-file read in the blocked arm, still left all 28 assertions passing"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
+                      "revision": "20aafd26",
+                      "line": 1,
+                      "detail": "the strace transcript of the four arms: committed, and read by no check"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "review-1/finding-1/mutation-output",
+                      "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/probes/deleted-trace/result.txt",
+                      "detail": "REPRODUCTION cit-294-117-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "forged a dummy-file read into the blocked arm",
+                "question": "Does the check fail when a dummy-file read is forged?",
+                "diagnostic": {
+                  "severity": "error",
+                  "code": "review-1.finding-1.forged-read",
+                  "message": "review-1.finding-1.forged-read: Forging a dummy-file read still left all 28 assertions passing.",
+                  "evaluationId": "cit294.review-1:finding-1:forged-read",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/linear-CIT-294-comment-97e70a90.md",
+                      "line": 5,
+                      "detail": "deleting the trace entirely, or replacing it with a dummy-file read in the blocked arm, still left all 28 assertions passing"
+                    },
+                    {
+                      "role": "axiom",
+                      "uri": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+                      "revision": "20aafd26",
+                      "line": 17,
+                      "detail": "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/probes/forged-read/result.txt",
+                      "detail": "REPRODUCTION cit-294-117-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "cit294-review-1#1",
+        "capturedAt": "2026-10-04T01:15:37.196Z",
+        "scripted": "ACP framing authored; the review text is retrieved verbatim."
+      }
+    }
+  ],
+  "nextTurn": null
+}
