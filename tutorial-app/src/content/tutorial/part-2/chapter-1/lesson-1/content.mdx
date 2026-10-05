@@ -17,36 +17,8 @@ custom:
 ---
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+import LessonCopy from '../../../../../lesson-copy/recorded-diagnostic.md';
 
 <AcpTraceBridge client:load />
 
-A recipient missed an update. Can we show which rule was violated and which
-observations support that conclusion?
-
-This recorded exchange uses a small event-processing case, **Follower Maze**.
-Events arrive in order `4,2,3,1`. The model being checked applies each event as
-it arrives, even though the required behavior depends on sequence order.
-
-Select **Solve** to reveal the recorded diagnostic:
-**`fm-missing-delivery(seq=2,user=10)`**. Hover the marked line or click the
-diagnostic link above it to inspect the supporting evidence.
-
-| Delivery | Required by sequence order | Produced by the arrival-order model |
-| --- | --- | --- |
-| Sequence 1 → user 20 | Yes | Yes |
-| Sequence 2 → user 10 | Yes | **Missing** |
-
-The result comes from running the lesson's checker against this case. Its
-subject, related evidence, and evaluation ID travel with the verdict, so the
-explanation can be inspected wherever the diagnostic appears.
-
-**Evidence scope:** the fixture was captured from an actual exchange between a
-small test agent and a client using the Agent Client Protocol (ACP). The test agent runs a deterministic checker;
-this is not a recording of an autonomous model diagnosing a production incident.
-Solve replays the captured reply. It does not call a live agent.
-
-[Inspect the capture scripts, transcript, and reproduction instructions](https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/evidence/ghost-trace-v1).
-There is no Dagger Cloud trace for this capture.
-
-Next, keep the same events and ask whether a different processing model delivers
-the missing update.
+<LessonCopy />

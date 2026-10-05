@@ -1,0 +1,87 @@
+/// Case-owned declared expectations for each of CIT-294's four runs. Kept
+/// separate from the independent Observation (observations/*.json, produced
+/// by the live run) and from Reconcile's check function, per the
+/// declared/observed/checked split CIT-265 uses throughout (see
+/// src/noteexpand's Claims.pkl for the pattern this follows). Written before
+/// reading the observations, not fitted to them afterward.
+///
+/// `expectedBytesHex`/`returnedByteCountExpected` are the pinned, known-good
+/// values Reconcile checks the observation's raw bytes against directly --
+/// not a boolean the live run self-reports. `variantErrorClassExpected`/
+/// `variantErrorContains` pin the *specific* refusal a blocked arm must
+/// produce, not merely that something failed. Added in response to CIT-297:
+/// see Reconcile.pkl for how each is used.
+module cit294.claims
+
+class Claim {
+  arm: String
+  blockUntrustedEnv: String?
+  contentTypeRetained: Boolean
+  loaderExpected: String?
+  variantSucceedsExpected: Boolean
+  discloseExpected: Boolean
+  /// Whether the independent strace evidence must show the dummy canary
+  /// file opened by this arm. True only for the unblocked MAT canary --
+  /// every other arm (including the blocked MAT canary) must show zero.
+  independentReadExpected: Boolean
+  /// Required when `variantSucceedsExpected == false`: the specific
+  /// exception class the real variant call must raise. A generic
+  /// `RuntimeError` or similar must not satisfy this.
+  variantErrorClassExpected: String?
+  /// Required when `variantSucceedsExpected == false`: a substring the
+  /// variant's own error message must contain, naming the actual refusal
+  /// (e.g. "blocked") rather than an unrelated failure.
+  variantErrorContains: String?
+  /// The exact byte count the returned variant's raw pixels must have.
+  /// Null only for the blocked MAT arm, where no bytes are returned at all.
+  returnedByteCountExpected: Int?
+  /// The exact hex-encoded bytes the returned variant's raw pixels must
+  /// equal -- the canary's dummy-file secret for the unblocked MAT arm, the
+  /// control image's own known pixel data for the PNG arms. Null only for
+  /// the blocked MAT arm.
+  expectedBytesHex: String?
+}
+
+matUnblocked: Claim = new {
+  arm = "mat"
+  blockUntrustedEnv = null
+  contentTypeRetained = true
+  loaderExpected = "matload"
+  variantSucceedsExpected = true
+  discloseExpected = true
+  independentReadExpected = true
+  variantErrorClassExpected = null
+  variantErrorContains = null
+  returnedByteCountExpected = 32
+  expectedBytesHex = "4b5232532d43414e4152592d4349543239342d30313233343536373839616263"
+}
+
+matBlocked: Claim = new {
+  arm = "mat"
+  blockUntrustedEnv = "1"
+  contentTypeRetained = true
+  loaderExpected = null
+  variantSucceedsExpected = false
+  discloseExpected = false
+  independentReadExpected = false
+  variantErrorClassExpected = "Vips::Error"
+  variantErrorContains = "blocked"
+  returnedByteCountExpected = null
+  expectedBytesHex = null
+}
+
+pngUnblocked: Claim = new {
+  arm = "png"
+  blockUntrustedEnv = null
+  contentTypeRetained = true
+  loaderExpected = "pngload"
+  variantSucceedsExpected = true
+  discloseExpected = false
+  independentReadExpected = false
+  variantErrorClassExpected = null
+  variantErrorContains = null
+  returnedByteCountExpected = 4
+  expectedBytesHex = "00000000"
+}
+
+pngBlocked: Claim = (pngUnblocked) { blockUntrustedEnv = "1" }

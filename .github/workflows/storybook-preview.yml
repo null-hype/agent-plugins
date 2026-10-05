@@ -1,0 +1,150 @@
+name: Storybook PR Preview
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tutorial-app/**'
+      - '.github/workflows/storybook-preview.yml'
+
+permissions:
+  contents: read
+  deployments: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: storybook-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment:
+      name: storybook-pr-${{ github.event.pull_request.number }}
+      url: ${{ steps.deploy.outputs.preview_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tutorial-app/package-lock.json
+
+      - name: Build Storybook
+        working-directory: tutorial-app
+        run: |
+          npm ci
+          npm run build-storybook
+
+      - name: Build TutorialKit
+        working-directory: tutorial-app
+        run: npm run build
+
+      - name: Deploy PR preview to existing Netlify site
+        id: deploy
+        working-directory: tutorial-app
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+          PROTON_PASS_KEY_PROVIDER: fs
+          PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
+          PROTON_PASS_AGENT_REASON: "GitHub Actions Storybook PR preview: resolve Netlify deployment credentials"
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if ! command -v pass-cli >/dev/null 2>&1; then
+            curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          fi
+
+          pass-cli login
+          trap 'pass-cli logout >/dev/null 2>&1 || true' EXIT
+
+          cat > /tmp/netlify.env <<'EOF'
+          NETLIFY_PERSONAL_ACCESS_TOKEN=pass://infra/netlify/NETLIFY_PERSONAL_ACCESS_TOKEN
+          EOF
+
+          pass-cli run --env-file /tmp/netlify.env -- bash -euo pipefail -c '
+            export NETLIFY_AUTH_TOKEN="$NETLIFY_PERSONAL_ACCESS_TOKEN"
+
+            sites="$(curl -fsSL \
+              -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              https://api.netlify.com/api/v1/sites)"
+
+            site="$(printf "%s" "$sites" | jq -c --arg repo "$GITHUB_REPOSITORY" '\''
+              ([.[] | select(.custom_domain? == "null-hype.tidelands.dev")] +
+               [.[] | select(.build_settings.repo_path? == $repo)])
+              | unique_by(.id)
+              | if length == 0 then error("no Netlify site found for " + $repo)
+                else .[0]
+                end
+            '\'')"
+
+            export NETLIFY_SITE_ID="$(printf "%s" "$site" | jq -r .id)"
+            site_name="$(printf "%s" "$site" | jq -r .name)"
+            alias="storybook-pr-${PR_NUMBER}"
+            preview_url="https://${alias}--${site_name}.netlify.app"
+
+            echo "Deploying Storybook to existing Netlify site ${site_name} as ${alias}"
+            npx netlify deploy \
+              --alias="$alias" \
+              --dir=storybook-static \
+              --no-build
+
+            tutorial_alias="tutorial-pr-${PR_NUMBER}"
+            tutorial_preview_url="https://${tutorial_alias}--${site_name}.netlify.app"
+            echo "Deploying TutorialKit to existing Netlify site ${site_name} as ${tutorial_alias}"
+            npx netlify deploy \
+              --alias="$tutorial_alias" \
+              --dir=dist \
+              --no-build
+
+            echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
+            echo "tutorial_preview_url=$tutorial_preview_url" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Storybook preview"
+              echo "$preview_url"
+              echo "### TutorialKit preview"
+              echo "$tutorial_preview_url"
+            } >> "$GITHUB_STEP_SUMMARY"
+          '
+
+      - name: Surface preview on pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          TUTORIAL_PREVIEW_URL: ${{ steps.deploy.outputs.tutorial_preview_url }}
+        run: |
+          set -euo pipefail
+
+          body="$(cat <<EOF
+          <!-- storybook-preview -->
+          ### Storybook preview
+
+          [Open Storybook preview](${PREVIEW_URL})
+
+          [Open TutorialKit preview](${TUTORIAL_PREVIEW_URL})
+
+          Updated for \`${GITHUB_SHA::7}\`.
+          EOF
+          )"
+
+          comment_id="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --paginate \
+            --jq '.[] | select((.body // "") | contains("<!-- storybook-preview -->")) | .id' \
+            | head -n 1)"
+
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              -f body="$body" >/dev/null
+          else
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              -f body="$body" >/dev/null
+          fi
