@@ -1,0 +1,91 @@
+/// CIT-320: does an investigation agree with itself?
+///
+/// A Question is asked and an answerer (a Jev judge or the deterministic
+/// checker) answers it. This module does not ask whether the answer was the
+/// expected one. It asks whether the evidence and the answers on record agree
+/// with each other, so a run is not trusted just because it passed.
+///
+/// Each answerer's runner gathers its facts (`jev-playwright/consistency.mjs`,
+/// `tutorial-app/tests/rails-probes/rails-probes.consistency.spec.ts`) and
+/// writes them as JSON; this module types them and decides:
+///
+/// - A rule that does not hold makes the run inconsistent, and only that fails
+///   the Dagger check (`RunReport.Check` in the root `.dagger` module).
+/// - An answer outside its expected range is an `out-of-range` row, never a
+///   failure (CIT-314).
+/// - A Jev answer that points against its deterministic anchor is a
+///   `disagreement` row, never a failure (CIT-320, decided by Richard).
+///
+///   pkl eval Consistency.pkl -p facts=<file> -f json
+module Consistency
+
+import "pkl:json"
+
+import "Question.pkl"
+
+class Rule {
+  held: Boolean
+  /// What was compared, when the rule does not hold.
+  detail: String? = null
+}
+
+class Finding {
+  answerer: "jev"|"checker"
+  /// Skipped because a dependency was not accepted. Not an answer, and not a failure.
+  skipped: Boolean = false
+  /// The answer on the scale `expected` is written on; null when none was collected.
+  value: Number(isBetween(0, 1))?
+  expected: Question.Expectation
+  outcome: Question.Outcome|"dependency-skipped" =
+    if (skipped) "dependency-skipped"
+    else if (value == null) "not-collected"
+    else if (Question.inRange(expected, value!!)) "in-range"
+    else "out-of-range"
+  /// Jev only: the deterministic evidence it was sent says the claim holds,
+  /// and Jev's answer says it does not (or the reverse). A row, not a failure.
+  disagreement: Boolean = false
+  rules: Mapping<String, Rule>
+  consistent: Boolean = !failsRun(outcome) && rules.toMap().values.every((r) -> r.held)
+}
+
+/// A dependency skip is not an answer and not a failure; otherwise the shared rule applies.
+const local function failsRun(o: Question.Outcome|"dependency-skipped"): Boolean =
+  o != "dependency-skipped" && Question.failsRun(o)
+
+local raw = new json.Parser {}.parse(read(read("prop:facts")).text)
+
+local function rules(d: Dynamic): Mapping<String, Rule> = new Mapping {
+  for (name, r in d) {
+    [name] = new Rule { held = r.held; detail = r.getPropertyOrNull("detail") }
+  }
+}
+
+runId: String(!isEmpty) = raw.runId
+/// Rules about the run as a whole (coverage, the contract, controls).
+runRules: Mapping<String, Rule> = rules(raw.runRules)
+findings: Mapping<Question.Id, Finding>(!isEmpty) = new Mapping {
+  for (id, f in raw.findings) {
+    [id] = new Finding {
+      answerer = f.answerer
+      skipped = f.getPropertyOrNull("skipped") ?? false
+      value = f.getPropertyOrNull("value")
+      expected { min = f.expected.min; max = f.expected.max }
+      disagreement = f.getPropertyOrNull("disagreement") ?? false
+      rules = rules(f.rules)
+    }
+  }
+}
+
+consistent: Boolean =
+  runRules.toMap().values.every((r) -> r.held) && findings.toMap().values.every((f) -> f.consistent)
+
+/// Every rule that does not hold, as "<question or run>: <rule>: <detail>".
+broken: List<String> =
+  runRules.toMap().filter((_, r) -> !r.held).entries.map((e) -> "run: \(e.key): \(e.value.detail ?? "")") +
+  findings.toMap().entries.flatMap((f) ->
+    (if (failsRun(f.value.outcome)) List("\(f.key): collected: no answer was collected") else List()) +
+    f.value.rules.toMap().filter((_, r) -> !r.held).entries.map((e) -> "\(f.key): \(e.key): \(e.value.detail ?? "")"))
+
+output {
+  renderer = new JsonRenderer { omitNullProperties = false }
+}

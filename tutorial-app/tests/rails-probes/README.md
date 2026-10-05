@@ -70,6 +70,28 @@ cannot change these runs; only adding a revision can. If its checker catches a
 probe, the reproduction files for it do not exist yet, so the drift check names
 them until `CIT307_UPDATE=1` writes them.
 
+## Consistency: watching the watchmen (CIT-320)
+
+The `consistency` project (`rails-probes.consistency.spec.ts`) trusts none of
+the probes' records. For each state it re-runs the pinned checker on each
+**recorded** mutation and requires the recorded answer, checks the recorded
+forged transcript differs from the pinned one by exactly the forged line, that
+the baseline passes as declared, that the `block_untrusted_env` control is
+noticed (a blind checker makes every "not noticed" meaningless), that a "not
+noticed" answer ran the baseline's full assertion count, and that the lesson
+and its solved trace say what the record says. `src/jev/pkl/Consistency.pkl`
+decides; a probe the checker does not notice is an `out-of-range` row, not a
+failure.
+
+```sh
+RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.rails-probes.config.ts --project consistency --project probes
+```
+
+The probes' summary parsing needs Pkl 0.32 (the committed reproduction's
+version). In CI, the root Dagger module's `rails-probes check` runs the
+consistency pass on the committed records, then the probes
+(`.github/workflows/investigations.yml`).
+
 ## Provenance
 
 * This is a **new reproduction** (`cit-294-checker-probes-reproduction-v1`, named for the questions, not for

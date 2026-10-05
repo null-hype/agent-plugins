@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkConsistency } from './consistency.mjs';
 import { reconcile } from './reconcile.mjs';
 import { writeReportUI } from './report-ui.mjs';
 
@@ -46,6 +47,15 @@ try {
 } catch (error) {
   const message = error.stderr?.toString() || error.message;
   writeFileSync(path.join(runDir, 'validation-error.txt'), message + '\n');
+  console.error(message);
+}
+// CIT-320: whether the run agrees with itself, independent of whether it passed.
+try {
+  const consistency = checkConsistency(runDir, values.backend);
+  console.log(`Consistency: ${consistency.consistent ? 'consistent' : `INCONSISTENT\n  ${consistency.broken.join('\n  ')}`}`);
+} catch (error) {
+  const message = error.stderr?.toString() || error.message;
+  writeFileSync(path.join(runDir, 'consistency-error.txt'), message + '\n');
   console.error(message);
 }
 console.log(`Report: ${writeReportUI(runDir)}`);

@@ -7,7 +7,8 @@ import { defineConfig } from '@playwright/test';
 //   npx playwright test --config=playwright.rails-probes.config.ts
 //   CIT307_UPDATE=1 npx ...     # rewrite the committed reproduction + fixture
 //
-// Project `probes` needs only `pkl`. Project `editor` needs a browser and the
+// Projects `probes` and `consistency` need only `pkl` (set RAILS_PROBES_NO_SERVERS=1
+// to run them without the servers below). Project `editor` needs a browser and the
 // acp-trace server (started below on its own ports); it depends on `probes`, so
 // it never runs against a fixture the checker no longer supports. The tutorial
 // reporter writes the lesson into src/content/tutorial/part-4 (the chapter
@@ -25,6 +26,9 @@ export default defineConfig({
   reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/part-4' }]],
   projects: [
     { name: 'probes', testMatch: 'rails-probes.tutorial.spec.ts' },
+    // CIT-320: checks the committed records agree with each other and with a re-run
+    // of the checker. Needs only `pkl`, like `probes`.
+    { name: 'consistency', testMatch: 'rails-probes.consistency.spec.ts' },
     {
       name: 'editor',
       testMatch: 'rails-probes.editor.spec.ts',
@@ -39,7 +43,9 @@ export default defineConfig({
       use: { baseURL: 'http://localhost:4321', headless: true, viewport: { width: 1440, height: 900 }, launchOptions, screenshot: 'only-on-failure' },
     },
   ],
-  webServer: [
+  // RAILS_PROBES_NO_SERVERS=1 skips both servers, for runs of `probes` and
+  // `consistency` alone (the root Dagger module's RailsProbes).
+  webServer: process.env.RAILS_PROBES_NO_SERVERS ? [] : [
     {
       command: 'node src/templates/acp-trace/server.cjs',
       url: 'http://127.0.0.1:4383',
