@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import tutorialStore from 'tutorialkit:store';
 import {
   buildAcpTraceState,
@@ -50,6 +50,10 @@ export default function AcpTraceBridge({
 }: Props) {
   const documents = useStore(tutorialStore.documents) as DocumentRecord;
   const revisionRef = useRef(0);
+  // cit294-review-v1: the Client reports whether the viewer has accepted a
+  // suggestion; null until it has ever reported (every other scenario).
+  const [accepted, setAccepted] = useState<boolean | null>(null);
+  const agentWindows = useRef(new Set<Window>());
   const lesson = tutorialStore.lesson as LessonRecord | undefined;
 
   const resolvedConfig = useMemo(() => {
@@ -92,15 +96,31 @@ export default function AcpTraceBridge({
   // sent immediately to every frame already in the DOM; both pages guard on
   // `revision`, so any message that arrives out of order or twice is a no-op.
   useEffect(() => {
-    const message = {
-      payload: traceState,
-      source: 'tk-acp-trace-bridge',
-      type: 'lesson-state',
+    const clientMessage = { payload: traceState, source: 'tk-acp-trace-bridge', type: 'lesson-state' };
+    // Only the Agent pane is told about acceptance: it holds back its diagnosis
+    // until the viewer has taken a suggestion in the Client.
+    // The pane ignores a revision it has already seen, and acceptance changes
+    // without the trace changing, so each (trace, acceptance) pair gets its own
+    // revision for the Agent: 4r, 4r+1 (not accepted), 4r+2 (accepted).
+    const agentMessage = {
+      ...clientMessage,
+      payload: accepted === null ? { ...traceState, revision: traceState.revision * 4 } : { ...traceState, accepted, revision: traceState.revision * 4 + (accepted ? 2 : 1) },
     };
-    const send = (frame: HTMLIFrameElement) => frame.contentWindow?.postMessage(message, '*');
-    const onReady = (event: MessageEvent) => {
+    const send = (frame: HTMLIFrameElement) =>
+      frame.contentWindow?.postMessage(
+        frame.contentWindow && agentWindows.current.has(frame.contentWindow) ? agentMessage : clientMessage,
+        '*',
+      );
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'acp-trace-suggestion-accepted') {
+        if (event.data?.source === 'tk-acp-trace-client-preview') setAccepted(Boolean(event.data.accepted));
+        return;
+      }
       if (event.data?.type !== 'lesson-preview-ready' || !READY_SOURCES.has(event.data?.source)) {
         return;
+      }
+      if (event.data.source === 'tk-acp-trace-agent-preview' && event.source) {
+        agentWindows.current.add(event.source as Window);
       }
       const frame = getPreviewFrames().find((frame) => frame.contentWindow === event.source);
       if (frame) {
@@ -108,13 +128,13 @@ export default function AcpTraceBridge({
       }
     };
 
-    window.addEventListener('message', onReady);
+    window.addEventListener('message', onMessage);
     getPreviewFrames().forEach(send);
 
     return () => {
-      window.removeEventListener('message', onReady);
+      window.removeEventListener('message', onMessage);
     };
-  }, [traceState]);
+  }, [traceState, accepted]);
 
   return null;
 }

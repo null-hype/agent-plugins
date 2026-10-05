@@ -68,21 +68,31 @@
                 },
                 {
                   "role": "observation",
-                  "uri": "review-1/finding-1/mutation-output",
+                  "uri": "review-1.finding-1/mutation-output",
                   "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
+                },
+                {
+                  "role": "observation",
+                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/result.txt",
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/forged-read/result.txt",
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
                 }
               ],
-              "evaluationId": "cit294.review-1:finding-1"
+              "evaluationId": "cit-294-117-118-120:review-1.finding-1"
             },
             "probes": [
               {
-                "action": "deleted the retained trace from the blocked arm",
+                "action": "removed canary-reads.txt, the whole retained trace",
                 "question": "Does the check fail when the trace is deleted?",
                 "diagnostic": {
                   "severity": "error",
                   "code": "review-1.finding-1.deleted-trace",
                   "message": "review-1.finding-1.deleted-trace: Deleting the trace still left all 28 assertions passing.",
-                  "evaluationId": "cit294.review-1:finding-1:deleted-trace",
+                  "evaluationId": "cit-294-117-118-120:review-1.finding-1.deleted-trace",
                   "related": [
                     {
                       "role": "observation",
@@ -99,8 +109,13 @@
                     },
                     {
                       "role": "observation",
-                      "uri": "review-1/finding-1/mutation-output",
+                      "uri": "review-1.finding-1/mutation-output",
                       "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/result.txt",
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
                     }
                   ]
                 }
@@ -112,7 +127,7 @@
                   "severity": "error",
                   "code": "review-1.finding-1.forged-read",
                   "message": "review-1.finding-1.forged-read: Forging a dummy-file read still left all 28 assertions passing.",
-                  "evaluationId": "cit294.review-1:finding-1:forged-read",
+                  "evaluationId": "cit-294-117-118-120:review-1.finding-1.forged-read",
                   "related": [
                     {
                       "role": "observation",
@@ -126,6 +141,11 @@
                       "revision": "20aafd26",
                       "line": 17,
                       "detail": "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/forged-read/result.txt",
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
                     }
                   ]
                 }
