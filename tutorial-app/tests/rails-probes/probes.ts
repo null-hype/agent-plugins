@@ -17,7 +17,7 @@ const HISTORY = path.join(APP, 'evidence/cit-294-review-history-v1');
 const SUPPLEMENT = path.join(APP, 'evidence/cit-294-probe-reproduction-v1');
 const CHECKER_DIR = 'docs/investigations/CIT-265/cit-294';
 
-export const REPRODUCTION_ID = 'cit-294-review-1-probes-reproduction-v1';
+export const REPRODUCTION_ID = 'cit-294-checker-probes-reproduction-v1';
 
 /**
  * The revision is an input: one set of probes, one runner, asked of each

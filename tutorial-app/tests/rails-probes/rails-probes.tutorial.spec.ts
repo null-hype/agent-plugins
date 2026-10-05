@@ -36,8 +36,10 @@ import {
 // The probes ASSERT WHAT THE CHECKER DID, and today that is "still passes" at
 // both states (review 2 says the same of PR 118). A passing test is what lets
 // the tutorial reporter write lessons (it writes nothing for a failed test),
-// so "the check does not notice" is the green outcome here, and the day
-// somebody fixes the checker this test goes red and names the revision.
+// so "the check does not notice" is the green outcome here. The inputs are
+// pinned by blob id, so a fix to the checker cannot change these runs: only
+// adding a revision whose checker catches a probe can make the assertion fail.
+// Whether such an answer is data (not a failure) is open: CIT-310 finding 1.
 //
 // Provenance: each result is a NEW run. It reproduces the probes; it does not
 // recover the reviewers' own mutation outputs, which the evidence bundle

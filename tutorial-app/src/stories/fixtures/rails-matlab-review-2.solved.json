@@ -74,19 +74,19 @@
                 {
                   "role": "observation",
                   "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/result.txt",
-                  "detail": "REPRODUCTION cit-294-review-1-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                 },
                 {
                   "role": "observation",
                   "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/forged-read/result.txt",
-                  "detail": "REPRODUCTION cit-294-review-1-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                 }
               ],
               "evaluationId": "cit294.review-2:finding-1"
             },
             "probes": [
               {
-                "action": "deleted the retained trace from the blocked arm",
+                "action": "removed canary-reads.txt, the whole retained trace",
                 "question": "Does the check fail when the trace is deleted?",
                 "diagnostic": {
                   "severity": "error",
@@ -115,7 +115,7 @@
                     {
                       "role": "observation",
                       "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/result.txt",
-                      "detail": "REPRODUCTION cit-294-review-1-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                     }
                   ]
                 }
@@ -145,7 +145,7 @@
                     {
                       "role": "observation",
                       "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/forged-read/result.txt",
-                      "detail": "REPRODUCTION cit-294-review-1-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                     }
                   ]
                 }

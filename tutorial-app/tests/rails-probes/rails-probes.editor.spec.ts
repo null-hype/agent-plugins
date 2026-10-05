@@ -80,7 +80,7 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
     const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
     const markers = await page.evaluate(() => (window as any).monaco.editor.getModelMarkers({}).map((m: any) => m.message as string));
     expect(markers).toContain(`review-${review}.finding-1.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`);
-    await expect(widget).toContainText('REPRODUCTION cit-294-review-1-probes-reproduction-v1');
+    await expect(widget).toContainText('REPRODUCTION cit-294-checker-probes-reproduction-v1');
     await expect(widget).toContainText('canary-reads.txt removed');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
     // The reviewers' own run output stays visibly missing next to the new one.

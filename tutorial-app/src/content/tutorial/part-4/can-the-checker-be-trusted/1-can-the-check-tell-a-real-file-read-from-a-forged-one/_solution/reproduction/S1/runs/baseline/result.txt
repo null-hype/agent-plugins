@@ -1,4 +1,4 @@
-reproduction: cit-294-review-1-probes-reproduction-v1
+reproduction: cit-294-checker-probes-reproduction-v1
 probe: none
 checker: PR 117 at 20aafd26 (same cit-294 tree as 390a7873 on main)
 mutation: none (retained evidence as pinned)

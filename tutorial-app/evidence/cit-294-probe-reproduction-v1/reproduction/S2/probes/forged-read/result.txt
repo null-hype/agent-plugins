@@ -1,4 +1,4 @@
-reproduction: cit-294-review-1-probes-reproduction-v1
+reproduction: cit-294-checker-probes-reproduction-v1
 probe: forged-read
 checker: PR 118 at 8d097c8e (same cit-294 tree as 9739b539 on main)
 mutation: dummy-file openat added to the mat-blocked arm
