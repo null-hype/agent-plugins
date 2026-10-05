@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { buildAcpTraceState } from '../../src/lib/acpTraceProtocol';
-import { SOLVED_FIXTURE } from './fixture';
+import { solvedFixture } from './fixture';
+import { REVISIONS, type RevisionKey } from './probes';
 
 // CIT-307 x CIT-253: the review-1 editor flow, driven against the fixture the
 // probes run just produced (the `probes` project is a dependency and fails if
@@ -10,12 +11,9 @@ import { SOLVED_FIXTURE } from './fixture';
 // after accepting a probe, in the real Client and Agent pages (server.cjs).
 
 const AGENT_URL = 'http://127.0.0.1:4384/';
-const solved = JSON.parse(readFileSync(SOLVED_FIXTURE, 'utf8'));
-// The starter is the solved fixture before the reviewer answers: its prompt frame only.
-const starter = { ...solved, frames: solved.frames.slice(0, 1), nextTurn: { actor: 'agent', action: 'review PR 117', speaker: 'reviewer' } };
 
 let revision = 0;
-async function show(pages: Page[], fixture: typeof solved) {
+async function show(pages: Page[], fixture: Parameters<typeof buildAcpTraceState>[0]["fixture"]) {
   revision += 1;
   const payload = buildAcpTraceState({ revision, fixture });
   // Agent panes learn about accepts from the host page; here the Client page
@@ -29,7 +27,14 @@ async function show(pages: Page[], fixture: typeof solved) {
 const modelText = (page: Page) => page.evaluate(() => (window as any).monaco.editor.getModels()[0].getValue() as string);
 const editorText = async (page: Page) => (await page.locator('.monaco-editor .view-lines').innerText()).replace(/ /g, ' ');
 
-test('accepting a probe shows the numbers the executed run produced', async ({ page, context }) => {
+for (const key of ['S1', 'S2'] as RevisionKey[]) {
+test(`accepting a probe shows the numbers the executed run produced (PR ${REVISIONS[key].pr})`, async ({ page, context }) => {
+  const { review, asserts } = { review: REVISIONS[key].review, asserts: REVISIONS[key].baseline.asserts };
+  const solved = JSON.parse(readFileSync(solvedFixture(key), 'utf8'));
+  // The starter is the solved fixture before the reviewer answers: its prompt frame only.
+  const starter = { ...solved, frames: solved.frames.slice(0, 1), nextTurn: { actor: 'agent', action: `review PR ${REVISIONS[key].pr}`, speaker: 'reviewer' } };
+  const subject: string = solved.frames[0].envelope.params.prompt[0].text.split('\n')[0];
+
   const agent = await context.newPage();
   await page.goto('/');
   await agent.goto(AGENT_URL);
@@ -50,7 +55,7 @@ test('accepting a probe shows the numbers the executed run produced', async ({ p
   });
 
   await show([page, agent], starter);
-  await expect.poll(() => editorText(page)).toContain('CIT-294: Can the check tell a real file read from a forged one?');
+  await expect.poll(() => editorText(page)).toContain(subject);
 
   await test.step('solve offers the probes; nothing is accepted yet', async () => {
     await show([page], solved);
@@ -71,13 +76,13 @@ test('accepting a probe shows the numbers the executed run produced', async ({ p
   });
 
   await test.step('the deleted-trace diagnostic names the executed run', async () => {
-    await page.locator('.codelens-decoration a', { hasText: 'review-1.finding-1.deleted-trace' }).click();
+    await page.locator('.codelens-decoration a', { hasText: `review-${review}.finding-1.deleted-trace` }).click();
     const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
     const markers = await page.evaluate(() => (window as any).monaco.editor.getModelMarkers({}).map((m: any) => m.message as string));
-    expect(markers).toContain('review-1.finding-1.deleted-trace: Deleting the trace still left all 28 assertions passing.');
-    await expect(widget).toContainText('REPRODUCTION cit-294-117-probes-reproduction-v1');
+    expect(markers).toContain(`review-${review}.finding-1.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`);
+    await expect(widget).toContainText('REPRODUCTION cit-294-review-1-probes-reproduction-v1');
     await expect(widget).toContainText('canary-reads.txt removed');
-    await expect(widget).toContainText('28 of 28 assertions pass');
+    await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
     // The reviewers' own run output stays visibly missing next to the new one.
     await expect(widget).toContainText('not retained');
     if (process.env.STORYBOARD_SCREENSHOTS) await page.screenshot({ path: 'deleted-trace.png' });
@@ -85,15 +90,16 @@ test('accepting a probe shows the numbers the executed run produced', async ({ p
 
   await test.step('the forged-read diagnostic carries its own run', async () => {
     // The open widget covers the next line's lens: clicking the same lens again closes it.
-    await page.locator('.codelens-decoration a', { hasText: 'review-1.finding-1.deleted-trace' }).click();
+    await page.locator('.codelens-decoration a', { hasText: `review-${review}.finding-1.deleted-trace` }).click();
     await expect(page.getByRole('region', { name: 'Diagnostic evidence' })).toHaveCount(0);
-    await page.locator('.codelens-decoration a', { hasText: 'review-1.finding-1.forged-read' }).click();
+    await page.locator('.codelens-decoration a', { hasText: `review-${review}.finding-1.forged-read` }).click();
     const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
     await expect(widget).toContainText('a dummy-file openat added to the mat-blocked arm');
-    await expect(widget).toContainText('28 of 28 assertions pass');
+    await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
   });
 
   await test.step('the Agent diagnoses only after an accept', async () => {
-    await expect(agent.locator('#chat-view')).toContainText('review-1.finding-1');
+    await expect(agent.locator('#chat-view')).toContainText(`review-${review}.finding-1`);
   });
 });
+}

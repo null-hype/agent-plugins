@@ -17,15 +17,51 @@ const HISTORY = path.join(APP, 'evidence/cit-294-review-history-v1');
 const SUPPLEMENT = path.join(APP, 'evidence/cit-294-probe-reproduction-v1');
 const CHECKER_DIR = 'docs/investigations/CIT-265/cit-294';
 
-export const REPRODUCTION_ID = 'cit-294-117-probes-reproduction-v1';
-export const CHECKED_REVISION = '20aafd26372a832224be824f72f4a615ee671094';
-/** The merged equivalent of CHECKED_REVISION; same cit-294 tree, per the history manifest. */
-export const MERGED_EQUIVALENT = '390a7873ea6fd639c1c735393848e03b05031cc3';
+export const REPRODUCTION_ID = 'cit-294-review-1-probes-reproduction-v1';
 
-const SUPPLEMENT_BLOBS: Record<string, string> = {
-  'Claims.pkl': 'a6cf7949c033dcfb5b4ae85dbe53413443cc97f5',
-  'Observation.pkl': '6e1594b8483db9a0b272e01daa9e3edf1d10271b',
-  'cit294.test.pkl-expected.pcf': '73d902a2a97e4ecfed10775c831b3f3427cab44a',
+/**
+ * The revision is an input: one set of probes, one runner, asked of each
+ * checker state. `revision` is the commit the review cited (not on main);
+ * `mergedEquivalent` is the rebased commit that is, with the same cit-294 tree
+ * (`treeEquality` in the history manifest). `supplement` is what that state's
+ * suite needs and the history bundle does not hold, by git blob id.
+ */
+export type RevisionKey = 'S1' | 'S2';
+export const REVISIONS: Record<
+  RevisionKey,
+  {
+    pr: number;
+    review: number;
+    revision: string;
+    mergedEquivalent: string;
+    supplement: Record<string, string>;
+    baseline: { tests: number; asserts: number };
+  }
+> = {
+  S1: {
+    pr: 117,
+    review: 1,
+    revision: '20aafd26372a832224be824f72f4a615ee671094',
+    mergedEquivalent: '390a7873ea6fd639c1c735393848e03b05031cc3',
+    supplement: {
+      'Claims.pkl': 'a6cf7949c033dcfb5b4ae85dbe53413443cc97f5',
+      'Observation.pkl': '6e1594b8483db9a0b272e01daa9e3edf1d10271b',
+      'cit294.test.pkl-expected.pcf': '73d902a2a97e4ecfed10775c831b3f3427cab44a',
+    },
+    baseline: { tests: 12, asserts: 28 },
+  },
+  S2: {
+    pr: 118,
+    review: 2,
+    revision: '8d097c8e16bd1db44d5d4f558ad99938585e1001',
+    mergedEquivalent: '9739b539de26919f1d1bb8129df8954de40dbfcd',
+    // Observation.pkl is already in the history bundle at S2.
+    supplement: {
+      'Claims.pkl': '44d3e6d5deaef5e6988ea684ed3f5a938774b0dc',
+      'cit294.test.pkl-expected.pcf': 'e24e660619ab051753fd6339d82ade2626ad536b',
+    },
+    baseline: { tests: 22, asserts: 56 },
+  },
 };
 
 type ManifestFile = { state: string; revision: string; path: string; blobId: string; sha256: string; file: string };
@@ -41,25 +77,26 @@ export function pklVersion(): string | null {
   }
 }
 
-/** The S1 checker inputs, each verified against the history manifest or the supplement. Throws on any mismatch. */
-export function loadPinnedChecker(): Map<string, Buffer> {
+/** One state's checker inputs, each verified against the history manifest or the supplement. Throws on any mismatch. */
+export function loadPinnedChecker(key: RevisionKey): Map<string, Buffer> {
+  const { revision, supplement } = REVISIONS[key];
   const manifest = JSON.parse(readFileSync(path.join(HISTORY, 'manifest.json'), 'utf8')) as { files: ManifestFile[] };
   const inputs = new Map<string, Buffer>();
   for (const entry of manifest.files) {
-    if (entry.revision !== CHECKED_REVISION || !entry.path.startsWith(`${CHECKER_DIR}/`)) continue;
+    if (entry.revision !== revision || !entry.path.startsWith(`${CHECKER_DIR}/`)) continue;
     const bytes = readFileSync(path.join(HISTORY, entry.file));
     if (gitBlobId(bytes) !== entry.blobId || sha256(bytes) !== entry.sha256) {
       throw new Error(`${entry.path}@${entry.revision.slice(0, 8)} does not match the history manifest`);
     }
     inputs.set(entry.path.slice(CHECKER_DIR.length + 1), bytes);
   }
-  for (const [name, blobId] of Object.entries(SUPPLEMENT_BLOBS)) {
-    const bytes = readFileSync(path.join(SUPPLEMENT, 'inputs', name));
-    if (gitBlobId(bytes) !== blobId) throw new Error(`${name} does not match its pinned blob id ${blobId}`);
+  for (const [name, blobId] of Object.entries(supplement)) {
+    const bytes = readFileSync(path.join(SUPPLEMENT, 'inputs', key, name));
+    if (gitBlobId(bytes) !== blobId) throw new Error(`${key}/${name} does not match its pinned blob id ${blobId}`);
     inputs.set(name, bytes);
   }
-  for (const required of ['cit294.test.pkl', 'Reconcile.pkl', 'canary-reads.txt', 'observations/mat-blocked.json']) {
-    if (!inputs.has(required)) throw new Error(`pinned checker input missing: ${required}`);
+  for (const required of ['cit294.test.pkl', 'Reconcile.pkl', 'Observation.pkl', 'Claims.pkl', 'canary-reads.txt', 'observations/mat-blocked.json']) {
+    if (!inputs.has(required)) throw new Error(`pinned checker input missing for ${key}: ${required}`);
   }
   return inputs;
 }

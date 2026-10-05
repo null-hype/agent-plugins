@@ -1,4 +1,4 @@
-# Rails probes through Playwright and the tutorial reporter (CIT-307)
+# Rails probes through Playwright and the tutorial reporter (CIT-307, CIT-309)
 
 Question from CIT-253: would running the Rails traces *through* a Playwright
 suite make them more real, and is the tutorial reporter an opportunity? This
@@ -12,9 +12,28 @@ npx playwright test --config=playwright.rails-probes.config.ts
 
 The `probes` project needs only `pkl` on PATH (the spec skips without it): no browser, no servers, no
 Docker, no credentials. The `@tutorial` test compiles the lesson into
-`src/content/tutorial/part-4/can-the-check-in-117-be-trusted` (the chapter
+`src/content/tutorial/part-4/can-the-checker-be-trusted` (the chapter
 directory is rewritten on every run; the chapter is listed in part 4's `meta.md`).
 Commit what it produces.
+
+## One spec, the revision as input (CIT-309)
+
+The two questions are asked of each checker state in turn, with the same
+mutations and the same wording; `REVISIONS` in `probes.ts` is the input
+(S1 = PR 117, S2 = PR 118). Each state is one lesson of the chapter
+`can-the-checker-be-trusted`, so the second lesson is held by the reporter's
+continuity check to what the first left behind.
+
+| Revision | Baseline | Delete the trace | Forge a read |
+| --- | --- | --- | --- |
+| S1, PR 117 (`20aafd26`) | 12 tests, 28 asserts pass | still 28 | still 28 |
+| S2, PR 118 (`8d097c8e`) | 22 tests, 56 asserts pass | still 56 | still 56 |
+
+PR 118's description says deleting the trace or forging a read "is now flagged".
+Review 2 says it is not, because the new negative controls change the derived
+open count rather than the retained trace. The S2 run agrees with review 2. The
+run does not say whether the claim is *wrong* in some other reading, only that
+these two mutations of the retained trace pass.
 
 ## What runs for real
 
@@ -54,7 +73,8 @@ then flip.
 
 ## The generated lesson
 
-One `@tutorial` test, one step, one lesson: **Can the check tell a real file read
+One `@tutorial` test, one step per revision, one lesson per step. Lesson 1:
+**Can the check tell a real file read
 from a forged one?** Its `_files/acp-trace.json` is the starter trace and its
 `_solution/acp-trace.json` is the solved fixture (executed numbers included), so
 TutorialKit's own Solve plays the Storybook flow in the Client and Agent
@@ -93,7 +113,7 @@ hand-written: the assertion counts in each probe's diagnostic and a labelled
 **REPRODUCTION** evidence row per probe come from the executed run
 (`tests/rails-probes/fixture.ts`; the rest stays authored). The reviewers' own
 "not retained" row is kept beside it. The exact bytes each row points at are
-committed under `evidence/cit-294-probe-reproduction-v1/reproduction/`.
+committed under `evidence/cit-294-probe-reproduction-v1/reproduction/<S1|S2>/`.
 
 * `probes` project: runs the checker, compiles the lessons, and **fails if the
   committed reproduction or fixture differs from what the checker just did**

@@ -1,0 +1,18 @@
+reproduction: cit-294-review-1-probes-reproduction-v1
+probe: deleted-trace
+checker: PR 117 at 20aafd26 (same cit-294 tree as 390a7873 on main)
+mutation: canary-reads.txt removed
+exit code: 0
+100.0% tests pass [12 passed], 100.0% asserts pass [28 passed]
+✔ unblocked MAT canary: content type retained as declared, despite the real bytes being the MAT/HDF5 payload
+✔ unblocked MAT canary: matload is the loader libvips actually selected
+✔ unblocked MAT canary: the dummy file's bytes are recoverable from the returned variant
+✔ blocked MAT canary: no loader ran and the variant was refused, not merely slow or truncated
+✔ blocked MAT canary: no disclosure field claims a match (refusal, not a silent empty read)
+✔ PNG control processes normally whether or not untrusted loaders are blocked
+✔ reconciling each observation against its declared claim raises no flags
+✔ a claim that disagrees with reality is exactly what gets flagged
+✔ mat-unblocked
+✔ mat-blocked
+✔ png-unblocked
+✔ png-blocked

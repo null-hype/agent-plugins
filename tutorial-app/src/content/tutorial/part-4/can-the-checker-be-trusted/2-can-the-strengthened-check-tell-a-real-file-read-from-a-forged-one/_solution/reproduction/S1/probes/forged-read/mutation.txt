@@ -1,0 +1,2 @@
+added to the mat-blocked arm of canary-reads.txt:
++[pid    16] openat(AT_FDCWD</app>, "/work/dummy-canary.txt", O_RDONLY) = 14</work/dummy-canary.txt>
