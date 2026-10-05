@@ -1,0 +1,25 @@
+examples {
+  ["mat-unblocked"] {
+    "matload"
+    true
+    #""KR2S-CANARY-CIT294-0123456789abc""#
+    1
+  }
+  ["mat-blocked"] {
+    null
+    false
+    "Vips::Error"
+    "matload: operation is blocked"
+    0
+  }
+  ["png-unblocked"] {
+    "pngload"
+    true
+    "00000000"
+  }
+  ["png-blocked"] {
+    "pngload"
+    true
+    "00000000"
+  }
+}
