@@ -153,7 +153,7 @@ func (m *AgentPlugins) JevQuestions(
 		WithFile("package.json", harness.File("package.json")).
 		WithFile("package-lock.json", harness.File("package-lock.json")).
 		WithExec([]string{"npm", "ci"}).
-		WithDirectory("/workspace/jev-playwright", harness, dagger.ContainerWithDirectoryOpts{Include: []string{"*.mjs", "*.ts", "report-expected.pcf", "pkl/**", "tests/**", "test/**", "fixtures/**"}}).
+		WithDirectory("/workspace/jev-playwright", harness, dagger.ContainerWithDirectoryOpts{Include: []string{"*.mjs", "*.ts", "*.pcf", "pkl/**", "tests/**", "test/**", "watchmen/**", "fixtures/**"}}).
 		WithFile("/workspace/src/jev/jev", client.File("jev")).
 		WithFile("/workspace/src/jev/jev_pkl.py", client.File("jev_pkl.py")).
 		WithDirectory("/workspace/src/jev/pkl", client.Directory("pkl")).
@@ -168,15 +168,25 @@ func (m *AgentPlugins) JevQuestions(
 	// run.mjs exits non-zero when an answer misses its range; that is an answer,
 	// not a failure, so only consistency.json decides the check.
 	c = c.WithNewFile("/execute.mjs", `import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 mkdirSync('/report', { recursive: true });
 const args = ['run.mjs', '--backend', process.env.JEV_DAGGER_BACKEND,
  '--credentials', 'env', '--run-id', process.env.JEV_DAGGER_RUN_ID,
  '--output-dir', '/report', '--mock-answers', process.env.JEV_DAGGER_ANSWERS];
 const result = spawnSync('node', args, { stdio: 'inherit' });
 writeFileSync('/report/exit-code.json', JSON.stringify(result.status ?? 1));
+// Watching the watchmen (watchmen.pcf): does the check notice tampered records?
+// The answers are data under /report/watchmen; only one that could not be
+// collected fails.
+const watchmen = spawnSync('npx', ['playwright', 'test', '--config', 'playwright.watchmen.config.ts'],
+ { stdio: 'inherit', env: { ...process.env, WATCHMEN_OUT: '/report/watchmen' } }).status ?? 1;
 if (!existsSync('/report/consistency.json')) {
   writeFileSync('/report/errors.txt', 'run.mjs exit ' + (result.status ?? 1) + (result.error ? ': ' + result.error.message : '') + '\n');
+} else if (watchmen !== 0) {
+  const verdict = JSON.parse(readFileSync('/report/consistency.json', 'utf8'));
+  verdict.consistent = false;
+  verdict.broken.push('run: watchmen: a watchmen answer could not be collected (exit ' + watchmen + ')');
+  writeFileSync('/report/consistency.json', JSON.stringify(verdict, null, 2) + '\n');
 }
 `).WithExec([]string{"node", "/execute.mjs"})
 	return &InvestigationReport{Artifacts: c.Directory("/report")}, nil
