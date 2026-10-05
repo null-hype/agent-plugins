@@ -37,39 +37,41 @@ these two mutations of the retained trace pass.
 
 ## What runs for real
 
-The pinned PR 117 checker (`cit294.test.pkl`, `Reconcile.pkl`, `Claims.pkl`,
-`Observation.pkl`, the four retained observation JSONs and the expected
+The pinned checker of each revision (`cit294.test.pkl`, `Reconcile.pkl`,
+`Claims.pkl`, `Observation.pkl`, the retained observation JSONs and the expected
 examples) is executed with `pkl test`, once as retained and once per probe in a
-fresh temp copy:
+fresh temp copy. Both revisions get the same steps:
 
-| Step | Mutation | Result |
-| --- | --- | --- |
-| Baseline | none | 12 tests, 28 asserts pass |
-| Delete the retained trace | `canary-reads.txt` removed | 28 asserts still pass |
-| Forge a read | dummy-file `openat` added to the `mat-blocked` arm | 28 asserts still pass |
+| Step | Mutation | S1, PR 117 | S2, PR 118 |
+| --- | --- | --- | --- |
+| Baseline | none | 12 tests, 28 asserts pass | 22 tests, 56 asserts pass |
+| Delete the retained trace | `canary-reads.txt` removed | 28 still pass | 56 still pass |
+| Forge a read | dummy-file `openat` added to the `mat-blocked` arm | 28 still pass | 56 still pass |
 
-That reproduces review 1's first finding with an executed checker instead of a
-quoted sentence. A third test proves the harness can fail: flipping an observed
-field the checker *does* read (`block_untrusted_env`) makes the suite fail.
+At S1 that reproduces review 1's first finding with an executed checker instead
+of a quoted sentence; at S2 it agrees with review 2. A further test per revision
+proves the harness can fail: flipping an observed field the checker *does* read
+(`block_untrusted_env`) makes the suite fail.
 
 The spec **asserts the flaw**, so a passing test means "the checker did not
 notice". The reporter writes nothing for a failed test, so this is also what
-lets the lessons exist. When the checker is fixed (review 1 finding 1), this
-spec goes red on the probe step: that is the intended signal, and the assertions
-then flip.
+lets the lessons exist. The inputs are pinned by blob id, so a fix to the
+checker cannot change these runs; only adding a revision can. If that revision
+catches a probe, this assertion fails and no lesson is written. Whether a "no"
+answer should instead be recorded as data is an open decision (CIT-310 finding 1).
 
 ## Provenance
 
-* This is a **new reproduction** (`cit-294-117-probes-reproduction-v1`), not the
-  reviewers' output. The history bundle records that their mutation outputs
+* This is a **new reproduction** (`cit-294-checker-probes-reproduction-v1`, named for the questions, not for
+  either review), not the reviewers' output. The history bundle records that their mutation outputs
   were not retained; nothing here is written into that bundle.
-* The checker is S1 (`20aafd26`). `cit-294-review-history-v1` bundles only the
+* The S1 checker is `20aafd26` (S2 is `8d097c8e`). `cit-294-review-history-v1` bundles only the
   files an evidence reference points at, so it cannot run the suite alone:
   `Claims.pkl`, `Observation.pkl` and `cit294.test.pkl-expected.pcf` are missing
-  (without the expected file `pkl test` *writes* examples and exits cleanly, so
+  for S1, and `Claims.pkl` and the expected file for S2 (without the expected file `pkl test` *writes* examples and exits cleanly, so
   the runner refuses that). They are supplied by
-  `evidence/cit-294-probe-reproduction-v1/` from `390a787`, which has the same
-  `cit-294/` tree as `20aafd26`. Every input is hash-checked before running.
+  `evidence/cit-294-probe-reproduction-v1/` from `390a787` (S1) and `9739b539` (S2), which have
+  the same `cit-294/` trees as `20aafd26` and `8d097c8e`. Every input is hash-checked before running.
 
 ## The generated lesson
 
