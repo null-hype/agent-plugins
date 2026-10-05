@@ -32,12 +32,13 @@ export const ReviewOneOfPullRequest117: Story = {
 	),
 };
 
-export const Lesson2Placeholder: Story = {
+// Placeholder: still review 1's fixtures. Lesson 2 gets its own pair for PR 118.
+export const ReviewTwoOfPullRequest118: Story = {
     args: {
         solved: true
     },
 
-    name: "Can the check in #117 be trusted?",
+    name: "Can the fix in #118 be trusted? (placeholder)",
 
     render: (
         {

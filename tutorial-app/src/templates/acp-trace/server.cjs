@@ -214,9 +214,12 @@ function renderClientPage() {
       // 1..commitEnd and is folded under its subject; the suggestion lands below it.
       let commitEnd = 0;
       let commitFolded = false;
-      // Accepting the suggestion (Tab) is what applies its diagnostics.
-      let accepted = false;
+      // Each probe is its own suggestion. Accepting one (Tab) is what applies its
+      // diagnostics; \`acceptedOrder\` holds the probe indexes accepted so far, in
+      // the order they sit in the editor, and is always derived from its text.
+      let acceptedOrder = [];
       let lastState = null;
+      let reportedAccepted = null;
       const RUN_GATE_COMMAND = 'acp-trace.runGate';
       const gateKey = (diagnostic) => diagnostic.evaluationId || diagnostic.code;
 
@@ -308,10 +311,15 @@ function renderClientPage() {
 
         monaco.languages.registerInlineCompletionsProvider(languageId, {
           provideInlineCompletions(suggestModel) {
-            if (!suggestion || suggestModel.getValue() !== suggestion.prefix) return { items: [] };
+            if (!suggestion) return { items: [] };
             const last = suggestModel.getLineCount();
-            return { items: [{ insertText: suggestion.text, range: new monaco.Range(last, 1, last, 1) }] };
+            // Every probe not yet accepted is an alternative for the next line.
+            const items = suggestion.probes
+              .filter((_, index) => !acceptedOrder.includes(index))
+              .map((probe) => ({ insertText: probe.question, range: new monaco.Range(last, 1, last, 1) }));
+            return { items };
           },
+          disposeInlineCompletions() {},
           freeInlineCompletions() {},
         });
 
@@ -389,10 +397,11 @@ function renderClientPage() {
         // taken back.
         editor.onDidChangeModelContent(() => {
           if (!suggestion || !suggestion.prefix || !lastState) return;
-          const value = model.getValue();
-          const full = suggestion.prefix + suggestion.text;
-          if (value === (accepted ? full : suggestion.prefix)) return;
-          accepted = value === full;
+          const next = acceptedFromText(model.getValue()) || [];
+          const unchanged = next.length === acceptedOrder.length && next.every((index, at) => index === acceptedOrder[at]);
+          const valid = acceptedFromText(model.getValue()) !== null;
+          if (valid && unchanged) return;
+          acceptedOrder = next;
           setTimeout(() => renderIntoEditor(renderReviewRecords(lastState)).catch(() => {}), 0);
         });
         editor.onMouseDown((e) => {
@@ -471,9 +480,12 @@ function renderClientPage() {
         // The commit ends here. Below it is where suggestions go: an empty line
         // until they are accepted, then the accepted lines, each diagnosed.
         commitEnd = records.length;
-        const probes = accepted ? reviewProbes(state) : [];
-        if (probes.length === 0) records.push({ raw: '', diagnostic: null, related: [] });
-        probes.forEach((probe) => records.push({ raw: probe.question, diagnostic: probe.diagnostic || null, related: (probe.diagnostic && probe.diagnostic.related) || [] }));
+        const probes = reviewProbes(state);
+        acceptedOrder.filter((index) => index < probes.length).forEach((index) => {
+          const probe = probes[index];
+          records.push({ raw: probe.question, diagnostic: probe.diagnostic || null, related: (probe.diagnostic && probe.diagnostic.related) || [] });
+        });
+        records.push({ raw: '', diagnostic: null, related: [] });
         return records;
       }
 
@@ -490,8 +502,19 @@ function renderClientPage() {
       // the question, each phrased as a question, at the commit's own level. Shown as ghost text; Tab accepts it. Null until
       // the agent has answered.
       function reviewCompletion(state) {
-        const probes = reviewProbes(state).map((probe) => probe.question);
-        return probes.length ? { text: probes.join('\\n') } : null;
+        const probes = reviewProbes(state);
+        return probes.length ? { probes } : null;
+      }
+
+      // Which probes the editor text holds below the commit, as indexes in the
+      // order they appear; null if it holds anything else (a stray edit).
+      function acceptedFromText(value) {
+        if (!suggestion || !value.startsWith(suggestion.prefix)) return null;
+        const rest = value.slice(suggestion.prefix.length).split('\\n');
+        if (rest[rest.length - 1] === '') rest.pop();
+        const indexes = rest.map((line) => suggestion.probes.findIndex((probe) => probe.question === line));
+        if (indexes.some((index) => index < 0) || new Set(indexes).size !== indexes.length) return null;
+        return indexes;
       }
 
       // A git rebase -i todo buffer instead of a session log: the frame
@@ -626,7 +649,11 @@ function renderClientPage() {
         // Ghost text only renders in an editable editor; the guard on
         // onDidChangeModelContent keeps it from being a real one.
         editor.updateOptions({ readOnly: !suggestion, dragAndDrop: false });
-        if (model.getValue() !== nextText) {
+        if (model.getValue() + '\\n' === nextText) {
+          // A suggestion was just accepted: leave an empty line for the next one.
+          const end = model.getFullModelRange().getEndPosition();
+          model.applyEdits([{ range: new window.monaco.Range(end.lineNumber, end.column, end.lineNumber, end.column), text: '\\n' }]);
+        } else if (model.getValue() !== nextText) {
           model.setValue(nextText);
           commitFolded = false;
         }
@@ -636,8 +663,8 @@ function renderClientPage() {
           commitFolded = true;
           foldCommit();
         }
-        if (suggestion && !accepted && model.getValue() === suggestion.prefix) {
-          // Offer the answer as ghost text on the line below the commit.
+        if (suggestion && acceptedOrder.length < suggestion.probes.length) {
+          // Offer what is left as ghost text on the line below the commit.
           setTimeout(() => {
             editor.setPosition({ lineNumber: model.getLineCount(), column: 1 });
             editor.focus();
@@ -646,6 +673,12 @@ function renderClientPage() {
         }
         gateDecorationIds = editor.deltaDecorations(gateDecorationIds, glyphDecorations);
         revealNewest();
+        // The Agent pane shows the finding only once the suggestion is accepted;
+        // the host relays this to it.
+        if (lastState && lastState.scenario === 'cit294-review-v1' && reportedAccepted !== (acceptedOrder.length > 0)) {
+          reportedAccepted = acceptedOrder.length > 0;
+          window.parent.postMessage({ type: 'acp-trace-suggestion-accepted', source: 'tk-acp-trace-client-preview', accepted: reportedAccepted }, '*');
+        }
       }
 
       async function applyState(payload) {
@@ -654,7 +687,7 @@ function renderClientPage() {
         renderScripted(payload);
         lastState = payload;
         suggestion = payload.scenario === 'cit294-review-v1' ? reviewCompletion(payload) : null;
-        if (!suggestion) accepted = false;
+        if (!suggestion) acceptedOrder = [];
         if (payload.scenario !== 'cit294-review-v1') commitEnd = 0;
         const records = ['smuggling-v1', 'jev-report-v1'].includes(payload.scenario)
           ? renderRebaseTodoRecords(payload)
@@ -843,6 +876,27 @@ function renderAgentPage() {
           who.appendChild(el('span', 'method', envelope.method || (envelope.result && envelope.result.stopReason) || ''));
           message.appendChild(who);
           const diagnostic = (metaOf(envelope) || {}).diagnostic;
+          // Until the client accepts the suggestion the agent has only decided its
+          // questions: it shows them as thinking, with no verdict. Hosts that never
+          // send \`accepted\` (undefined) show the finding straight away.
+          if (diagnostic && state.accepted === false) {
+            message.className = 'msg from-agent waiting';
+            message.replaceChildren(el('div', 'who', frame.speaker || 'Agent'));
+            message.appendChild(el('div', 'text', 'Deciding what to check\u2026'));
+            const planned = (metaOf(envelope) || {}).probes || [];
+            if (planned.length) {
+              const list = el('ul', 'divergence');
+              planned.slice(0, 2).forEach((probe, index) => {
+                const item = el('li', '');
+                item.appendChild(el('span', 'source', 'Probe ' + (index + 1)));
+                item.appendChild(document.createTextNode(probe.question));
+                list.appendChild(item);
+              });
+              message.appendChild(list);
+            }
+            root.appendChild(message);
+            continue;
+          }
           if (diagnostic) {
             message.appendChild(el('div', 'badge', diagnostic.severity + ' · ' + diagnostic.code));
             const prefix = diagnostic.code + ': ';
