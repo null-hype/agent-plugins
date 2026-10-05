@@ -177,6 +177,12 @@ neither makes the run inconsistent. Only a broken rule, or an answer that could
 not be collected, does. The root Dagger module's `jev-questions check` fails on
 exactly that, and CI runs it (`.github/workflows/investigations.yml`).
 
+Whether the check itself can be trusted is asked the same way, as Questions
+(`watchmen.pcf`). Each takes a fresh mock run, tampers with one record (a
+forged score, forged evidence, a leaked range, a changed contract, ...), and
+records whether the check noticed: `npm run watchmen`, answers in
+`runs/watchmen/<id>/answer.json`. Either answer is data.
+
 The ledgers and native report share a run ID and SHA-256 contract digest.
 Raw responses survive Jev contract failures. Setup or malformed-report errors
 are written to `validation-error.txt` if a comparison cannot be produced.
