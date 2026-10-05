@@ -101,6 +101,49 @@ revisions: Mapping<String, Revision> = new {
       "ACP framing and the subject question authored; the body is condensed from the PR 117 description."
     replyScripted = "ACP framing authored; the review text is retrieved verbatim."
   }
+  ["S2"] {
+    pr = 118
+    review = 2
+    ticket = "CIT-297"
+    sessionId = "sess_cit294-02"
+    prompt =
+      """
+      CIT-297: Can the strengthened check tell a real file read from a forged one?
+
+      Independent read evidence now reaches the checker: run_arms.sh derives the dummy-file open count outside the Ruby process.
+      Deleting the trace, or forging a dummy-file read into the blocked arm, is now flagged.
+      pkl test: 18 facts, 56 asserts, all passing.
+      """
+    capturedAt = "2026-10-04"
+    finding = "The trace negative controls mutate the derived count, not the retained trace."
+    subject {
+      role = "observation"
+      uri = "\(checkerDir)/cit294.test.pkl"
+      revision = short
+      line = 98
+      detail =
+        "cit294.test.pkl:98-104 changes independent_dummy_file_openat_count; no negative control alters the retained trace"
+    }
+    reviewSaid {
+      role = "observation"
+      uri = "evidence/cit-294-review-history-v1/captures/linear-CIT-297-comment-271bc302.md"
+      line = 7
+      detail =
+        "deleting canary-reads.txt entirely or replacing it with a blocked-arm dummy-file read still passes all 56 assertions and produces empty diagnostics for every arm"
+    }
+    axiom {
+      role = "axiom"
+      uri = "\(checkerDir)/Reconcile.pkl"
+      revision = short
+      line = 95
+      detail =
+        "independent-read-mismatch compares the observed open count with the claim; nothing re-derives that count from canary-reads.txt"
+    }
+    promptScripted =
+      "ACP framing and the subject question authored; the body is condensed from the PR 118 description. capturedAt is the evidence bundle's collection date."
+    replyScripted =
+      "ACP framing authored; the review text is retrieved verbatim. capturedAt is the evidence bundle's collection date."
+  }
 }
 
 local claims =
