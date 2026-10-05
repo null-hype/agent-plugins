@@ -74,7 +74,7 @@ func pkl(c *dagger.Container, version string) *dagger.Container {
 // probes then re-collect every answer and fail if any differs from the record.
 func (m *AgentPlugins) RailsProbes(
 	// +defaultPath="/"
-	// +ignore=["**/node_modules", "**/.venv", "**/runs", "test-results", "**/dist", "**/storybook-static", ".git"]
+	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git"]
 	source *dagger.Directory,
 ) *InvestigationReport {
 	app := source.Directory("tutorial-app")
@@ -119,7 +119,7 @@ if (!existsSync('/report/consistency.json')) {
 func (m *AgentPlugins) JevQuestions(
 	ctx context.Context,
 	// +defaultPath="/"
-	// +ignore=["**/node_modules", "**/.venv", "**/runs", "**/__pycache__", "**/.env", ".git", "tutorial-app"]
+	// +ignore=["**/node_modules", "**/.venv", "jev-playwright/runs", "**/__pycache__", "**/.env", ".git", "tutorial-app"]
 	source *dagger.Directory,
 	// A fresh ID per experiment: it is a Dagger cache input.
 	// +default="ci"
@@ -187,7 +187,7 @@ if (!existsSync('/report/consistency.json')) {
 func (m *AgentPlugins) CheckRailsProbes(
 	ctx context.Context,
 	// +defaultPath="/"
-	// +ignore=["**/node_modules", "**/.venv", "**/runs", "test-results", "**/dist", "**/storybook-static", ".git"]
+	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git"]
 	source *dagger.Directory,
 ) error {
 	_, err := m.RailsProbes(source).Check(ctx)
@@ -199,7 +199,7 @@ func (m *AgentPlugins) CheckRailsProbes(
 func (m *AgentPlugins) CheckJevQuestions(
 	ctx context.Context,
 	// +defaultPath="/"
-	// +ignore=["**/node_modules", "**/.venv", "**/runs", "**/__pycache__", "**/.env", ".git", "tutorial-app"]
+	// +ignore=["**/node_modules", "**/.venv", "jev-playwright/runs", "**/__pycache__", "**/.env", ".git", "tutorial-app"]
 	source *dagger.Directory,
 ) error {
 	report, err := m.JevQuestions(ctx, source, "ci", "mock", nil, "fixtures/answers.json")
