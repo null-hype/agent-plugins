@@ -61,6 +61,12 @@ test('the checker investigation is consistent', () => {
       `retained checker: ${baseline.summary} (exit ${baseline.exitCode}); declared ${declared.tests} tests, ${declared.asserts} asserts`,
     );
 
+    runRules[`${state}-baseline-recorded`] = attempt(() => {
+      const result = readFileSync(path.join(recorded, 'runs/baseline/result.txt'), 'utf8');
+      return rule(result.includes(`exit code: ${baseline.exitCode}\n`) && result.includes(`${baseline.summary}\n`),
+        'runs/baseline/result.txt does not state the re-run baseline');
+    });
+
     // The control: a field the checker does read. If this goes unnoticed the
     // watcher is blind, and no "not noticed" answer means anything.
     runRules[`${state}-harness-can-fail`] = attempt(() => {
