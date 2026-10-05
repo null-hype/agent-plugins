@@ -8,10 +8,11 @@ import { REPRODUCTION_ID, REVISIONS, noticed, type CheckerRun, type RevisionKey 
 // CIT-307 x CIT-253 x CIT-312: the Rails/MATLAB review fixtures are rendered
 // from `traces/CheckerProbes.pkl`. The numbers in each probe's diagnostic, and
 // the rows that show what the probe produced, come from the executed run's
-// answers. Everything else (the review's own words, the subject, the framing)
-// is authored in the module.
+// answers. Everything else (the review's own words, the subject, the framing,
+// and each lesson's title, place and prose: CIT-316) is authored in the module.
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const MODULE = path.join(APP, 'tests/rails-probes/traces/CheckerProbes.pkl');
 const fixtureFile = (key: RevisionKey, kind: 'starter' | 'solved') =>
   path.join(APP, `src/stories/fixtures/rails-matlab-review-${REVISIONS[key].review}.${kind}.json`);
 export const starterFixture = (key: RevisionKey) => fixtureFile(key, 'starter');
@@ -39,12 +40,18 @@ export const answerJson = (run: CheckerRun) =>
     2,
   )}\n`;
 
+/** The states in lesson order, each with its lesson title, as the module declares them. Needs no run. */
+export function chapter(): { key: RevisionKey; title: string }[] {
+  const expr = 'new JsonRenderer {}.renderValue(chapter.map((k) -> Map("key", k, "title", revisions[k].lesson.title)))';
+  return JSON.parse(execFileSync('pkl', ['eval', '-x', expr, MODULE], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+}
+
 /**
- * Render one state's traces from the Pkl claims and a run's answers. `files`
+ * Render one state's traces and lesson prose from the Pkl claims and a run's answers. `files`
  * holds each probe's `answer.json` by its path under `reproductionDir(key)`;
  * the module reads those and nothing else measured.
  */
-export function renderTraces(key: RevisionKey, files: Map<string, string>): { starter: string; solved: string } {
+export function renderTraces(key: RevisionKey, files: Map<string, string>): { starter: string; solved: string; prose: string } {
   const dir = mkdtempSync(path.join(tmpdir(), 'cit-312-'));
   try {
     const run = path.join(dir, 'run');
@@ -54,10 +61,11 @@ export function renderTraces(key: RevisionKey, files: Map<string, string>): { st
     }
     const out = path.join(dir, 'out');
     const props = { state: key, checker: REVISIONS[key].revision, reproductionId: REPRODUCTION_ID, run };
-    execFileSync('pkl', ['eval', '-m', out, path.join(APP, 'tests/rails-probes/traces/CheckerProbes.pkl'), ...Object.entries(props).flatMap(([k, v]) => ['-p', `${k}=${v}`])], {
+    execFileSync('pkl', ['eval', '-m', out, MODULE, ...Object.entries(props).flatMap(([k, v]) => ['-p', `${k}=${v}`])], {
       stdio: ['ignore', 'ignore', 'pipe'],
     });
-    return { starter: readFileSync(path.join(out, 'starter.json'), 'utf8'), solved: readFileSync(path.join(out, 'solved.json'), 'utf8') };
+    const read = (file: string) => readFileSync(path.join(out, file), 'utf8');
+    return { starter: read('starter.json'), solved: read('solved.json'), prose: read('lesson.md') };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
