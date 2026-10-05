@@ -10,7 +10,7 @@ cd tutorial-app
 npx playwright test --config=playwright.rails-probes.config.ts
 ```
 
-Needs `pkl` on PATH (the spec skips without it). No browser, no servers, no
+The `probes` project needs only `pkl` on PATH (the spec skips without it): no browser, no servers, no
 Docker, no credentials. Lessons are compiled to `../test-results/rails-probes/tutorial`,
 not into `src/content/tutorial`: promoting them into the course is a product
 decision this change does not make.
@@ -68,13 +68,35 @@ then flip.
 5. **Expected failure is fine.** An asserted "the checker does not notice" is a
    passing test, so the reporter emits lessons.
 
+## Integrated with the CIT-253 review-1 UX
+
+This branch builds on CIT-253 (PR 125). The Storybook fixture
+`src/stories/fixtures/rails-matlab-review-1.solved.json` is no longer only
+hand-written: the assertion counts in each probe's diagnostic and a labelled
+**REPRODUCTION** evidence row per probe come from the executed run
+(`tests/rails-probes/fixture.ts`; the rest stays authored). The reviewers' own
+"not retained" row is kept beside it. The exact bytes each row points at are
+committed under `evidence/cit-294-probe-reproduction-v1/reproduction/`.
+
+* `probes` project: runs the checker, compiles the lessons, and **fails if the
+  committed reproduction or fixture differs from what the checker just did**
+  (`CIT307_UPDATE=1` rewrites them).
+* `editor` project (depends on `probes`; needs a browser and starts
+  `server.cjs` on ports 4383/4384): solves, presses Tab for each probe, opens the
+  lenses, checks the marker message and evidence rows carry the executed
+  numbers, and checks the Agent only diagnoses after an accept.
+
+Two UX findings from writing it: the open evidence widget covers the next
+line's lens (click the same lens again to close it), and clicking a lens takes
+focus out of the editor, so the second suggestion is not offered until the
+editor is focused again. The test accepts both probes before opening evidence.
+
 ## Not done here
 
-* **The editor interaction (Tab to accept a probe, open its retained bytes).**
-  The review-1 ghost-text flow and `cit294-review-v1` scenario live on PR 125,
-  not main. Driving it, and having Storybook read the generated lesson state in
-  place of the hand-written `rails-matlab-review-1.*.json`, is the follow-up
-  once PR 125 merges. These lessons only show files.
+* **Opening the retained bytes from a row.** The rows name the committed
+  files, but the Client widget only shows the row text; making a row open the
+  artifact is the evidence-inspector work in PR 125. The reporter lessons here
+  show files only, and Storybook does not yet read them in place of the fixture.
 * **Jev.** `jev-playwright` scoring and the `jevReportTrace.ts` →
   `generate-jev-lessons.mjs` route are a separate generation path from the
   reporter; joining them needs an explicit adapter. Not attempted.

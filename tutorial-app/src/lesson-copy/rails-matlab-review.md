@@ -11,5 +11,8 @@ Each accepted line becomes text in your editor, and each is checked.
 Click the lens above an accepted line, **`review-1.finding-1.deleted-trace`** or
 **`review-1.finding-1.forged-read`**, to open the evidence behind it: the
 review's own account of what the checker still accepted, the line of the checker
-that never reads the trace (`Reconcile.pkl`), and the trace nobody read. The last
-row is the part nobody kept: the output of the review's own test run.
+that never reads the trace (`Reconcile.pkl`), and the trace nobody read. One
+row is the part nobody kept: the output of the review's own test run. Next to it
+is a **reproduction**: the same probe run again, for real, against the checker as
+submitted. It is a new run, not the reviewers' output, and it shows the checker
+still passing all 28 assertions.
