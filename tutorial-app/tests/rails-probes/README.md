@@ -110,9 +110,10 @@ measured. Each probe's exit code and counts are read from the `answer.json`
 the runner writes beside its `result.txt`, so the module cannot render without
 a run to read: a missing answer is a Pkl error, not a default.
 
-The spec renders from the answers of the run it just made, and the same
-rendered bytes become the Storybook fixture and the lesson's `acp-trace.json`.
-Both fixtures stay committed under the drift check. The `answer.json` files are
+The spec renders from the answers of the run it just made, and the rendered
+bytes become the lesson's `_files/acp-trace.json` and `_solution/acp-trace.json`.
+Both stay committed under the drift check. Storybook has no copy of its own: its
+generic viewer (`Lessons/Viewer`) reads the lesson (CIT-319). The `answer.json` files are
 committed beside the reproduction but are not copied into the lesson. The
 `block_untrusted_env` control renders a "noticed" answer through the module
 too.
@@ -157,16 +158,15 @@ named for the question, and the checker state is a field, never part of the id.
 
 ## Integrated with the CIT-253 review-1 UX
 
-This branch builds on CIT-253 (PR 125). The Storybook fixture
-`src/stories/fixtures/rails-matlab-review-1.solved.json` is no longer
-hand-written: the assertion counts in each probe's diagnostic and a labelled
+This branch builds on CIT-253 (PR 125). The solved trace (now the lesson's
+`_solution/acp-trace.json`) is no longer hand-written: the assertion counts in each probe's diagnostic and a labelled
 **REPRODUCTION** evidence row per probe come from the executed run, and the
 rest is authored in `traces/CheckerProbes.pkl` (see above). The reviewers' own
 "not retained" row is kept beside it. The exact bytes each row points at are
 committed under `evidence/cit-294-probe-reproduction-v1/reproduction/<S1|S2>/`.
 
 * `probes` project: runs the checker, compiles the lessons, and **fails if the
-  committed reproduction or fixture differs from what the checker just did**
+  committed reproduction or lesson trace differs from what the checker just did**
   (`CIT307_UPDATE=1` rewrites them).
 * `editor` project (depends on `probes`; needs a browser and starts
   `server.cjs` on ports 4383/4384): solves, presses Tab for each probe, opens the
@@ -183,7 +183,7 @@ editor is focused again. The test accepts both probes before opening evidence.
 * **Opening the retained bytes from a row.** The rows name the committed
   files, but the Client widget only shows the row text; making a row open the
   artifact is the evidence-inspector work in PR 125. The reporter lessons here
-  show files only, and Storybook does not yet read them in place of the fixture.
+  show files only.
 * **Jev.** `jev-playwright` scoring and the `jevReportTrace.ts` →
   `generate-jev-lessons.mjs` route are a separate generation path from the
   reporter; joining them needs an explicit adapter. Not attempted.

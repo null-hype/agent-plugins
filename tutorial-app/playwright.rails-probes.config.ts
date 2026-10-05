@@ -2,14 +2,14 @@ import { defineConfig } from '@playwright/test';
 
 // CIT-307: runs the two review-1 probes against the pinned PR 117 checker and
 // compiles the result through the tutorial reporter, then drives the real
-// review-1 Client/Agent pages with the fixture that run produced.
+// review-1 Client/Agent pages with the trace that run produced.
 //
 //   npx playwright test --config=playwright.rails-probes.config.ts
-//   CIT307_UPDATE=1 npx ...     # rewrite the committed reproduction + fixture
+//   CIT307_UPDATE=1 npx ...     # rewrite the committed reproduction + lesson traces
 //
 // Project `probes` needs only `pkl`. Project `editor` needs a browser and the
 // acp-trace server (started below on its own ports); it depends on `probes`, so
-// it never runs against a fixture the checker no longer supports. The tutorial
+// it never runs against a trace the checker no longer supports. The tutorial
 // reporter writes the lesson into src/content/tutorial/part-4 (the chapter
 // directory is rewritten on every compile; commit what it produces).
 const launchOptions = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH

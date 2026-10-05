@@ -1,19 +1,26 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPRODUCTION_ID, REVISIONS, noticed, type CheckerRun, type RevisionKey } from './probes';
 
-// CIT-307 x CIT-253 x CIT-312: the Rails/MATLAB review fixtures are rendered
+// CIT-307 x CIT-253 x CIT-312: the Rails/MATLAB review traces are rendered
 // from `traces/CheckerProbes.pkl`. The numbers in each probe's diagnostic, and
 // the rows that show what the probe produced, come from the executed run's
 // answers. Everything else (the review's own words, the subject, the framing)
 // is authored in the module.
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const fixtureFile = (key: RevisionKey, kind: 'starter' | 'solved') =>
-  path.join(APP, `src/stories/fixtures/rails-matlab-review-${REVISIONS[key].review}.${kind}.json`);
+// The traces are checked where the lesson keeps them (CIT-319): the reporter
+// writes lesson N of the chapter from state N, starter in `_files` and solved in
+// `_solution`. There is no second copy for Storybook; its viewer reads these.
+const CHAPTER = path.join(APP, 'src/content/tutorial/part-4/can-the-checker-be-trusted');
+const fixtureFile = (key: RevisionKey, kind: 'starter' | 'solved') => {
+  const prefix = `${REVISIONS[key].review}-`;
+  const lesson = existsSync(CHAPTER) ? readdirSync(CHAPTER).find((name) => name.startsWith(prefix)) : undefined;
+  return path.join(CHAPTER, lesson ?? `${prefix}missing`, kind === 'starter' ? '_files' : '_solution', 'acp-trace.json');
+};
 export const starterFixture = (key: RevisionKey) => fixtureFile(key, 'starter');
 export const solvedFixture = (key: RevisionKey) => fixtureFile(key, 'solved');
 export const reproductionDir = (key: RevisionKey) => path.join(APP, 'evidence/cit-294-probe-reproduction-v1/reproduction', key);

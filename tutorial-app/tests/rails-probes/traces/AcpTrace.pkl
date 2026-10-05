@@ -1,5 +1,5 @@
 /// The shape of an ACP trace fixture as the Client and Agent previews play it
-/// (`src/stories/fixtures/*.json`, a lesson's `acp-trace.json`). Property order
+/// (a lesson's `acp-trace.json`). Property order
 /// is the order the JSON is written in.
 module AcpTrace
 
