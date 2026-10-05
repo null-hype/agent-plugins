@@ -1,0 +1,273 @@
+/// CIT-312: the "Can the checker be trusted" traces, authored once.
+///
+/// What is CLAIMED lives here: the questions, the ids, the review's own words,
+/// the structure of the trace. What the checker DID is not: each probe's exit
+/// code and assertion counts are read from the `answer.json` the runner wrote
+/// for that probe (`tests/rails-probes/rails-probes.tutorial.spec.ts`). Nothing
+/// renders without a run directory to read them from.
+///
+/// The revision is an input. `revisions` is amended once per revision, with
+/// only what that revision's review and PR say.
+///
+///   pkl eval -m <out> CheckerProbes.pkl \
+///     -p state=S1 -p checker=<sha> -p reproductionId=<id> -p run=<dir>
+///
+/// writes `<out>/starter.json` and `<out>/solved.json`. `<dir>` is a
+/// reproduction directory as the runner lays it out
+/// (`evidence/cit-294-probe-reproduction-v1/reproduction/S1` is the committed one).
+module CheckerProbes
+
+import "pkl:json"
+
+import "AcpTrace.pkl"
+
+/// The checker state the probes were asked of (S1 = PR 117, S2 = PR 118).
+state: String = read("prop:state")
+/// The checker commit, in full. Rows cite its first eight characters.
+checker: String = read("prop:checker")
+reproductionId: String = read("prop:reproductionId")
+/// Where the runner wrote this state's answers.
+run: String = read("prop:run")
+
+/// What the runner recorded for one probe. Read, never declared here.
+class Answer {
+  exitCode: Int
+  testsPassed: Int?
+  testsTotal: Int?
+  assertsPassed: Int?
+  assertsTotal: Int?
+}
+
+/// One revision's amendment: what its PR and its review say. Nothing measured.
+class Revision {
+  pr: Int
+  review: Int
+  ticket: String
+  sessionId: String
+  /// The commit message the Client holds: the subject question, then the PR's claims.
+  prompt: String
+  capturedAt: String
+  /// The finding, in the review's words.
+  finding: String
+  /// Where the review points.
+  subject: AcpTrace.Row
+  /// The review's own sentence about the probes, as captured.
+  reviewSaid: AcpTrace.Row
+  /// The checker code that explains the answer.
+  axiom: AcpTrace.Row
+  promptScripted: String
+  replyScripted: String
+}
+
+revisions: Mapping<String, Revision> = new {
+  ["S1"] {
+    pr = 117
+    review = 1
+    ticket = "CIT-294"
+    sessionId = "sess_cit294-01"
+    prompt =
+      """
+      CIT-294: Can the check tell a real file read from a forged one?
+
+      Run the Rails → libvips → libmatio/HDF5 chain live, under strace.
+      Four arms: MAT canary and PNG control, each unblocked and blocked.
+      pkl test: 8 facts, 28 asserts, all passing.
+      """
+    capturedAt = "2026-10-04T01:15:37.196Z"
+    finding = "The independent file-read evidence never reaches the checker."
+    subject {
+      role = "observation"
+      uri = "\(checkerDir)/run_arms.sh"
+      revision = short
+      line = 21
+      detail = "run_arms.sh:21-30 prints filtered strace output, but Pkl never consumes it"
+    }
+    reviewSaid {
+      role = "observation"
+      uri = "evidence/cit-294-review-history-v1/captures/linear-CIT-294-comment-97e70a90.md"
+      line = 5
+      detail =
+        "deleting the trace entirely, or replacing it with a dummy-file read in the blocked arm, still left all 28 assertions passing"
+    }
+    axiom {
+      role = "axiom"
+      uri = "\(checkerDir)/Reconcile.pkl"
+      revision = short
+      line = 17
+      detail =
+        "check(claim, observed) takes a claim and an observation; nothing derived from the strace transcript reaches it"
+    }
+    promptScripted =
+      "ACP framing and the subject question authored; the body is condensed from the PR 117 description."
+    replyScripted = "ACP framing authored; the review text is retrieved verbatim."
+  }
+}
+
+local claims =
+  revisions.getOrNull(state)
+    ?? throw("no claims for state \(state): amend `revisions` in CheckerProbes.pkl")
+local short = checker.take(8)
+local checkerDir = "docs/investigations/CIT-265/cit-294"
+local reproductionUri = "evidence/cit-294-probe-reproduction-v1/reproduction/\(state)"
+local finding = "review-\(claims.review).finding-1"
+
+// The two questions, the same at every revision.
+local class Question {
+  name: String
+  action: String
+  question: String
+  did: String
+  what: String
+}
+local deletedTrace = new Question {
+  name = "deleted-trace"
+  action = "removed canary-reads.txt, the whole retained trace"
+  question = "Does the check fail when the trace is deleted?"
+  did = "Deleting the trace"
+  what = "canary-reads.txt removed"
+}
+local forgedRead = new Question {
+  name = "forged-read"
+  action = "forged a dummy-file read into the blocked arm"
+  question = "Does the check fail when a dummy-file read is forged?"
+  did = "Forging a dummy-file read"
+  what = "a dummy-file openat added to the mat-blocked arm of canary-reads.txt"
+}
+
+local function answer(q: Question): Answer =
+  new json.Parser {}.parse(read("\(run)/probes/\(q.name)/answer.json")).toTyped(Answer)
+
+local function noticed(a: Answer): Boolean = a.exitCode != 0 || a.assertsPassed != a.assertsTotal
+
+local function counts(a: Answer): String =
+  if (a.assertsTotal == null)
+    "no assertion count (the checker stopped before counting)"
+  else
+    "\(a.assertsPassed) of \(a.assertsTotal) assertions pass"
+
+/// What the checker said to a probe. Either answer is data (CIT-311).
+local function answerText(q: Question): String =
+  let (a = answer(q))
+    if (noticed(a))
+      "\(q.did) made the check fail\(if (a.assertsTotal == null) "" else ": \(a.assertsPassed) of \(a.assertsTotal) assertions passed") (pkl test exit \(a.exitCode))."
+    else
+      "\(q.did) still left all \(a.assertsTotal) assertions passing."
+
+/// The row that shows what a probe produced. Labelled a reproduction, never the reviewers' own output.
+local function reproduction(q: Question): AcpTrace.Row =
+  let (a = answer(q))
+    new {
+      role = "observation"
+      uri = "\(reproductionUri)/probes/\(q.name)/result.txt"
+      detail =
+        "REPRODUCTION \(reproductionId) (a new run, not the reviewers' own output): \(q.what); checker \(short); pkl test exit \(a.exitCode), \(counts(a))"
+    }
+
+local transcript: AcpTrace.Row = new {
+  role = "observation"
+  uri = "\(checkerDir)/canary-reads.txt"
+  revision = short
+  line = 1
+  detail = "the strace transcript of the four arms: committed, and read by no check"
+}
+
+local notRetained: AcpTrace.Row = new {
+  role = "observation"
+  uri = "review-\(claims.review)/finding-1/mutation-output"
+  detail = "expected the deleted-trace run's output | actual -- not retained -- [missing]"
+}
+
+local function probe(q: Question, rows: Listing<AcpTrace.Row>): AcpTrace.Probe = new {
+  action = q.action
+  question = q.question
+  diagnostic {
+    code = "\(finding).\(q.name)"
+    message = "\(code): \(answerText(q))"
+    evaluationId = "cit294.review-\(claims.review):finding-1:\(q.name)"
+    related = rows
+  }
+}
+
+local ask: AcpTrace.ClientFrame = new {
+  action = "send prompt"
+  envelope {
+    id = 1
+    params {
+      sessionId = claims.sessionId
+      prompt { new { text = claims.prompt } }
+    }
+  }
+  provenance {
+    recordingId = "cit294-review-\(claims.review)#0"
+    capturedAt = claims.capturedAt
+    scripted = claims.promptScripted
+  }
+}
+
+starter: AcpTrace.Trace = new {
+  scenario = "cit294-review-v1"
+  frames { ask }
+  nextTurn {
+    actor = "agent"
+    speaker = "reviewer"
+    action = "review PR \(claims.pr)"
+  }
+}
+
+solved: AcpTrace.Trace = new {
+  scenario = "cit294-review-v1"
+  frames {
+    ask
+    new AcpTrace.AgentFrame {
+      action = "reply with finding"
+      speaker = "reviewer"
+      envelope {
+        id = 1
+        result {
+          _meta {
+            diagnostic {
+              code = finding
+              message = "\(finding): \(claims.finding)"
+              subject = claims.subject
+              related {
+                claims.reviewSaid
+                claims.axiom
+                transcript
+                notRetained
+                reproduction(deletedTrace)
+                reproduction(forgedRead)
+              }
+              evaluationId = "cit294.review-\(claims.review):finding-1"
+            }
+            probes {
+              probe(deletedTrace, new Listing {
+                claims.reviewSaid
+                transcript
+                notRetained
+                reproduction(deletedTrace)
+              })
+              probe(forgedRead, new Listing {
+                claims.reviewSaid
+                claims.axiom
+                reproduction(forgedRead)
+              })
+            }
+          }
+        }
+      }
+      provenance {
+        recordingId = "cit294-review-\(claims.review)#1"
+        capturedAt = claims.capturedAt
+        scripted = claims.replyScripted
+      }
+    }
+  }
+  nextTurn = null
+}
+
+output {
+  files {
+    ["starter.json"] { value = starter; renderer = AcpTrace.renderer }
+    ["solved.json"] { value = solved; renderer = AcpTrace.renderer }
+  }
+}

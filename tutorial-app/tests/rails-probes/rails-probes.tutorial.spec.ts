@@ -2,10 +2,13 @@ import { expect, test, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  PKL_AUTHORED,
+  answerJson,
   answerText,
   applyReproduction,
   committed,
   readSolvedFixture,
+  renderTraces,
   reproductionDir,
   serialize,
   solvedFixture,
@@ -84,6 +87,9 @@ function ask(key: RevisionKey) {
   const trace = pinned.get('canary-reads.txt')!.toString('utf8');
   const runs = {} as Record<ProbeName, CheckerRun>;
   const files = new Map<string, string>();
+  // The runner's answers, by path under the reproduction: committed beside it and
+  // read by the Pkl-authored traces (CIT-312), but not copied into the lesson.
+  const answers = new Map<string, string>();
 
   // The baseline is a precondition, not an answer: a checker that does not pass
   // as retained leaves nothing to compare a probe against, so it cannot be collected.
@@ -99,6 +105,7 @@ function ask(key: RevisionKey) {
   const deleted = deletedTrace(pinned);
   expect(deleted.has('canary-reads.txt')).toBe(false);
   runs['deleted-trace'] = runChecker(deleted);
+  answers.set('probes/deleted-trace/answer.json', answerJson(runs['deleted-trace']));
   files.set('probes/deleted-trace/mutation.txt', 'removed: canary-reads.txt (the whole retained strace transcript)\n');
   files.set('probes/deleted-trace/result.txt', result(key, 'deleted-trace', runs['deleted-trace'], 'canary-reads.txt removed'));
 
@@ -111,6 +118,7 @@ function ask(key: RevisionKey) {
   arms[2] = arms[2].replace(`${FORGED_LINE}\n`, '');
   expect(arms.join('### ARM: ')).toBe(trace);
   runs['forged-read'] = runChecker(forgedFiles);
+  answers.set('probes/forged-read/answer.json', answerJson(runs['forged-read']));
   files.set('probes/forged-read/canary-reads.txt', forged);
   files.set('probes/forged-read/mutation.txt', `added to the mat-blocked arm of canary-reads.txt:\n+${FORGED_LINE}\n`);
   files.set('probes/forged-read/result.txt', result(key, 'forged-read', runs['forged-read'], 'dummy-file openat added to the mat-blocked arm'));
@@ -120,17 +128,23 @@ function ask(key: RevisionKey) {
     test.info().annotations.push({ type: `${key} ${probe}`, description: `${noticed(runs[probe]) ? 'noticed' : 'not noticed'}: ${runs[probe].summary}` });
   }
 
-  // The committed reproduction and the Storybook fixture must say what the
+  // A Pkl-authored state renders both traces from its claims and this run's
+  // answers (CIT-312); the others patch this run into the committed fixture.
+  const { starter, solved } = PKL_AUTHORED.has(key)
+    ? renderTraces(key, answers)
+    : { starter: readFileSync(starterFixture(key), 'utf8'), solved: serialize(applyReproduction(key, readSolvedFixture(key), runs)) };
+
+  // The committed reproduction and the Storybook fixtures must say what the
   // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
-  const solved = serialize(applyReproduction(key, readSolvedFixture(key), runs));
   const drift: string[] = [];
-  for (const [file, body] of files) {
+  for (const [file, body] of [...files, ...answers]) {
     if (!committed(path.join(reproductionDir(key), file), body).matches) drift.push(`reproduction/${key}/${file}`);
   }
-  if (!committed(solvedFixture(key), solved).matches) drift.push(path.relative(path.dirname(solvedFixture(key)), solvedFixture(key)));
+  const fixtures = PKL_AUTHORED.has(key) ? [[starterFixture(key), starter], [solvedFixture(key), solved]] : [[solvedFixture(key), solved]];
+  for (const [file, body] of fixtures) if (!committed(file, body).matches) drift.push(path.basename(file));
   expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
-  return { files, solved, runs };
+  return { files, starter, solved, runs };
 }
 
 test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) => {
@@ -142,8 +156,7 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
   for (const [i, key] of ORDER.entries()) {
     const index = i + 1;
     await test.step(TITLES[key], async () => {
-      const { files, solved, runs } = ask(key);
-      const starter = readFileSync(starterFixture(key), 'utf8');
+      const { files, starter, solved, runs } = ask(key);
 
       const before = new Map(end);
       before.set('acp-trace.json', starter);
@@ -181,8 +194,9 @@ for (const key of ORDER) {
     expect(run.assertsPassed).toBeLessThan(run.assertsTotal!);
     // And a "noticed" answer is written up as data, not rejected: the fixture says what failed.
     expect(noticed(run)).toBe(true);
-    const caught = applyReproduction(key, readSolvedFixture(key), { 'deleted-trace': run, 'forged-read': run });
-    const messages = JSON.stringify(caught);
+    const messages = PKL_AUTHORED.has(key)
+      ? renderTraces(key, new Map((['deleted-trace', 'forged-read'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved
+      : JSON.stringify(applyReproduction(key, readSolvedFixture(key), { 'deleted-trace': run, 'forged-read': run }));
     expect(messages).toContain(answerText('deleted-trace', run));
     expect(messages).toContain(`${run.assertsPassed} of ${run.assertsTotal} assertions pass`);
     expect(messages).not.toContain(`Deleting the trace still left all ${run.assertsTotal} assertions passing.`);

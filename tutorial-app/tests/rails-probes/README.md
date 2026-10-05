@@ -99,6 +99,28 @@ The `playback` project plays the generated lesson in the real TutorialKit dev
 server (WebContainer previews; needs network for `npm install`): the Agent is
 still deciding after Solve and diagnoses after Tab. Roughly 15 s once booted.
 
+## Lesson 1's traces are authored in Pkl (CIT-312)
+
+The S1 starter and solved traces are rendered from
+`traces/CheckerProbes.pkl` (shape in `traces/AcpTrace.pkl`) instead of being
+patched into a hand-written fixture. The module holds what is claimed: the
+questions, the ids, the review's own words and the trace structure, with the
+state, checker commit and reproduction id passed in. It declares nothing
+measured. Each probe's exit code and counts are read from the `answer.json`
+the runner writes beside its `result.txt`, so the module cannot render without
+a run to read: a missing answer is a Pkl error, not a default.
+
+The spec renders from the answers of the run it just made, and the same
+rendered bytes become the Storybook fixture and the lesson's `acp-trace.json`.
+Both fixtures stay committed under the drift check. The `answer.json` files are
+committed beside the reproduction but are not copied into the lesson. The
+`block_untrusted_env` control renders a "noticed" answer through the module
+too.
+
+The first render is byte-identical to the fixture it replaces. S2 still goes
+through `applyReproduction` (`PKL_AUTHORED` in `fixture.ts`); moving it over
+is one more entry in `revisions`.
+
 ## Findings about the reporter and the existing machinery
 
 1. **Compiles, and is deterministic.** Two consecutive runs produce a

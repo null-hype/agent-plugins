@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { buildAcpTraceState } from '../../src/lib/acpTraceProtocol';
 import { solvedFixture } from './fixture';
-import { REVISIONS, type RevisionKey } from './probes';
+import { REPRODUCTION_ID, REVISIONS, type RevisionKey } from './probes';
 
 // CIT-307 x CIT-253: the review-1 editor flow, driven against the fixture the
 // probes run just produced (the `probes` project is a dependency and fails if
@@ -80,7 +80,7 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
     const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
     const markers = await page.evaluate(() => (window as any).monaco.editor.getModelMarkers({}).map((m: any) => m.message as string));
     expect(markers).toContain(`review-${review}.finding-1.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`);
-    await expect(widget).toContainText('REPRODUCTION cit-294-checker-probes-reproduction-v1');
+    await expect(widget).toContainText(`REPRODUCTION ${REPRODUCTION_ID}`);
     await expect(widget).toContainText('canary-reads.txt removed');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
     // The reviewers' own run output stays visibly missing next to the new one.
