@@ -107,11 +107,23 @@ export type CheckerRun = {
   exitCode: number;
   facts: string[];
   summary: string;
-  testsPassed: number;
-  testsTotal: number;
-  assertsPassed: number;
-  assertsTotal: number;
+  /** null when the checker failed without printing a summary (it stopped before counting): the failure is the answer. */
+  testsPassed: number | null;
+  testsTotal: number | null;
+  assertsPassed: number | null;
+  assertsTotal: number | null;
 };
+
+/**
+ * What the checker answered to a probe. A probe the checker fails on is
+ * "noticed"; one it still passes is "not noticed". Neither is a failure of the
+ * collection: only a run that cannot be made, or read, is (CIT-311).
+ */
+export const noticed = (run: CheckerRun) => run.exitCode !== 0 || run.assertsPassed !== run.assertsTotal;
+
+/** "28 of 28" / "27 of 28", or a plain statement when the checker stopped before counting. */
+export const assertionCounts = (run: CheckerRun) =>
+  run.assertsTotal === null ? 'no assertion count (the checker stopped before counting)' : `${run.assertsPassed} of ${run.assertsTotal} assertions pass`;
 
 /** Write `files` to a fresh temp directory and run `pkl test` there. */
 export function runChecker(files: Map<string, Buffer>): CheckerRun {
@@ -138,6 +150,9 @@ export function runChecker(files: Map<string, Buffer>): CheckerRun {
     const summary = output.split('\n').filter((l) => /% tests pass/.test(l)).join('').trim();
     const count = (kind: 'tests' | 'asserts') => {
       const m = summary.match(new RegExp(`% ${kind} pass \\[(?:(\\d+) passed|(\\d+)/(\\d+) failed)\\]`));
+      // A checker that exits non-zero before it prints a summary has answered the probe (it
+      // noticed); a clean exit with no summary has not answered anything, so it cannot be collected.
+      if (!m && exitCode !== 0) return { passed: null, total: null };
       if (!m) throw new Error(`cannot read ${kind} count from pkl output: ${summary || output.slice(0, 200)}`);
       return m[1] ? { passed: Number(m[1]), total: Number(m[1]) } : { passed: Number(m[3]) - Number(m[2]), total: Number(m[3]) };
     };
@@ -147,7 +162,7 @@ export function runChecker(files: Map<string, Buffer>): CheckerRun {
       files,
       exitCode,
       facts: output.split('\n').filter((l) => /^\s+[✔✘]/.test(l)).map((l) => l.trim()),
-      summary,
+      summary: summary || output.trim().split('\n')[0],
       testsPassed: tests.passed,
       testsTotal: tests.total,
       assertsPassed: asserts.passed,

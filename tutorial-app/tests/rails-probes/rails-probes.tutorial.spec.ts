@@ -2,6 +2,7 @@ import { expect, test, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  answerText,
   applyReproduction,
   committed,
   readSolvedFixture,
@@ -13,11 +14,13 @@ import {
 } from './fixture';
 import {
   FORGED_LINE,
+  assertionCounts,
   REPRODUCTION_ID,
   REVISIONS,
   deletedTrace,
   forgedRead,
   loadPinnedChecker,
+  noticed,
   pklVersion,
   runChecker,
   type CheckerRun,
@@ -33,13 +36,18 @@ import {
 // lesson of the chapter: the starter and solved traces the Client/Agent
 // previews play, plus the retained reproduction files the solution reveals.
 //
-// The probes ASSERT WHAT THE CHECKER DID, and today that is "still passes" at
-// both states (review 2 says the same of PR 118). A passing test is what lets
-// the tutorial reporter write lessons (it writes nothing for a failed test),
-// so "the check does not notice" is the green outcome here. The inputs are
-// pinned by blob id, so a fix to the checker cannot change these runs: only
-// adding a revision whose checker catches a probe can make the assertion fail.
-// Whether such an answer is data (not a failure) is open: CIT-310 finding 1.
+// The probes RECORD WHAT THE CHECKER DID (CIT-311). Either answer is data: "it
+// still passes" and "it now fails" are both written up, and both produce a
+// lesson. A failed test means only that the answer could not be collected: the
+// pinned inputs do not hash, the baseline does not pass, a mutation does not
+// apply, or `pkl test` exits cleanly without a readable summary. Today the
+// recorded answer is "still passes" at both states (review 2 says the same of
+// PR 118), and the committed reproduction says so. The inputs are pinned by blob
+// id, so a fix to the checker cannot change these runs: only adding a revision
+// can. If its checker catches a probe, the run reports that, the committed
+// reproduction for it is missing until `CIT307_UPDATE=1` writes it, and the
+// lesson says what was observed. The `block_untrusted_env` test below is the
+// control: it shows the harness can see a difference when there is one.
 //
 // Provenance: each result is a NEW run. It reproduces the probes; it does not
 // recover the reviewers' own mutation outputs, which the evidence bundle
@@ -77,8 +85,10 @@ function ask(key: RevisionKey) {
   const runs = {} as Record<ProbeName, CheckerRun>;
   const files = new Map<string, string>();
 
+  // The baseline is a precondition, not an answer: a checker that does not pass
+  // as retained leaves nothing to compare a probe against, so it cannot be collected.
   const baseline = runChecker(pinned);
-  expect(baseline.exitCode).toBe(0);
+  expect(baseline.exitCode, `${key}: the retained checker must pass before a probe means anything`).toBe(0);
   expect([baseline.testsPassed, baseline.testsTotal]).toEqual([expected.tests, expected.tests]);
   expect([baseline.assertsPassed, baseline.assertsTotal]).toEqual([expected.asserts, expected.asserts]);
   // The unmodified transcript has no dummy-file read in the blocked arm.
@@ -89,8 +99,6 @@ function ask(key: RevisionKey) {
   const deleted = deletedTrace(pinned);
   expect(deleted.has('canary-reads.txt')).toBe(false);
   runs['deleted-trace'] = runChecker(deleted);
-  expect(runs['deleted-trace'].exitCode, `${key}: deleting the trace`).toBe(0);
-  expect([runs['deleted-trace'].assertsPassed, runs['deleted-trace'].assertsTotal]).toEqual([expected.asserts, expected.asserts]);
   files.set('probes/deleted-trace/mutation.txt', 'removed: canary-reads.txt (the whole retained strace transcript)\n');
   files.set('probes/deleted-trace/result.txt', result(key, 'deleted-trace', runs['deleted-trace'], 'canary-reads.txt removed'));
 
@@ -103,11 +111,14 @@ function ask(key: RevisionKey) {
   arms[2] = arms[2].replace(`${FORGED_LINE}\n`, '');
   expect(arms.join('### ARM: ')).toBe(trace);
   runs['forged-read'] = runChecker(forgedFiles);
-  expect(runs['forged-read'].exitCode, `${key}: forging a read`).toBe(0);
-  expect([runs['forged-read'].assertsPassed, runs['forged-read'].assertsTotal]).toEqual([expected.asserts, expected.asserts]);
   files.set('probes/forged-read/canary-reads.txt', forged);
   files.set('probes/forged-read/mutation.txt', `added to the mat-blocked arm of canary-reads.txt:\n+${FORGED_LINE}\n`);
   files.set('probes/forged-read/result.txt', result(key, 'forged-read', runs['forged-read'], 'dummy-file openat added to the mat-blocked arm'));
+
+  // The answers go on the report; they are not asserted.
+  for (const probe of Object.keys(runs) as ProbeName[]) {
+    test.info().annotations.push({ type: `${key} ${probe}`, description: `${noticed(runs[probe]) ? 'noticed' : 'not noticed'}: ${runs[probe].summary}` });
+  }
 
   // The committed reproduction and the Storybook fixture must say what the
   // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
@@ -119,7 +130,7 @@ function ask(key: RevisionKey) {
   if (!committed(solvedFixture(key), solved).matches) drift.push(path.relative(path.dirname(solvedFixture(key)), solvedFixture(key)));
   expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
-  return { files, solved };
+  return { files, solved, runs };
 }
 
 test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) => {
@@ -131,7 +142,7 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
   for (const [i, key] of ORDER.entries()) {
     const index = i + 1;
     await test.step(TITLES[key], async () => {
-      const { files, solved } = ask(key);
+      const { files, solved, runs } = ask(key);
       const starter = readFileSync(starterFixture(key), 'utf8');
 
       const before = new Map(end);
@@ -148,7 +159,7 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
       for (const [file, body] of declared) await attachTutorial(testInfo, index, `file/${file}`, body, file.endsWith('.json') ? 'application/json' : 'text/plain');
       end = new Map([...before, ...added]);
 
-      await attachTutorial(testInfo, index, 'prose', PROSE[key], 'text/markdown');
+      await attachTutorial(testInfo, index, 'prose', PROSE[key](runs), 'text/markdown');
       await attachTutorial(testInfo, index, 'meta', JSON.stringify(LESSON_META), 'application/json');
     });
   }
@@ -167,7 +178,14 @@ for (const key of ORDER) {
     files.set('observations/mat-blocked.json', Buffer.from(JSON.stringify(observed, null, 2)));
     const run = runChecker(files);
     expect(run.exitCode).not.toBe(0);
-    expect(run.assertsPassed).toBeLessThan(run.assertsTotal);
+    expect(run.assertsPassed).toBeLessThan(run.assertsTotal!);
+    // And a "noticed" answer is written up as data, not rejected: the fixture says what failed.
+    expect(noticed(run)).toBe(true);
+    const caught = applyReproduction(key, readSolvedFixture(key), { 'deleted-trace': run, 'forged-read': run });
+    const messages = JSON.stringify(caught);
+    expect(messages).toContain(answerText('deleted-trace', run));
+    expect(messages).toContain(`${run.assertsPassed} of ${run.assertsTotal} assertions pass`);
+    expect(messages).not.toContain(`Deleting the trace still left all ${run.assertsTotal} assertions passing.`);
   });
 }
 
@@ -190,8 +208,17 @@ const BRIDGE = `import AcpTraceBridge from '../../../../../components/AcpTraceBr
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 `;
 
-const PROSE: Record<RevisionKey, string> = {
-  S1: `${BRIDGE}
+/** What the run found, in a sentence the lesson can end on. Both answers are told. */
+function found(runs: Record<ProbeName, CheckerRun>) {
+  const probes = Object.values(runs);
+  if (probes.every((run) => !noticed(run))) return { same: true, text: `still passing all ${probes[0].assertsTotal} assertions` };
+  const each = (name: ProbeName, what: string) =>
+    `${what} ${noticed(runs[name]) ? `made it fail (${assertionCounts(runs[name])})` : `still left all ${runs[name].assertsTotal} assertions passing`}`;
+  return { same: false, text: `different answers: ${each('deleted-trace', 'deleting the trace')}, and ${each('forged-read', 'forging a read')}` };
+}
+
+const PROSE: Record<RevisionKey, (runs: Record<ProbeName, CheckerRun>) => string> = {
+  S1: (runs) => `${BRIDGE}
 # Can the check tell a real file read from a forged one?
 
 Pull request #117 passed its check. The **Client** holds the commit that change
@@ -210,9 +237,9 @@ or **\`review-1.finding-1.forged-read\`**, to open the evidence behind it. One r
 is the part nobody kept: the output of the review's own test run. Next to it is a
 **reproduction**: the same probe run again, for real, against the checker as
 submitted. It is a new run, not the reviewers' output, and it shows the checker
-still passing all 28 assertions. The files for it appear in the editor after Solve.
+${found(runs).text}. The files for it appear in the editor after Solve.
 `,
-  S2: `${BRIDGE}
+  S2: (runs) => `${BRIDGE}
 # Can the strengthened check tell a real file read from a forged one?
 
 Pull request #118 answers the first review. Its description says the
@@ -227,9 +254,11 @@ switch first), or both. The **Agent** holds back its finding until you accept.
 Open the lens above an accepted line, **\`review-2.finding-1.deleted-trace\`** or
 **\`review-2.finding-1.forged-read\`**. The **reproduction** row is the probe run
 again, for real, against the checker as #118 submitted it. It is a new run, not
-the reviewer's own output, which was not kept. It shows the checker still passing
-all 56 assertions. The new tests change the derived open count; neither probe
-touches that count, because both change the retained trace. The files for each run
+the reviewer's own output, which was not kept. It shows the checker ${found(runs).text}.${
+    found(runs).same
+      ? ' The new tests change the derived open count; neither probe touches that count, because both change the retained trace.'
+      : ''
+  } The files for each run
 appear in the editor after Solve, beside the first lesson's.
 `,
 };
