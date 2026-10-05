@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const HISTORY = path.join(APP, 'evidence/cit-294-review-history-v1');
 const SUPPLEMENT = path.join(APP, 'evidence/cit-294-probe-reproduction-v1');
-const CHECKER_DIR = 'docs/investigations/CIT-265/cit-294';
+export const CHECKER_DIR = 'docs/investigations/CIT-265/cit-294';
 
 export const REPRODUCTION_ID = 'cit-294-checker-probes-reproduction-v1';
 

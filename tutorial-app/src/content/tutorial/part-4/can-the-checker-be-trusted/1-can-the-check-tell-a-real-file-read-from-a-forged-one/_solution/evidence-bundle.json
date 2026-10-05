@@ -1,0 +1,18 @@
+{
+  "format": "governance-evidence-bundle/v1",
+  "artifacts": [
+    {
+      "artifactId": "artifact:review-1.finding-1/reconcile-check",
+      "recordingId": "cit-294-review-history-v1",
+      "runId": "cit-294-117-118-120",
+      "frameId": "r1-review",
+      "path": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+      "identity": {
+        "kind": "revision",
+        "revision": "20aafd26372a832224be824f72f4a615ee671094"
+      },
+      "sha256": "8fa51c5d1ac8be79b37ff0c5ab82e6b213ad8a828ddf7ef4f0a9fa0a75cda7b6",
+      "content": "/// Checks a CIT-294 Claim against its Observed run. Scoped to the four arms\n/// this case runs (unblocked/blocked MAT canary, unblocked/blocked PNG\n/// control) -- it does not generalize to other loaders or canaries.\nmodule cit294.Reconcile\n\nimport \"pkl:json\"\nimport \"Claims.pkl\" as Claims\nimport \"Observation.pkl\" as Observation\n\nclass Flag {\n  kind: String\n  detail: String\n}\n\nlocal function flag(code: String, detail_: String): Flag = new { kind = code; detail = detail_ }\n\nfunction check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> =\n  (if (observed.arm != claim.arm)\n    List(flag(\"arm-mismatch\", \"claim is for arm \\(claim.arm) but observation is for \\(observed.arm)\"))\n  else List())\n  + (if (observed.block_untrusted_env != claim.blockUntrustedEnv)\n    List(flag(\"block-env-mismatch\", \"expected VIPS_BLOCK_UNTRUSTED=\\(claim.blockUntrustedEnv), observed \\(observed.block_untrusted_env)\"))\n  else List())\n  + (if (claim.contentTypeRetained && observed.stored_content_type != observed.declared_content_type)\n    List(flag(\"content-type-not-retained\", \"declared \\(observed.declared_content_type) but stored \\(observed.stored_content_type)\"))\n  else List())\n  + (if (observed.variant_succeeded != claim.variantSucceedsExpected)\n    List(flag(\"variant-outcome-mismatch\", \"expected variant_succeeded=\\(claim.variantSucceedsExpected), observed \\(observed.variant_succeeded)\"))\n  else List())\n  + (if (!claim.variantSucceedsExpected && observed.loader_selected != null)\n    List(flag(\"unexpected-loader\", \"expected no loader to run (blocked), but loader_selected=\\(observed.loader_selected)\"))\n  else if (claim.variantSucceedsExpected && observed.loader_selected != claim.loaderExpected)\n    List(flag(\"loader-mismatch\", \"expected loader \\(claim.loaderExpected), observed \\(observed.loader_selected)\"))\n  else List())\n  + (if (claim.discloseExpected && observed.matches_dummy_file != true)\n    List(flag(\"disclosure-not-observed\", \"expected the dummy file's bytes to come back, matches_dummy_file=\\(observed.matches_dummy_file)\"))\n  else if (!claim.discloseExpected && observed.matches_dummy_file == true)\n    List(flag(\"unexpected-disclosure\", \"expected no disclosure, but matches_dummy_file=true\"))\n  else List())\n\nfunction checkJson(claim: Claims.Claim, observationJson: String): List<Flag> =\n  check(claim, Observation.fromJson(observationJson))\n"
+    }
+  ]
+}

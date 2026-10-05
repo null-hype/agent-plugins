@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REPRODUCTION_ID, REVISIONS, noticed, type CheckerRun, type RevisionKey } from './probes';
+import { CHECKER_DIR, REPRODUCTION_ID, REVISIONS, noticed, type CheckerRun, type RevisionKey } from './probes';
 
 // CIT-307 x CIT-253 x CIT-312: the Rails/MATLAB review fixtures are rendered
 // from `traces/CheckerProbes.pkl`. The numbers in each probe's diagnostic, and
@@ -75,4 +76,45 @@ export function committed(file: string, bytes: string): { matches: boolean; wrot
     return { matches: true, wrote: true };
   }
   return { matches: existsSync(file) && readFileSync(file, 'utf8') === bytes, wrote: false };
+}
+
+type TraceRow = { uri: string; artifact?: { artifactId: string; recordingId: string; runId: string; frameId: string; path: string; identity: { kind: string; revision?: string }; location: { kind: string; startLine?: number; endLine?: number } } };
+
+/**
+ * CIT-301: the bytes behind every row of the solved trace that cites a captured
+ * artifact, as the evidence bundle the previews resolve them from. Each artifact
+ * is the pinned file's own bytes (`pinned` was verified against the history
+ * manifest), cited at the full commit the checker was pinned to. A row that
+ * cites a file or lines the pinned checker does not have fails here, so the
+ * bundle cannot be written from a reference that does not resolve. `null` when
+ * the state cites no artifact.
+ */
+export function evidenceBundleFor(key: RevisionKey, solved: string, pinned: Map<string, Buffer>): string | null {
+  const meta = JSON.parse(solved).frames[1].envelope.result._meta;
+  const rows: TraceRow[] = [...meta.diagnostic.related, ...meta.probes.flatMap((probe: { diagnostic: { related: TraceRow[] } }) => probe.diagnostic.related)];
+  const artifacts = new Map<string, object>();
+  for (const { artifact } of rows) {
+    if (!artifact) continue;
+    const name = artifact.path.slice(`${CHECKER_DIR}/`.length);
+    const bytes = artifact.path.startsWith(`${CHECKER_DIR}/`) ? pinned.get(name) : undefined;
+    if (!bytes) throw new Error(`${artifact.artifactId}: ${artifact.path} is not in the pinned checker`);
+    if (artifact.identity.kind !== 'revision' || artifact.identity.revision !== REVISIONS[key].revision) throw new Error(`${artifact.artifactId}: not cited at the pinned commit`);
+    const content = bytes.toString('utf8');
+    const { startLine, endLine } = artifact.location;
+    if (artifact.location.kind !== 'source-range' || !startLine || !endLine || endLine < startLine || endLine > content.split('\n').length) throw new Error(`${artifact.artifactId}: lines ${startLine}-${endLine} are outside ${name}`);
+    artifacts.set(artifact.artifactId, {
+      artifactId: artifact.artifactId,
+      recordingId: artifact.recordingId,
+      runId: artifact.runId,
+      frameId: artifact.frameId,
+      path: artifact.path,
+      identity: artifact.identity,
+      // The pinned file's digest (it matched the history manifest when loaded), so a host can
+      // tell these bytes from an edited copy wherever the bundle travels.
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      content,
+    });
+  }
+  if (artifacts.size === 0) return null;
+  return `${JSON.stringify({ format: 'governance-evidence-bundle/v1', artifacts: [...artifacts.values()] }, null, 2)}\n`;
 }

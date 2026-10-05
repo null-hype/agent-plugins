@@ -43,5 +43,22 @@ for (const [n, lesson] of LESSONS.entries()) {
       await expect(agent(page).locator('#chat-view')).toContainText(lesson.finding, BOOT);
       await expect(client(page).locator('.codelens-decoration a', { hasText: lesson.lens })).toBeVisible();
     });
+
+    // CIT-301: through AcpTraceBridge, the TutorialKit host. Review 1's forged-read
+    // evidence cites a captured file; review 2's rows are summary text only.
+    if (n === 0) {
+      await test.step('the Reconcile.pkl row opens the exact file review 1 read', async () => {
+        await page.keyboard.press('Tab'); // the second probe; accepting both first keeps focus in the editor
+        await client(page).locator('.codelens-decoration a', { hasText: 'review-1.finding-1.forged-read' }).click();
+        const widget = client(page).getByRole('region', { name: 'Diagnostic evidence' });
+        await expect(widget.getByRole('button', { name: /Open captured file/ })).toHaveCount(1);
+        await widget.getByRole('button', { name: /Open captured file/ }).click();
+        const file = client(page).getByRole('region', { name: 'Captured file docs/investigations/CIT-265/cit-294/Reconcile.pkl' });
+        await expect(file).toContainText('revision:20aafd26372a832224be824f72f4a615ee671094', BOOT);
+        await expect(file).toContainText('line 17');
+        await expect(file.locator('.highlight')).toHaveCount(1);
+        await expect(file.locator('.highlight')).toContainText('function check(claim: Claims.Claim, observed: Observation.Observed)');
+      });
+    }
   });
 }

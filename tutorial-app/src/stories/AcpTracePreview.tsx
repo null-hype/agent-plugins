@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import clientPageHtml from 'virtual:acp-trace-client-page';
 import agentPageHtml from 'virtual:acp-trace-agent-page';
+import type { SuppliedArtifactResolver } from '../lib/acpReplayContract';
 import type { AcpTraceState } from '../lib/acpTraceProtocol';
+import { OPEN_ARTIFACT_REQUEST, answerOpenRequest } from '../lib/artifactOpen';
+import { BundleArtifactResolver, type EvidenceBundle } from '../lib/evidenceArtifactResolver';
 
 type Props = {
 	payload?: AcpTraceState;
 	height?: number;
+	/** The captured files behind evidence rows that cite one (CIT-301). Without it, such a row says it cannot be opened. */
+	evidence?: EvidenceBundle;
 };
 
 // Mirrors OtelWarmLogPreview's shape (payload -> postMessage once each iframe
@@ -19,14 +24,18 @@ function Pane({
 	height,
 	label,
 	onAccepted,
+	resolver,
 }: {
 	html: string;
 	payload?: AcpTraceState;
 	height: number;
 	label: string;
 	onAccepted?: (accepted: boolean) => void;
+	resolver?: SuppliedArtifactResolver | null;
 }) {
 	const frameRef = useRef<HTMLIFrameElement>(null);
+	const resolverRef = useRef(resolver ?? null);
+	resolverRef.current = resolver ?? null;
 	const readyRef = useRef(false);
 	const revisionRef = useRef(0);
 
@@ -46,6 +55,9 @@ function Pane({
 			if (event.data?.type === 'lesson-preview-ready') {
 				readyRef.current = true;
 				send();
+			} else if (event.data?.type === OPEN_ARTIFACT_REQUEST) {
+				// The same answer TutorialKit's bridge gives: resolve, then reply to the frame that asked.
+				answerOpenRequest(resolverRef.current, event.data).then((reply) => frameRef.current?.contentWindow?.postMessage(reply, '*'));
 			} else if (event.data?.type === 'acp-trace-suggestion-accepted') {
 				onAccepted?.(Boolean(event.data.accepted));
 			}
@@ -66,7 +78,8 @@ function Pane({
 	);
 }
 
-export default function AcpTracePreview({ payload, height = 360 }: Props) {
+export default function AcpTracePreview({ payload, height = 360, evidence }: Props) {
+	const resolver = useMemo(() => (evidence ? new BundleArtifactResolver(evidence) : null), [evidence]);
 	// The Client pane reports when the viewer accepts the agent's suggestion; the
 	// Agent pane holds the finding back until then. Both still get the same trace.
 	const [accepted, setAccepted] = useState(false);
@@ -82,7 +95,7 @@ export default function AcpTracePreview({ payload, height = 360 }: Props) {
 		<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Client</div>
-				<Pane html={clientPageHtml} payload={payload} height={height} label="acp-trace client preview" onAccepted={setAccepted} />
+				<Pane html={clientPageHtml} payload={payload} height={height} label="acp-trace client preview" onAccepted={setAccepted} resolver={resolver} />
 			</div>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Agent</div>

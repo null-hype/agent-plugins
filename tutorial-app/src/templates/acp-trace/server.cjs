@@ -196,6 +196,12 @@ function renderClientPage() {
       let diagnosticsByLine = {};
       let relatedByLine = {};
       let evidenceWidgetLine = null;
+      let evidenceWidget = null;
+      // CIT-301: a row that cites a captured file can ask the host to open it.
+      // This page cannot resolve bytes itself; the host answers with the file.
+      let artifactRequestId = 0;
+      const pendingArtifactOpens = new Map();
+      const ARTIFACT_OPEN_TIMEOUT_MS = 3000;
       const MARKER_OWNER = 'acp-trace';
       const PEEK_EVIDENCE_COMMAND = 'acp-trace.peekEvidence';
       const EVIDENCE_WIDGET_ID = 'acp-trace.evidenceWidget';
@@ -236,10 +242,109 @@ function renderClientPage() {
           const where = entry.uri + (entry.revision ? '@' + entry.revision : '') + (entry.line ? ':' + entry.line : '');
           row.textContent = entry.role + ' (' + where + '): ' + entry.detail;
           row.style.padding = '2px 0';
+          if (entry.artifact) row.appendChild(buildArtifactOpener(entry.artifact));
           node.appendChild(row);
         });
         return node;
       }
+
+      function relayoutEvidenceWidget() {
+        if (editor && evidenceWidget && evidenceWidgetLine !== null) editor.layoutContentWidget(evidenceWidget);
+      }
+
+      // CIT-301: one control per row that carries an artifact reference. Opening
+      // never changes the trace, the accepted suggestions or what Solve revealed:
+      // it sends one request and shows whatever the host answers, or says that
+      // nobody did.
+      function buildArtifactOpener(artifact) {
+        const wrap = document.createElement('div');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Open captured file';
+        button.setAttribute('aria-label', 'Open captured file ' + artifact.path);
+        button.setAttribute('aria-expanded', 'false');
+        button.style.cssText = 'margin:2px 0;padding:1px 8px;background:#2d2d30;color:#d4d4d4;border:1px solid #6b6b6b;border-radius:3px;font:inherit;cursor:pointer;';
+        const body = document.createElement('div');
+        body.setAttribute('role', 'region');
+        body.setAttribute('aria-label', 'Captured file ' + artifact.path);
+        body.hidden = true;
+        button.addEventListener('click', () => {
+          if (!body.hidden) {
+            body.hidden = true;
+            button.setAttribute('aria-expanded', 'false');
+            relayoutEvidenceWidget();
+            return;
+          }
+          button.setAttribute('aria-expanded', 'true');
+          body.hidden = false;
+          body.textContent = 'Opening captured file\u2026';
+          const requestId = ++artifactRequestId;
+          const timer = setTimeout(() => {
+            if (!pendingArtifactOpens.delete(requestId)) return;
+            renderOpenedArtifact(body, { status: 'error', kind: 'artifact-not-found', message: 'No host answered: this preview cannot open captured files.' });
+          }, ARTIFACT_OPEN_TIMEOUT_MS);
+          pendingArtifactOpens.set(requestId, { body, timer });
+          window.parent.postMessage({ type: 'acp-trace-open-artifact', source: 'tk-acp-trace-client-preview', requestId, artifact }, '*');
+          relayoutEvidenceWidget();
+        });
+        wrap.appendChild(button);
+        wrap.appendChild(body);
+        return wrap;
+      }
+
+      function renderOpenedArtifact(body, opened) {
+        body.textContent = '';
+        body.setAttribute('data-status', opened.status);
+        if (opened.status !== 'resolved') {
+          const failure = document.createElement('div');
+          failure.textContent = opened.message;
+          failure.style.cssText = 'color:#f48771;padding:2px 0;';
+          body.appendChild(failure);
+          relayoutEvidenceWidget();
+          return;
+        }
+        const heading = document.createElement('div');
+        // Sticky: scrolling a long file to the marked line must not take its identity out of view.
+        heading.style.cssText = 'position:sticky;top:0;background:#1e1e1e;color:#9cdcfe;padding:2px 0;';
+        const lines = opened.text.split('\\n');
+        const range = opened.highlight
+          ? (opened.highlight.from === opened.highlight.to ? 'line ' + opened.highlight.from : 'lines ' + opened.highlight.from + '\u2013' + opened.highlight.to)
+          : 'whole file';
+        heading.textContent = opened.path + '  ' + opened.recordingId + '/' + opened.runId + ' \u00b7 ' + opened.identity + ' \u00b7 ' + range;
+        const pre = document.createElement('pre');
+        pre.style.cssText = 'margin:0;white-space:pre;overflow-x:auto;';
+        let firstHighlighted = null;
+        lines.forEach((line, index) => {
+          const row = document.createElement('span');
+          row.style.display = 'block';
+          const number = index + 1;
+          if (opened.highlight && number >= opened.highlight.from && number <= opened.highlight.to) {
+            row.className = 'highlight';
+            row.style.background = '#4b4a1f';
+            if (!firstHighlighted) firstHighlighted = row;
+          }
+          const gutter = document.createElement('i');
+          gutter.textContent = String(number);
+          gutter.style.cssText = 'display:inline-block;width:3em;margin-right:1em;text-align:right;color:#858585;font-style:normal;';
+          row.appendChild(gutter);
+          row.appendChild(document.createTextNode(line));
+          pre.appendChild(row);
+        });
+        body.appendChild(heading);
+        body.appendChild(pre);
+        relayoutEvidenceWidget();
+        if (firstHighlighted) firstHighlighted.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+
+      window.addEventListener('message', (event) => {
+        const message = event.data;
+        if (!message || message.type !== 'acp-trace-artifact-opened' || message.source !== 'tk-acp-trace-bridge') return;
+        const pending = pendingArtifactOpens.get(message.requestId);
+        if (!pending) return;
+        pendingArtifactOpens.delete(message.requestId);
+        clearTimeout(pending.timer);
+        renderOpenedArtifact(pending.body, message.opened);
+      });
 
       function toggleEvidenceWidget(monacoEditor, lineNumber, related) {
         if (evidenceWidgetLine !== null) {
@@ -249,14 +354,16 @@ function renderClientPage() {
           if (wasShowingThisLine) return;
         }
         const domNode = buildEvidenceDomNode(related);
-        monacoEditor.addContentWidget({
+        // Kept so the widget can be re-laid-out when a captured file opens inside it.
+        evidenceWidget = {
           getId: () => EVIDENCE_WIDGET_ID,
           getDomNode: () => domNode,
           getPosition: () => ({
             position: { lineNumber, column: 1 },
             preference: [window.monaco.editor.ContentWidgetPositionPreference.BELOW],
           }),
-        });
+        };
+        monacoEditor.addContentWidget(evidenceWidget);
         evidenceWidgetLine = lineNumber;
       }
 

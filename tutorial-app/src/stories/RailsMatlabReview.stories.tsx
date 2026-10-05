@@ -6,6 +6,8 @@ import starter from './fixtures/rails-matlab-review-1.starter.json';
 import solved from './fixtures/rails-matlab-review-1.solved.json';
 import starterTwo from './fixtures/rails-matlab-review-2.starter.json';
 import solvedTwo from './fixtures/rails-matlab-review-2.solved.json';
+import type { EvidenceBundle } from '../lib/evidenceArtifactResolver';
+import evidenceBundle from '../content/tutorial/part-4/can-the-checker-be-trusted/1-can-the-check-tell-a-real-file-read-from-a-forged-one/_files/evidence-bundle.json';
 
 type StoryArgs = { solved: boolean };
 
@@ -29,6 +31,8 @@ export const ReviewOneOfPullRequest117: Story = {
 	render: ({ solved: isSolved }) => (
 		<AcpTracePreview
 			payload={deriveAcpTraceState(fixture, { '/acp-trace.json': JSON.stringify(isSolved ? solved : starter) }, { config })}
+			// The lesson's own bundle: the captured file behind the Reconcile.pkl row opens from it.
+			evidence={evidenceBundle as EvidenceBundle}
 			height={640}
 		/>
 	),

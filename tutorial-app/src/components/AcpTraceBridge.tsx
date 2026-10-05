@@ -9,6 +9,8 @@ import {
   resolveAcpTraceFixture,
   valueToText,
 } from '../lib/acpTraceProtocol';
+import { OPEN_ARTIFACT_REQUEST, answerOpenRequest } from '../lib/artifactOpen';
+import { BundleArtifactResolver, type EvidenceBundle } from '../lib/evidenceArtifactResolver';
 
 type DocumentRecord = Record<
   string,
@@ -27,6 +29,8 @@ type LessonRecord = {
 };
 
 const DEFAULT_TRACE_FILE = '/acp-trace.json';
+// CIT-301: the captured files behind evidence rows, shipped with the lesson.
+const EVIDENCE_BUNDLE_FILE = '/evidence-bundle.json';
 const DEFAULT_SCENARIO = 'ghost-trace-diagnostic-v1';
 const READY_SOURCES = new Set(['tk-acp-trace-client-preview', 'tk-acp-trace-agent-preview']);
 
@@ -78,6 +82,31 @@ export default function AcpTraceBridge({
       scenario: resolvedConfig.scenario,
     });
   }, [resolvedConfig.scenario, resolvedConfig.traceFile, traceText, documents]);
+
+  // A lesson without the file has no bundle: its rows can say so, not open.
+  const bundleText = valueToText(documents[EVIDENCE_BUNDLE_FILE]?.value);
+  const resolver = useMemo(() => {
+    if (!bundleText) return null;
+    try {
+      return new BundleArtifactResolver(JSON.parse(bundleText) as EvidenceBundle);
+    } catch {
+      return null;
+    }
+  }, [bundleText]);
+  const resolverRef = useRef(resolver);
+  resolverRef.current = resolver;
+
+  // Opening a row's captured file is answered here, to the frame that asked, and
+  // changes nothing about the trace, the revision or what has been accepted.
+  useEffect(() => {
+    const onOpenRequest = (event: MessageEvent) => {
+      if (event.data?.type !== OPEN_ARTIFACT_REQUEST || event.data?.source !== 'tk-acp-trace-client-preview') return;
+      const asker = event.source as Window | null;
+      answerOpenRequest(resolverRef.current, event.data).then((reply) => asker?.postMessage(reply, '*'));
+    };
+    window.addEventListener('message', onOpenRequest);
+    return () => window.removeEventListener('message', onOpenRequest);
+  }, []);
 
   // One payload, sent to every preview iframe (client and agent alike), so
   // both panes always agree on the same trace position -- see this lesson's
