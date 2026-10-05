@@ -6,7 +6,8 @@
     "test": "node run.mjs --backend mock",
     "test:contracts": "node --test test/*.test.mjs",
     "score": "node run.mjs",
-    "dagger": "node dagger-run.mjs"
+    "dagger": "node dagger-run.mjs",
+    "watchmen": "playwright test --config playwright.watchmen.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1"
