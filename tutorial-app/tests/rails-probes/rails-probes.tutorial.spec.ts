@@ -24,6 +24,7 @@ import {
   type CheckerRun,
   type RevisionKey,
 } from './probes';
+import { EVALUATION_SPECS, evaluationIdOf } from '../../src/lib/reviewHistory';
 
 // CIT-307 / CIT-309: review 1 of PR 117 said that deleting the retained strace
 // transcript, or replacing it with a dummy-file read in the blocked arm, "still
@@ -125,6 +126,12 @@ function ask(key: RevisionKey) {
 
   // Both traces render from the state's claims and this run's answers (CIT-312).
   const { starter, solved } = renderTraces(key, answers);
+
+  // CIT-313: the finding is the recorded history's, under its id and in its words.
+  const finding = EVALUATION_SPECS.find(({ id }) => id === REVISIONS[key].findingId);
+  expect(finding, `${REVISIONS[key].findingId} is not a finding in the review history`).toBeDefined();
+  const { diagnostic } = JSON.parse(solved).frames[1].envelope.result._meta;
+  expect(diagnostic).toMatchObject({ code: finding!.code, message: `${finding!.code}: ${finding!.message}`, evaluationId: evaluationIdOf(finding!.id) });
 
   // The committed reproduction and the Storybook fixtures must say what the
   // checker just did. CIT307_UPDATE=1 rewrites them; otherwise a drift fails.
@@ -254,8 +261,8 @@ The two questions are the ones asked of #117, word for word. Select **Solve**
 to ask the reviewer, and take either suggestion with **Tab** (or **Alt+]** to
 switch first), or both. The **Agent** holds back its finding until you accept.
 
-Open the lens above an accepted line, **\`review-2.finding-1.deleted-trace\`** or
-**\`review-2.finding-1.forged-read\`**. The **reproduction** row is the probe run
+Open the lens above an accepted line, **\`review-2.gap-1.deleted-trace\`** or
+**\`review-2.gap-1.forged-read\`**. The **reproduction** row is the probe run
 again, for real, against the checker as #118 submitted it. It is a new run, not
 the reviewer's own output, which was not kept. It shows the checker ${found(runs).text}.${
     found(runs).same

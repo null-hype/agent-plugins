@@ -68,7 +68,7 @@
                 },
                 {
                   "role": "observation",
-                  "uri": "review-1/finding-1/mutation-output",
+                  "uri": "review-1.finding-1/mutation-output",
                   "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
                 },
                 {
@@ -82,7 +82,7 @@
                   "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): a dummy-file openat added to the mat-blocked arm of canary-reads.txt; checker 20aafd26; pkl test exit 0, 28 of 28 assertions pass"
                 }
               ],
-              "evaluationId": "cit294.review-1:finding-1"
+              "evaluationId": "cit-294-117-118-120:review-1.finding-1"
             },
             "probes": [
               {
@@ -92,7 +92,7 @@
                   "severity": "error",
                   "code": "review-1.finding-1.deleted-trace",
                   "message": "review-1.finding-1.deleted-trace: Deleting the trace still left all 28 assertions passing.",
-                  "evaluationId": "cit294.review-1:finding-1:deleted-trace",
+                  "evaluationId": "cit-294-117-118-120:review-1.finding-1.deleted-trace",
                   "related": [
                     {
                       "role": "observation",
@@ -109,7 +109,7 @@
                     },
                     {
                       "role": "observation",
-                      "uri": "review-1/finding-1/mutation-output",
+                      "uri": "review-1.finding-1/mutation-output",
                       "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
                     },
                     {
@@ -127,7 +127,7 @@
                   "severity": "error",
                   "code": "review-1.finding-1.forged-read",
                   "message": "review-1.finding-1.forged-read: Forging a dummy-file read still left all 28 assertions passing.",
-                  "evaluationId": "cit294.review-1:finding-1:forged-read",
+                  "evaluationId": "cit-294-117-118-120:review-1.finding-1.forged-read",
                   "related": [
                     {
                       "role": "observation",

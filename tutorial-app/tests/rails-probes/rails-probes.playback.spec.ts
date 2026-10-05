@@ -10,7 +10,7 @@ import { expect, test, type Page } from '@playwright/test';
 const CHAPTER = '/part-4/can-the-checker-be-trusted';
 const LESSONS = [
   { path: `${CHAPTER}/1-can-the-check-tell-a-real-file-read-from-a-forged-one`, subject: 'CIT-294: Can the check tell a real file read from', finding: 'review-1.finding-1', lens: 'review-1.finding-1.deleted-trace' },
-  { path: `${CHAPTER}/2-can-the-strengthened-check-tell-a-real-file-read-from-a-forged-one`, subject: 'CIT-297: Can the strengthened check tell a real', finding: 'review-2.finding-1', lens: 'review-2.finding-1.deleted-trace' },
+  { path: `${CHAPTER}/2-can-the-strengthened-check-tell-a-real-file-read-from-a-forged-one`, subject: 'CIT-297: Can the strengthened check tell a real', finding: 'review-2.gap-1', lens: 'review-2.gap-1.deleted-trace' },
 ];
 const BOOT = { timeout: 180_000 };
 

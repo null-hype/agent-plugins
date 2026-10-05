@@ -29,7 +29,7 @@ const editorText = async (page: Page) => (await page.locator('.monaco-editor .vi
 
 for (const key of ['S1', 'S2'] as RevisionKey[]) {
 test(`accepting a probe shows the numbers the executed run produced (PR ${REVISIONS[key].pr})`, async ({ page, context }) => {
-  const { review, asserts } = { review: REVISIONS[key].review, asserts: REVISIONS[key].baseline.asserts };
+  const { finding, asserts } = { finding: REVISIONS[key].findingId, asserts: REVISIONS[key].baseline.asserts };
   const solved = JSON.parse(readFileSync(solvedFixture(key), 'utf8'));
   // The starter is the solved fixture before the reviewer answers: its prompt frame only.
   const starter = { ...solved, frames: solved.frames.slice(0, 1), nextTurn: { actor: 'agent', action: `review PR ${REVISIONS[key].pr}`, speaker: 'reviewer' } };
@@ -76,10 +76,10 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
   });
 
   await test.step('the deleted-trace diagnostic names the executed run', async () => {
-    await page.locator('.codelens-decoration a', { hasText: `review-${review}.finding-1.deleted-trace` }).click();
+    await page.locator('.codelens-decoration a', { hasText: `${finding}.deleted-trace` }).click();
     const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
     const markers = await page.evaluate(() => (window as any).monaco.editor.getModelMarkers({}).map((m: any) => m.message as string));
-    expect(markers).toContain(`review-${review}.finding-1.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`);
+    expect(markers).toContain(`${finding}.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`);
     await expect(widget).toContainText(`REPRODUCTION ${REPRODUCTION_ID}`);
     await expect(widget).toContainText('canary-reads.txt removed');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
@@ -90,16 +90,16 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
 
   await test.step('the forged-read diagnostic carries its own run', async () => {
     // The open widget covers the next line's lens: clicking the same lens again closes it.
-    await page.locator('.codelens-decoration a', { hasText: `review-${review}.finding-1.deleted-trace` }).click();
+    await page.locator('.codelens-decoration a', { hasText: `${finding}.deleted-trace` }).click();
     await expect(page.getByRole('region', { name: 'Diagnostic evidence' })).toHaveCount(0);
-    await page.locator('.codelens-decoration a', { hasText: `review-${review}.finding-1.forged-read` }).click();
+    await page.locator('.codelens-decoration a', { hasText: `${finding}.forged-read` }).click();
     const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
     await expect(widget).toContainText('a dummy-file openat added to the mat-blocked arm');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
   });
 
   await test.step('the Agent diagnoses only after an accept', async () => {
-    await expect(agent.locator('#chat-view')).toContainText(`review-${review}.finding-1`);
+    await expect(agent.locator('#chat-view')).toContainText(`${finding}`);
   });
 });
 }

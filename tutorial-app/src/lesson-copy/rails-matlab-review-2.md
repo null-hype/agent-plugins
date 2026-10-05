@@ -7,8 +7,8 @@ The two questions are the ones asked of #117, word for word. Toggle **solved** t
 ask the reviewer, then take either suggestion with **Tab** (or **Alt+]** to switch
 first), or both.
 
-Click the lens above an accepted line, **`review-2.finding-1.deleted-trace`** or
-**`review-2.finding-1.forged-read`**, to open the evidence behind it. The
+Click the lens above an accepted line, **`review-2.gap-1.deleted-trace`** or
+**`review-2.gap-1.forged-read`**, to open the evidence behind it. The
 **reproduction** row is the probe run again, for real, against the checker as #118
 submitted it. It is a new run, not the reviewer's own output, which was not kept.
 It shows the checker still passing all 56 assertions. The new tests change the

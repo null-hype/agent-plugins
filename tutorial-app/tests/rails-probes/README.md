@@ -122,6 +122,18 @@ first, then S2 as one more entry in `revisions`). With both states in the
 module, the old path that patched a run into a hand-written fixture
 (`applyReproduction`) is gone. A new revision is one more entry.
 
+## Ids follow the review history (CIT-313)
+
+An id that names something a reviewer said is the recorded history's id,
+verbatim (`src/lib/reviewHistory/declarations.ts`): S1's probes test
+`review-1.finding-1`, S2's test `review-2.gap-1`. Each revision in
+`CheckerProbes.pkl` declares its `findingId`. Evaluation ids are spelled as the
+history spells them (`cit-294-117-118-120:<finding id>`), and a probe's code is
+the finding id plus the question (`review-2.gap-1.deleted-trace`). The spec
+fails if a finding id is not in the history or its message differs from the
+history's. An id for something made here (a run, a probe, a reproduction) is
+named for the question, and the checker state is a field, never part of the id.
+
 ## Findings about the reporter and the existing machinery
 
 1. **Compiles, and is deterministic.** Two consecutive runs produce a

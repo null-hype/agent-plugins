@@ -32,6 +32,8 @@ export const REVISIONS: Record<
   {
     pr: number;
     review: number;
+    /** The finding the probes test, by its id in the recorded review history (CIT-313). */
+    findingId: string;
     revision: string;
     mergedEquivalent: string;
     supplement: Record<string, string>;
@@ -41,6 +43,7 @@ export const REVISIONS: Record<
   S1: {
     pr: 117,
     review: 1,
+    findingId: 'review-1.finding-1',
     revision: '20aafd26372a832224be824f72f4a615ee671094',
     mergedEquivalent: '390a7873ea6fd639c1c735393848e03b05031cc3',
     supplement: {
@@ -53,6 +56,7 @@ export const REVISIONS: Record<
   S2: {
     pr: 118,
     review: 2,
+    findingId: 'review-2.gap-1',
     revision: '8d097c8e16bd1db44d5d4f558ad99938585e1001',
     mergedEquivalent: '9739b539de26919f1d1bb8129df8954de40dbfcd',
     // Observation.pkl is already in the history bundle at S2.
