@@ -19,17 +19,18 @@ revisions {
         change: a message whose subject line is a question. Its body is the authorization
         policy the document route runs at this revision. Unfold it to read it.
 
-        Select **Solve** to ask the reviewer, Jev. Grey suggested lines appear below the
-        commit: the two questions it asks of this revision, "\(aliceReads.ask)" and
-        "\(bobReads.ask)". Press **Tab** to accept the one shown, or **Alt+]** to switch to
-        the other first. You can take either, or both. The **Agent** shows what Jev was
-        deciding to check, and its finding only after you accept.
+        Select **Solve** in the top bar to ask the reviewer, Jev. Grey suggested lines
+        appear below the commit: the two questions it asks of this revision,
+        "\(aliceReads.ask)" and "\(bobReads.ask)". Click the commit, then press **Tab** to
+        accept the one shown, or **Alt+]** to switch to the other first. You can take
+        either, or both. The **Agent** terminal below prints what Jev was deciding to
+        check, and its finding for each question only after you accept it.
 
         Click the lens above an accepted line to open the evidence behind it: Jev's score
         against the range the Question expects, and the HTTP exchange it judged. A canned
-        mock answer is labelled as one; it is not a Jev judgement. The collected files for
-        each question (its `state.json`, and the request and response Jev saw) appear in
-        the editor after Solve.
+        mock answer is labelled as one; it is not a Jev judgement. The terminal names the
+        collected files behind each answer: its `state.json`, and the request and
+        response Jev saw.
 
         The app is a local synthetic fixture with two signed-in accounts. Solve replays a
         recorded run; it does not run tests or call Jev.
@@ -49,11 +50,10 @@ revisions {
 
         The questions are the ones asked of the baseline, word for word. Select **Solve**
         to ask Jev, and take either suggestion with **Tab** (or **Alt+]** to switch first),
-        or both. The **Agent** holds back its finding until you accept.
+        or both. The **Agent** terminal holds back each finding until you accept it.
 
         Open the lens above an accepted line and compare the exchange with the baseline's:
-        the request is the same, and only the policy changed. The files for each question
-        appear in the editor after Solve, beside the first lesson's. These answers cover
+        the request is the same, and only the policy changed. These answers cover
         this one route and these two readers, not every way a document can be reached.
         """
     }
