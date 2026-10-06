@@ -1,0 +1,34 @@
+---
+type: lesson
+title: Does the owner check keep the document private
+template: acp-trace
+focus: /acp-trace.json
+terminal: false
+editor: true
+previews:
+  - - 4173
+    - Client
+  - - 4174
+    - Agent
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+# Does the owner check keep the document private?
+
+The patched commit changes one thing: the policy lets a signed-in user read a
+document only if they own it. Unfold the commit to read it.
+
+The questions are the ones asked of the baseline, word for word. Select **Solve**
+to ask Jev, and take either suggestion with **Tab** (or **Alt+]** to switch first),
+or both. The **Agent** holds back its finding until you accept.
+
+Open the lens above an accepted line and compare the exchange with the baseline's:
+the request is the same, and only the policy changed. The files for each question
+appear in the editor after Solve, beside the first lesson's. These answers cover
+this one route and these two readers, not every way a document can be reached.
