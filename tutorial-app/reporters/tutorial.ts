@@ -10,8 +10,12 @@ import type { Reporter, TestCase, TestResult, TestStep } from '@playwright/test/
 // attachment names carry a `tutorial:<step-index>:` prefix.
 
 export interface TutorialReporterOptions {
+  /** The tutorial part directory to write chapters into, unless the test's project names its own. */
   outDir: string;
 }
+
+/** A project's metadata key naming the part directory its chapters go to, overriding `outDir`. */
+export const OUT_DIR_METADATA = 'tutorialOutDir';
 
 export const TUTORIAL_TAG = '@tutorial';
 
@@ -143,7 +147,7 @@ export function reduceStepAttachments(classified: readonly ClassifiedAttachment[
   for (const item of classified) {
     if (item.kind === 'meta') {
       const value = JSON.parse(item.body.toString('utf8'));
-      const allowed = ['template', 'prepareCommands', 'mainCommand', 'previews', 'terminal', 'editor', 'focus', 'filesystem'];
+      const allowed = ['template', 'prepareCommands', 'mainCommand', 'previews', 'terminal', 'editor', 'focus', 'filesystem', 'custom'];
       if (!value || Array.isArray(value) || typeof value !== 'object' || Object.keys(value).some((key) => !allowed.includes(key))) {
         throw new Error('tutorial meta must be an object containing only runtime/display configuration');
       }
@@ -349,15 +353,16 @@ export default class TutorialReporter implements Reporter {
       return;
     }
 
+    const outDir = (test.parent.project()?.metadata?.[OUT_DIR_METADATA] as string | undefined) ?? this.outDir;
     try {
-      compileTutorialTest(test, result, this.outDir);
+      compileTutorialTest(test, result, outDir);
     } catch (error) {
       if (!(error instanceof ContinuityError)) throw error;
       this.brokenStoryboards += 1;
       console.error(`[tutorial-reporter] refusing to compile "${test.title}": ${error.message}`);
       return;
     }
-    console.log(`[tutorial-reporter] compiled ${steps.length} lesson(s) from "${test.title}" into ${this.outDir}`);
+    console.log(`[tutorial-reporter] compiled ${steps.length} lesson(s) from "${test.title}" into ${outDir}`);
   }
 
   // A continuity break is a real failure, not a warning: the test itself
