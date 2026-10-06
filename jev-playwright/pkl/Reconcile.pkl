@@ -58,12 +58,12 @@ questions = new Mapping {
       local answer = scores.getOrNull(id)
       local expectation: Question.Expectation = question.expected.toTyped(Question.Expectation)
       dependencies = question.dependencies.toList()
+      // A dependency blocks only when its answer could not be collected (CIT-314):
+      // an out-of-range answer is still an answer, and its dependents run.
       blockedBy = dependencies.filter((dep) -> !questions[dep].accepted)
       status = execution?.status ?? "missing"
       startedAt = execution?.startedAt
       finishedAt = execution?.finishedAt
-      // A low score can complete evaluation successfully while failing its
-      // expectation and therefore failing the native Playwright test.
       executionPassed = execution != null && execution.testTitle == id &&
         (status == "passed" || status == "failed") && execution.attachmentCount == 1 &&
         execution.evidenceId == id &&
@@ -76,11 +76,11 @@ questions = new Mapping {
         !blockedBy.isEmpty && answer == null && execution.attachmentCount == 0
         else blockedBy.isEmpty && startedAt != null && finishedAt != null && finishedAt >= startedAt &&
           dependencies.every((dep) -> questions[dep].finishedAt != null && questions[dep].finishedAt <= startedAt)
-      accepted = status == "passed" && expectationPassed && dependencyOrderValid
+      // Collected, in order. Whether the answer is in range does not enter into it.
+      accepted = status == "passed" && executionPassed && dependencyOrderValid
       outcome = if (status == "skipped" && !blockedBy.isEmpty) "dependency-skipped"
-        else if (!executionPassed || !dependencyOrderValid) "execution-failed"
-        else if (!expectationPassed) "expectation-failed"
-        else if (accepted) "passed" else "execution-failed"
+        else if (!accepted) "execution-failed"
+        else if (expectationPassed) "in-range" else "out-of-range"
       error = answer?.error
     }
   }
