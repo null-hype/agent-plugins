@@ -22,7 +22,7 @@ for (const [id, question] of Object.entries(experiment.questions) as [string, an
       const state = { ...(await collector.collect(request)), prerequisites };
       await attach('jev-evidence', { questionId: id, state });
       for (const key of question.requiredEvidence) expect(Object.hasOwn(state, key)).toBe(true);
-      collector.verify(state);
+      collector.verify(state, expect);
       const result = await score({ id, question, state, model: experiment.model, runDir });
       await attach('jev-score', { ...result, error: null });
       scored = true;
