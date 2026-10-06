@@ -9,7 +9,173 @@
         "id": 1,
         "method": "session/prompt",
         "params": {
-          "sessionId": "jev-lessons-mock-patched",
+          "sessionId": "jev-lessons-mock",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Is the private document private?\n\nThe document route's authorization policy, as the run recorded it:\n(_user, _document) => true"
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "jev-lessons-mock#baseline",
+        "capturedAt": "2026-10-06T23:45:24.967Z",
+        "scripted": "The subject question is authored in report-expected.pcf; the body is the policy the run recorded at this revision."
+      }
+    },
+    {
+      "actor": "agent",
+      "action": "reply with finding",
+      "speaker": "mock",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "stopReason": "end_turn",
+          "_meta": {
+            "diagnostic": {
+              "code": "jev.baseline",
+              "severity": "error",
+              "message": "jev.baseline: Can Alice read Bob's private document? Mock answered 95%; expected 0–20%: out-of-range. A canned mock answer, not a Jev judgement. Can Bob read it? Mock answered 95%; expected 80–100%: in-range. A canned mock answer, not a Jev judgement.",
+              "subject": {
+                "role": "fact",
+                "uri": "questions/baseline-alice-reads/state.json#/state/authorizationPolicy",
+                "revision": "baseline",
+                "detail": "(_user, _document) => true"
+              },
+              "related": [
+                {
+                  "role": "observation",
+                  "uri": "questions/baseline-alice-reads/response.json",
+                  "detail": "Mock answered 95%; expected 0–20%: out-of-range. A canned mock answer, not a Jev judgement. Run jev-lessons-mock; model jev-latest."
+                },
+                {
+                  "role": "axiom",
+                  "uri": "report-expected.pcf",
+                  "detail": "Can Alice read Bob's private document? Alice is signed in; the document belongs to Bob. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 0–20%; contract a50810202b2267952237dfd0d03190f100a04a93ceab59056a8606385994107c"
+                },
+                {
+                  "role": "observation",
+                  "uri": "questions/baseline-alice-reads/state.json",
+                  "revision": "baseline",
+                  "detail": "GET /documents/bob-private as alice: 200\n{\n  \"id\": \"bob-private\",\n  \"owner\": \"bob\",\n  \"content\": \"Bob's synthetic private notes\"\n}"
+                },
+                {
+                  "role": "observation",
+                  "uri": "questions/baseline-alice-reads/request.json",
+                  "detail": "What the mock backend was sent: this state and the question, without its expected range."
+                },
+                {
+                  "role": "observation",
+                  "uri": "questions/baseline-bob-reads/response.json",
+                  "detail": "Mock answered 95%; expected 80–100%: in-range. A canned mock answer, not a Jev judgement. Run jev-lessons-mock; model jev-latest."
+                },
+                {
+                  "role": "axiom",
+                  "uri": "report-expected.pcf",
+                  "detail": "Can Bob read his own private document? Bob is signed in and owns it. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 80–100%; contract a50810202b2267952237dfd0d03190f100a04a93ceab59056a8606385994107c"
+                },
+                {
+                  "role": "observation",
+                  "uri": "questions/baseline-bob-reads/state.json",
+                  "revision": "baseline",
+                  "detail": "GET /documents/bob-private as bob: 200\n{\n  \"id\": \"bob-private\",\n  \"owner\": \"bob\",\n  \"content\": \"Bob's synthetic private notes\"\n}"
+                },
+                {
+                  "role": "observation",
+                  "uri": "questions/baseline-bob-reads/request.json",
+                  "detail": "What the mock backend was sent: this state and the question, without its expected range."
+                }
+              ],
+              "evaluationId": "jev-lessons-mock:a50810202b2267952237dfd0d03190f100a04a93ceab59056a8606385994107c:baseline"
+            },
+            "probes": [
+              {
+                "action": "GET /documents/bob-private as alice: 200",
+                "question": "Can Alice read Bob's private document?",
+                "diagnostic": {
+                  "severity": "error",
+                  "code": "baseline-alice-reads",
+                  "message": "baseline-alice-reads: Mock answered 95%; expected 0–20%: out-of-range. A canned mock answer, not a Jev judgement.",
+                  "evaluationId": "jev-lessons-mock:a50810202b2267952237dfd0d03190f100a04a93ceab59056a8606385994107c:baseline-alice-reads",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "questions/baseline-alice-reads/response.json",
+                      "detail": "Mock answered 95%; expected 0–20%: out-of-range. A canned mock answer, not a Jev judgement. Run jev-lessons-mock; model jev-latest."
+                    },
+                    {
+                      "role": "axiom",
+                      "uri": "report-expected.pcf",
+                      "detail": "Can Alice read Bob's private document? Alice is signed in; the document belongs to Bob. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 0–20%; contract a50810202b2267952237dfd0d03190f100a04a93ceab59056a8606385994107c"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "questions/baseline-alice-reads/state.json",
+                      "revision": "baseline",
+                      "detail": "GET /documents/bob-private as alice: 200\n{\n  \"id\": \"bob-private\",\n  \"owner\": \"bob\",\n  \"content\": \"Bob's synthetic private notes\"\n}"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "questions/baseline-alice-reads/request.json",
+                      "detail": "What the mock backend was sent: this state and the question, without its expected range."
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "GET /documents/bob-private as bob: 200",
+                "question": "Can Bob read it?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "baseline-bob-reads",
+                  "message": "baseline-bob-reads: Mock answered 95%; expected 80–100%: in-range. A canned mock answer, not a Jev judgement.",
+                  "evaluationId": "jev-lessons-mock:a50810202b2267952237dfd0d03190f100a04a93ceab59056a8606385994107c:baseline-bob-reads",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "questions/baseline-bob-reads/response.json",
+                      "detail": "Mock answered 95%; expected 80–100%: in-range. A canned mock answer, not a Jev judgement. Run jev-lessons-mock; model jev-latest."
+                    },
+                    {
+                      "role": "axiom",
+                      "uri": "report-expected.pcf",
+                      "detail": "Can Bob read his own private document? Bob is signed in and owns it. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 80–100%; contract a50810202b2267952237dfd0d03190f100a04a93ceab59056a8606385994107c"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "questions/baseline-bob-reads/state.json",
+                      "revision": "baseline",
+                      "detail": "GET /documents/bob-private as bob: 200\n{\n  \"id\": \"bob-private\",\n  \"owner\": \"bob\",\n  \"content\": \"Bob's synthetic private notes\"\n}"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "questions/baseline-bob-reads/request.json",
+                      "detail": "What the mock backend was sent: this state and the question, without its expected range."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "jev-lessons-mock#baseline/reply",
+        "capturedAt": "2026-10-06T23:45:26.068Z",
+        "scripted": "ACP framing authored; every answer, policy and exchange is read from the run, whose answers are canned mock answers, not Jev judgements."
+      }
+    },
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "jev-lessons-mock",
           "prompt": [
             {
               "type": "text",
@@ -20,7 +186,7 @@
       },
       "provenance": {
         "recordingId": "jev-lessons-mock#patched",
-        "capturedAt": "2026-10-06T23:31:38.387Z",
+        "capturedAt": "2026-10-06T23:45:27.258Z",
         "scripted": "The subject question is authored in report-expected.pcf; the body is the policy the run recorded at this revision."
       }
     }
