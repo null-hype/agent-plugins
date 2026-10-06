@@ -1,0 +1,89 @@
+{
+  "model": "jev-latest",
+  "questions": {
+    "vulnerability-reproduced": {
+      "dependencies": [],
+      "judge": {
+        "type": "noul",
+        "instructions": "Does this local reproduction demonstrate broken object-level authorization: signed-in Alice can read a private document owned by Bob? Judge only the supplied HTTP observations and fixture state.",
+        "criteria": {
+          "true": "The response to Alice contains Bob's private document, and fixture state identifies Bob as its owner.",
+          "false": "The request is denied, ownership or caller identity is unestablished, or no private content is returned."
+        }
+      },
+      "collector": "reproduce-unauthorized-read",
+      "requiredEvidence": [
+        "http",
+        "fixtureState",
+        "authorizationPolicy"
+      ],
+      "expected": {
+        "min": 0.8,
+        "max": 1
+      },
+      "lesson": {
+        "order": 1,
+        "title": "Reproduce the flaw",
+        "prose": "# Can Alice read Bob’s private document?\n\nThe baseline policy allows every request. Alice is signed in, but the private\ndocument belongs to Bob. In the Agent pane, select **HTTP observation** and inspect\nthe request and response. Does this reproduce broken object-level authorization?\n\nThe Client editor identifies the captured snapshot and question. The Agent report\nshows the evidence and the expected score range from the Pkl question contract.\n**Not scored** means this replay has not revealed the recorded evaluation yet.\n\nPress **Solve** to reveal the recorded score. Its diagnostic appears in the Client\neditor, and the Agent report adds the result and who scored it: Jev and its model,\nor a canned mock answer, which is not a Jev judgement.\nSelect the diagnostic to inspect the supporting evidence and expectation.\n\nThis lesson was compiled from a run of these Questions on the local synthetic\ndocument fixture: Playwright collected the evidence and the answer was scored.\nSolve replays that run; it does not execute tests or call Jev. The snapshot labels\nare fixture revisions, not Git commit hashes. A Jev score is an assessment of the\nsupplied evidence for this question, not proof of general application security."
+      }
+    },
+    "exploit-prevented": {
+      "dependencies": [
+        "vulnerability-reproduced"
+      ],
+      "judge": {
+        "type": "noul",
+        "instructions": "Does the patched ownership check prevent the specific unauthorized document read demonstrated in the prerequisite evidence? Compare Alice's request and the document identity before and after the patch.",
+        "criteria": {
+          "true": "The same unauthorized read is forbidden after the owner check is enabled, with no private document content in the response.",
+          "false": "Private content remains accessible, a different action was tested, or the evidence cannot establish prevention."
+        }
+      },
+      "collector": "verify-unauthorized-read-denied",
+      "requiredEvidence": [
+        "http",
+        "fixtureState",
+        "authorizationPolicy",
+        "prerequisites"
+      ],
+      "expected": {
+        "min": 0.8,
+        "max": 1
+      },
+      "lesson": {
+        "order": 2,
+        "title": "Block unauthorized access",
+        "prose": "# Does the ownership check block Alice?\n\nThe earlier question established the unauthorized read. Its evaluation remains\nattached to the baseline snapshot. Now the patched policy requires the signed-in\nuser to match the document owner.\n\nIn the Agent pane, compare **Authorization policy** before and after the patch.\nSwitch to **HTTP observation**: Alice requests the same document, but receives\n**403 Forbidden** instead of Bob’s private content.\n\nPress **Solve** to reveal the recorded assessment. The Pkl expectation is\n**80–100%** for this question. The score and the expected range answer different\nquestions: what was judged, and whether that judgment met the declared contract.\nA score outside the range is recorded as it is; it does not stop the lesson.\n\nSnapshot history lets you return to the baseline evidence. Reset returns this\nlesson to the pending evaluation while keeping the earlier result visible.\nThis recorded check covers the demonstrated unauthorized read; it does not\nestablish that every route or access pattern is protected."
+      }
+    },
+    "legitimate-access-preserved": {
+      "dependencies": [
+        "exploit-prevented"
+      ],
+      "judge": {
+        "type": "noul",
+        "instructions": "Does the patched application still allow document owner Bob to read his own private document, while the prerequisite evidence shows unauthorized access is blocked? Limit the conclusion to this tested owner-read flow.",
+        "criteria": {
+          "true": "Bob receives his document from the patched application and the prior unauthorized-read test was forbidden.",
+          "false": "Bob cannot retrieve his document, receives incorrect content, or the evidence does not establish the tested legitimate flow."
+        }
+      },
+      "collector": "verify-owner-read",
+      "requiredEvidence": [
+        "http",
+        "fixtureState",
+        "authorizationPolicy",
+        "prerequisites"
+      ],
+      "expected": {
+        "min": 0.8,
+        "max": 1
+      },
+      "lesson": {
+        "order": 3,
+        "title": "Preserve owner access",
+        "prose": "# Can Bob still read his own document?\n\nDenying every request would block Alice too. The final question checks that the\nowner’s legitimate access still works after the policy change.\n\nThe Agent report starts on Bob’s recorded request. Select **HTTP observation**:\nthe request identifies Bob and the response is **200**, with his own document.\nThe Client editor retains the earlier reproduction and prevention diagnostics.\n\nPress **Solve** to reveal the final score, then inspect its expected range\nand evidence. All three questions now have recorded evaluations: reproduce the\nflaw, prevent the demonstrated exploit, and preserve the tested owner-read flow.\n\nThe Pkl contract defines the questions, their dependencies, expected ranges and\nthese lessons. Playwright collects evidence in that order and each answer is scored;\nthe comparison checks the observed results against those expectations. This lesson\nreplays those artifacts. The results apply to these collected observations,\nnot every possible authorization behavior."
+      }
+    }
+  }
+}
