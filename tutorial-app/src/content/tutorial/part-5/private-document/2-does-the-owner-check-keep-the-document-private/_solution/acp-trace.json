@@ -20,7 +20,7 @@
       },
       "provenance": {
         "recordingId": "jev-lessons-mock#patched",
-        "capturedAt": "2026-10-06T23:08:04.398Z",
+        "capturedAt": "2026-10-06T23:31:38.387Z",
         "scripted": "The subject question is authored in report-expected.pcf; the body is the policy the run recorded at this revision."
       }
     },
@@ -53,7 +53,7 @@
                 {
                   "role": "axiom",
                   "uri": "report-expected.pcf",
-                  "detail": "Can Alice read Bob's private document? Alice is signed in; the document belongs to Bob. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 0–20%; contract 2dcffe82506c0e8f39286d8a4e2e1c6c95484e58a4e38b90eb2bc981f472a00d"
+                  "detail": "Can Alice read Bob's private document? Alice is signed in; the document belongs to Bob. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 0–20%; contract 78e8b7faaadec19fa34b3dc6c16e18a50771ba612c1a7921bb19c4ac5cf18ef4"
                 },
                 {
                   "role": "observation",
@@ -74,7 +74,7 @@
                 {
                   "role": "axiom",
                   "uri": "report-expected.pcf",
-                  "detail": "Can Bob read his own private document? Bob is signed in and owns it. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 80–100%; contract 2dcffe82506c0e8f39286d8a4e2e1c6c95484e58a4e38b90eb2bc981f472a00d"
+                  "detail": "Can Bob read his own private document? Bob is signed in and owns it. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 80–100%; contract 78e8b7faaadec19fa34b3dc6c16e18a50771ba612c1a7921bb19c4ac5cf18ef4"
                 },
                 {
                   "role": "observation",
@@ -88,7 +88,7 @@
                   "detail": "What the mock backend was sent: this state and the question, without its expected range."
                 }
               ],
-              "evaluationId": "jev-lessons-mock:2dcffe82506c0e8f39286d8a4e2e1c6c95484e58a4e38b90eb2bc981f472a00d:patched"
+              "evaluationId": "jev-lessons-mock:78e8b7faaadec19fa34b3dc6c16e18a50771ba612c1a7921bb19c4ac5cf18ef4:patched"
             },
             "probes": [
               {
@@ -98,7 +98,7 @@
                   "severity": "info",
                   "code": "patched-alice-reads",
                   "message": "patched-alice-reads: Mock answered 5%; expected 0–20%: in-range. A canned mock answer, not a Jev judgement.",
-                  "evaluationId": "jev-lessons-mock:2dcffe82506c0e8f39286d8a4e2e1c6c95484e58a4e38b90eb2bc981f472a00d:patched-alice-reads",
+                  "evaluationId": "jev-lessons-mock:78e8b7faaadec19fa34b3dc6c16e18a50771ba612c1a7921bb19c4ac5cf18ef4:patched-alice-reads",
                   "related": [
                     {
                       "role": "observation",
@@ -108,7 +108,7 @@
                     {
                       "role": "axiom",
                       "uri": "report-expected.pcf",
-                      "detail": "Can Alice read Bob's private document? Alice is signed in; the document belongs to Bob. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 0–20%; contract 2dcffe82506c0e8f39286d8a4e2e1c6c95484e58a4e38b90eb2bc981f472a00d"
+                      "detail": "Can Alice read Bob's private document? Alice is signed in; the document belongs to Bob. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 0–20%; contract 78e8b7faaadec19fa34b3dc6c16e18a50771ba612c1a7921bb19c4ac5cf18ef4"
                     },
                     {
                       "role": "observation",
@@ -131,7 +131,7 @@
                   "severity": "info",
                   "code": "patched-bob-reads",
                   "message": "patched-bob-reads: Mock answered 95%; expected 80–100%: in-range. A canned mock answer, not a Jev judgement.",
-                  "evaluationId": "jev-lessons-mock:2dcffe82506c0e8f39286d8a4e2e1c6c95484e58a4e38b90eb2bc981f472a00d:patched-bob-reads",
+                  "evaluationId": "jev-lessons-mock:78e8b7faaadec19fa34b3dc6c16e18a50771ba612c1a7921bb19c4ac5cf18ef4:patched-bob-reads",
                   "related": [
                     {
                       "role": "observation",
@@ -141,7 +141,7 @@
                     {
                       "role": "axiom",
                       "uri": "report-expected.pcf",
-                      "detail": "Can Bob read his own private document? Bob is signed in and owns it. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 80–100%; contract 2dcffe82506c0e8f39286d8a4e2e1c6c95484e58a4e38b90eb2bc981f472a00d"
+                      "detail": "Can Bob read his own private document? Bob is signed in and owns it. Judge only the supplied HTTP observation, authorization policy and fixture state.\nExpected 80–100%; contract 78e8b7faaadec19fa34b3dc6c16e18a50771ba612c1a7921bb19c4ac5cf18ef4"
                     },
                     {
                       "role": "observation",
@@ -163,7 +163,7 @@
       },
       "provenance": {
         "recordingId": "jev-lessons-mock#patched/reply",
-        "capturedAt": "2026-10-06T23:08:05.653Z",
+        "capturedAt": "2026-10-06T23:31:39.537Z",
         "scripted": "ACP framing authored; every answer, policy and exchange is read from the run, whose answers are canned mock answers, not Jev judgements."
       }
     }

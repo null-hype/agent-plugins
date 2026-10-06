@@ -220,6 +220,7 @@ function renderClientPage() {
       let acceptedOrder = [];
       let lastState = null;
       let reportedAccepted = null;
+      let reportedOrder = null;
       const RUN_GATE_COMMAND = 'acp-trace.runGate';
       const gateKey = (diagnostic) => diagnostic.evaluationId || diagnostic.code;
 
@@ -679,6 +680,14 @@ function renderClientPage() {
           reportedAccepted = acceptedOrder.length > 0;
           window.parent.postMessage({ type: 'acp-trace-suggestion-accepted', source: 'tk-acp-trace-client-preview', accepted: reportedAccepted }, '*');
         }
+        // CIT-328: the server prints the agent's activity to the lesson's
+        // terminal, and holds back each probe's finding until it is accepted
+        // here. Outside a WebContainer (Storybook, specs) nothing is listening.
+        const order = JSON.stringify(acceptedOrder);
+        if (order !== reportedOrder) {
+          reportedOrder = order;
+          fetch('/agent-activity', { method: 'POST', body: order }).catch(() => {});
+        }
       }
 
       async function applyState(payload) {
@@ -1029,9 +1038,102 @@ function serveMonacoAssets(request, response, url) {
   return true;
 }
 
+// CIT-328: the agent's activity, printed to the terminal (the lesson's
+// `output` panel shows this process's stdout). The trace file is the lesson's
+// own, so Solve and Reset, which rewrite it, change what is printed; a review
+// trace's findings print only for the probes the Client has accepted.
+const traceFile = resolve(process.cwd(), 'acp-trace.json');
+let acceptedProbes = [];
+let printed = [];
+let printedHint = null;
+
+async function readTrace() {
+  try {
+    const trace = JSON.parse(await readFile(traceFile, 'utf8'));
+    if (Array.isArray(trace.frames) || !Array.isArray(trace.frameIds)) return trace;
+    const frames = [];
+    for (const id of trace.frameIds) {
+      try {
+        frames.push(JSON.parse(await readFile(resolve(process.cwd(), 'frame-' + id + '.json'), 'utf8')));
+      } catch {}
+    }
+    return { ...trace, frames };
+  } catch {
+    return null;
+  }
+}
+
+// What has happened, in order, and a hint for what waits on the viewer next.
+// Only the former is a log: Solve and accepting a probe extend it.
+function activity(trace) {
+  if (!trace) return { lines: [], hint: null };
+  const lines = [];
+  let hint = null;
+  const indent = (text) => String(text).split('\n').map((line) => '    ' + line);
+  for (const frame of trace.frames || []) {
+    const envelope = frame.envelope || {};
+    if (frame.actor === 'client') {
+      const prompt = ((envelope.params && envelope.params.prompt) || []).map((block) => block.text || '').join('\n');
+      lines.push('you: ' + (prompt.split('\n')[0] || frame.action || ''));
+      continue;
+    }
+    const who = frame.speaker || 'agent';
+    const meta = (envelope.result && envelope.result._meta) || {};
+    const probes = meta.probes || [];
+    if (trace.scenario === 'cit294-review-v1' && probes.length) {
+      lines.push(who + ': deciding what to check');
+      probes.forEach((probe, index) => lines.push('  probe ' + (index + 1) + ' (' + probe.action + '): ' + probe.question));
+      if (acceptedProbes.length === 0) {
+        hint = who + ': its findings wait until you accept a probe in the Client (Tab)';
+        continue;
+      }
+      if (meta.diagnostic) lines.push(who + ': ' + meta.diagnostic.severity + ' ' + meta.diagnostic.message);
+      for (const index of acceptedProbes) {
+        const probe = probes[index];
+        if (!probe || !probe.diagnostic) continue;
+        lines.push('  accepted: ' + probe.question);
+        lines.push(...indent(probe.diagnostic.severity + ' ' + probe.diagnostic.message));
+        for (const row of probe.diagnostic.related || []) lines.push('      ' + row.role + ' ' + row.uri);
+      }
+      continue;
+    }
+    lines.push(who + ': ' + (frame.action || ''));
+    const diagnostic = meta.diagnostic;
+    if (diagnostic) lines.push(...indent(diagnostic.severity + ' ' + diagnostic.message));
+    if (meta.verdict && meta.verdict.text) lines.push(...indent(meta.verdict.status + ' ' + meta.verdict.text));
+  }
+  if (trace.nextTurn) hint = (trace.nextTurn.speaker || trace.nextTurn.actor) + ': will ' + trace.nextTurn.action + ' when you select Solve';
+  return { lines, hint };
+}
+
+async function printActivity() {
+  const { lines, hint } = activity(await readTrace());
+  const continues = printed.length <= lines.length && printed.every((line, index) => line === lines[index]);
+  if (!continues) console.log('\n-- replayed (Reset, or a probe you accepted was removed) --');
+  for (const line of continues ? lines.slice(printed.length) : lines) console.log(line);
+  if (hint && (hint !== printedHint || !continues || lines.length !== printed.length)) console.log('(' + hint + ')');
+  printed = lines;
+  printedHint = hint;
+}
+
+setInterval(() => printActivity().catch(() => {}), 500);
+
 const clientServer = createServer((request, response) => {
   const url = new URL(request.url || '/', 'http://localhost');
   if (serveMonacoAssets(request, response, url)) return;
+  if (url.pathname === '/agent-activity' && request.method === 'POST') {
+    let body = '';
+    request.on('data', (chunk) => (body += chunk));
+    request.on('end', () => {
+      try {
+        const order = JSON.parse(body);
+        if (Array.isArray(order)) acceptedProbes = order.filter((index) => Number.isInteger(index));
+      } catch {}
+      printActivity().catch(() => {});
+      sendText(response, '', 204);
+    });
+    return;
+  }
   sendText(response, renderClientPage(), 200, 'text/html; charset=utf-8');
 });
 
