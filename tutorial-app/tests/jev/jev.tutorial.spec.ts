@@ -66,15 +66,14 @@ test('Private document', { tag: '@tutorial' }, async ({}, testInfo) => {
   }
 });
 
-// The rails probes' review previews: Client is the commit-message editor, Agent is the reviewer.
+// CIT-328: the review Client is the only preview, with no editor (Solve is in the
+// top bar). The agent's activity prints to the terminal: the template's server
+// writes it to its output, which the `Agent` panel shows.
 const LESSON_META = {
   template: 'acp-trace',
   prepareCommands: ['npm install'],
   mainCommand: 'npm run dev',
-  previews: [
-    [4173, 'Client'],
-    [4174, 'Agent'],
-  ],
-  editor: true,
-  terminal: false,
+  previews: [[4173, 'Client']],
+  editor: false,
+  terminal: { open: true, panels: [['output', 'Agent']] },
 };
