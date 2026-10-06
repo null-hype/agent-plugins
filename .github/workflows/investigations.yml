@@ -1,0 +1,60 @@
+name: investigations
+
+# CIT-320: Dagger runs each Question set's investigation and checks it agrees
+# with itself (src/jev/pkl/Consistency.pkl). The check fails only when the
+# records contradict each other or an answer could not be collected; an answer
+# outside its expected range is a row of the report, not a failure.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.dagger/*.go'
+      - 'dagger.json'
+      - 'src/jev/**'
+      - 'jev-playwright/**'
+      - 'tutorial-app/package*.json'
+      - 'tutorial-app/playwright.questions.config.ts'
+      - 'tutorial-app/tests/rails-probes/**'
+      - 'tutorial-app/tests/questions/**'
+      - 'tutorial-app/evidence/cit-294-*/**'
+      - 'tutorial-app/src/content/tutorial/part-4/can-the-checker-be-trusted/**'
+      - 'tutorial-app/src/stories/fixtures/rails-matlab-review-*'
+      - 'tutorial-app/src/lib/reviewHistory/**'
+      - '.github/workflows/investigations.yml'
+  pull_request:
+    paths:
+      - '.dagger/*.go'
+      - 'dagger.json'
+      - 'src/jev/**'
+      - 'jev-playwright/**'
+      - 'tutorial-app/package*.json'
+      - 'tutorial-app/playwright.questions.config.ts'
+      - 'tutorial-app/tests/rails-probes/**'
+      - 'tutorial-app/tests/questions/**'
+      - 'tutorial-app/evidence/cit-294-*/**'
+      - 'tutorial-app/src/content/tutorial/part-4/can-the-checker-be-trusted/**'
+      - 'tutorial-app/src/stories/fixtures/rails-matlab-review-*'
+      - 'tutorial-app/src/lib/reviewHistory/**'
+      - '.github/workflows/investigations.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        investigation: [rails-probes, jev-questions]
+    name: ${{ matrix.investigation }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: '0.21.7'
+          verb: call
+          args: ${{ matrix.investigation }} check
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}

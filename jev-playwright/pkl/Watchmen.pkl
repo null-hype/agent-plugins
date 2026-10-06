@@ -1,0 +1,25 @@
+/// CIT-320: watching the watchmen. Each Question takes a passing Jev run,
+/// tampers with one of its records (the `collector` names the tamper), and asks
+/// the consistency check (`consistency.mjs`, `src/jev/pkl/Consistency.pkl`)
+/// whether it notices. The deterministic checker answers: 1 when the run is
+/// reported inconsistent, 0 when it is not. Either answer is recorded; only an
+/// answer that could not be collected fails the run.
+module Watchmen
+
+import "../../src/jev/pkl/Question.pkl"
+
+class Tamper extends Question.Question {
+  /// The question, in words, for the lesson.
+  question: String(!isEmpty)
+  /// The rule a check that notices should name, when it should notice.
+  rule: String?
+  judge = new Question.Checker {}
+  requiredEvidence { "consistent"; "broken" }
+}
+
+questions: Mapping<Question.Id, Tamper>(!isEmpty)
+
+output {
+  value = if (Question.validGraph(questions)) module
+    else throw("Invalid question dependency graph")
+}
