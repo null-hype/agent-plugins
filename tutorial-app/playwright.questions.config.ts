@@ -27,7 +27,10 @@ const launchOptions = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
   : {};
 
-const PARTS: { name: string; module: string; projects: Project[] }[] = [
+// A part with no `module` asks its Questions elsewhere: its lesson project runs them.
+// `outDir` is the tutorial part its lessons are written into (the reporter's default
+// is part-4).
+const PARTS: { name: string; module?: string; outDir?: string; projects: Project[] }[] = [
   {
     name: 'rails-probes',
     module: 'tests/rails-probes/traces/CheckerProbes.pkl',
@@ -52,6 +55,15 @@ const PARTS: { name: string; module: string; projects: Project[] }[] = [
       },
     ],
   },
+  {
+    // CIT-318: the jev-playwright Questions (`jev-playwright/report-expected.pcf`)
+    // are asked by jev-playwright's own Question-driven config, which this lesson
+    // project runs (mock scores unless JEV_LESSON_BACKEND=real) and then compiles.
+    // Needs jev-playwright's `npm ci` and `.venv` (see its README); no server.
+    name: 'jev',
+    outDir: './src/content/tutorial/part-5',
+    projects: [{ name: 'lesson', testMatch: 'jev/jev.tutorial.spec.ts' }],
+  },
 ];
 
 // The main process reads the Questions and makes the run directory once; workers
@@ -61,9 +73,9 @@ if (!process.env.QUESTIONS_SNAPSHOT) {
   mkdirSync(results, { recursive: true });
   process.env.QUESTIONS_RUN_DIR = mkdtempSync(path.join(results, 'run-'));
   const snapshot = Object.fromEntries(
-    PARTS.map(({ name, module }) => [
+    PARTS.filter(({ module }) => module).map(({ name, module }) => [
       name,
-      JSON.parse(execFileSync('pkl', ['eval', '-x', 'new JsonRenderer {}.renderValue(questions)', module], { encoding: 'utf8' })),
+      JSON.parse(execFileSync('pkl', ['eval', '-x', 'new JsonRenderer {}.renderValue(questions)', module!], { encoding: 'utf8' })),
     ]),
   );
   process.env.QUESTIONS_SNAPSHOT = path.join(process.env.QUESTIONS_RUN_DIR, 'questions.json');
@@ -72,8 +84,8 @@ if (!process.env.QUESTIONS_SNAPSHOT) {
 const questions: Record<string, Record<string, any>> = JSON.parse(readFileSync(process.env.QUESTIONS_SNAPSHOT, 'utf8'));
 
 // Project names are `<part>/<question id>` for Questions and `<part>:<name>` otherwise.
-const projects = PARTS.flatMap(({ name: part, projects }) => {
-  const asked = Object.entries(questions[part]).map(([id, question]) => ({
+const projects = PARTS.flatMap(({ name: part, outDir, projects }) => {
+  const asked = Object.entries(questions[part] ?? {}).map(([id, question]) => ({
     name: `${part}/${id}`,
     testMatch: 'questions/question.spec.ts',
     dependencies: question.dependencies.map((dependency: string) => `${part}/${dependency}`),
@@ -82,6 +94,7 @@ const projects = PARTS.flatMap(({ name: part, projects }) => {
   const rest = projects.map((project) => ({
     ...project,
     name: `${part}:${project.name}`,
+    metadata: { ...project.metadata, ...(outDir ? { tutorialOutDir: outDir } : {}) },
     // Every other project of a part depends on all its Questions, or on a sibling that does.
     dependencies: project.dependencies?.map((dependency) => `${part}:${dependency}`) ?? asked.map(({ name }) => name),
   }));
@@ -94,8 +107,8 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   workers: 1,
-  // part-4 is the rails probes' tutorial part. A second part with lessons needs
-  // the reporter to take its directory per project.
+  // part-4 is the rails probes' tutorial part; a part with its own `outDir` names
+  // it in its projects' metadata, which the reporter prefers.
   reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/part-4' }]],
   projects,
   // RAILS_PROBES_NO_SERVERS=1 skips both servers, for runs that need neither
