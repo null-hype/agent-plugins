@@ -1,0 +1,21 @@
+/// CIT-317: where one collected answer stands against its Question's expected
+/// range, by the shared Question module's own rules. The generic spec asks this
+/// of every answer a collector returns; an answer it could not collect never
+/// gets here (that fails the project instead).
+///
+///   pkl eval Outcome.pkl -p question=<Question JSON> -p answer=<answer JSON>
+module Outcome
+
+import "pkl:json"
+
+import "../../../src/jev/pkl/Question.pkl"
+
+local question = new json.Parser {}.parse(read("prop:question"))
+local raw = new json.Parser {}.parse(read("prop:answer"))
+local answer: Number|Question.CheckerAnswer =
+  if (question.judge.type == "checker") raw.toTyped(Question.CheckerAnswer) else raw as Number
+local expected: Question.Expectation = question.expected.toTyped(Question.Expectation)
+
+output {
+  text = if (Question.inRange(expected, Question.value(answer))) "in-range" else "out-of-range"
+}

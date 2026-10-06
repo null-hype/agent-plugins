@@ -13,7 +13,7 @@ function viewer(data) {
   let revision = snapshots[0];
   let selected = entries[0]?.id;
   let file = 'authorizationPolicy';
-  const tone = q => q.accepted ? 'pass' : q.outcome === 'dependency-skipped' ? 'blocked' : 'fail';
+  const tone = q => q.outcome === 'in-range' ? 'pass' : q.outcome === 'dependency-skipped' ? 'blocked' : 'fail';
   const files = ['authorizationPolicy', 'http', 'fixtureState'];
   const names = {authorizationPolicy:'Authorization policy', http:'HTTP observation', fixtureState:'Fixture state'};
   function render() {
@@ -23,7 +23,7 @@ function viewer(data) {
     document.querySelector('#history').innerHTML = snapshots.map((r, i) => `<button data-revision="${i}" aria-pressed="${r === revision}"><span class="node">◉</span><span><b>${esc(r)}</b><small>${entries.filter(q => (q.state?.revision ?? 'Unrecorded') === r).length} evaluations</small></span></button>`).join('');
     document.querySelector('#files').innerHTML = files.map(f => `<button data-file="${f}" aria-pressed="${f === file}">${names[f]}</button>`).join('');
     document.querySelector('#revision').textContent = revision ?? 'No snapshot';
-    document.querySelector('#diagnostics').innerHTML = visible.map(item => `<button class="diagnostic" data-question="${esc(item.id)}" aria-pressed="${item.id === selected}"><span class="${tone(item)}">${item.accepted ? '✓' : item.outcome === 'dependency-skipped' ? '○' : '!'}</span><span><b>${esc(title(item.id))}</b><small>${esc(title(item.outcome))}</small></span><strong>${pct(item.probability)}</strong></button>`).join('') || '<p>No evaluations recorded.</p>';
+    document.querySelector('#diagnostics').innerHTML = visible.map(item => `<button class="diagnostic" data-question="${esc(item.id)}" aria-pressed="${item.id === selected}"><span class="${tone(item)}">${item.outcome === 'in-range' ? '✓' : item.outcome === 'dependency-skipped' ? '○' : '!'}</span><span><b>${esc(title(item.id))}</b><small>${esc(title(item.outcome))}</small></span><strong>${pct(item.probability)}</strong></button>`).join('') || '<p>No evaluations recorded.</p>';
     if (!q) return;
     const previous = Object.values(q.state?.prerequisites ?? {}).find(s => s.revision !== q.state?.revision);
     const before = previous?.[file];
