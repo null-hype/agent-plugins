@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   answerJson,
   answerText,
+  chapter,
   committed,
   renderTraces,
   reproductionDir,
@@ -12,7 +13,6 @@ import {
 } from './fixture';
 import {
   FORGED_LINE,
-  assertionCounts,
   REPRODUCTION_ID,
   REVISIONS,
   deletedTrace,
@@ -54,11 +54,9 @@ import { EVALUATION_SPECS, evaluationIdOf } from '../../src/lib/reviewHistory';
 
 test.skip(pklVersion() === null, 'pkl is not on PATH');
 
-const ORDER: RevisionKey[] = ['S1', 'S2'];
-const TITLES: Record<RevisionKey, string> = {
-  S1: 'Can the check tell a real file read from a forged one',
-  S2: 'Can the strengthened check tell a real file read from a forged one',
-};
+// CIT-316: each lesson's title, place and prose are authored in
+// `traces/CheckerProbes.pkl`, beside the questions they tell.
+const CHAPTER = pklVersion() === null ? [] : chapter();
 
 async function attachTutorial(testInfo: TestInfo, index: number, name: string, body: string, contentType = 'text/plain') {
   await testInfo.attach(`tutorial:${index}:${name}`, { body, contentType });
@@ -125,7 +123,7 @@ function ask(key: RevisionKey) {
   }
 
   // Both traces render from the state's claims and this run's answers (CIT-312).
-  const { starter, solved } = renderTraces(key, answers);
+  const { starter, solved, prose } = renderTraces(key, answers);
 
   // CIT-313: the finding is the recorded history's, under its id and in its words.
   const finding = EVALUATION_SPECS.find(({ id }) => id === REVISIONS[key].findingId);
@@ -142,7 +140,7 @@ function ask(key: RevisionKey) {
   for (const [file, body] of [[starterFixture(key), starter], [solvedFixture(key), solved]]) if (!committed(file, body).matches) drift.push(path.basename(file));
   expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
-  return { files, starter, solved, runs };
+  return { files, starter, solved, prose };
 }
 
 test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) => {
@@ -151,10 +149,10 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
   // continuity check holds the second lesson to what the first one left.
   let end = new Map<string, string>();
 
-  for (const [i, key] of ORDER.entries()) {
+  for (const [i, { key, title }] of CHAPTER.entries()) {
     const index = i + 1;
-    await test.step(TITLES[key], async () => {
-      const { files, starter, solved, runs } = ask(key);
+    await test.step(title, async () => {
+      const { files, starter, solved, prose } = ask(key);
 
       const before = new Map(end);
       before.set('acp-trace.json', starter);
@@ -170,7 +168,7 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
       for (const [file, body] of declared) await attachTutorial(testInfo, index, `file/${file}`, body, file.endsWith('.json') ? 'application/json' : 'text/plain');
       end = new Map([...before, ...added]);
 
-      await attachTutorial(testInfo, index, 'prose', PROSE[key](runs), 'text/markdown');
+      await attachTutorial(testInfo, index, 'prose', `${BRIDGE}\n${prose}`, 'text/markdown');
       await attachTutorial(testInfo, index, 'meta', JSON.stringify(LESSON_META), 'application/json');
     });
   }
@@ -181,7 +179,7 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
   });
 });
 
-for (const key of ORDER) {
+for (const { key } of CHAPTER) {
   test(`the harness can fail at ${key}: a mutation the checker does see is reported`, () => {
     const files = new Map(loadPinnedChecker(key));
     const observed = JSON.parse(files.get('observations/mat-blocked.json')!.toString('utf8'));
@@ -217,58 +215,3 @@ const BRIDGE = `import AcpTraceBridge from '../../../../../components/AcpTraceBr
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 `;
-
-/** What the run found, in a sentence the lesson can end on. Both answers are told. */
-function found(runs: Record<ProbeName, CheckerRun>) {
-  const probes = Object.values(runs);
-  if (probes.every((run) => !noticed(run))) return { same: true, text: `still passing all ${probes[0].assertsTotal} assertions` };
-  const each = (name: ProbeName, what: string) =>
-    `${what} ${noticed(runs[name]) ? `made it fail (${assertionCounts(runs[name])})` : `still left all ${runs[name].assertsTotal} assertions passing`}`;
-  return { same: false, text: `different answers: ${each('deleted-trace', 'deleting the trace')}, and ${each('forged-read', 'forging a read')}` };
-}
-
-const PROSE: Record<RevisionKey, (runs: Record<ProbeName, CheckerRun>) => string> = {
-  S1: (runs) => `${BRIDGE}
-# Can the check tell a real file read from a forged one?
-
-Pull request #117 passed its check. The **Client** holds the commit that change
-was written as, in the form this case gives every change: a message whose
-subject line is a question. Unfold it to read the body.
-
-Select **Solve** to ask the reviewer. Grey suggested lines appear below the
-commit: the questions it asked itself to split yours, one by deleting the trace
-and one by forging a read. Press **Tab** to accept the one shown, or **Alt+]** to
-switch to the other first. You can take either, or both. Each accepted line
-becomes text in your editor, and each is checked. The **Agent** shows what the
-reviewer was deciding to check, and its finding only after you accept.
-
-Click the lens above an accepted line, **\`review-1.finding-1.deleted-trace\`**
-or **\`review-1.finding-1.forged-read\`**, to open the evidence behind it. One row
-is the part nobody kept: the output of the review's own test run. Next to it is a
-**reproduction**: the same probe run again, for real, against the checker as
-submitted. It is a new run, not the reviewers' output, and it shows the checker
-${found(runs).text}. The files for it appear in the editor after Solve.
-`,
-  S2: (runs) => `${BRIDGE}
-# Can the strengthened check tell a real file read from a forged one?
-
-Pull request #118 answers the first review. Its description says the
-independent read evidence now reaches the checker, and that deleting the trace,
-or forging a dummy-file read into the blocked arm, "is now flagged". The
-**Client** holds the commit that change was written as.
-
-The two questions are the ones asked of #117, word for word. Select **Solve**
-to ask the reviewer, and take either suggestion with **Tab** (or **Alt+]** to
-switch first), or both. The **Agent** holds back its finding until you accept.
-
-Open the lens above an accepted line, **\`review-2.gap-1.deleted-trace\`** or
-**\`review-2.gap-1.forged-read\`**. The **reproduction** row is the probe run
-again, for real, against the checker as #118 submitted it. It is a new run, not
-the reviewer's own output, which was not kept. It shows the checker ${found(runs).text}.${
-    found(runs).same
-      ? ' The new tests change the derived open count; neither probe touches that count, because both change the retained trace.'
-      : ''
-  } The files for each run
-appear in the editor after Solve, beside the first lesson's.
-`,
-};
