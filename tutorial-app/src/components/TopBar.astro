@@ -1,0 +1,37 @@
+---
+import TopBarSolveButton from './TopBarSolveButton';
+---
+
+<!-- TutorialKit's default TopBar, plus Solve for lessons with `editor: false`. -->
+<nav
+  class="bg-tk-elements-topBar-backgroundColor transition-theme border-b border-tk-elements-app-borderColor flex max-w-full items-center p-3 px-4 min-h-[56px]"
+>
+  <div class="flex flex-1">
+    <slot name="logo" />
+  </div>
+
+  <div class="mr-2">
+    <slot name="download-button" />
+  </div>
+  <div class="mr-2">
+    <slot name="open-in-stackblitz-link" />
+  </div>
+  <div class="mr-2">
+    <TopBarSolveButton client:load transition:persist />
+  </div>
+  <div>
+    <slot name="theme-switch" />
+  </div>
+  <div>
+    <slot name="login-button" />
+  </div>
+</nav>
+
+<style is:global>
+  /* With `editor: false` TutorialKit collapses the editor panel to zero size
+     but leaves its Solve button in the DOM. The top bar's Solve replaces it,
+     so take the hidden one out of the accessibility tree too. */
+  [data-panel-id='editor-closed'] .panel-button {
+    display: none;
+  }
+</style>
