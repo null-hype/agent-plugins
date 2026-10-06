@@ -58,18 +58,17 @@ test('Pkl → Playwright → Jev → JSON reconciliation passes without leaking 
   assert.equal(reconcile(result.runDir).passed, false);
 });
 
-test('a valid low score is an expectation failure, not an execution failure', () => {
+test('a valid low score is an out-of-range answer: recorded, and its dependents still run', () => {
   const result = run({ ...good, [id]: 0.2 });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.equal(result.comparison.passed, true);
   assert.equal(result.comparison.questions[id].executionPassed, true);
   assert.equal(result.comparison.questions[id].expectationPassed, false);
-  assert.equal(result.comparison.questions[id].outcome, 'expectation-failed');
+  assert.equal(result.comparison.questions[id].outcome, 'out-of-range');
   assert.equal(result.comparison.graphConsistent, true);
-  assert.deepEqual(Object.keys(read(path.join(result.runDir, 'scores.json')).scores), [id]);
   for (const downstream of [second, third]) {
-    assert.equal(result.comparison.questions[downstream].outcome, 'dependency-skipped');
-    assert.equal(existsSync(path.join(result.runDir, 'questions', downstream)), false,
-      'Skipped projects must gather no evidence and make no Jev call');
+    assert.equal(result.comparison.questions[downstream].outcome, 'in-range');
+    assert.deepEqual(result.comparison.questions[downstream].blockedBy, []);
   }
 });
 

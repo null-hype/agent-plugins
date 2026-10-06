@@ -42,6 +42,17 @@ open class Question {
   expected: Expectation
 }
 
+/// A lesson's place in its chapter and its text (CIT-316). This is the only copy
+/// of the text: the tutorial reporter writes it out, and nothing else holds it.
+class Lesson {
+  /// Its place in the chapter, counting from 1.
+  order: Int(isPositive)
+  /// Also the lesson's directory name, slugified.
+  title: String(!isEmpty)
+  /// Markdown. It may tell the run's answer, so it renders only once there is one.
+  prose: String(!isEmpty)
+}
+
 /// What the runner recorded for one checker run. Read from the run, never declared.
 class CheckerAnswer {
   exitCode: Int

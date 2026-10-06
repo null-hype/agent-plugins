@@ -92,13 +92,14 @@ func (m *AgentPlugins) RailsProbes(
 		WithNewFile("/execute.mjs", `import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 mkdirSync('/report', { recursive: true });
-const run = (project) => spawnSync('npx', ['playwright', 'test', '--config=playwright.rails-probes.config.ts', '--project', project],
+const run = (project) => spawnSync('npx', ['playwright', 'test', '--config=playwright.questions.config.ts', '--project', project],
   { stdio: 'inherit' }).status ?? 1;
 // The check, on the committed records, before anything rewrites them.
-const consistency = run('consistency');
+const consistency = run('rails-probes:consistency');
 // The investigation itself: it fails only when an answer cannot be collected,
 // or the re-collected answers differ from the committed reproduction.
-const probes = run('probes');
+// The lesson project depends on every rails-probes Question, so this asks them all.
+const probes = run('rails-probes:lesson');
 writeFileSync('/report/exit-codes.json', JSON.stringify({ consistency, probes }));
 if (!existsSync('/report/consistency.json')) {
   writeFileSync('/report/errors.txt', 'consistency exit ' + consistency + ', probes exit ' + probes + '\n');
