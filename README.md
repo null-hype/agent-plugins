@@ -8,16 +8,17 @@ one JSON snapshot for the tests and reporter. No npm Pkl binding is assumed.
 
 The config generates one Playwright project per question, with native project
 dependencies. Each test gathers HTTP evidence, asserts the deterministic
-behavior, invokes the existing `src/jev/jev` client, and asserts its score range
-**before the project completes**. Failed prerequisites skip dependent projects
-before evidence collection or scoring. The reporter only records results.
+behavior, invokes the existing `src/jev/jev` client, and records whether its
+score is in range. Only a prerequisite whose answer could not be collected skips
+dependent projects; an out-of-range answer is data, and its dependents run. The
+reporter only records results.
 
 `run.mjs` ingests Playwright's JSON report and uses `pkl/Reconcile.pkl` to
 validate node coverage, dependency order, score ranges, and dependency skips.
-A valid low score is recorded as `expectation-failed`; a missing/invalid score
+A valid score records `in-range` or `out-of-range`; a missing/invalid score
 or evidence failure is `execution-failed`. Skipped dependents record
-`dependency-skipped` and `blockedBy`. The command fails if any node is not
-accepted, even when the graph correctly respected its dependencies.
+`dependency-skipped` and `blockedBy`. The command fails only when an answer
+could not be collected or the graph did not respect its dependencies.
 
 ## Example
 
