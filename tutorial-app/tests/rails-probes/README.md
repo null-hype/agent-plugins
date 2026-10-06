@@ -7,11 +7,19 @@ opinion.
 
 ```sh
 cd tutorial-app
-npx playwright test --config=playwright.rails-probes.config.ts
+npx playwright test --config=playwright.questions.config.ts --project 'rails-probes/*' --project rails-probes:lesson
 ```
 
-The `probes` project needs only `pkl` on PATH (the spec skips without it): no browser, no servers, no
-Docker, no credentials. The `@tutorial` test compiles the lesson into
+CIT-317: the two probes are Questions in `traces/CheckerProbes.pkl`
+(`questions`). `playwright.questions.config.ts` makes each one a project
+(`rails-probes/deleted-trace`, `rails-probes/forged-read`) that runs the generic
+`tests/questions/question.spec.ts` with the collector the Question names
+(`collectors.ts`). A project fails only when its answer could not be collected;
+"the checker did not notice" is recorded as an out-of-range outcome, and the
+`rails-probes:lesson` project, which depends on both, still compiles it.
+
+The Question and lesson projects need only `pkl` on PATH (the config reads the
+Questions with it): no browser, no Docker, no credentials. The `@tutorial` test compiles the lesson into
 `src/content/tutorial/part-4/can-the-checker-be-trusted` (the chapter
 directory is rewritten on every run; the chapter is listed in part 4's `meta.md`).
 Commit what it produces.
@@ -72,7 +80,7 @@ them until `CIT307_UPDATE=1` writes them.
 
 ## Consistency: watching the watchmen (CIT-320)
 
-The `consistency` project (`rails-probes.consistency.spec.ts`) trusts none of
+The `rails-probes:consistency` project (`rails-probes.consistency.spec.ts`) trusts none of
 the probes' records. For each state it re-runs the pinned checker on each
 **recorded** mutation and requires the recorded answer, checks the recorded
 forged transcript differs from the pinned one by exactly the forged line, that
@@ -84,7 +92,7 @@ decides; a probe the checker does not notice is an `out-of-range` row, not a
 failure.
 
 ```sh
-RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.rails-probes.config.ts --project consistency --project probes
+RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.questions.config.ts --project rails-probes:consistency --project rails-probes:lesson
 ```
 
 The probes' summary parsing needs Pkl 0.32 (the committed reproduction's
@@ -187,10 +195,11 @@ rest is authored in `traces/CheckerProbes.pkl` (see above). The reviewers' own
 "not retained" row is kept beside it. The exact bytes each row points at are
 committed under `evidence/cit-294-probe-reproduction-v1/reproduction/<S1|S2>/`.
 
-* `probes` project: runs the checker, compiles the lessons, and **fails if the
+* `rails-probes/<question>` projects run the checker; the `rails-probes:lesson`
+  project compiles the lessons from that run, and **fails if the
   committed reproduction or fixture differs from what the checker just did**
   (`CIT307_UPDATE=1` rewrites them).
-* `editor` project (depends on `probes`; needs a browser and starts
+* `editor` project (`rails-probes:editor`, depends on the lesson; needs a browser and starts
   `server.cjs` on ports 4383/4384): solves, presses Tab for each probe, opens the
   lenses, checks the marker message and evidence rows carry the executed
   numbers, and checks the Agent only diagnoses after an accept.
