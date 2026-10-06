@@ -5,7 +5,7 @@ import { solvedFixture } from './fixture';
 import { REPRODUCTION_ID, REVISIONS, type RevisionKey } from './probes';
 
 // CIT-307 x CIT-253: the review-1 editor flow, driven against the fixture the
-// probes run just produced (the `probes` project is a dependency and fails if
+// probes run just produced (the lesson project is a dependency and fails if
 // the committed fixture has drifted from what the checker did). What is checked
 // is that the numbers the executed run produced are what the reviewer sees
 // after accepting a probe, in the real Client and Agent pages (server.cjs).
