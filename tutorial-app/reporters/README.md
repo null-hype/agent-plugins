@@ -13,6 +13,18 @@ finished test. Wire it into any Playwright config as:
 reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/<part>' }]],
 ```
 
+A project whose lessons belong to another part names it in its metadata,
+`metadata: { tutorialOutDir: './src/content/tutorial/<part>' }`, and its
+chapters go there instead of `outDir`.
+
+A chapter can also be told by several projects, one lesson each: the Question
+projects of `playwright.questions.config.ts` (CIT-318). Such a project carries
+`tutorialChapter` (the chapter title) and `tutorialLesson` (`{order, title}`) in
+its metadata, and its test attaches its lesson as step 1 (`tutorial:1:...`,
+the contract below). The reporter compiles the chapter at the end of the run,
+in lesson order, only when every project naming it passed; otherwise it leaves
+the chapter as it was.
+
 ## Test contract
 
 A compiled test:
@@ -59,7 +71,7 @@ test('area51 booking', { tag: '@tutorial' }, async ({ page }, testInfo) => {
   - `tutorial:<n>:prose` -- that step's lesson body markdown.
   - `tutorial:<n>:meta` -- optional JSON attachment with runtime/display
     frontmatter (`template`, `prepareCommands`, `mainCommand`, `previews`,
-    `terminal`, `editor`, `focus`, `filesystem`). Explicit values override
+    `terminal`, `editor`, `focus`, `filesystem`, `custom`). Explicit values override
     defaults, including inferred `focus`. Fields that would rewrite lesson
     identity (e.g. `title`) are rejected during planning, before any write.
   - any `tutorial:<n>:*` attachment whose `contentType` starts with

@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext } from '@playwright/test';
+import type { APIRequestContext, Expect } from '@playwright/test';
 import { startDocumentApp } from './fixture-app.mjs';
 
 async function readDocument(request: APIRequestContext, patched: boolean, actor: string) {
@@ -20,10 +20,12 @@ async function readDocument(request: APIRequestContext, patched: boolean, actor:
 }
 
 // Capture before assertions so a deterministic failure still leaves evidence.
+// `verify` takes the caller's `expect`: tutorial-app runs these collectors under
+// its own Playwright, which refuses a second copy loaded from here.
 export const collectors = {
   'reproduce-unauthorized-read': {
     collect: (request: APIRequestContext) => readDocument(request, false, 'alice'),
-    verify: (state: any) => {
+    verify: (state: any, expect: Expect<{}>) => {
       expect(state.http.response.status).toBe(200);
       expect(state.http.request.actor).not.toBe(state.fixtureState.document.owner);
       expect(state.http.response.body).toEqual(state.fixtureState.document);
@@ -31,7 +33,7 @@ export const collectors = {
   },
   'verify-unauthorized-read-denied': {
     collect: (request: APIRequestContext) => readDocument(request, true, 'alice'),
-    verify: (state: any) => {
+    verify: (state: any, expect: Expect<{}>) => {
       expect(state.http.response.status).toBe(403);
       expect(state.http.response.body).toEqual({ error: 'Forbidden' });
       const before = Object.values(state.prerequisites)[0] as any;
@@ -41,7 +43,7 @@ export const collectors = {
   },
   'verify-owner-read': {
     collect: (request: APIRequestContext) => readDocument(request, true, 'bob'),
-    verify: (state: any) => {
+    verify: (state: any, expect: Expect<{}>) => {
       expect(state.http.response.status).toBe(200);
       expect(state.http.request.actor).toBe(state.fixtureState.document.owner);
       expect(state.http.response.body).toEqual(state.fixtureState.document);
