@@ -64,8 +64,10 @@ To demonstrate prerequisite gating:
 npm run score -- --mock-answers fixtures/prerequisite-fails.json
 ```
 
-This deliberately exits 1: the first score is `0.2`, below the declared
-`[0.8, 1]` range. Both dependent projects are skipped and make no Jev calls.
+This deliberately exits 1: the canned answers hold no score for the first
+question, so its answer cannot be collected. Both dependent projects are skipped
+and make no Jev calls. A score outside the declared range (say `0.2` against
+`[0.8, 1]`) is different: it is recorded as `out-of-range`, and its dependents run.
 Use `--mock-answers /path/to/answers.json` for other canned responses.
 
 For a real call, authenticate your existing **host** `pass-cli` in a dedicated
