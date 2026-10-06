@@ -9,7 +9,7 @@
   ],
   "nextTurn": {
     "actor": "agent",
-    "speaker": "jev",
+    "speaker": "mock",
     "action": "reveal recorded evaluation"
   }
 }
