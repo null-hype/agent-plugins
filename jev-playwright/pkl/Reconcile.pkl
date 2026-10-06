@@ -2,6 +2,7 @@ module Reconcile
 
 import "pkl:json"
 import "Experiment.pkl"
+import "../../src/jev/pkl/Question.pkl"
 
 local expected = new json.Parser {}.parse(read(read("prop:expected")).text)
 local raw = new json.Parser {}.parse(read(read("prop:observed")).text)
@@ -55,7 +56,7 @@ questions = new Mapping {
       local attempts = executions.toList().filter((e) -> e.questionId == id)
       local execution = if (attempts.length == 1) attempts[0] else null
       local answer = scores.getOrNull(id)
-      local expectation: Experiment.Expectation = question.expected.toTyped(Experiment.Expectation)
+      local expectation: Question.Expectation = question.expected.toTyped(Question.Expectation)
       dependencies = question.dependencies.toList()
       blockedBy = dependencies.filter((dep) -> !questions[dep].accepted)
       status = execution?.status ?? "missing"
@@ -70,8 +71,7 @@ questions = new Mapping {
         answer != null && answer.error == null && answer.probability != null && answer.model != null
       probability = answer?.probability
       expected = expectation
-      expectationPassed = executionPassed &&
-        probability >= expectation.min && probability <= expectation.max
+      expectationPassed = executionPassed && Question.inRange(expectation, probability)
       dependencyOrderValid = if (status == "skipped")
         !blockedBy.isEmpty && answer == null && execution.attachmentCount == 0
         else blockedBy.isEmpty && startedAt != null && finishedAt != null && finishedAt >= startedAt &&
