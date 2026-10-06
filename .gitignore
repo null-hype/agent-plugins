@@ -18,3 +18,4 @@ test-results/budget-authority/.last-run.json
 
 # CIT-306: the review-history acceptance target writes its run state here.
 /test-results/review-history/
+/test-results/rails-probes/

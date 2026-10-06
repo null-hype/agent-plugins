@@ -159,6 +159,32 @@ Each invocation creates `runs/<uuid>/` containing:
 - `scores.json`: reporter ledger, including backend, model, and access reason.
 - `report-observed.json`: scores joined with executions from the native report.
 - `comparison.json`: Pkl coverage, execution, and expectation results.
+- `consistency-facts.json`, `consistency.json`: whether the run agrees with
+  itself (CIT-320, below).
+
+## Consistency (CIT-320)
+
+`run.mjs` also checks the run against its own records, independent of whether
+it passed. `consistency.mjs` gathers the facts and `src/jev/pkl/Consistency.pkl`
+decides. Jev's score cannot be recomputed, so the rules prove what can be:
+
+- `evidence-sent`: the `state` in `request.json` is the `jev-evidence` the test attached.
+- `question-sent`: the request asks exactly the declared judge question, and no expected range.
+- `score-on-record`: the ledger's score and model are the ones in `response.json` and `result.json`.
+- `backend-labelled`: a canned answer is labelled mock, never presented as a Jev judgement.
+- `executed-once`, `dependency-order`, `required-evidence`, plus run-wide `same-contract` and `coverage`.
+
+An answer outside its expected range is an `out-of-range` row, and a score
+below one half on evidence its collector verified is a `disagreement` row;
+neither makes the run inconsistent. Only a broken rule, or an answer that could
+not be collected, does. The root Dagger module's `jev-questions check` fails on
+exactly that, and CI runs it (`.github/workflows/investigations.yml`).
+
+Whether the check itself can be trusted is asked the same way, as Questions
+(`watchmen.pcf`). Each takes a fresh mock run, tampers with one record (a
+forged score, forged evidence, a leaked range, a changed contract, ...), and
+records whether the check noticed: `npm run watchmen`, answers in
+`runs/watchmen/<id>/answer.json`. Either answer is data.
 
 The ledgers and native report share a run ID and SHA-256 contract digest.
 Raw responses survive Jev contract failures. Setup or malformed-report errors

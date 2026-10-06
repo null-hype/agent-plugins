@@ -35,6 +35,9 @@ const PARTS: { name: string; module: string; projects: Project[] }[] = [
     // (the chapter directory is rewritten on every compile; commit what it produces).
     projects: [
       { name: 'lesson', testMatch: 'rails-probes/rails-probes.tutorial.spec.ts' },
+      // CIT-320: checks the committed records agree with each other and with a
+      // re-run of the checker. Needs only `pkl`, and no Question run first.
+      { name: 'consistency', testMatch: 'rails-probes/rails-probes.consistency.spec.ts', dependencies: [] },
       {
         name: 'editor',
         testMatch: 'rails-probes/rails-probes.editor.spec.ts',
@@ -95,7 +98,9 @@ export default defineConfig({
   // the reporter to take its directory per project.
   reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/part-4' }]],
   projects,
-  webServer: [
+  // RAILS_PROBES_NO_SERVERS=1 skips both servers, for runs that need neither
+  // (the root Dagger module's RailsProbes).
+  webServer: process.env.RAILS_PROBES_NO_SERVERS ? [] : [
     {
       command: 'node src/templates/acp-trace/server.cjs',
       url: 'http://127.0.0.1:4383',

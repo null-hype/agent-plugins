@@ -1,0 +1,61 @@
+amends "pkl/Watchmen.pkl"
+
+import "../src/jev/pkl/Question.pkl"
+
+local noticed = new Question.Expectation { min = 1; max = 1 }
+local unnoticed = new Question.Expectation { min = 0; max = 0 }
+
+questions {
+  ["untouched"] {
+    question = "Does the check pass a run nobody tampered with?"
+    collector = "untouched"
+    expected = unnoticed
+  }
+  ["low-score"] {
+    question = "Does the check pass a run whose answer misses its expected range?"
+    collector = "low-score"
+    expected = unnoticed
+  }
+  ["forged-score"] {
+    question = "Does the check notice a score on record that Jev never returned?"
+    collector = "forged-score"
+    rule = "score-on-record"
+    expected = noticed
+  }
+  ["forged-model"] {
+    question = "Does the check notice a raw response naming another model?"
+    collector = "forged-model"
+    rule = "score-on-record"
+    expected = noticed
+  }
+  ["forged-evidence"] {
+    question = "Does the check notice Jev being sent evidence other than what the test recorded?"
+    collector = "forged-evidence"
+    rule = "evidence-sent"
+    expected = noticed
+  }
+  ["leaked-range"] {
+    question = "Does the check notice the expected range reaching Jev?"
+    collector = "leaked-range"
+    rule = "question-sent"
+    expected = noticed
+  }
+  ["changed-criteria"] {
+    question = "Does the check notice Jev being asked other criteria than declared?"
+    collector = "changed-criteria"
+    rule = "question-sent"
+    expected = noticed
+  }
+  ["mislabelled-backend"] {
+    question = "Does the check notice a canned answer presented as a real one?"
+    collector = "mislabelled-backend"
+    rule = "backend-labelled"
+    expected = noticed
+  }
+  ["changed-contract"] {
+    question = "Does the check notice the contract changing after the run?"
+    collector = "changed-contract"
+    rule = "same-contract"
+    expected = noticed
+  }
+}
