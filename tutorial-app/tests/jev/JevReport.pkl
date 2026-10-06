@@ -1,0 +1,233 @@
+/// CIT-318: the part-5 Jev report lessons, authored once (the CIT-312 pattern).
+///
+/// What is CLAIMED lives here: the trace's structure, its labels and wording.
+/// What the run DID is not: every score, outcome, state and time is read from
+/// the run directory `jev-playwright/run.mjs` wrote. Nothing renders without one.
+/// Each lesson's title, place and prose are its Question's (`report-expected.pcf`).
+///
+///   pkl eval -m <out> JevReport.pkl -p run=<dir> -p lesson=<question id>
+///
+/// writes `<out>/_files/` (the starter trace and its frames), `<out>/_solution/`
+/// (the solved ones), `<out>/lesson.md` and `<out>/meta.json`. `chapter` lists the
+/// Questions with a lesson, in lesson order, and reads only the run's contract.
+module JevReport
+
+import "pkl:json"
+
+import "../rails-probes/traces/AcpTrace.pkl"
+
+/// Where the run wrote its records.
+run: String = read("prop:run")
+/// The Question this lesson tells.
+lesson: String = read("prop:lesson")
+
+local parser = new json.Parser { useMapping = true }
+local function load(file: String): Mapping = parser.parse(read("\(run)/\(file)")) as Mapping
+
+local comparison = load("comparison.json")
+local contract = load("report-expected.json")
+local ledger = load("scores.json")
+/// The Questions, in the order the run asked them.
+local ids: List<String> = comparison["questions"].keys.toList()
+local function result(id: String): Mapping = comparison["questions"][id]
+local function score(id: String): Mapping = ledger["scores"][id]
+local function state(id: String): Mapping = load("questions/\(id)/state.json")["state"]
+/// A Question as the contract states it, without its lesson: the lesson tells it, the trace does not repeat it.
+local function definition(id: String): Mapping =
+  let (q = contract["questions"][id]) q.toMap().remove("lesson").toMapping()
+local function instructions(id: String): String = contract["questions"][id]["judge"]["instructions"]
+
+/// The Questions that are told as lessons, in lesson order, which must count 1, 2, ...
+chapter: List<String> =
+  let (told = ids.filter((id) -> contract["questions"][id].getOrNull("lesson") != null)
+    .sortBy((id) -> contract["questions"][id]["lesson"]["order"] as Int))
+    if (told.mapIndexed((i, id) -> contract["questions"][id]["lesson"]["order"] == i + 1).every((it) -> it)) told
+    else throw("lesson orders in report-expected.pcf must count 1 to \(told.length)")
+
+/// A canned answer is never presented as a Jev judgement (CIT-320 `backend-labelled`).
+local function mock(id: String): Boolean = score(id)["backend"] == "mock"
+local function scorer(id: String): String = if (mock(id)) "mock" else "jev"
+local function scorerLabel(id: String): String = if (mock(id)) "mock" else "Jev"
+local function evaluationNoun(id: String): String = if (mock(id)) "canned mock answer" else "Jev evaluation"
+
+local function percent(x: Number): String =
+  let (p = x * 100) if (p.round() == p) p.round().toInt().toString() else p.toString()
+local function pretty(value: Any): String = new JsonRenderer { indent = "  " }.renderValue(value).trimEnd()
+
+local function diagnostic(id: String): AcpTrace.ReportDiagnostic =
+  let (r = result(id))
+  let (s = state(id))
+  let (pct = "\(percent(r["probability"]))%")
+  let (range = "\(percent(r["expected"]["min"]))–\(percent(r["expected"]["max"]))%")
+    new {
+      severity = if (r["accepted"]) "info" else "error"
+      code = "\(scorerLabel(id).capitalize()) \(pct) · \(id)"
+      message = "\(instructions(id))\nRecorded \(pct); expected \(range). \(r["outcome"]).\(if (mock(id)) " A canned mock answer, not a Jev judgement." else "")"
+      evaluationId = "\(comparison["runId"]):\(comparison["contractDigest"]):\(id)"
+      related {
+        new { role = "axiom"; uri = "report-expected.pcf"; detail = "\(instructions(id))\nExpected \(range); contract \(comparison["contractDigest"])" }
+        new { role = "fact"; uri = "questions/\(id)/state.json#/state/authorizationPolicy"; revision = s["revision"]; detail = s["authorizationPolicy"] }
+        new { role = "observation"; uri = "questions/\(id)/state.json#/state/http"; revision = s["revision"]; detail = pretty(s["http"]) }
+        new { role = "observation"; uri = "questions/\(id)/state.json#/state/prerequisites"; detail = pretty(s["prerequisites"]) }
+        new { role = "observation"; uri = "scores.json"; detail = "Run \(comparison["runId"]); \(score(id)["backend"]); \(score(id)["model"]); score \(r["probability"])" }
+      }
+    }
+
+local function commit(id: String): AcpTrace.Commit = new {
+  sha = "snapshot:\(state(id)["revision"])"
+  subject = id
+  diagnostic = diagnostic(id)
+}
+
+/// The run's records up to the question at `index`; its evaluation hidden until `evaluated`.
+local function reportView(index: Int, evaluated: Boolean): Mapping<String, Any> =
+  let (shown = ids.take(index + 1))
+  let (selected = ids[index])
+    new {
+      ["selected"] = selected
+      ["comparison"] = new Mapping {
+        ["runId"] = comparison["runId"]
+        ["questions"] = new Mapping {
+          for (id in shown) {
+            [id] =
+              if (id == selected && !evaluated)
+                new Mapping { ["expected"] = result(id)["expected"]; ["outcome"] = "pending"; ["dependencies"] = result(id)["dependencies"] }
+              else result(id)
+          }
+        }
+      }
+      ["states"] = new Mapping { for (id in shown) { [id] = state(id) } }
+      ["expected"] = new Mapping { ["questions"] = new Mapping { for (id in shown) { [id] = definition(id) } } }
+      ["ledger"] = new Mapping { ["scores"] = new Mapping { for (id in shown) { when (evaluated || id != selected) { [id] = score(id) } } } }
+    }
+
+/// Epoch milliseconds (after 1970) as `Date.prototype.toISOString` writes them (UTC).
+local function iso(ms: Int): String =
+  let (days = ms ~/ 86400000)
+  let (rest = ms - days * 86400000)
+  // Howard Hinnant's civil_from_days.
+  let (z = days + 719468)
+  let (era = z ~/ 146097)
+  let (doe = z - era * 146097)
+  let (yoe = (doe - doe ~/ 1460 + doe ~/ 36524 - doe ~/ 146096) ~/ 365)
+  let (doy = doe - (365 * yoe + yoe ~/ 4 - yoe ~/ 100))
+  let (mp = (5 * doy + 2) ~/ 153)
+  let (d = doy - (153 * mp + 2) ~/ 5 + 1)
+  let (m = if (mp < 10) mp + 3 else mp - 9)
+  let (y = yoe + era * 400 + (if (m <= 2) 1 else 0))
+  let (pad = (n: Int, w: Int) -> n.toString().padStart(w, "0"))
+    "\(pad.apply(y, 4))-\(pad.apply(m, 2))-\(pad.apply(d, 2))T\(pad.apply(rest ~/ 3600000, 2)):\(pad.apply(rest ~/ 60000 % 60, 2)):\(pad.apply(rest ~/ 1000 % 60, 2)).\(pad.apply(rest % 1000, 3))Z"
+
+local function provenance(id: String): AcpTrace.RecordedProvenance = new {
+  recordingId = comparison["runId"]
+  capturedAt = iso(result(id)["finishedAt"])
+}
+
+/// The two frames for the question at `index`: its evidence, then its evaluation.
+local function evidence(index: Int): AcpTrace.ReportFrame =
+  let (id = ids[index])
+  let (s = state(id))
+    new {
+      provenance = provenance(id)
+      reportView = reportView(index, false)
+      speaker = "playwright"
+      action = "inspect recorded evidence"
+      envelope {
+        id = index * 2
+        result {
+          _meta {
+            pins {
+              new { id = "\(ids[index]):question"; label = "Question"; text = instructions(ids[index]) }
+              new { id = "\(ids[index]):policy"; label = "Policy · \(s["revision"])"; text = s["authorizationPolicy"] }
+              new { id = "\(ids[index]):http"; label = "Recorded HTTP observations"; text = pretty(s["http"]) }
+            }
+            verdict { channel = "review"; status = "pending"; text = "Evidence collected. Solve reveals the recorded \(evaluationNoun(ids[index]))." }
+          }
+        }
+      }
+      rebaseTodo {
+        commits {
+          for (earlier in ids.take(index)) { commit(earlier) }
+          new { sha = "snapshot:\(s["revision"])"; subject = ids[index] }
+        }
+        comment = "Fixture snapshots; no Git commit hashes were recorded."
+      }
+    }
+
+local function evaluation(index: Int): AcpTrace.ReportFrame =
+  let (id = ids[index])
+    new {
+      provenance = provenance(id)
+      reportView = reportView(index, true)
+      speaker = scorer(id)
+      action = "reveal recorded evaluation"
+      envelope {
+        id = index * 2 + 1
+        result {
+          _meta {
+            pins { new { id = "\(ids[index]):run"; label = "Recorded \(scorerLabel(ids[index])) run"; text = comparison["runId"] } }
+            verdict {
+              channel = "experiment"
+              status = if (result(ids[index])["accepted"]) "pass" else "fail"
+              text = diagnostic(ids[index]).message
+            }
+          }
+        }
+      }
+      rebaseTodo {
+        commits { for (earlier in ids.take(index + 1)) { commit(earlier) } }
+        comment = "Select a Jev diagnostic to inspect its evidence and Pkl expectation."
+      }
+    }
+
+local question = ids.indexOf(lesson)
+local told = contract["questions"].getOrNull(lesson)?.getOrNull("lesson")
+  ?? throw("\(lesson) is not a Question with a lesson in this run's contract")
+/// Every frame up to and including this lesson's question, by frame id.
+local frames: Map<String, AcpTrace.ReportFrame> =
+  IntSeq(0, question).toList().flatMap((i) -> List(
+    Pair("\(ids[i]):evidence", evidence(i)),
+    Pair("\(ids[i]):evaluation", evaluation(i))
+  )).toMap((it) -> it.first, (it) -> it.second)
+
+/// The starter holds back this question's evaluation; Solve reveals it.
+local starterIds: List<String> = frames.keys.toList().dropLast(1)
+local solvedIds: List<String> = frames.keys.toList()
+
+local function index(listed: List<String>, solved: Boolean): AcpTrace.FrameIndex = new {
+  scenario = "jev-report-v1"
+  frameIds { for (f in listed) { f } }
+  nextTurn = if (solved) null else new AcpTrace.NextTurn { actor = "agent"; speaker = scorer(lesson); action = "reveal recorded evaluation" }
+}
+
+/// The lesson's runtime and display settings (the reporter's `tutorial:<n>:meta`).
+lessonMeta: Mapping<String, Any> = new {
+  ["template"] = "acp-trace"
+  ["prepareCommands"] = new Listing { "npm install" }
+  ["mainCommand"] = "npm run dev"
+  ["previews"] = new Listing { new Listing { 4173; "Client" } new Listing { 4174; "Agent" } }
+  ["editor"] = true
+  ["terminal"] = false
+  ["custom"] = new Mapping { ["acpTrace"] = new Mapping { ["traceFile"] = "/acp-trace.json"; ["scenario"] = "jev-report-v1" } }
+}
+
+local bridge =
+  """
+  import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+  <AcpTraceBridge client:load />
+
+  """
+
+output {
+  files {
+    for (dir, shown in Map("_files", starterIds, "_solution", solvedIds)) {
+      ["\(dir)/acp-trace.json"] { value = index(shown, dir == "_solution"); renderer = AcpTrace.renderer }
+      for (f in shown) {
+        ["\(dir)/frame-\(f).json"] { value = frames[f]; renderer = AcpTrace.renderer }
+      }
+    }
+    ["lesson.md"] { text = "\(bridge)\n\(told["prose"])" }
+    ["meta.json"] { value = lessonMeta; renderer = new JsonRenderer {} }
+  }
+}

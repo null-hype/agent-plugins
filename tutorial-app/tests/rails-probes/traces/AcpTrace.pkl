@@ -92,6 +92,77 @@ class Row {
   detail: String
 }
 
+/// A trace kept as one file per frame (`frame-<id>.json`) beside an index that
+/// lists them (`acp-trace.json`), as the Jev report scenario plays it (CIT-318).
+class FrameIndex {
+  scenario: String
+  frameIds: Listing<String>
+  nextTurn: NextTurn?
+}
+
+/// A Jev report frame: the agent shows the report as recorded at one question.
+class ReportFrame extends Frame {
+  actor = "agent"
+  provenance: RecordedProvenance
+  /// The run's records up to this frame's question, as the report view reads them.
+  reportView: Mapping<String, Any>
+  speaker: String
+  envelope: ReportEnvelope
+  rebaseTodo: RebaseTodo
+}
+
+class RecordedProvenance {
+  recordingId: String
+  capturedAt: String
+}
+
+class ReportEnvelope {
+  jsonrpc = "2.0"
+  id: Int
+  result: ReportResult
+}
+
+class ReportResult {
+  _meta: ReportMeta
+}
+
+class ReportMeta {
+  pins: Listing<Pin>
+  verdict: Verdict
+}
+
+class Pin {
+  id: String
+  label: String
+  text: String
+}
+
+class Verdict {
+  channel: String
+  status: String
+  text: String
+}
+
+class RebaseTodo {
+  commits: Listing<Commit>
+  comment: String
+}
+
+/// A snapshot in the report's history. Only a question's own entry carries its diagnostic.
+class Commit {
+  sha: String
+  subject: String
+  diagnostic: ReportDiagnostic?
+}
+
+class ReportDiagnostic {
+  severity: String
+  code: String
+  message: String
+  evaluationId: String
+  related: Listing<Row>
+}
+
 class Provenance {
   recordingId: String
   capturedAt: String
@@ -111,5 +182,6 @@ renderer: JsonRenderer = new {
   omitNullProperties = false
   converters {
     [Row] = (row) -> row.toMap().filter((_, value) -> value != null)
+    [Commit] = (commit) -> commit.toMap().filter((_, value) -> value != null)
   }
 }

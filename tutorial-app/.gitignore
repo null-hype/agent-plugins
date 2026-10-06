@@ -5,3 +5,6 @@ node_modules/
 /playwright-report/
 /storybook-static/
 evaluations.jsonl
+
+# CIT-318: rendered from evidence/jev-private-document by `npm run build` (scripts/jev-lessons.mjs).
+/src/content/tutorial/part-5/private-document/
