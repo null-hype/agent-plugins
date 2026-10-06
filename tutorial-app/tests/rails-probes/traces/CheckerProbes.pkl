@@ -219,7 +219,7 @@ local historyRun = "cit-294-117-118-120"
 // (CIT-315) the checker answers: a checker that can be trusted notices the
 // probe, so `expected` is "noticed". An answer outside that is still an answer,
 // told in the lesson; only an `answer.json` that is not there fails.
-local class Probe extends Question.Question {
+class Probe extends Question.Question {
   name: Question.Id
   action: String
   question: String
@@ -230,6 +230,14 @@ local class Probe extends Question.Question {
   requiredEvidence { "exitCode" }
   expected { min = 1; max = 1 }
 }
+/// The Questions this part asks, by id (CIT-317). `playwright.questions.config.ts`
+/// makes one Playwright project of each, and the collector each names runs it at
+/// every revision. Needs no run.
+questions: Mapping<Question.Id, Probe> = new {
+  [deletedTrace.name] = deletedTrace
+  [forgedRead.name] = forgedRead
+}
+
 local deletedTrace = new Probe {
   name = "deleted-trace"
   action = "removed canary-reads.txt, the whole retained trace"
