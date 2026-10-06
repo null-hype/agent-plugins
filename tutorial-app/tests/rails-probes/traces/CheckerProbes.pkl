@@ -228,7 +228,7 @@ class Probe extends Question.Question {
   judge = new Question.Checker {}
   collector = name
   requiredEvidence { "exitCode" }
-  expected { min = 1; max = 1 }
+  expected { answer = 1; confidence = 0.5 }
 }
 /// The Questions this part asks, by id (CIT-317). `playwright.questions.config.ts`
 /// makes one Playwright project of each, and the collector each names runs it at

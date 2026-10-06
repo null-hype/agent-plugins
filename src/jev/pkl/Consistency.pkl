@@ -69,7 +69,7 @@ findings: Mapping<Question.Id, Finding>(!isEmpty) = new Mapping {
       answerer = f.answerer
       skipped = f.getPropertyOrNull("skipped") ?? false
       value = f.getPropertyOrNull("value")
-      expected { min = f.expected.min; max = f.expected.max }
+      expected = f.expected.toTyped(Question.Expectation)
       disagreement = f.getPropertyOrNull("disagreement") ?? false
       rules = rules(f.rules)
     }
