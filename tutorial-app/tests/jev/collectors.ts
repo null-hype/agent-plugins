@@ -20,7 +20,7 @@ const contract = path.resolve(here, '../../../jev-playwright/report-expected.pcf
 const ask = (name: keyof typeof evidence): Collector => async (partDir, { id, question, request }) => {
   const prerequisites = Object.fromEntries(question.dependencies.map((dependency: string) => [dependency,
     JSON.parse(readFileSync(path.join(partDir, 'questions', dependency, 'state.json'), 'utf8')).state]));
-  const state = { ...(await evidence[name].collect(request as any)), prerequisites };
+  const state = { ...(await evidence[name].collect(request as any, question)), prerequisites };
   evidence[name].verify(state, expect);
   const model = execFileSync('pkl', ['eval', '-x', 'model', contract], { encoding: 'utf8' }).trim();
   const result = await score({ id, question, state, model, runDir: partDir });

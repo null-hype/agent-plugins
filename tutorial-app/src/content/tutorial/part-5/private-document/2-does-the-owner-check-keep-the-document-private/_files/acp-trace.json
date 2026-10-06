@@ -1,0 +1,33 @@
+{
+  "scenario": "cit294-review-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "jev-lessons-mock-patched",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Does the owner check keep the document private?\n\nThe document route's authorization policy, as the run recorded it:\n(user, document) => document.owner === user"
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "jev-lessons-mock#patched",
+        "capturedAt": "2026-10-06T23:08:04.398Z",
+        "scripted": "The subject question is authored in report-expected.pcf; the body is the policy the run recorded at this revision."
+      }
+    }
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "mock",
+    "action": "review the patched revision"
+  }
+}

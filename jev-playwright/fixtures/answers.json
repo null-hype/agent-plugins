@@ -1,5 +1,6 @@
 {
-  "vulnerability-reproduced": 0.95,
-  "exploit-prevented": 0.95,
-  "legitimate-access-preserved": 0.95
+  "baseline-alice-reads": 0.95,
+  "baseline-bob-reads": 0.95,
+  "patched-alice-reads": 0.05,
+  "patched-bob-reads": 0.95
 }
