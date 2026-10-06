@@ -9,6 +9,12 @@ on:
     paths:
       - '.dagger/internal/devenv-base/**'
 
+concurrency:
+  # Only PR runs share a group; every other run gets its own (run_id), so
+  # pushes to main are never cancelled or replaced while queued.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   dagger-check:
     runs-on: ubuntu-latest
