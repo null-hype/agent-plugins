@@ -40,6 +40,8 @@ open class Question {
   collector: String(!isEmpty)
   requiredEvidence: Listing<String(!isEmpty)>(!isEmpty)
   expected: Expectation
+  /// The lesson this Question's answer becomes, if it is told in one (CIT-318).
+  lesson: Lesson?
 }
 
 /// A lesson's place in its chapter and its text (CIT-316). This is the only copy

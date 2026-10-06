@@ -20,6 +20,32 @@ questions {
       min = 0.8
       max = 1.0
     }
+    lesson {
+      order = 1
+      title = "Reproduce the flaw"
+      prose = """
+        # Can Alice read Bob’s private document?
+
+        The baseline policy allows every request. Alice is signed in, but the private
+        document belongs to Bob. In the Agent pane, select **HTTP observation** and inspect
+        the request and response. Does this reproduce broken object-level authorization?
+
+        The Client editor identifies the captured snapshot and question. The Agent report
+        shows the evidence and the expected score range from the Pkl question contract.
+        **Not scored** means this replay has not revealed the recorded evaluation yet.
+
+        Press **Solve** to reveal the recorded score. Its diagnostic appears in the Client
+        editor, and the Agent report adds the result and who scored it: Jev and its model,
+        or a canned mock answer, which is not a Jev judgement.
+        Select the diagnostic to inspect the supporting evidence and expectation.
+
+        This lesson was compiled from a run of these Questions on the local synthetic
+        document fixture: Playwright collected the evidence and the answer was scored.
+        Solve replays that run; it does not execute tests or call Jev. The snapshot labels
+        are fixture revisions, not Git commit hashes. A Jev score is an assessment of the
+        supplied evidence for this question, not proof of general application security.
+        """
+    }
   }
   ["exploit-prevented"] {
     dependencies { "vulnerability-reproduced" }
@@ -42,6 +68,31 @@ questions {
       min = 0.8
       max = 1.0
     }
+    lesson {
+      order = 2
+      title = "Block unauthorized access"
+      prose = """
+        # Does the ownership check block Alice?
+
+        The earlier question established the unauthorized read. Its evaluation remains
+        attached to the baseline snapshot. Now the patched policy requires the signed-in
+        user to match the document owner.
+
+        In the Agent pane, compare **Authorization policy** before and after the patch.
+        Switch to **HTTP observation**: Alice requests the same document, but receives
+        **403 Forbidden** instead of Bob’s private content.
+
+        Press **Solve** to reveal the recorded assessment. The Pkl expectation is
+        **\((expected.min * 100).round().toInt())–\((expected.max * 100).round().toInt())%** for this question. The score and the expected range answer different
+        questions: what was judged, and whether that judgment met the declared contract.
+        A score outside the range is recorded as it is; it does not stop the lesson.
+
+        Snapshot history lets you return to the baseline evidence. Reset returns this
+        lesson to the pending evaluation while keeping the earlier result visible.
+        This recorded check covers the demonstrated unauthorized read; it does not
+        establish that every route or access pattern is protected.
+        """
+    }
   }
   ["legitimate-access-preserved"] {
     dependencies { "exploit-prevented" }
@@ -63,6 +114,30 @@ questions {
     expected {
       min = 0.8
       max = 1.0
+    }
+    lesson {
+      order = 3
+      title = "Preserve owner access"
+      prose = """
+        # Can Bob still read his own document?
+
+        Denying every request would block Alice too. The final question checks that the
+        owner’s legitimate access still works after the policy change.
+
+        The Agent report starts on Bob’s recorded request. Select **HTTP observation**:
+        the request identifies Bob and the response is **200**, with his own document.
+        The Client editor retains the earlier reproduction and prevention diagnostics.
+
+        Press **Solve** to reveal the final score, then inspect its expected range
+        and evidence. All three questions now have recorded evaluations: reproduce the
+        flaw, prevent the demonstrated exploit, and preserve the tested owner-read flow.
+
+        The Pkl contract defines the questions, their dependencies, expected ranges and
+        these lessons. Playwright collects evidence in that order and each answer is scored;
+        the comparison checks the observed results against those expectations. This lesson
+        replays those artifacts. The results apply to these collected observations,
+        not every possible authorization behavior.
+        """
     }
   }
 }

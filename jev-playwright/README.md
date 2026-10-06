@@ -41,6 +41,23 @@ the evidence from their prerequisites. Authentication is represented by fixed
 synthetic sessions; only this document-read ownership check is under test.
 This is a reproducible patch scenario, not an assessment of a deployed app.
 
+## Lessons (CIT-318)
+
+These Questions are also the `jev/<id>` projects of
+`tutorial-app/playwright.questions.config.ts`, which name the same collectors
+(`tutorial-app/tests/jev/collectors.ts` wraps `collectors.ts` and `score.mjs`).
+A Question with a `lesson` (order, title, prose) has its lesson rendered from its
+answer by `tutorial-app/tests/jev/JevReport.pkl`, and the tutorial reporter
+compiles them into `tutorial-app/src/content/tutorial/part-5/private-document`,
+which is committed. To record a new run, from `tutorial-app`:
+
+```sh
+RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.questions.config.ts --project 'jev/*'
+```
+
+Scores are canned (`fixtures/answers.json`) unless `JEV_BACKEND=real` (with
+`JEV_SECRET_REF`); the lesson's trace labels a canned answer as such.
+
 ## Run
 
 Requires Node 18+, Python 3.10+, and `pkl` on PATH. Verified with Pkl 0.26.3.

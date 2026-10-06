@@ -85,6 +85,9 @@ func (m *AgentPlugins) RailsProbes(
 		WithExec([]string{"npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"}).
 		WithDirectory("/workspace/tutorial-app", app, dagger.ContainerWithDirectoryOpts{Exclude: []string{"node_modules"}}).
 		WithDirectory("/workspace/src/jev/pkl", source.Directory("src/jev/pkl")).
+		// The config reads every part's Questions, the jev ones included (CIT-318),
+		// and the generic Question spec loads every collector.
+		WithDirectory("/workspace/jev-playwright", source.Directory("jev-playwright"), dagger.ContainerWithDirectoryOpts{Include: []string{"package.json", "*.mjs", "*.ts", "*.pcf", "pkl/**", "fixtures/**"}}).
 		WithEnvVariable("RAILS_PROBES_NO_SERVERS", "1").
 		WithEnvVariable("CI", "1").
 		WithEnvVariable("CONSISTENCY_OUT", "/report").

@@ -215,9 +215,8 @@ editor is focused again. The test accepts both probes before opening evidence.
   files, but the Client widget only shows the row text; making a row open the
   artifact is the evidence-inspector work in PR 125. The reporter lessons here
   show files only, and Storybook does not yet read them in place of the fixture.
-* **Jev.** `jev-playwright` scoring and the `jevReportTrace.ts` →
-  `generate-jev-lessons.mjs` route are a separate generation path from the
-  reporter; joining them needs an explicit adapter. Not attempted.
+* **Jev.** The part-5 lessons now come from the reporter too (CIT-318): each
+  jev Question is a `jev/<id>` project whose lesson the reporter compiles.
 * **PR 118 and 120 lessons**, and the native Rails/libvips/strace chain itself
   (needs Docker). The observations and transcript here are the retained ones,
   not re-captured.
