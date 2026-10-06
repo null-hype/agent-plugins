@@ -1,22 +1,25 @@
-/// CIT-318: the part-5 Jev report lessons, authored once (the CIT-312 pattern).
+/// CIT-318: a part-5 Jev report lesson, authored once (the CIT-312 pattern).
 ///
 /// What is CLAIMED lives here: the trace's structure, its labels and wording.
-/// What the run DID is not: every score, outcome, state and time is read from
-/// the run directory `jev-playwright/run.mjs` wrote. Nothing renders without one.
-/// Each lesson's title, place and prose are its Question's (`report-expected.pcf`).
+/// What the run DID is not: every score, state and time is read from the part's
+/// run directory, where the `jev/<id>` Question projects' collectors wrote them.
+/// A lesson's title, place and prose are its Question's (`report-expected.pcf`);
+/// where its answer stands is the shared Question module's call.
 ///
-///   pkl eval -m <out> JevReport.pkl -p run=<dir> -p lesson=<question id>
+///   pkl eval JevReport.pkl -p run=<part run dir> -p lesson=<question id>
 ///
-/// writes `<out>/_files/` (the starter trace and its frames), `<out>/_solution/`
-/// (the solved ones), `<out>/lesson.md` and `<out>/meta.json`. `chapter` lists the
-/// Questions with a lesson, in lesson order, and reads only the run's contract.
+/// prints the lesson as the tutorial reporter takes it: the files it starts from
+/// (`before`), those that changed since the previous lesson's solution
+/// (`incoming`), those Solve changes (`files`), its `prose` and its `meta`.
 module JevReport
 
 import "pkl:json"
 
+import "../../../src/jev/pkl/Question.pkl"
+import "../../../jev-playwright/report-expected.pcf" as contract
 import "../rails-probes/traces/AcpTrace.pkl"
 
-/// Where the run wrote its records.
+/// The part's run directory.
 run: String = read("prop:run")
 /// The Question this lesson tells.
 lesson: String = read("prop:lesson")
@@ -24,25 +27,32 @@ lesson: String = read("prop:lesson")
 local parser = new json.Parser { useMapping = true }
 local function load(file: String): Mapping = parser.parse(read("\(run)/\(file)")) as Mapping
 
-local comparison = load("comparison.json")
-local contract = load("report-expected.json")
-local ledger = load("scores.json")
-/// The Questions, in the order the run asked them.
-local ids: List<String> = comparison["questions"].keys.toList()
-local function result(id: String): Mapping = comparison["questions"][id]
-local function score(id: String): Mapping = ledger["scores"][id]
-local function state(id: String): Mapping = load("questions/\(id)/state.json")["state"]
-/// A Question as the contract states it, without its lesson: the lesson tells it, the trace does not repeat it.
-local function definition(id: String): Mapping =
-  let (q = contract["questions"][id]) q.toMap().remove("lesson").toMapping()
-local function instructions(id: String): String = contract["questions"][id]["judge"]["instructions"]
-
-/// The Questions that are told as lessons, in lesson order, which must count 1, 2, ...
-chapter: List<String> =
-  let (told = ids.filter((id) -> contract["questions"][id].getOrNull("lesson") != null)
-    .sortBy((id) -> contract["questions"][id]["lesson"]["order"] as Int))
-    if (told.mapIndexed((i, id) -> contract["questions"][id]["lesson"]["order"] == i + 1).every((it) -> it)) told
+local contractDigest = read("../../../jev-playwright/report-expected.pcf").text.sha256
+local function question(id: String): Question.Question = contract.questions[id]
+/// The Questions told as lessons, in lesson order, which must count 1, 2, ...
+local ids: List<String> =
+  let (told = contract.questions.keys.toList().filter((id) -> question(id).lesson != null)
+    .sortBy((id) -> question(id).lesson!!.order))
+    if (told.mapIndexed((i, id) -> question(id).lesson!!.order == i + 1).every((it) -> it)) told
     else throw("lesson orders in report-expected.pcf must count 1 to \(told.length)")
+local function state(id: String): Mapping = load("questions/\(id)/state.json")["state"]
+/// Who scored it, and when: the collector's record.
+local function score(id: String): Mapping = load("questions/\(id)/answer.json")
+local runId: String = score(ids.first)["runId"]
+local function result(id: String): Mapping =
+  let (q = question(id))
+  let (outcome = Question.outcome(q, score(id)["probability"] as Number))
+    new {
+      ["dependencies"] = q.dependencies
+      ["probability"] = score(id)["probability"]
+      ["expected"] = new Mapping { ["min"] = q.expected.min; ["max"] = q.expected.max }
+      ["outcome"] = outcome
+      ["accepted"] = outcome == "in-range"
+      ["finishedAt"] = score(id)["finishedAt"]
+    }
+/// A Question as the contract states it, without its lesson: the lesson tells it, the trace does not repeat it.
+local function definition(id: String): Map = question(id).toMap().remove("lesson")
+local function instructions(id: String): String = question(id).judge.instructions
 
 /// A canned answer is never presented as a Jev judgement (CIT-320 `backend-labelled`).
 local function mock(id: String): Boolean = score(id)["backend"] == "mock"
@@ -63,13 +73,13 @@ local function diagnostic(id: String): AcpTrace.ReportDiagnostic =
       severity = if (r["accepted"]) "info" else "error"
       code = "\(scorerLabel(id).capitalize()) \(pct) · \(id)"
       message = "\(instructions(id))\nRecorded \(pct); expected \(range). \(r["outcome"]).\(if (mock(id)) " A canned mock answer, not a Jev judgement." else "")"
-      evaluationId = "\(comparison["runId"]):\(comparison["contractDigest"]):\(id)"
+      evaluationId = "\(runId):\(contractDigest):\(id)"
       related {
-        new { role = "axiom"; uri = "report-expected.pcf"; detail = "\(instructions(id))\nExpected \(range); contract \(comparison["contractDigest"])" }
+        new { role = "axiom"; uri = "report-expected.pcf"; detail = "\(instructions(id))\nExpected \(range); contract \(contractDigest)" }
         new { role = "fact"; uri = "questions/\(id)/state.json#/state/authorizationPolicy"; revision = s["revision"]; detail = s["authorizationPolicy"] }
         new { role = "observation"; uri = "questions/\(id)/state.json#/state/http"; revision = s["revision"]; detail = pretty(s["http"]) }
         new { role = "observation"; uri = "questions/\(id)/state.json#/state/prerequisites"; detail = pretty(s["prerequisites"]) }
-        new { role = "observation"; uri = "scores.json"; detail = "Run \(comparison["runId"]); \(score(id)["backend"]); \(score(id)["model"]); score \(r["probability"])" }
+        new { role = "observation"; uri = "questions/\(id)/answer.json"; detail = "Run \(runId); \(score(id)["backend"]); \(score(id)["model"]); score \(r["probability"])" }
       }
     }
 
@@ -86,7 +96,7 @@ local function reportView(index: Int, evaluated: Boolean): Mapping<String, Any> 
     new {
       ["selected"] = selected
       ["comparison"] = new Mapping {
-        ["runId"] = comparison["runId"]
+        ["runId"] = runId
         ["questions"] = new Mapping {
           for (id in shown) {
             [id] =
@@ -119,7 +129,7 @@ local function iso(ms: Int): String =
     "\(pad.apply(y, 4))-\(pad.apply(m, 2))-\(pad.apply(d, 2))T\(pad.apply(rest ~/ 3600000, 2)):\(pad.apply(rest ~/ 60000 % 60, 2)):\(pad.apply(rest ~/ 1000 % 60, 2)).\(pad.apply(rest % 1000, 3))Z"
 
 local function provenance(id: String): AcpTrace.RecordedProvenance = new {
-  recordingId = comparison["runId"]
+  recordingId = runId
   capturedAt = iso(result(id)["finishedAt"])
 }
 
@@ -165,7 +175,7 @@ local function evaluation(index: Int): AcpTrace.ReportFrame =
         id = index * 2 + 1
         result {
           _meta {
-            pins { new { id = "\(ids[index]):run"; label = "Recorded \(scorerLabel(ids[index])) run"; text = comparison["runId"] } }
+            pins { new { id = "\(ids[index]):run"; label = "Recorded \(scorerLabel(ids[index])) run"; text = runId } }
             verdict {
               channel = "experiment"
               status = if (result(ids[index])["accepted"]) "pass" else "fail"
@@ -180,28 +190,34 @@ local function evaluation(index: Int): AcpTrace.ReportFrame =
       }
     }
 
-local question = ids.indexOf(lesson)
-local told = contract["questions"].getOrNull(lesson)?.getOrNull("lesson")
-  ?? throw("\(lesson) is not a Question with a lesson in this run's contract")
-/// Every frame up to and including this lesson's question, by frame id.
-local frames: Map<String, AcpTrace.ReportFrame> =
-  IntSeq(0, question).toList().flatMap((i) -> List(
+/// Every frame up to and including the question at `index`, by frame id.
+local function frames(index: Int): Map<String, AcpTrace.ReportFrame> =
+  IntSeq(0, index).toList().flatMap((i) -> List(
     Pair("\(ids[i]):evidence", evidence(i)),
     Pair("\(ids[i]):evaluation", evaluation(i))
   )).toMap((it) -> it.first, (it) -> it.second)
 
-/// The starter holds back this question's evaluation; Solve reveals it.
-local starterIds: List<String> = frames.keys.toList().dropLast(1)
-local solvedIds: List<String> = frames.keys.toList()
-
-local function index(listed: List<String>, solved: Boolean): AcpTrace.FrameIndex = new {
+local function index(listed: List<String>, solved: Boolean, scoredBy: String): AcpTrace.FrameIndex = new {
   scenario = "jev-report-v1"
   frameIds { for (f in listed) { f } }
-  nextTurn = if (solved) null else new AcpTrace.NextTurn { actor = "agent"; speaker = scorer(lesson); action = "reveal recorded evaluation" }
+  nextTurn = if (solved) null else new AcpTrace.NextTurn { actor = "agent"; speaker = scorer(scoredBy); action = "reveal recorded evaluation" }
 }
 
-/// The lesson's runtime and display settings (the reporter's `tutorial:<n>:meta`).
-lessonMeta: Mapping<String, Any> = new {
+/// The lesson at `at` as files: the starter holds back its question's evaluation; Solve reveals it.
+local function tree(at: Int, solved: Boolean): Map<String, String> =
+  let (all = frames(at))
+  let (shown = if (solved) all.keys.toList() else all.keys.toList().dropLast(1))
+    Map("acp-trace.json", AcpTrace.renderer.renderDocument(index(shown, solved, ids[at])))
+      + shown.toMap((f) -> "frame-\(f).json", (f) -> AcpTrace.renderer.renderDocument(all[f]))
+
+local at = ids.indexOf(lesson)
+local told = question(lesson).lesson ?? throw("\(lesson) is not a Question with a lesson in report-expected.pcf")
+local before = tree(at, false)
+local after = tree(at, true)
+local previous: Map<String, String> = if (at == 0) Map() else tree(at - 1, true)
+
+/// The lesson's runtime and display settings (the reporter's `meta`).
+local lessonMeta: Mapping<String, Any> = new {
   ["template"] = "acp-trace"
   ["prepareCommands"] = new Listing { "npm install" }
   ["mainCommand"] = "npm run dev"
@@ -220,14 +236,12 @@ local bridge =
   """
 
 output {
-  files {
-    for (dir, shown in Map("_files", starterIds, "_solution", solvedIds)) {
-      ["\(dir)/acp-trace.json"] { value = index(shown, dir == "_solution"); renderer = AcpTrace.renderer }
-      for (f in shown) {
-        ["\(dir)/frame-\(f).json"] { value = frames[f]; renderer = AcpTrace.renderer }
-      }
-    }
-    ["lesson.md"] { text = "\(bridge)\n\(told["prose"])" }
-    ["meta.json"] { value = lessonMeta; renderer = new JsonRenderer {} }
+  value = new Mapping {
+    ["before"] = before
+    ["incoming"] = before.filter((path, text) -> previous.getOrNull(path) != text)
+    ["files"] = after.filter((path, text) -> before.getOrNull(path) != text)
+    ["prose"] = "\(bridge)\n\(told.prose)"
+    ["meta"] = lessonMeta
   }
+  renderer = new JsonRenderer {}
 }

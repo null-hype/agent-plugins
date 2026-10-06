@@ -4,12 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "node scripts/jev-lessons.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
-    "prebuild-storybook": "node scripts/jev-lessons.mjs",
     "build-storybook": "storybook build"
   },
   "dependencies": {

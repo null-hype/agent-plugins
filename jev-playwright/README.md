@@ -43,20 +43,20 @@ This is a reproducible patch scenario, not an assessment of a deployed app.
 
 ## Lessons (CIT-318)
 
-A Question with a `lesson` (order, title, prose) becomes a TutorialKit lesson in
-`tutorial-app/src/content/tutorial/part-5`. The lessons are not committed; the
-run's records are (`tutorial-app/evidence/jev-private-document`).
-`tutorial-app/tests/jev/JevReport.pkl` renders the lessons from those records,
-and `npm run build` in `tutorial-app` does that first (`scripts/jev-lessons.mjs`).
-
-To record a new run, from `tutorial-app`:
+These Questions are also the `jev/<id>` projects of
+`tutorial-app/playwright.questions.config.ts`, which name the same collectors
+(`tutorial-app/tests/jev/collectors.ts` wraps `collectors.ts` and `score.mjs`).
+A Question with a `lesson` (order, title, prose) has its lesson rendered from its
+answer by `tutorial-app/tests/jev/JevReport.pkl`, and the tutorial reporter
+compiles them into `tutorial-app/src/content/tutorial/part-5/private-document`,
+which is committed. To record a new run, from `tutorial-app`:
 
 ```sh
-JEV_LESSON_ASK=mock RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.questions.config.ts --project jev:lesson
+RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.questions.config.ts --project 'jev/*'
 ```
 
-`JEV_LESSON_ASK=real` (with `JEV_SECRET_REF`) records real Jev scores; `mock`
-records canned ones, which the lesson's trace labels as such.
+Scores are canned (`fixtures/answers.json`) unless `JEV_BACKEND=real` (with
+`JEV_SECRET_REF`); the lesson's trace labels a canned answer as such.
 
 ## Run
 

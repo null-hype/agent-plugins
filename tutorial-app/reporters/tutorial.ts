@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import type { Reporter, TestCase, TestResult, TestStep } from '@playwright/test/reporter';
+import type { FullConfig, Reporter, TestCase, TestResult, TestStep } from '@playwright/test/reporter';
 
 // CIT-235 spike: compiles a passing `@tutorial`-tagged Playwright test into
 // TutorialKit lessons -- one lesson per top-level test.step, `_files` the
@@ -10,8 +10,20 @@ import type { Reporter, TestCase, TestResult, TestStep } from '@playwright/test/
 // attachment names carry a `tutorial:<step-index>:` prefix.
 
 export interface TutorialReporterOptions {
+  /** The tutorial part directory to write chapters into, unless the test's project names its own. */
   outDir: string;
 }
+
+/** A project's metadata key naming the part directory its chapters go to, overriding `outDir`. */
+export const OUT_DIR_METADATA = 'tutorialOutDir';
+/**
+ * Project metadata naming the chapter a Question project's lesson belongs to
+ * (`tutorialChapter`) and that lesson's place and title (`tutorialLesson`,
+ * `{order, title}`). Such a project's test attaches one lesson as step 1; the
+ * chapter compiles once every project naming it has passed (CIT-318).
+ */
+export const CHAPTER_METADATA = 'tutorialChapter';
+export const LESSON_METADATA = 'tutorialLesson';
 
 export const TUTORIAL_TAG = '@tutorial';
 
@@ -143,7 +155,7 @@ export function reduceStepAttachments(classified: readonly ClassifiedAttachment[
   for (const item of classified) {
     if (item.kind === 'meta') {
       const value = JSON.parse(item.body.toString('utf8'));
-      const allowed = ['template', 'prepareCommands', 'mainCommand', 'previews', 'terminal', 'editor', 'focus', 'filesystem'];
+      const allowed = ['template', 'prepareCommands', 'mainCommand', 'previews', 'terminal', 'editor', 'focus', 'filesystem', 'custom'];
       if (!value || Array.isArray(value) || typeof value !== 'object' || Object.keys(value).some((key) => !allowed.includes(key))) {
         throw new Error('tutorial meta must be an object containing only runtime/display configuration');
       }
@@ -239,7 +251,7 @@ interface PlannedLesson {
  * no `before/` attachments therefore declares an empty start, which is only
  * continuous for the first step.
  */
-export function planLessons(steps: readonly TestStep[], attachmentsByStep: Map<number, ClassifiedAttachment[]>): PlannedLesson[] {
+export function planLessons(steps: readonly Pick<TestStep, 'title'>[], attachmentsByStep: Map<number, ClassifiedAttachment[]>): PlannedLesson[] {
   const problems: string[] = [];
   const lessons: PlannedLesson[] = [];
   let previousAfter: Record<string, Buffer> = {};
@@ -288,15 +300,24 @@ export function compileTutorialTest(
   result: Pick<TestResult, 'status' | 'steps' | 'attachments'>,
   outDir: string,
 ): void {
-  const lessons = planLessons(topLevelSteps(result), groupAttachmentsByStepIndex(result.attachments));
-  const chapterDir = path.join(outDir, slugify(test.title));
+  compileChapter(test.title, topLevelSteps(result), groupAttachmentsByStepIndex(result.attachments), outDir);
+}
+
+export function compileChapter(
+  title: string,
+  steps: readonly Pick<TestStep, 'title'>[],
+  attachmentsByStep: Map<number, ClassifiedAttachment[]>,
+  outDir: string,
+): void {
+  const lessons = planLessons(steps, attachmentsByStep);
+  const chapterDir = path.join(outDir, slugify(title));
 
   // Every compile starts from a clean slate: a stale lesson left behind by
   // a step that got renamed or removed would otherwise linger forever.
   if (existsSync(chapterDir)) rmSync(chapterDir, { recursive: true, force: true });
   mkdirSync(chapterDir, { recursive: true });
 
-  writeFrontmatter(path.join(chapterDir, 'meta.md'), { type: 'chapter', title: test.title });
+  writeFrontmatter(path.join(chapterDir, 'meta.md'), { type: 'chapter', title });
 
   for (const lesson of lessons) {
     const lessonDir = path.join(chapterDir, `${lesson.stepIndex}-${slugify(lesson.title)}`);
@@ -325,6 +346,8 @@ export function compileTutorialTest(
 export default class TutorialReporter implements Reporter {
   private readonly outDir: string;
   private brokenStoryboards = 0;
+  /** Chapters told by Question projects: how many lessons each has, and those passed so far. */
+  private readonly chapters = new Map<string, { title: string; outDir: string; expected: number; passed: { order: number; title: string; attachments: TestResult['attachments'] }[] }>();
 
   constructor(options: TutorialReporterOptions) {
     if (!options?.outDir) {
@@ -333,7 +356,26 @@ export default class TutorialReporter implements Reporter {
     this.outDir = options.outDir;
   }
 
+  onBegin(config: FullConfig): void {
+    for (const project of config.projects) {
+      const title = project.metadata?.[CHAPTER_METADATA] as string | undefined;
+      if (!title) continue;
+      const outDir = (project.metadata[OUT_DIR_METADATA] as string | undefined) ?? this.outDir;
+      const key = `${outDir}\0${title}`;
+      const chapter = this.chapters.get(key) ?? { title, outDir, expected: 0, passed: [] };
+      chapter.expected += 1;
+      this.chapters.set(key, chapter);
+    }
+  }
+
   onTestEnd(test: TestCase, result: TestResult): void {
+    const metadata = test.parent.project()?.metadata;
+    if (metadata?.[CHAPTER_METADATA]) {
+      const outDir = (metadata[OUT_DIR_METADATA] as string | undefined) ?? this.outDir;
+      const lesson = metadata[LESSON_METADATA] as { order: number; title: string };
+      if (result.status === 'passed') this.chapters.get(`${outDir}\0${metadata[CHAPTER_METADATA]}`)?.passed.push({ ...lesson, attachments: result.attachments });
+      return;
+    }
     if (!isTutorialTest(test)) return;
 
     if (result.status !== 'passed') {
@@ -349,21 +391,44 @@ export default class TutorialReporter implements Reporter {
       return;
     }
 
+    const outDir = (test.parent.project()?.metadata?.[OUT_DIR_METADATA] as string | undefined) ?? this.outDir;
     try {
-      compileTutorialTest(test, result, this.outDir);
+      compileTutorialTest(test, result, outDir);
     } catch (error) {
       if (!(error instanceof ContinuityError)) throw error;
       this.brokenStoryboards += 1;
       console.error(`[tutorial-reporter] refusing to compile "${test.title}": ${error.message}`);
       return;
     }
-    console.log(`[tutorial-reporter] compiled ${steps.length} lesson(s) from "${test.title}" into ${this.outDir}`);
+    console.log(`[tutorial-reporter] compiled ${steps.length} lesson(s) from "${test.title}" into ${outDir}`);
   }
 
   // A continuity break is a real failure, not a warning: the test itself
   // passed, but the storyboard it describes is not a valid lesson chain, so
   // the run must exit non-zero rather than look green with stale output.
   onEnd(): { status: 'failed' } | undefined {
+    for (const { title, outDir, expected, passed } of this.chapters.values()) {
+      // A chapter is all its lessons or none: a partial run (a failed Question, or
+      // only some projects selected) leaves the committed chapter as it was.
+      if (passed.length === 0) continue;
+      if (passed.length !== expected) {
+        console.warn(`[tutorial-reporter] not compiling "${title}": ${passed.length} of its ${expected} lesson(s) passed in this run`);
+        continue;
+      }
+      const lessons = [...passed].sort((a, b) => a.order - b.order);
+      const attachments = new Map<number, ClassifiedAttachment[]>(
+        lessons.map((lesson, i) => [i + 1, groupAttachmentsByStepIndex(lesson.attachments).get(1) ?? []]),
+      );
+      try {
+        compileChapter(title, lessons, attachments, outDir);
+      } catch (error) {
+        if (!(error instanceof ContinuityError)) throw error;
+        this.brokenStoryboards += 1;
+        console.error(`[tutorial-reporter] refusing to compile "${title}": ${error.message}`);
+        continue;
+      }
+      console.log(`[tutorial-reporter] compiled ${lessons.length} lesson(s) from "${title}" into ${outDir}`);
+    }
     return this.brokenStoryboards > 0 ? { status: 'failed' } : undefined;
   }
 }

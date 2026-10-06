@@ -1,7 +1,8 @@
 ---
 type: lesson
-title: Can Alice read Bob’s private document?
+title: Reproduce the flaw
 template: acp-trace
+focus: /acp-trace.json
 terminal: false
 editor: true
 previews:
@@ -32,12 +33,13 @@ The Client editor identifies the captured snapshot and question. The Agent repor
 shows the evidence and the expected score range from the Pkl question contract.
 **Not scored** means this replay has not revealed the recorded evaluation yet.
 
-Press **Solve** to reveal Jev’s recorded **96%** score. Its diagnostic appears in
-the Client editor, and the Agent report adds the result and model identity.
+Press **Solve** to reveal the recorded score. Its diagnostic appears in the Client
+editor, and the Agent report adds the result and who scored it: Jev and its model,
+or a canned mock answer, which is not a Jev judgement.
 Select the diagnostic to inspect the supporting evidence and expectation.
 
-This is a saved run of the local synthetic document fixture, executed by Dagger
-running Playwright. Solve replays that run; it does not execute tests or call Jev.
-The snapshot labels are fixture revisions, not Git commit hashes. A Jev score is
-an assessment of the supplied evidence for this question, not proof of general
-application security.
+This lesson was compiled from a run of these Questions on the local synthetic
+document fixture: Playwright collected the evidence and the answer was scored.
+Solve replays that run; it does not execute tests or call Jev. The snapshot labels
+are fixture revisions, not Git commit hashes. A Jev score is an assessment of the
+supplied evidence for this question, not proof of general application security.

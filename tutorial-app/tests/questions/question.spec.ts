@@ -11,17 +11,22 @@ import { collectors } from './collectors';
 // passes and its dependents run. Only an answer that could not be collected (the
 // collector throws, or required evidence is missing) fails the project, which
 // skips its dependents.
+//
+// A Question with a `lesson`, in a part that names a lesson module, also renders
+// that lesson from its answer and attaches it for the tutorial reporter, which
+// compiles the part's lessons into one chapter once all of them are in.
 
 const OUTCOME = path.join(path.dirname(fileURLToPath(import.meta.url)), 'Outcome.pkl');
 
-test('question', async ({}, testInfo) => {
-  const { part, id, question } = testInfo.project.metadata as { part: string; id: string; question: any };
+test('question', async ({ request }, testInfo) => {
+  const { part, id, question, lessonModule } = testInfo.project.metadata as { part: string; id: string; question: any; lessonModule?: string };
   const collector = collectors[question.collector];
   if (!collector) throw new Error(`${id}: unknown collector ${question.collector}`);
-  const answers = await collector(path.join(process.env.QUESTIONS_RUN_DIR!, part));
+  const partDir = path.join(process.env.QUESTIONS_RUN_DIR!, part);
+  const answers = await collector(partDir, { id, question, request });
   expect(answers.length, `${id}: the collector returned no answer`).toBeGreaterThan(0);
-  for (const { at, answer } of answers) {
-    for (const key of question.requiredEvidence) expect(Object.hasOwn(answer as object, key), `${id} at ${at}: missing ${key}`).toBe(true);
+  for (const { at, answer, evidence } of answers) {
+    for (const key of question.requiredEvidence) expect(Object.hasOwn((evidence ?? answer) as object, key), `${id} at ${at}: missing ${key}`).toBe(true);
     const outcome = execFileSync('pkl', ['eval', OUTCOME, '-p', `question=${JSON.stringify(question)}`, '-p', `answer=${JSON.stringify(answer)}`], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -29,4 +34,11 @@ test('question', async ({}, testInfo) => {
     testInfo.annotations.push({ type: `${id} at ${at}`, description: outcome });
     await testInfo.attach(`answer:${at}`, { body: JSON.stringify({ id, at, answer, outcome }, null, 2), contentType: 'application/json' });
   }
+  if (!question.lesson || !lessonModule) return;
+  const lesson = JSON.parse(execFileSync('pkl', ['eval', lessonModule, '-p', `run=${partDir}`, '-p', `lesson=${id}`], { encoding: 'utf8' }));
+  for (const [kind, prefix] of [['before', 'before/file/'], ['incoming', 'incoming/file/'], ['files', 'file/']]) {
+    for (const [file, body] of Object.entries<string>(lesson[kind])) await testInfo.attach(`tutorial:1:${prefix}${file}`, { body });
+  }
+  await testInfo.attach('tutorial:1:prose', { body: lesson.prose, contentType: 'text/markdown' });
+  await testInfo.attach('tutorial:1:meta', { body: JSON.stringify(lesson.meta), contentType: 'application/json' });
 });
