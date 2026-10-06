@@ -8,21 +8,31 @@
 /// - the deterministic checker (`Checker`), whose answer is what the checker did
 ///   to the collected evidence (`CheckerAnswer`): it noticed, or it did not.
 ///
-/// `expected` is the range a sound answer falls in, on a 0 to 1 scale. An answer
-/// outside it is data, recorded like any other. Only an answer that could not be
-/// collected fails a run (`failsRun`).
+/// `expected` is preregistered before any answer exists (CIT-327): the answer
+/// expected, on a 0 to 1 scale, how far a sound answer may land from it
+/// (`spread`), and how sure the asker is (`confidence`). An answer outside
+/// `answer ± spread` is data, recorded like any other. Only an answer that could
+/// not be collected fails a run (`failsRun`).
 ///
 /// Used by `jev-playwright/pkl/Experiment.pkl` (Jev answers) and
 /// `tutorial-app/tests/rails-probes/traces/CheckerProbes.pkl` (the checker answers).
 module Question
 
+import "pkl:math"
+
 import "Jev.pkl"
 
 typealias Id = String(matches(Regex("[a-z][a-z0-9-]{0,79}")))
 
+/// A Question's preregistered prediction. Declare `answer`, `spread` and
+/// `confidence`; `min` and `max` follow from them.
 class Expectation {
-  min: Number(isFinite, isBetween(0, 1))
-  max: Number(isFinite, isBetween(min, 1))
+  answer: Number(isFinite, isBetween(0, 1))
+  spread: Number(isFinite, isBetween(0, 1)) = 0
+  /// How likely the asker thinks it is that the answer lands in range.
+  confidence: Number(isFinite, isBetween(0, 1))
+  min: Number(isFinite, isBetween(0, 1)) = math.max(0, answer - spread)
+  max: Number(isFinite, isBetween(min, 1)) = math.min(1, answer + spread)
 }
 
 /// The deterministic checker as the answerer. It is not asked anything in

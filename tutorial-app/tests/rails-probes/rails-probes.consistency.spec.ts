@@ -24,7 +24,7 @@ const ORDER: RevisionKey[] = ['S1', 'S2'];
 const PROBES: ProbeName[] = ['deleted-trace', 'forged-read'];
 // What each probe expects of a checker that can be trusted: that it notices
 // (CheckerProbes.pkl's `Probe.expected`). Not noticing is an out-of-range answer.
-const EXPECTED = { min: 1, max: 1 };
+const EXPECTED = { answer: 1, spread: 0, confidence: 0.5, min: 1, max: 1 };
 
 type Rule = { held: boolean; detail?: string };
 const rule = (held: boolean, detail: string): Rule => (held ? { held } : { held, detail });
