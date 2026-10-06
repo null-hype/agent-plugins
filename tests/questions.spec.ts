@@ -26,9 +26,12 @@ for (const [id, question] of Object.entries(experiment.questions) as [string, an
       const result = await score({ id, question, state, model: experiment.model, runDir });
       await attach('jev-score', { ...result, error: null });
       scored = true;
-      // Assert before completing this project, so Playwright gates dependents.
-      expect(result.probability, 'Jev probability below expected range').toBeGreaterThanOrEqual(question.expected.min);
-      expect(result.probability, 'Jev probability above expected range').toBeLessThanOrEqual(question.expected.max);
+      // An answer outside its expected range is data (CIT-314): the project still
+      // passes, so its dependents run. Only an answer that could not be collected
+      // fails the project and skips them. Reconcile.pkl judges the range.
+      const { min, max } = question.expected;
+      const inRange = result.probability >= min && result.probability <= max;
+      testInfo.annotations.push({ type: 'outcome', description: inRange ? 'in-range' : `out-of-range: ${result.probability} not in [${min}, ${max}]` });
     } catch (error: any) {
       if (!scored) await attach('jev-score', {
         backend: process.env.JEV_BACKEND, model: null, probability: null,
