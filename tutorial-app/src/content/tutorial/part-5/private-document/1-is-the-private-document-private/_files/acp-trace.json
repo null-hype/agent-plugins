@@ -9,7 +9,7 @@
         "id": 1,
         "method": "session/prompt",
         "params": {
-          "sessionId": "jev-lessons-mock-baseline",
+          "sessionId": "jev-lessons-mock",
           "prompt": [
             {
               "type": "text",
@@ -20,7 +20,7 @@
       },
       "provenance": {
         "recordingId": "jev-lessons-mock#baseline",
-        "capturedAt": "2026-10-06T23:31:35.952Z",
+        "capturedAt": "2026-10-06T23:45:24.967Z",
         "scripted": "The subject question is authored in report-expected.pcf; the body is the policy the run recorded at this revision."
       }
     }
