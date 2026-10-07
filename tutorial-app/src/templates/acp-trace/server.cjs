@@ -1,4 +1,41 @@
 const jevViewer = require('./jev-viewer.cjs');
+
+// CIT-330: a reply's probes may form a tree, where a probe with \`children\`
+// rests on them. Acceptance indexes count the whole tree in preorder, so a
+// flat list (no children) keeps the indexes it always had. These run in both
+// pages (injected below) and in activity(), so all three read an index alike.
+function probeTree(probes) {
+  const nodes = [];
+  const visit = (probe, depth, parent) => {
+    const index = nodes.length;
+    nodes.push({ probe, depth, parent, children: [] });
+    if (parent >= 0) nodes[parent].children.push(index);
+    (probe.children || []).forEach((child) => visit(child, depth + 1, index));
+  };
+  (probes || []).forEach((probe) => visit(probe, 0, -1));
+  return nodes;
+}
+
+// An accepted probe that rests on others reads as a Markdown heading at its depth.
+function probeLine(node) {
+  return node.children.length ? '#'.repeat(node.depth + 1) + ' ' + node.probe.question : node.probe.question;
+}
+
+// A probe's finding. Once every probe it rests on is accepted, the finding
+// that combines them (\`unfolded\`) replaces it, if it has one.
+function probeDiagnostic(nodes, index, accepted) {
+  const node = nodes[index];
+  const unfolded = node.probe.unfolded && node.children.every((child) => accepted.includes(child));
+  return (unfolded ? node.probe.unfolded : node.probe.diagnostic) || null;
+}
+
+// What can be offered next: probes not yet accepted whose parent has been.
+function probeOffers(nodes, accepted) {
+  return nodes.map((_, index) => index).filter((index) => !accepted.includes(index) &&
+    (nodes[index].parent < 0 || accepted.includes(nodes[index].parent)));
+}
+
+const probeHelpers = [probeTree, probeLine, probeDiagnostic, probeOffers].map(String).join('\n\n      ');
 const verdictContract = require('./verdict-contract.json');
 // CIT-245: two independent HTTP servers in one process, one per preview
 // ("agent" and "client") -- TutorialKit/WebContainer watches for a server to
@@ -183,6 +220,8 @@ function renderClientPage() {
       .monaco-editor .margin-view-overlays .acp-gate-play,
       .monaco-editor .margin-view-overlays .acp-gate-failed { cursor: pointer; }
       .acp-gate-play::before { content: '\\25B6'; color: #2f7d3c; font-size: 12px; display: inline-block; transform: translate(2px, 1px); }
+      /* CIT-330: an accepted question that rests on others is a heading. */
+      .monaco-editor .acp-heading { font-weight: 700 !important; color: #1f3b63 !important; }
       .acp-gate-failed::before { content: '\\2717'; color: #c62828; font-weight: 700; font-size: 14px; display: inline-block; transform: translate(2px, 0); }
     </style>
   <body>
@@ -297,8 +336,10 @@ function renderClientPage() {
             evidenceModel.setValue(text);
           }
           const line = isSource ? Math.min(Math.max(1, entry.line || 1), evidenceModel.getLineCount()) : Math.min(4, evidenceModel.getLineCount());
+          // A captured location may span lines (a JSON entry, a Pkl node).
+          const end = isSource ? Math.min(Math.max(line, entry.endLine || line), evidenceModel.getLineCount()) : line;
           return { uri: evidenceModel.uri,
-            range: new monaco.Range(line, 1, line, evidenceModel.getLineMaxColumn(line)) };
+            range: new monaco.Range(line, 1, end, evidenceModel.getLineMaxColumn(end)) };
         });
       }
 
@@ -332,6 +373,8 @@ function renderClientPage() {
         monaco.languages.registerHoverProvider(languageId, {
           provideHover(hoverModel, position) {
             if (hoverModel !== model) return null;
+            const offers = suggestion && position.lineNumber === hoverModel.getLineCount() ? unfoldPreview() : null;
+            if (offers) return { range: new monaco.Range(position.lineNumber, 1, position.lineNumber, 1), contents: offers };
             const diagnostic = diagnosticsByLine[position.lineNumber];
             if (!diagnostic) return null;
             const related = relatedByLine[position.lineNumber] || [];
@@ -368,10 +411,10 @@ function renderClientPage() {
           provideInlineCompletions(suggestModel) {
             if (!suggestion) return { items: [] };
             const last = suggestModel.getLineCount();
-            // Every probe not yet accepted is an alternative for the next line.
-            const items = suggestion.probes
-              .filter((_, index) => !acceptedOrder.includes(index))
-              .map((probe) => ({ insertText: probe.question, range: new monaco.Range(last, 1, last, 1) }));
+            // Every probe on offer is an alternative for the next line: those not
+            // yet accepted whose parent has been.
+            const items = probeOffers(suggestion.nodes, acceptedOrder)
+              .map((index) => ({ insertText: suggestion.nodes[index].probe.question, range: new monaco.Range(last, 1, last, 1) }));
             return { items };
           },
           disposeInlineCompletions() {},
@@ -548,10 +591,10 @@ function renderClientPage() {
           // Earlier turns show only the choices the host persisted.
           const meta = index < lastPrompt ? metaOf(frame.envelope || {}) : null;
           if (meta && meta.diagnostic) {
-            (acceptedReviews[review] || []).forEach((probeIndex) => {
-              const probe = (meta.probes || [])[probeIndex];
-              if (!probe) return;
-              records.push({ raw: probe.question, diagnostic: probe.diagnostic || null, related: (probe.diagnostic && probe.diagnostic.related) || [] });
+            const nodes = probeTree(meta.probes);
+            const chosen = acceptedReviews[review] || [];
+            chosen.forEach((probeIndex) => {
+              if (nodes[probeIndex]) records.push(probeRecord(nodes, probeIndex, chosen));
             });
           }
         });
@@ -559,14 +602,19 @@ function renderClientPage() {
         // The current commit ends here. Below it is where suggestions go: an empty
         // line until they are accepted, then the accepted lines, each diagnosed.
         commitEnd = records.length;
-        const probes = reviewProbes(state);
-        acceptedOrder.filter((index) => index < probes.length).forEach((index) => {
-          const probe = probes[index];
-          records.push({ raw: probe.question, diagnostic: probe.diagnostic || null, related: (probe.diagnostic && probe.diagnostic.related) || [] });
-        });
+        const nodes = reviewProbes(state);
+        acceptedOrder.filter((index) => index < nodes.length).forEach((index) => records.push(probeRecord(nodes, index, acceptedOrder)));
         records.push({ raw: '', diagnostic: null, related: [] });
         return records;
       }
+
+      function probeRecord(nodes, index, accepted) {
+        const diagnostic = probeDiagnostic(nodes, index, accepted);
+        return { raw: probeLine(nodes[index]), diagnostic, related: (diagnostic && diagnostic.related) || [],
+          heading: nodes[index].children.length > 0 };
+      }
+
+      ${probeHelpers}
 
       // The probes the agent ran to split the current question: the reply to the
       // last prompt (agent frame _meta), if it has come.
@@ -575,7 +623,7 @@ function renderClientPage() {
         const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
         for (const frame of frames.slice(lastPrompt + 1)) {
           const meta = frame.actor === 'agent' ? metaOf(frame.envelope || {}) : null;
-          if (meta && meta.diagnostic) return (meta.probes || []).slice(0, 2);
+          if (meta && meta.diagnostic) return probeTree((meta.probes || []).slice(0, 2));
         }
         return [];
       }
@@ -584,8 +632,26 @@ function renderClientPage() {
       // the question, each phrased as a question, at the commit's own level. Shown as ghost text; Tab accepts it. Null until
       // the agent has answered.
       function reviewCompletion(state) {
-        const probes = reviewProbes(state);
-        return probes.length ? { probes } : null;
+        const nodes = reviewProbes(state);
+        return nodes.length ? { nodes } : null;
+      }
+
+      // The hover at the suggestion line (keyboard: editor.action.showHover,
+      // Ctrl+K Ctrl+I): each question on offer and what accepting it would
+      // unfold. A mouse over ghost text gets Monaco's suggestion toolbar instead.
+      function unfoldPreview() {
+        if (!suggestion) return null;
+        const offers = probeOffers(suggestion.nodes, acceptedOrder);
+        if (!offers.length) return null;
+        const contents = [{ value: '**Tab** accepts the suggested question' + (offers.length > 1 ? '; **Alt+]** shows the next of ' + offers.length + '.' : '.') }];
+        offers.forEach((index) => {
+          const node = suggestion.nodes[index];
+          const rests = node.children.map((child) => '- ' + suggestion.nodes[child].probe.question);
+          contents.push({ value: '_' + node.probe.question + '_' + (rests.length
+            ? '\\n\\nAccepting it makes it a heading and unfolds the questions it rests on:\\n\\n' + rests.join('\\n')
+            : '') });
+        });
+        return contents;
       }
 
       // Which probes the editor text holds below the commit, as indexes in the
@@ -594,8 +660,12 @@ function renderClientPage() {
         if (!suggestion || !value.startsWith(suggestion.prefix)) return null;
         const rest = value.slice(suggestion.prefix.length).split('\\n');
         if (rest[rest.length - 1] === '') rest.pop();
-        const indexes = rest.map((line) => suggestion.probes.findIndex((probe) => probe.question === line));
+        // A line is a probe as Tab inserted it, or as it renders once accepted.
+        const nodes = suggestion.nodes;
+        const indexes = rest.map((line) => nodes.findIndex((node) => node.probe.question === line || probeLine(node) === line));
         if (indexes.some((index) => index < 0) || new Set(indexes).size !== indexes.length) return null;
+        // A probe is only ever offered once its parent was accepted.
+        if (indexes.some((index, at) => nodes[index].parent >= 0 && !indexes.slice(0, at).includes(nodes[index].parent))) return null;
         return indexes;
       }
 
@@ -686,6 +756,10 @@ function renderClientPage() {
         records.forEach((record, index) => {
           const lineNumber = index + 1;
           lines.push(record.raw);
+          if (record.heading) {
+            glyphDecorations.push({ range: new window.monaco.Range(lineNumber, 1, lineNumber, record.raw.length + 1),
+              options: { inlineClassName: 'acp-heading' } });
+          }
           if (!record.diagnostic) return;
 
           const stillGated = record.diagnostic.confirmGate && !confirmedGates.has(gateKey(record.diagnostic));
@@ -747,7 +821,7 @@ function renderClientPage() {
           commitFolded = true;
           foldCommit();
         }
-        if (suggestion && acceptedOrder.length < suggestion.probes.length) {
+        if (suggestion && probeOffers(suggestion.nodes, acceptedOrder).length > 0) {
           // Offer what is left as ghost text on the line below the commit.
           setTimeout(() => {
             editor.setPosition({ lineNumber: model.getLineCount(), column: 1 });
@@ -959,6 +1033,8 @@ function renderAgentPage() {
         return true;
       }
 
+      ${probeHelpers}
+
       /** The review scenario: the ACP messages as a chat thread, not JSON lines. */
       function renderChatView(state) {
         const root = document.getElementById('chat-view');
@@ -977,7 +1053,9 @@ function renderAgentPage() {
           message.appendChild(who);
           const meta = metaOf(envelope) || {};
           const chosen = state.acceptedReviews ? (state.acceptedReviews[review] || []) : null;
-          const selected = chosen === null ? (meta.probes || []) : chosen.map((index) => (meta.probes || [])[index]).filter(Boolean);
+          const nodes = probeTree(meta.probes);
+          const selected = chosen === null ? (meta.probes || []) : chosen.filter((index) => nodes[index])
+            .map((index) => ({ ...nodes[index].probe, diagnostic: probeDiagnostic(nodes, index, chosen) }));
           const diagnostic = meta.diagnostic && chosen !== null
             ? (selected.length ? { ...meta.diagnostic,
                 message: selected.map((probe) => probe.diagnostic.message).join(' '),
@@ -1013,7 +1091,7 @@ function renderAgentPage() {
             const probes = selected;
             if (probes && probes.length) {
               const list = el('ul', 'divergence');
-              probes.slice(0, 2).forEach((probe, index) => {
+              probes.forEach((probe, index) => {
                 const item = el('li', '');
                 item.appendChild(el('span', 'source', 'Probe ' + (index + 1) + ' \u00b7 ' + probe.action));
                 item.appendChild(document.createTextNode(probe.question));
@@ -1194,12 +1272,13 @@ function activity(trace) {
         return;
       }
 
+      const nodes = probeTree(probes);
       for (const index of accepted) {
-        const probe = probes[index];
-        if (!probe || !probe.diagnostic) continue;
-        lines.push('  accepted: ' + probe.question);
-        lines.push(...indent(probe.diagnostic.severity + ' ' + probe.diagnostic.message));
-        for (const row of probe.diagnostic.related || []) lines.push('      ' + row.role + ' ' + row.uri);
+        const diagnostic = nodes[index] && probeDiagnostic(nodes, index, accepted);
+        if (!diagnostic) continue;
+        lines.push('  accepted: ' + nodes[index].probe.question);
+        lines.push(...indent(diagnostic.severity + ' ' + diagnostic.message));
+        for (const row of diagnostic.related || []) lines.push('      ' + row.role + ' ' + row.uri);
       }
       return;
     }
