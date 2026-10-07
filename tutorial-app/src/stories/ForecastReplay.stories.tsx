@@ -7,8 +7,10 @@ import replay from './forecast-replay.json';
 import treeText from '../../../src/cve-2026-66066/questions/WasIVulnerable.pkl?raw';
 import registerText from '../../../src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/register.json?raw';
 import monitorText from '../../../src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json?raw';
-import frozenBefore from './frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf?raw';
-import frozenAfter from '../../../src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf?raw';
+import baseTree from './frozen/5282c7e/WasIVulnerable.pkl?raw';
+import baseReading from './frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf?raw';
+import headTree from './frozen/12f2351/WasIVulnerable.pkl?raw';
+import headReading from './frozen/12f2351/WasIVulnerable.test.pkl-expected.pcf?raw';
 import readingText from '../../../src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/reading.txt?raw';
 
 const meta = {
@@ -28,9 +30,11 @@ const evidenceFiles = {
   [source + round + 'register.json@']: registerText,
   [source + round + 'monitor.json@']: monitorText,
   [source + round + 'reading.txt@']: readingText,
-  // The split's frozen reading, before (5282c7e) and as the split froze it (12f2351).
-  [source + 'WasIVulnerable.test.pkl-expected.pcf@5282c7e']: frozenBefore,
-  [source + 'WasIVulnerable.test.pkl-expected.pcf@12f2351']: frozenAfter,
+  // The split: the tree and its frozen reading at the base (5282c7e) and the head (12f2351).
+  [source + 'WasIVulnerable.pkl@5282c7e']: baseTree,
+  [source + 'WasIVulnerable.test.pkl-expected.pcf@5282c7e']: baseReading,
+  [source + 'WasIVulnerable.pkl@12f2351']: headTree,
+  [source + 'WasIVulnerable.test.pkl-expected.pcf@12f2351']: headReading,
 };
 const config = { traceFile: '/acp-trace.json', scenario: replay.starter.scenario };
 const fixture = { data: {}, files: {}, solved: {}, focus: '' } satisfies Lesson;
