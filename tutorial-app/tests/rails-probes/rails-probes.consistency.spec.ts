@@ -21,7 +21,21 @@ const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.resolve(APP, process.env.CONSISTENCY_OUT ?? '../test-results/rails-probes/consistency');
 const CHAPTER = path.join(APP, 'src/content/tutorial/part-5/can-an-upload-read-a-private-file');
 const ORDER: RevisionKey[] = ['S1', 'S2'];
-const PROBES: ProbeName[] = ['deleted-trace', 'forged-read'];
+const PROBES: ProbeName[] = ['deleted-trace', 'forged-read', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config'];
+// The fields each edit to a recorded observation may change, as the review that
+// raised it describes the edit. Declared here, not read from probes.ts, so the
+// probes' own code cannot vouch for itself.
+const EDITED: Partial<Record<ProbeName, { arm: string; fields: string[] }>> = {
+  'generic-crash': { arm: 'mat-blocked', fields: ['variant_error_class', 'variant_error'] },
+  'emptied-bytes': { arm: 'mat-unblocked', fields: ['returned_bytes_hex', 'returned_byte_count'] },
+  'corrupted-pixels': { arm: 'png-blocked', fields: ['returned_bytes_hex'] },
+  'swapped-source': { arm: 'mat-blocked', fields: ['independent_source_sha256'] },
+  'changed-config': { arm: 'mat-blocked', fields: ['independent_rails_load_defaults', 'independent_active_storage_variant_processor'] },
+};
+
+/** The top-level fields whose values differ between two JSON objects. */
+const changedFields = (before: Record<string, unknown>, after: Record<string, unknown>) =>
+  [...new Set([...Object.keys(before), ...Object.keys(after)])].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k])).sort();
 // What each probe expects of a checker that can be trusted: that it notices
 // (CheckerProbes.pkl's `Probe.expected`). Not noticing is an out-of-range answer.
 const EXPECTED = { min: 1, max: 1 };
@@ -94,6 +108,8 @@ test('the checker investigation is consistent', () => {
     for (const probe of PROBES) {
       const id = `${state}-${probe}`;
       const answerFile = path.join(recorded, 'probes', probe, 'answer.json');
+      // A probe raised by a later review is not asked of this revision: no record, no line.
+      if (!existsSync(answerFile) && !messages.has(probe)) continue;
       if (!existsSync(answerFile)) {
         findings[id] = { answerer: 'checker', value: null, expected: EXPECTED, rules: {} };
         continue;
@@ -105,6 +121,17 @@ test('the checker investigation is consistent', () => {
       let mutated: Map<string, Buffer> | null = null;
       rules['mutation-as-claimed'] = attempt(() => {
         const files = new Map(inputs);
+        const edit = EDITED[probe];
+        if (edit) {
+          const file = `observations/${edit.arm}.json`;
+          const claim = readFileSync(path.join(recorded, 'probes', probe, 'mutation.txt'), 'utf8');
+          const text = readFileSync(path.join(recorded, 'probes', probe, file), 'utf8');
+          files.set(file, Buffer.from(text));
+          mutated = files;
+          const changed = changedFields(JSON.parse(inputs.get(file)!.toString('utf8')), JSON.parse(text));
+          return rule(claim.startsWith(`edited ${file}: `) && JSON.stringify(changed) === JSON.stringify([...edit.fields].sort()),
+            `the recorded ${file} changes ${changed.join(', ') || 'nothing'}; the review's edit changes ${edit.fields.join(', ')}`);
+        }
         if (probe === 'deleted-trace') {
           const claim = readFileSync(path.join(recorded, 'probes', probe, 'mutation.txt'), 'utf8');
           files.delete('canary-reads.txt');
