@@ -1,8 +1,6 @@
 ---
 type: part
-title: 'Jev: questions become diagnostics'
+title: 'Review: three pull requests and a private file'
 chapters:
   - can-an-upload-read-a-private-file
-  - private-document
-  - shared-model
 ---

@@ -106,30 +106,39 @@ test('Tab unfolds the root into a heading and its questions; the split shows onc
   await expect(peek).toHaveCount(0);
 });
 
+// Part 5's first lesson: Bob's questions about Alice's #117.
+const LESSON_1 = '/iframe.html?id=lessons-private-file--pr-117&viewMode=story&args=solved:!true';
+const FORGED = 'Does the check fail when a read of the private file is forged?';
+const DELETED = 'Does the check fail when the trace is deleted?';
+
 test('review without captured source exposes an explicit summary in native Peek', async ({ page }) => {
-  await page.goto('/iframe.html?id=lessons-private-document--baseline&viewMode=story&args=solved:!true');
+  await page.goto(LESSON_1);
   const c = client(page);
   await c.locator('.ghost-text-decoration').first().waitFor();
   const box = c.getByRole('textbox', { name: 'Editor content', exact: true });
   await box.press('Tab');
-  await c.getByRole('button', { name: /baseline-alice-reads/ }).click();
+  await c.getByRole('button', { name: /review-1\.finding-1\.forged-read/ }).click();
   const peek = c.locator('.peekview-widget');
   await expect(peek).toBeVisible();
+  // The checker code the finding cites is not a lesson file: Peek says so.
+  const axiom = peek.locator('[aria-level="2"][aria-label*="in Reconcile.pkl "]');
+  if (!(await axiom.count())) await peek.locator('[aria-level="1"][aria-label*="in Reconcile.pkl,"]').click();
+  await axiom.first().click();
   await expect(peek).toContainText('Evidence summary');
   await expect(c.locator('.evidence-widget')).toHaveCount(0);
-  // The Peek took focus and hid the other question's suggestion; back on its
+  // The Peek took focus and hid the next question's suggestion; back on its
   // line it is offered again, so the next Tab accepts it rather than editing.
   await page.keyboard.press('Escape');
   await expect(peek).toHaveCount(0);
   await box.press('Control+End');
-  await expect(c.locator('.ghost-text-decoration').first()).toContainText('Can Bob read it?');
+  await expect.poll(async () => (await c.locator('.view-lines').first().innerText()).replace(/\u00a0/g, ' ')).toContain(DELETED);
   await box.press('Tab');
-  await expect(c.getByRole('button', { name: /baseline-bob-reads/ })).toBeVisible();
-  await expect.poll(() => modelText(c)).toMatch(/\nCan Alice read Bob's private document\?\nCan Bob read it\?\n$/);
+  await expect(c.getByRole('button', { name: /review-1\.finding-1\.deleted-trace/ })).toBeVisible();
+  await expect.poll(() => modelText(c)).toMatch(new RegExp(`\\n${FORGED.replace(/[?.]/g, '\\$&')}\\n${DELETED.replace(/[?.]/g, '\\$&')}\\n$`));
 });
 
 test('accepting one question reports only that question to the host', async ({ page }) => {
-  await page.goto('/iframe.html?id=lessons-private-document--baseline&viewMode=story&args=solved:!true');
+  await page.goto(LESSON_1);
   // Part 5 runs the Client alone, as TutorialKit does.
   await expect(page.locator('iframe[title="acp-trace agent preview"]')).toHaveCount(0);
   await page.evaluate(() => {
@@ -141,7 +150,7 @@ test('accepting one question reports only that question to the host', async ({ p
   const c = client(page);
   await c.locator('.ghost-text-decoration').first().waitFor();
   await c.getByRole('textbox', { name: 'Editor content', exact: true }).press('Tab');
-  await expect(c.getByRole('button', { name: /baseline-alice-reads/ })).toBeVisible();
-  await expect(c.getByRole('button', { name: /baseline-bob-reads/ })).toHaveCount(0);
+  await expect(c.getByRole('button', { name: /review-1\.finding-1\.forged-read/ })).toBeVisible();
+  await expect(c.getByRole('button', { name: /review-1\.finding-1\.deleted-trace/ })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as any).reported.at(-1))).toEqual([0]);
 });
