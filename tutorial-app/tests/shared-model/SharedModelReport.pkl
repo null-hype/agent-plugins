@@ -50,6 +50,20 @@ local pklVersion: String = collected(ids.first).pkl
 local function fileOf(rev: String): String = "revisions/\(rev)/\(model.file)"
 local function lines(rev: String): List<String> = read("revisions/\(rev)/\(model.file)").text.split("\n")
 local function memberLine(rev: String, name: String): Int = lines(rev).findIndex((l) -> l.startsWith("\(name):")) + 1
+/// Where a member or typealias is declared, or 0 when the revision has none.
+local function declarationLine(rev: String, name: String): Int =
+  lines(rev).findIndex((l) -> l.startsWith("\(name):") || l.startsWith("typealias \(name) ")) + 1
+local function previous(rev: String): String? = let (i = chapter.indexOf(rev)) if (i == 0) null else chapter[i - 1]
+
+/// What a revision changed, as it says, checked against the files: each
+/// declaration it names is in both, and reads differently in each.
+local function changed(rev: String): List<String> =
+  let (before = previous(rev))
+    model.revisions[rev].touches.toList().map((name) ->
+      if (before == null) throw("\(rev) is the first revision; it changes nothing")
+      else if (declarationLine(rev, name) == 0 || declarationLine(before, name) == 0) throw("\(rev) changes \(name), which \(before) or \(rev) does not declare")
+      else if (lines(rev)[declarationLine(rev, name) - 1] == lines(before)[declarationLine(before, name) - 1]) throw("\(rev) says it changes \(name), but it reads the same as in \(before)")
+      else name)
 
 local function range(id: String): String =
   let (e = question(id).expected) "\(e.min)–\(e.max)"
@@ -62,6 +76,7 @@ local function answerText(id: String): String =
 
 /// The rows the lens opens: where Pkl's error points in this revision (or the
 /// member as evaluated), then the member in every earlier revision, oldest first.
+/// An answer out of range adds what its revision changed, beside what it replaced.
 local function rows(id: String): Listing<AcpTrace.Row> =
   let (asked = question(id).revision)
   new Listing<AcpTrace.Row> {
@@ -95,15 +110,28 @@ local function rows(id: String): Listing<AcpTrace.Row> =
       detail = "\(member(id)) as the \(rev) revision holds it."
     }
   }
+  when (outcome(id) == "out-of-range") {
+    for (name in changed(asked)) {
+      for (rev in List(asked, previous(asked)!!)) {
+        new {
+          role = "change"
+          uri = fileOf(rev)
+          revision = rev
+          line = declarationLine(rev, name)
+          detail = "\(name) as the \(rev) revision declares it. \(if (rev == asked) model.revisions[rev].change else "What the change replaced.")"
+        }
+      }
+    }
+  }
 }
 
 local function probe(id: String): AcpTrace.Probe = new {
   action = "pkl eval -x \(member(id)) \(fileOf(question(id).revision))"
   question = question(id).ask
   diagnostic {
-    // The finding is Pkl's: an error when Pkl refuses the value, whatever the
-    // Question's outcome, which the message states.
-    severity = if (refused(id)) "error" else if (outcome(id) == "in-range") "info" else "warning"
+    // An error when Pkl refuses the value, whatever the Question's outcome (the
+    // message states it), and when the model lets through an answer out of range.
+    severity = if (refused(id) || outcome(id) == "out-of-range") "error" else "info"
     code = id
     message = "\(code): \(answerText(id))"
     evaluationId = "\(pklVersion):\(id)"
@@ -117,7 +145,7 @@ local function ask(rev: String): AcpTrace.ClientFrame = new {
     id = chapter.indexOf(rev) + 1
     params {
       sessionId = "shared-model"
-      prompt { new { text = "\(model.revisions[rev].lesson.title)?\n\n\(model.revisions[rev].change)\nThe shared model is \(fileOf(rev))." } }
+      prompt { new { text = "\(model.revisions[rev].lesson.title)?\n\n\(model.revisions[rev].change)\(if (changed(rev).isEmpty) "" else " It changes \(changed(rev).join(", ")).")\nThe shared model is \(fileOf(rev))." } }
     }
   }
   provenance {
@@ -135,7 +163,7 @@ local function reply(rev: String): AcpTrace.AgentFrame = new {
     result {
       _meta {
         diagnostic {
-          severity = if (idsOf(rev).any((id) -> refused(id))) "error" else "info"
+          severity = if (idsOf(rev).any((id) -> refused(id) || outcome(id) == "out-of-range")) "error" else "info"
           code = "pkl.\(rev)"
           message = "\(code): \(idsOf(rev).map((id) -> "\(question(id).ask) \(answerText(id))").join(" "))"
           subject {

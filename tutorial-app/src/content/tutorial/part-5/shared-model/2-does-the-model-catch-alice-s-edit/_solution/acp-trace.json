@@ -123,7 +123,7 @@
           "prompt": [
             {
               "type": "text",
-              "text": "Does the model catch Alice's edit?\n\nAlice raises her own chance of reading Bob's document to 0.8.\nThe shared model is revisions/alice/PrivateDocument.pkl."
+              "text": "Does the model catch Alice's edit?\n\nAlice raises her own chance of reading Bob's document to 0.8. It changes aliceReads.\nThe shared model is revisions/alice/PrivateDocument.pkl."
             }
           ]
         }
