@@ -37,7 +37,7 @@ describe('Contact and Conversion Paths (CIT-166, CIT-259, CIT-165)', () => {
     const content = fs.readFileSync(landingPath, 'utf8');
     expect(content).toContain('https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml');
     expect(content).toContain('public.rant@pm.me');
-    expect(content).toContain('/part-3/proposal-p-against-the-budget/1-jev-types-the-answer');
+    expect(content).toContain('/part-5/private-document/1-is-the-private-document-private');
   });
 
 
