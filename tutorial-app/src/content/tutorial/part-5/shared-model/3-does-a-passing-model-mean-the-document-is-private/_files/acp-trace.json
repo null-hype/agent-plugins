@@ -270,7 +270,34 @@
         "capturedAt": "generated",
         "scripted": "ACP framing authored; every value and error is what Pkl 0.32.1 (Linux 6.17.0-1020-azure, native) said of the committed revision."
       }
+    },
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "shared-model",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Does a passing model mean the document is private?\n\nAlice loosens NotOwner to admit chances up to 0.9, keeping her 0.8. It changes NotOwner.\nThe shared model is revisions/loosened/PrivateDocument.pkl."
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "shared-model#loosened",
+        "capturedAt": "generated",
+        "scripted": "The subject question and the change are authored in SharedModel.pkl; the file is the committed revision."
+      }
     }
   ],
-  "nextTurn": null
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "pkl",
+    "action": "evaluate the loosened revision"
+  }
 }
