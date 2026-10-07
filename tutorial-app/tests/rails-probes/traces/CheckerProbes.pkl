@@ -351,17 +351,34 @@ local function reproduction(q: Probe): AcpTrace.Row =
   let (a = answer(q))
     new {
       role = "observation"
-      uri = "\(reproductionUri)/probes/\(q.name)/result.txt"
+      // The lesson holds the run's result after Solve, at this path.
+      uri = "reproduction/\(state)/probes/\(q.name)/result.txt"
+      revision = state
+      line = 4
       detail =
         "REPRODUCTION \(reproductionId) (a new run, not the reviewers' own output): \(q.what); checker \(short); pkl test exit \(a.exitCode), \(counts(a))"
     }
 
+/// The trace as retained, which the lesson holds after Solve.
+local pinnedTrace: List<String> =
+  read("../../../evidence/cit-294-review-history-v1/files/\(checker)/\(checkerDir)/canary-reads.txt").text.split("\n")
+
 local transcript: AcpTrace.Row = new {
   role = "observation"
-  uri = "\(checkerDir)/canary-reads.txt"
-  revision = short
+  uri = "reproduction/\(state)/runs/baseline/canary-reads.txt"
+  revision = state
   line = 1
-  detail = "the strace transcript of the four arms: committed, and read by no check"
+  detail = "the strace transcript of the four arms, as retained: what the deleted-trace probe removes"
+}
+
+/// The trace as the forged-read probe left it, at the openat it added: the line
+/// after the blocked arm's header and the heading below it.
+local forgedTrace: AcpTrace.Row = new {
+  role = "observation"
+  uri = "reproduction/\(state)/probes/forged-read/canary-reads.txt"
+  revision = state
+  line = pinnedTrace.indexOf("### ARM: mat-blocked") + 3
+  detail = "canary-reads.txt as the probe left it: \(forgedRead.what)"
 }
 
 local notRetained: AcpTrace.Row = new {
@@ -452,13 +469,14 @@ solved: AcpTrace.Trace = new {
             }
             probes {
               probe(forgedRead, new Listing {
+                forgedTrace
                 claims.reviewSaid
                 claims.axiom
                 reproduction(forgedRead)
               })
               probe(deletedTrace, new Listing {
-                claims.reviewSaid
                 transcript
+                claims.reviewSaid
                 notRetained
                 reproduction(deletedTrace)
               })
