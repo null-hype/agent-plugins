@@ -62,10 +62,10 @@
                 },
                 {
                   "role": "observation",
-                  "uri": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
-                  "revision": "8d097c8e",
+                  "uri": "reproduction/S2/runs/baseline/canary-reads.txt",
+                  "revision": "S2",
                   "line": 1,
-                  "detail": "the strace transcript of the four arms: committed, and read by no check"
+                  "detail": "the strace transcript of the four arms, as retained: what the deleted-trace probe removes"
                 },
                 {
                   "role": "observation",
@@ -74,27 +74,37 @@
                 },
                 {
                   "role": "observation",
-                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/forged-read/result.txt",
+                  "uri": "reproduction/S2/probes/forged-read/result.txt",
+                  "revision": "S2",
+                  "line": 4,
                   "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): an openat of the private file, /work/dummy-canary.txt, added to the mat-blocked arm of canary-reads.txt; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                 },
                 {
                   "role": "observation",
-                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/result.txt",
+                  "uri": "reproduction/S2/probes/deleted-trace/result.txt",
+                  "revision": "S2",
+                  "line": 4,
                   "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                 },
                 {
                   "role": "observation",
-                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/generic-crash/result.txt",
+                  "uri": "reproduction/S2/probes/generic-crash/result.txt",
+                  "revision": "S2",
+                  "line": 4,
                   "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm refused with RuntimeError: disk full instead of the matload block; checker 8d097c8e; pkl test exit 1, 51 of 56 assertions pass"
                 },
                 {
                   "role": "observation",
-                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/emptied-bytes/result.txt",
+                  "uri": "reproduction/S2/probes/emptied-bytes/result.txt",
+                  "revision": "S2",
+                  "line": 4,
                   "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's returned bytes emptied and their count set to 0; checker 8d097c8e; pkl test exit 1, 53 of 56 assertions pass"
                 },
                 {
                   "role": "observation",
-                  "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/corrupted-pixels/result.txt",
+                  "uri": "reproduction/S2/probes/corrupted-pixels/result.txt",
+                  "revision": "S2",
+                  "line": 4,
                   "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked PNG control's pixels set to ffffffff; checker 8d097c8e; pkl test exit 1, 53 of 56 assertions pass"
                 }
               ],
@@ -112,6 +122,13 @@
                   "related": [
                     {
                       "role": "observation",
+                      "uri": "reproduction/S2/probes/forged-read/canary-reads.txt",
+                      "revision": "S2",
+                      "line": 31,
+                      "detail": "canary-reads.txt as the probe left it: an openat of the private file, /work/dummy-canary.txt, added to the mat-blocked arm of canary-reads.txt"
+                    },
+                    {
+                      "role": "observation",
                       "uri": "evidence/cit-294-review-history-v1/captures/linear-CIT-297-comment-271bc302.md",
                       "line": 7,
                       "detail": "deleting canary-reads.txt entirely or replacing it with a blocked-arm dummy-file read still passes all 56 assertions and produces empty diagnostics for every arm"
@@ -125,7 +142,9 @@
                     },
                     {
                       "role": "observation",
-                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/forged-read/result.txt",
+                      "uri": "reproduction/S2/probes/forged-read/result.txt",
+                      "revision": "S2",
+                      "line": 4,
                       "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): an openat of the private file, /work/dummy-canary.txt, added to the mat-blocked arm of canary-reads.txt; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                     }
                   ]
@@ -142,16 +161,16 @@
                   "related": [
                     {
                       "role": "observation",
-                      "uri": "evidence/cit-294-review-history-v1/captures/linear-CIT-297-comment-271bc302.md",
-                      "line": 7,
-                      "detail": "deleting canary-reads.txt entirely or replacing it with a blocked-arm dummy-file read still passes all 56 assertions and produces empty diagnostics for every arm"
+                      "uri": "reproduction/S2/runs/baseline/canary-reads.txt",
+                      "revision": "S2",
+                      "line": 1,
+                      "detail": "the strace transcript of the four arms, as retained: what the deleted-trace probe removes"
                     },
                     {
                       "role": "observation",
-                      "uri": "docs/investigations/CIT-265/cit-294/canary-reads.txt",
-                      "revision": "8d097c8e",
-                      "line": 1,
-                      "detail": "the strace transcript of the four arms: committed, and read by no check"
+                      "uri": "evidence/cit-294-review-history-v1/captures/linear-CIT-297-comment-271bc302.md",
+                      "line": 7,
+                      "detail": "deleting canary-reads.txt entirely or replacing it with a blocked-arm dummy-file read still passes all 56 assertions and produces empty diagnostics for every arm"
                     },
                     {
                       "role": "observation",
@@ -160,7 +179,9 @@
                     },
                     {
                       "role": "observation",
-                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/result.txt",
+                      "uri": "reproduction/S2/probes/deleted-trace/result.txt",
+                      "revision": "S2",
+                      "line": 4,
                       "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): canary-reads.txt removed; checker 8d097c8e; pkl test exit 0, 56 of 56 assertions pass"
                     }
                   ]
@@ -190,7 +211,9 @@
                     },
                     {
                       "role": "observation",
-                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/generic-crash/result.txt",
+                      "uri": "reproduction/S2/probes/generic-crash/result.txt",
+                      "revision": "S2",
+                      "line": 4,
                       "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm refused with RuntimeError: disk full instead of the matload block; checker 8d097c8e; pkl test exit 1, 51 of 56 assertions pass"
                     }
                   ]
@@ -220,7 +243,9 @@
                     },
                     {
                       "role": "observation",
-                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/emptied-bytes/result.txt",
+                      "uri": "reproduction/S2/probes/emptied-bytes/result.txt",
+                      "revision": "S2",
+                      "line": 4,
                       "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's returned bytes emptied and their count set to 0; checker 8d097c8e; pkl test exit 1, 53 of 56 assertions pass"
                     }
                   ]
@@ -250,7 +275,9 @@
                     },
                     {
                       "role": "observation",
-                      "uri": "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/corrupted-pixels/result.txt",
+                      "uri": "reproduction/S2/probes/corrupted-pixels/result.txt",
+                      "revision": "S2",
+                      "line": 4,
                       "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked PNG control's pixels set to ffffffff; checker 8d097c8e; pkl test exit 1, 53 of 56 assertions pass"
                     }
                   ]

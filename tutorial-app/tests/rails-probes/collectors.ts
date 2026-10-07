@@ -83,6 +83,8 @@ const probe = (name: ProbeName): Collector => (partDir) =>
     // The unmodified transcript has no dummy-file read in the blocked arm.
     expect(trace.split('### ARM: ')[2]).not.toContain('dummy-canary.txt');
     write(path.join(dir, 'runs/baseline/result.txt'), result(key, 'none', baseline, 'none (retained evidence as pinned)'));
+    // The trace as retained, which the trace probes delete or forge into.
+    write(path.join(dir, 'runs/baseline/canary-reads.txt'), trace);
 
     const { files, what, record } = mutate(name, pinned, trace);
     const run = runChecker(files);
