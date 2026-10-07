@@ -42,3 +42,25 @@ test("lesson 2: Pkl rejects Alice's edit, and Peek holds both revisions", async 
   expect(files).toMatch(/revisions\/baseline\/PrivateDocument\.pkl/);
   expect(files).toMatch(/revisions\/alice\/PrivateDocument\.pkl/);
 });
+
+test('lesson 3: Alice loosens the type, Pkl accepts her value, and the leak is the finding', async ({ page }) => {
+  await page.goto(story('loosened'));
+  const c = client(page);
+  await expect(c.locator('.ghost-text-decoration').first()).toContainText("Can Alice read Bob's private document?");
+  await c.getByRole('textbox', { name: 'Editor content', exact: true }).press('Tab');
+  const lens = c.getByRole('button', { name: /loosened-alice-reads/ });
+  await expect(lens).toContainText('✗');
+  // Pkl raises nothing: the type now admits 0.8. The Question does not.
+  const said = await markers(page);
+  expect(said).toContain('Pkl accepts aliceReads = 0.8');
+  expect(said).toContain('out-of-range');
+  await lens.click();
+  const peek = c.locator('.peekview-widget');
+  await expect(peek).not.toContainText('Evidence summary');
+  const files = (await groups(page)).join('\n');
+  for (const rev of ['baseline', 'alice', 'loosened']) expect(files).toMatch(new RegExp(`revisions/${rev}/PrivateDocument\\.pkl`));
+  // What the revision changed is among the locations: the type it loosened.
+  const loosened = peek.getByRole('treeitem', { name: /revisions\/loosened\/PrivateDocument\.pkl/ }).first();
+  if (await loosened.getAttribute('aria-expanded') !== 'true') await loosened.click();
+  await expect(peek.getByRole('treeitem', { name: /this <= 0\.9/ })).toBeVisible();
+});
