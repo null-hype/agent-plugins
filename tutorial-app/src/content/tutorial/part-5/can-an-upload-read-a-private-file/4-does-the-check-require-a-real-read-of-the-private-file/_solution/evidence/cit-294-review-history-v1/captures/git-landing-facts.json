@@ -1,0 +1,24 @@
+{
+  "mergeCommit": "bc97c0e62fba3e66458e6b663ef4df5da37ebc31",
+  "parents": [
+    "be95c86ea1fddd8913cab7577f2405c1a2e90205",
+    "cc23e89297855dd07b1ee477ced455ab46a94738"
+  ],
+  "ancestorOfMergeCommit": {
+    "S1.reviewed": false,
+    "S1.merged": true,
+    "S2.reviewed": false,
+    "S2.merged": true,
+    "S3": true,
+    "S4": true
+  },
+  "lessonBlobAtS3": "80eb25678fad94e4ce23423c2163776612f9c0d4",
+  "lessonBlobAtS4": "80eb25678fad94e4ce23423c2163776612f9c0d4",
+  "tutorialPagePresent": {
+    "S1": false,
+    "S2": false,
+    "S3": true,
+    "S4": true
+  },
+  "tutorialPagePath": "tutorial-app/src/content/tutorial/part-4/rails-matlab-canary"
+}

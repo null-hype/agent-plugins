@@ -26,16 +26,18 @@ export const REPRODUCTION_ID = 'cit-294-checker-probes-reproduction-v1';
  * (`treeEquality` in the history manifest). `supplement` is what that state's
  * suite needs and the history bundle does not hold, by git blob id.
  */
-export type RevisionKey = 'S1' | 'S2';
+export type RevisionKey = 'S1' | 'S2' | 'S3' | 'S4';
 export const REVISIONS: Record<
   RevisionKey,
   {
     pr: number;
-    review: number;
-    /** The finding the probes test, by its id in the recorded review history (CIT-313). */
+    /** The review of this revision; null when none is recorded (S4). */
+    review: number | null;
+    /** The revision's headline finding, by its id in the recorded review history (CIT-313). */
     findingId: string;
     revision: string;
-    mergedEquivalent: string;
+    /** The rebased copy on main, or null when the revision is the only spelling (S3, S4: GitHub re-created both at merge). */
+    mergedEquivalent: string | null;
     supplement: Record<string, string>;
     baseline: { tests: number; asserts: number };
   }
@@ -65,6 +67,30 @@ export const REVISIONS: Record<
       'cit294.test.pkl-expected.pcf': 'e24e660619ab051753fd6339d82ade2626ad536b',
     },
     baseline: { tests: 22, asserts: 56 },
+  },
+  S3: {
+    pr: 120,
+    // Known second-hand: its own text is lost (captures/review-3-retrieval-check.json).
+    review: 3,
+    findingId: 'review-3.finding-1',
+    revision: '296ca9f87ea04809b4d21da5bd4d617784856c27',
+    mergedEquivalent: null,
+    supplement: { 'cit294.test.pkl-expected.pcf': 'e24e660619ab051753fd6339d82ade2626ad536b' },
+    baseline: { tests: 29, asserts: 71 },
+  },
+  S4: {
+    pr: 120,
+    // No review of the final revision is recorded; it was merged.
+    review: null,
+    findingId: 'landed.history',
+    revision: 'cc23e89297855dd07b1ee477ced455ab46a94738',
+    mergedEquivalent: null,
+    supplement: {
+      'Claims.pkl': '02d60a9ca312977d17de236bcbb4ce5b0d0f3b90',
+      'Observation.pkl': '2c43ce1e88ee7b7039f0ba1da9276d23cf18d65d',
+      'cit294.test.pkl-expected.pcf': 'e24e660619ab051753fd6339d82ade2626ad536b',
+    },
+    baseline: { tests: 33, asserts: 75 },
   },
 };
 
@@ -179,8 +205,25 @@ export function runChecker(files: Map<string, Buffer>): CheckerRun {
 
 const copyFiles = (files: Map<string, Buffer>) => new Map(files);
 
-/** Probe 1: delete the retained strace transcript entirely. */
+/**
+ * Whether the checker reads the trace embedded in each observation
+ * (`independent_trace_text`, from #120 on) rather than the committed
+ * transcript, which no version of the checker reads. A trace probe edits the
+ * trace the checker reads.
+ */
+export const embeddedTrace = (pinned: Map<string, Buffer>) =>
+  pinned.get('observations/mat-blocked.json')!.toString('utf8').includes('"independent_trace_text"');
+
+/** Replace one arm's embedded trace text, keeping the record's formatting. */
+function editTrace(pinned: Map<string, Buffer>, arm: string, edit: (trace: string) => string) {
+  const file = `observations/${arm}.json`;
+  const before = JSON.parse(pinned.get(file)!.toString('utf8')).independent_trace_text as string;
+  return editObservation(pinned, arm, [[`"independent_trace_text": ${JSON.stringify(before)}`, `"independent_trace_text": ${JSON.stringify(edit(before))}`]]);
+}
+
+/** Probe 1: delete the retained trace: the committed transcript, or from #120 on the blocked arm's embedded trace. */
 export function deletedTrace(pinned: Map<string, Buffer>): Map<string, Buffer> {
+  if (embeddedTrace(pinned)) return editTrace(pinned, 'mat-blocked', () => '').files;
   const files = copyFiles(pinned);
   files.delete('canary-reads.txt');
   return files;
@@ -189,8 +232,9 @@ export function deletedTrace(pinned: Map<string, Buffer>): Map<string, Buffer> {
 export const FORGED_LINE =
   '[pid    16] openat(AT_FDCWD</app>, "/work/dummy-canary.txt", O_RDONLY) = 14</work/dummy-canary.txt>';
 
-/** Probe 2: add a dummy-file read to the blocked MAT arm of the transcript. Returns the new transcript. */
+/** Probe 2: add a read of the private file to the blocked MAT arm's trace: the transcript, or from #120 on its embedded trace. */
 export function forgedRead(pinned: Map<string, Buffer>): Map<string, Buffer> {
+  if (embeddedTrace(pinned)) return editTrace(pinned, 'mat-blocked', (trace) => `${trace}\n${FORGED_LINE}`).files;
   const files = copyFiles(pinned);
   const trace = files.get('canary-reads.txt')!.toString('utf8');
   const marker = '### ARM: mat-blocked\n== strace openat evidence for the canary/control file ==\n';
@@ -256,3 +300,22 @@ export const changedConfig = (pinned: Map<string, Buffer>) =>
     ['"independent_rails_load_defaults": "7.0"', '"independent_rails_load_defaults": "6.1"'],
     ['"independent_active_storage_variant_processor": "vips"', '"independent_active_storage_variant_processor": "mini_magick"'],
   ]);
+
+/** The unblocked arm's real read of the private file, replaced by `line` (review 3, second-hand). */
+const replacedRead = (pinned: Map<string, Buffer>, line: string) =>
+  editTrace(pinned, 'mat-unblocked', (trace) => {
+    const lines = trace.split('\n');
+    const real = lines.findIndex((l) => l.includes('"/work/dummy-canary.txt"') && /= \d+</.test(l));
+    if (real < 0 || lines.filter((l) => l.includes('dummy-canary.txt')).length !== 1) throw new Error('the unblocked arm has no single real read of the private file');
+    lines[real] = line;
+    return lines.join('\n');
+  });
+
+/** Probe 8: the real read replaced by a prose mention of the private file. */
+export const proseMention = (pinned: Map<string, Buffer>) => replacedRead(pinned, 'the app read /work/dummy-canary.txt');
+/** Probe 9: the real read replaced by a failed open of it. */
+export const failedOpen = (pinned: Map<string, Buffer>) =>
+  replacedRead(pinned, '[pid    12] openat(AT_FDCWD</app>, "/work/dummy-canary.txt", O_RDONLY) = -1 EACCES (Permission denied)');
+/** Probe 10: the real read replaced by an open of a same-named file in another directory. */
+export const otherDirectory = (pinned: Map<string, Buffer>) =>
+  replacedRead(pinned, '[pid    12] openat(AT_FDCWD</app>, "/tmp/dummy-canary.txt", O_RDONLY) = 14</tmp/dummy-canary.txt>');
