@@ -43,3 +43,8 @@ export const AliceEdit: Story = {
   name: "Does the model catch Alice's edit?",
   render: render('2-does-the-model-catch-alice-s-edit'),
 };
+
+export const Loosened: Story = {
+  name: 'Does a passing model mean the document is private?',
+  render: render('3-does-a-passing-model-mean-the-document-is-private'),
+};
