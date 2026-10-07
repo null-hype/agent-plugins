@@ -1,0 +1,39 @@
+---
+type: lesson
+title: Does the check require a real read of the private file
+template: acp-trace
+focus: /acp-trace.json
+terminal:
+  open: true
+  panels:
+    - - output
+      - Agent
+editor: false
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+# Does the check require a real read of the private file?
+
+Alice's last commit, `cc23e89`, answers the third review as she recounts it.
+Her checker now counts a read of the private file only if the trace shows a
+successful `openat` of its exact path, and every arm's trace must show its own
+upload being opened, so an empty trace is no longer taken as proof that nothing
+was read. She says each of review 3's edits now fails the suite.
+
+No one reviewed this commit. It was merged. So **Solve** has no reviewer to
+bring back: it brings back the checker itself, asked every question Bob asked
+of the three commits before it, word for word, each against what Alice
+claimed. The pending line in the **Agent** names Pkl, not Bob, and the reply
+says plainly that no review was recorded.
+
+Here the checker failing the suite on every one of the 10 edits. A green run is the only answer this revision ever
+got. Whether it is the right answer is a question for the next reviewer.

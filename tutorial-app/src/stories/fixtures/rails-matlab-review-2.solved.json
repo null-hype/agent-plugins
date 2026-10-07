@@ -148,6 +148,12 @@
                       "detail": "deleting canary-reads.txt entirely or replacing it with a blocked-arm dummy-file read still passes all 56 assertions and produces empty diagnostics for every arm"
                     },
                     {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md",
+                      "line": 10,
+                      "detail": "#118: the review's five exact mutations, all now flagged"
+                    },
+                    {
                       "role": "axiom",
                       "uri": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
                       "revision": "8d097c8e",
@@ -188,6 +194,12 @@
                     },
                     {
                       "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md",
+                      "line": 10,
+                      "detail": "#118: the review's five exact mutations, all now flagged"
+                    },
+                    {
+                      "role": "observation",
                       "uri": "review-2.gap-1/mutation-output",
                       "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
                     },
@@ -225,6 +237,12 @@
                     },
                     {
                       "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md",
+                      "line": 10,
+                      "detail": "#118: the review's five exact mutations, all now flagged"
+                    },
+                    {
+                      "role": "observation",
                       "uri": "reproduction/S2/probes/generic-crash/result.txt",
                       "revision": "S2",
                       "line": 4,
@@ -257,6 +275,12 @@
                     },
                     {
                       "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md",
+                      "line": 10,
+                      "detail": "#118: the review's five exact mutations, all now flagged"
+                    },
+                    {
+                      "role": "observation",
                       "uri": "reproduction/S2/probes/emptied-bytes/result.txt",
                       "revision": "S2",
                       "line": 4,
@@ -286,6 +310,12 @@
                       "uri": "evidence/cit-294-review-history-v1/captures/linear-CIT-297-comment-271bc302.md",
                       "line": 3,
                       "detail": "deleting canary-reads.txt entirely or replacing it with a blocked-arm dummy-file read still passes all 56 assertions and produces empty diagnostics for every arm"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md",
+                      "line": 10,
+                      "detail": "#118: the review's five exact mutations, all now flagged"
                     },
                     {
                       "role": "observation",
