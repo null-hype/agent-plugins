@@ -52,6 +52,11 @@ local investigation = new Question.Investigation {
   records { base; second }
   transitions { new { from = "r1"; to = "r2"; action = "Revise after finding-1"; finding = "finding-1"; evidence { kept } } }
 }
+local sameId = (investigation) {
+  records { [1] { state { id = "r1" } } }
+  transitions { [0] { to = "r1" } }
+}
+local unrelated = (investigation) { transitions { [0] { finding = "finding-9" } } }
 
 facts {
   ["Shared assessment preserves unexpected answers"] {
@@ -75,6 +80,27 @@ facts {
     !Question.validInvestigation((investigation) { records { [1] { state { source { immutableId = "git-commit:1" } } } } })
     !Question.validInvestigation((investigation) { transitions = new Listing {} })
   }
+  ["State ids are unambiguous across an investigation"] {
+    Question.distinctStates(investigation)
+    // Two captured states under one id: the transition reads as r1 -> r1. Everything
+    // else still holds (distinct sources, linked ids, the finding), so only the id rejects it.
+    !Question.distinctStates(sameId)
+    Question.transitionsFollowFindings(sameId)
+    sameId.records.toList().every((r) -> Question.validRecord(r))
+    !Question.validInvestigation(sameId)
+  }
+  ["A transition is prompted by the finding of the record it leaves"] {
+    Question.transitionsFollowFindings(investigation)
+    // Any non-empty finding used to pass; an unrelated one is now rejected, and only for that.
+    !Question.transitionsFollowFindings(unrelated)
+    Question.distinctStates(unrelated)
+    !Question.validInvestigation(unrelated)
+    // The finding is the record it leaves, not the one it reaches.
+    !Question.validInvestigation((investigation) {
+      records { [1] { delivery { finding = "finding-2" } } }
+      transitions { [0] { finding = "finding-2" } }
+    })
+  }
   ["Every record in an investigation asks the same Question"] {
     !Question.validInvestigation((investigation) { records { [1] { questionId = "other" } } })
     !Question.validInvestigation((investigation) { records { [1] { question { expected { min = 0 } } } } })
@@ -91,11 +117,21 @@ facts {
       records { [0] { delivery { version = "20261008.0811" } }; [1] { delivery { version = "20261008.0811" } } }
     })
   }
-  ["A declared value is observed from a reproduction, and may disagree"] {
+  ["A declared value is observed from retained evidence, and may disagree"] {
     Question.validRecord((base) { declarations { [0] { observed = 27 } } })
-    !Question.validRecord((base) { declarations { [0] { observedFrom = kept } } })
+    // Origin is descriptive: the value may be read from the original output.
+    Question.validRecord((base) { declarations { [0] { observedFrom = kept } } })
+    !Question.validRecord((base) { declarations { [0] { observedFrom = gap } } })
     !Question.validRecord((base) { declarations { [0] { observedFrom = null } } })
     !Question.validRecord((base) { declarations { [0] { property = null } } })
+  }
+  ["Retained historical output substantiates an answer"] {
+    // No reproduction at all: the original run's retained output is the observation.
+    Question.validRecord((base) { observations = new Listing { kept } })
+    Question.validRecord((base) { mutation = null; observations = new Listing { kept; gap } })
+    // A gap given an identity it never had is still not evidence.
+    !Question.validRecord((base) { observations = new Listing { kept; (gap) { immutableId = "sha256:invented" } } })
+    !Question.validRecord((base) { observations = new Listing { (gap) { origin = "historical"; immutableId = "sha256:invented"; reason = null } } })
   }
   ["Missing answers remain not collected"] {
     (base) { answer = null }.outcome == "not-collected"

@@ -104,7 +104,10 @@ local function visit(questions: Mapping<Id, Question>, id: String, trail: List<S
 // test module's examples are the committed baseline. What this adds is
 // provenance: every resource is retained under an immutable id or missing with
 // a reason, and is either historical (it existed when the claim was made) or
-// reproduced (it was made again since).
+// reproduced (it was made again since). Origin describes a resource; it is not a
+// validity rule here. Retained original output substantiates an answer as well
+// as a reproduction does; a case that needs a particular origin says so in its
+// own adapter tests.
 
 /// A retained resource or an explicit gap. A trace URI is provenance, never a
 /// promise that the workspace can be restored from it.
@@ -147,6 +150,7 @@ class Transition {
   from: String(!isEmpty)
   to: String(!isEmpty)
   action: String(!isEmpty)
+  /// The finding that prompted it: the one the record it leaves was delivered for.
   finding: String(!isEmpty)
   evidence: Listing<Evidence>(!isEmpty)
 }
@@ -205,11 +209,10 @@ local function stateValid(s: WorkspaceState): Boolean =
   (s.snapshot == null || validEvidence(s.snapshot!!))
 
 local function declarationValid(d: Declaration): Boolean =
-  validEvidence(d.evidence) && d.evidence.origin == "historical" &&
+  validEvidence(d.evidence) &&
   ((d.declared == null && d.observed == null) || d.property != null) &&
   (if (d.observed == null) d.observedFrom == null
-   else d.observedFrom != null && validEvidence(d.observedFrom!!) &&
-     d.observedFrom!!.availability == "retained" && d.observedFrom!!.origin == "reproduced")
+   else d.observedFrom != null && validEvidence(d.observedFrom!!) && d.observedFrom!!.availability == "retained")
 
 function validRecord(r: EvaluationRecord): Boolean =
   stateValid(r.state) &&
@@ -219,23 +222,37 @@ function validRecord(r: EvaluationRecord): Boolean =
   r.declarations.toList().every((d) -> declarationValid(d)) &&
   r.observations.toList().every((e) -> validEvidence(e)) &&
   (r.answer == null || (if (r.question.judge is Checker) r.answer is CheckerAnswer else r.answer is Number)) &&
-  (r.answer == null || r.observations.toList().any((e) -> e.availability == "retained" && e.origin == "reproduced")) &&
+  (r.answer == null || r.observations.toList().any((e) -> e.availability == "retained")) &&
   (if (r.delivery.status == "captured")
     r.delivery.version != null && r.delivery.evidence != null &&
     validEvidence(r.delivery.evidence!!) && r.delivery.evidence!!.availability == "retained"
    else r.delivery.evidence == null)
 
-/// Every record is valid and asks the same Question; each transition links one
-/// record's state to the next one's, and changes the source; no two rounds share
-/// a delivered version.
+/// Every record is valid and asks the same Question; no two records share a
+/// state id, so a transition names each state unambiguously; each transition
+/// links one record's state to the next one's, changes the source, and is
+/// prompted by the finding the record it leaves was delivered for; no two
+/// rounds share a delivered version.
 function validInvestigation(i: Investigation): Boolean =
   let (records = i.records.toList())
   let (transitions = i.transitions.toList())
   let (versions = records.map((r) -> r.delivery.version).filter((v) -> v != null))
     records.every((r) -> r.questionId == i.questionId && r.question == records.first.question && validRecord(r)) &&
+    distinctStates(i) &&
     transitions.length == records.length - 1 &&
     transitions.filterIndexed((n, t) ->
       t.from == records[n].state.id && t.to == records[n + 1].state.id &&
       records[n].state.source.immutableId != records[n + 1].state.source.immutableId &&
       t.evidence.toList().every((e) -> validEvidence(e))).length == transitions.length &&
+    transitionsFollowFindings(i) &&
     versions.length == versions.toSet().length
+
+/// No two records share a state id.
+function distinctStates(i: Investigation): Boolean =
+  let (ids = i.records.toList().map((r) -> r.state.id)) ids.length == ids.toSet().length
+
+/// Each transition's finding is the finding the record it leaves was delivered for.
+function transitionsFollowFindings(i: Investigation): Boolean =
+  let (records = i.records.toList())
+    i.transitions.toList().filterIndexed((n, t) -> n < records.length && t.finding == records[n].delivery.finding).length ==
+      i.transitions.length

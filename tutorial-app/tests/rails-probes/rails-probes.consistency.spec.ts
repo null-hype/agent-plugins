@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answerJson, answerText, reproductionDir, solvedFixture, type ProbeName } from './fixture';
 import { FORGED_LINE, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChecker, type CheckerRun, type RevisionKey } from './probes';
-import { captureInvestigation, evaluateRecord, writeCapture } from './records';
+import { RECORDED, captureInvestigation, evaluateRecord, writeCapture } from './records';
 
 // CIT-320: does the checker investigation agree with itself? The probes spec
 // asks the questions and records the answers; this spec trusts none of it. It
@@ -19,7 +19,8 @@ import { captureInvestigation, evaluateRecord, writeCapture } from './records';
 // CIT-334: the same pass generates the shared evaluation record of the
 // `deleted-trace` Question (records.ts, traces/ReplayRecord.pkl) and requires it
 // to validate, to match its committed baseline, to reject a tampered capture,
-// and to say what the re-run says.
+// and to say what the re-run says. Only the revisions records.ts names in
+// RECORDED have a record; each of those must, and no other may.
 
 test.skip(pklVersion() === null, 'pkl is not on PATH');
 
@@ -81,6 +82,12 @@ test('the checker investigation is consistent', () => {
     writeFileSync(path.join(OUT, 'records/investigation.json'), generated);
     records = JSON.parse(generated).records;
     return { held: true };
+  });
+  runRules['record-scope'] = attempt(() => {
+    const ids = records.map((r) => r.state.id);
+    const expected = RECORDED.map((key) => `${key}-pinned`);
+    return rule(JSON.stringify(ids) === JSON.stringify(expected),
+      `generated records for ${ids.join(', ') || 'nothing'}; the recorded revisions are ${expected.join(', ')}`);
   });
   runRules['record-rejects-tampered'] = attempt(() => {
     // A gap given an id, as though it had been retained.
@@ -192,8 +199,8 @@ test('the checker investigation is consistent', () => {
         `the lesson does not say "${answerText(probe, answer)}" or carries a different result.txt`,
       );
 
-      // CIT-334: the generated record says what the re-run says.
-      if (probe === 'deleted-trace') {
+      // CIT-334: the generated record says what the re-run says, for each recorded revision.
+      if (probe === 'deleted-trace' && RECORDED.includes(key)) {
         rules['record-agrees'] = attempt(() => {
           const generated = records.find((r) => r.state.id === `${key}-pinned`);
           if (!generated) return rule(false, `no generated record for ${key}`);

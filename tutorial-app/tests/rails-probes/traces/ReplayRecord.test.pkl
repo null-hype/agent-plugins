@@ -28,9 +28,20 @@ facts {
     records.every((r) -> r.mutation != null && r.mutation.affects.toList().every((uri) -> uri.endsWith("/canary-reads.txt")))
     investigation.transitions.toList().every((t) -> t.from != t.to)
     records[0].state.source.immutableId != records[1].state.source.immutableId
+    investigation.transitions[0].finding == records[0].delivery.finding
   }
   ["Each PR's declared assertion count is the one reproduced"] {
     records.every((r) -> r.declarations.toList().every((d) -> d.declared == d.observed))
+  }
+  ["This case's provenance: the PRs declare, the reproduction observes and answers"] {
+    // The shared schema leaves origin descriptive; these are this adapter's expectations.
+    records.every((r) -> r.declarations.toList().every((d) -> d.evidence.origin == "historical"))
+    records.every((r) -> r.declarations.toList().every((d) -> d.observedFrom?.origin == "reproduced"))
+    records.every((r) -> r.observations.toList().any((e) -> e.availability == "retained" && e.origin == "reproduced"))
+    records.every((r) -> r.state.inputs.toList().every((e) -> e.origin == "historical"))
+    // A reproduced value claimed as the PR's own declaration is a valid record, but not this case's.
+    let (swapped = (first) { declarations { [0] { evidence { origin = "reproduced" } } } })
+      Question.validRecord(swapped) && !swapped.declarations.toList().every((d) -> d.evidence.origin == "historical")
   }
   ["What was not retained is missing, with a reason, not reconstructed"] {
     records.every((r) -> r.observations.toList().any((e) -> e.availability == "missing" && e.origin == "historical"))
@@ -43,10 +54,12 @@ facts {
     !Question.validRecord((first) { answer = 0.4 })
     // A probe that claims to change something outside the pinned inputs.
     !Question.validRecord((first) { mutation { affects { "tutorial-app/package.json" } } })
-    // A reproduced value claimed as the PR's own declaration.
-    !Question.validRecord((first) { declarations { [0] { evidence { origin = "reproduced" } } } })
     // The rounds run backwards.
     !Question.validInvestigation((investigation) { transitions { [0] { from = "S2-pinned"; to = "S1-pinned" } } })
+    // Both revisions captured under one state id: S1-pinned -> S1-pinned.
+    !Question.validInvestigation((investigation) { records { [1] { state { id = "S1-pinned" } } }; transitions { [0] { to = "S1-pinned" } } })
+    // S2 claimed as prompted by a finding S1 was not delivered for.
+    !Question.validInvestigation((investigation) { transitions { [0] { finding = "review-3.finding-1" } } })
     // Both rounds delivered as one version.
     !Question.validInvestigation((investigation) {
       records { [0] { delivery { version = "20261008.0811" } }; [1] { delivery { version = "20261008.0811" } } }
