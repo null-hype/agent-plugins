@@ -50,3 +50,16 @@ test('review without captured source exposes an explicit summary in native Peek'
   await expect(peek).toContainText('Evidence summary');
   await expect(c.locator('.evidence-widget')).toHaveCount(0);
 });
+
+test('accepting one question reveals only that question\'s finding in the Agent pane', async ({ page }) => {
+  await page.goto('/iframe.html?id=lessons-private-document--baseline&viewMode=story&args=solved:!true');
+  const c = client(page);
+  const agent = page.frameLocator('iframe[title="acp-trace agent preview"]');
+  await c.locator('.ghost-text-decoration').first().waitFor();
+  await expect(agent.locator('#chat-view')).toContainText('Deciding what to check');
+  // The first ghost-text alternative is Alice's question.
+  await c.getByRole('textbox', { name: 'Editor content', exact: true }).press('Tab');
+  await expect(c.getByRole('button', { name: /baseline-alice-reads/ })).toBeVisible();
+  await expect(agent.locator('#chat-view')).toContainText('expected 0–20%');
+  await expect(agent.locator('#chat-view')).not.toContainText('expected 80–100%');
+});
