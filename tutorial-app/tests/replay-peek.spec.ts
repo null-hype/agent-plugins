@@ -105,12 +105,22 @@ test('review without captured source exposes an explicit summary in native Peek'
   await page.goto('/iframe.html?id=lessons-private-document--baseline&viewMode=story&args=solved:!true');
   const c = client(page);
   await c.locator('.ghost-text-decoration').first().waitFor();
-  await c.getByRole('textbox', { name: 'Editor content', exact: true }).press('Tab');
+  const box = c.getByRole('textbox', { name: 'Editor content', exact: true });
+  await box.press('Tab');
   await c.getByRole('button', { name: /baseline-alice-reads/ }).click();
   const peek = c.locator('.peekview-widget');
   await expect(peek).toBeVisible();
   await expect(peek).toContainText('Evidence summary');
   await expect(c.locator('.evidence-widget')).toHaveCount(0);
+  // The Peek took focus and hid the other question's suggestion; back on its
+  // line it is offered again, so the next Tab accepts it rather than editing.
+  await page.keyboard.press('Escape');
+  await expect(peek).toHaveCount(0);
+  await box.press('Control+End');
+  await expect(c.locator('.ghost-text-decoration').first()).toContainText('Can Bob read it?');
+  await box.press('Tab');
+  await expect(c.getByRole('button', { name: /baseline-bob-reads/ })).toBeVisible();
+  await expect.poll(() => modelText(c)).toMatch(/\nCan Alice read Bob's private document\?\nCan Bob read it\?\n$/);
 });
 
 test('accepting one question reports only that question to the host', async ({ page }) => {
