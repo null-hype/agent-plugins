@@ -25,14 +25,23 @@ import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
 The review goes on from where the first lesson left it: one session, a turn per
 lesson. The baseline commit and the questions you accepted stay above in the
-**Client**, and its findings in the **Agent** terminal. The new commit below
-changes one thing: the policy lets a signed-in user read a document only if they
-own it. Unfold the commit to read it.
+**Client**, and its findings in the **Agent** terminal. Only the questions you
+actually accepted carry forward; opening this lesson directly does not accept
+the baseline findings for you.
+
+Alice's baseline request returned Bob's private document. That finding motivates
+the new commit below: replace unconditional access with `document.owner === user`.
+Unfold it to read the previous policy, the proposed check and why it is needed.
+The recorded patch is already applied to the fixture at this turn; **Solve**
+reveals its review.
 
 The questions are the ones asked of the baseline, word for word. Select **Solve**
 to ask Jev, and take either suggestion with **Tab** (or **Alt+]** to switch first),
 or both. The **Agent** terminal holds back each finding until you accept it.
 
-Open the lens above an accepted line and compare the exchange with the baseline's:
-the request is the same, and only the policy changed. These answers cover
-this one route and these two readers, not every way a document can be reached.
+Accept both repeated questions. Each finding compares the same request before
+and after the owner check: Alice changes from HTTP 200 to 403, while Bob stays
+at HTTP 200. Open its lens to see the baseline observation beside the patched
+exchange. The patch closes the observed leak and preserves the owner's access.
+These answers cover this one route and these two readers, not every way a
+document can be reached.

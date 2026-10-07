@@ -222,8 +222,9 @@ function renderClientPage() {
       // diagnostics; \`acceptedOrder\` holds the probe indexes accepted so far, in
       // the order they sit in the editor, and is always derived from its text.
       let acceptedOrder = [];
+      let acceptedReviews = {};
+      let currentReview = null;
       let lastState = null;
-      let reportedAccepted = null;
       let reportedOrder = null;
       const RUN_GATE_COMMAND = 'acp-trace.runGate';
       const gateKey = (diagnostic) => diagnostic.evaluationId || diagnostic.code;
@@ -480,8 +481,10 @@ function renderClientPage() {
         commitRanges = [];
         const frames = state.frames || [];
         const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
+        let review = null;
         frames.forEach((frame, index) => {
           if (frame.actor === 'client') {
+            review = frame.provenance && frame.provenance.recordingId;
             const promptText = extractPromptText((frame.envelope || {}).params);
             if (!promptText) return;
             const start = records.length + 1;
@@ -489,10 +492,12 @@ function renderClientPage() {
             commitRanges.push([start, records.length]);
             return;
           }
-          // An earlier turn's probes, as the viewer accepted them then.
+          // Earlier turns show only the choices the host persisted.
           const meta = index < lastPrompt ? metaOf(frame.envelope || {}) : null;
           if (meta && meta.diagnostic) {
-            (meta.probes || []).slice(0, 2).forEach((probe) => {
+            (acceptedReviews[review] || []).forEach((probeIndex) => {
+              const probe = (meta.probes || [])[probeIndex];
+              if (!probe) return;
               records.push({ raw: probe.question, diagnostic: probe.diagnostic || null, related: (probe.diagnostic && probe.diagnostic.related) || [] });
             });
           }
@@ -699,18 +704,13 @@ function renderClientPage() {
         }
         gateDecorationIds = editor.deltaDecorations(gateDecorationIds, glyphDecorations);
         revealNewest();
-        // The Agent pane shows the finding only once the suggestion is accepted;
-        // the host relays this to it.
-        if (lastState && lastState.scenario === 'cit294-review-v1' && reportedAccepted !== (acceptedOrder.length > 0)) {
-          reportedAccepted = acceptedOrder.length > 0;
-          window.parent.postMessage({ type: 'acp-trace-suggestion-accepted', source: 'tk-acp-trace-client-preview', accepted: reportedAccepted }, '*');
-        }
-        // CIT-328: the server prints the agent's activity to the lesson's
-        // terminal, and holds back each probe's finding until it is accepted
-        // here. Outside a WebContainer (Storybook, specs) nothing is listening.
-        const order = JSON.stringify(acceptedOrder);
+        // Persist actual choices on the host, whose origin survives lesson iframe changes.
+        if (currentReview) acceptedReviews[currentReview] = acceptedOrder;
+        const order = JSON.stringify({ recordingId: currentReview, order: acceptedOrder, reviews: acceptedReviews });
         if (order !== reportedOrder) {
           reportedOrder = order;
+          window.parent.postMessage({ type: 'acp-trace-suggestion-accepted', source: 'tk-acp-trace-client-preview',
+            accepted: acceptedOrder.length > 0, recordingId: currentReview, order: acceptedOrder }, '*');
           fetch('/agent-activity', { method: 'POST', body: order }).catch(() => {});
         }
       }
@@ -720,6 +720,14 @@ function renderClientPage() {
         currentRevision = payload.revision;
         renderScripted(payload);
         lastState = payload;
+        const prompt = [...(payload.frames || [])].reverse().find((frame) => frame.actor === 'client');
+        const review = prompt && prompt.provenance && prompt.provenance.recordingId;
+        acceptedReviews = { ...(payload.acceptedReviews || {}), ...acceptedReviews };
+        if (review !== currentReview) {
+          currentReview = review;
+          acceptedOrder = acceptedReviews[review] || [];
+          reportedOrder = null;
+        }
         suggestion = payload.scenario === 'cit294-review-v1' ? reviewCompletion(payload) : null;
         if (!suggestion) acceptedOrder = [];
         if (payload.scenario !== 'cit294-review-v1') {
@@ -905,18 +913,28 @@ function renderAgentPage() {
         root.hidden = !active;
         root.replaceChildren();
         if (!active) return false;
+        let review = null;
         for (const frame of state.frames || []) {
           const envelope = frame.envelope || {};
+          if (frame.actor === 'client') review = frame.provenance && frame.provenance.recordingId;
           const fromClient = frame.actor === 'client';
           const message = el('article', 'msg ' + (fromClient ? 'from-client' : 'from-agent'));
           const who = el('div', 'who', fromClient ? 'You' : frame.speaker || 'Agent');
           who.appendChild(el('span', 'method', envelope.method || (envelope.result && envelope.result.stopReason) || ''));
           message.appendChild(who);
-          const diagnostic = (metaOf(envelope) || {}).diagnostic;
+          const meta = metaOf(envelope) || {};
+          const chosen = state.acceptedReviews ? (state.acceptedReviews[review] || []) : null;
+          const selected = chosen === null ? (meta.probes || []) : chosen.map((index) => (meta.probes || [])[index]).filter(Boolean);
+          const diagnostic = meta.diagnostic && chosen !== null
+            ? (selected.length ? { ...meta.diagnostic,
+                message: selected.map((probe) => probe.diagnostic.message).join(' '),
+                severity: selected.some((probe) => probe.diagnostic.severity === 'error') ? 'error' : 'info',
+                related: selected.flatMap((probe) => probe.diagnostic.related || []) } : null)
+            : meta.diagnostic;
           // Until the client accepts the suggestion the agent has only decided its
           // questions: it shows them as thinking, with no verdict. Hosts that never
           // send \`accepted\` (undefined) show the finding straight away.
-          if (diagnostic && state.accepted === false) {
+          if (meta.diagnostic && (chosen !== null ? selected.length === 0 : state.accepted === false)) {
             message.className = 'msg from-agent waiting';
             message.replaceChildren(el('div', 'who', frame.speaker || 'Agent'));
             message.appendChild(el('div', 'text', 'Deciding what to check\u2026'));
@@ -939,7 +957,7 @@ function renderAgentPage() {
             const prefix = diagnostic.code + ': ';
             const text = diagnostic.message.startsWith(prefix) ? diagnostic.message.slice(prefix.length) : diagnostic.message;
             message.appendChild(el('div', 'text', text));
-            const probes = (metaOf(envelope) || {}).probes;
+            const probes = selected;
             if (probes && probes.length) {
               const list = el('ul', 'divergence');
               probes.slice(0, 2).forEach((probe, index) => {
@@ -1072,6 +1090,7 @@ function serveMonacoAssets(request, response, url) {
 // trace's findings print only for the probes the Client has accepted.
 const traceFile = resolve(process.cwd(), 'acp-trace.json');
 let acceptedProbes = [];
+let acceptedReviews = {};
 let printed = [];
 let printedHint = null;
 
@@ -1100,9 +1119,11 @@ function activity(trace) {
   const indent = (text) => String(text).split('\n').map((line) => '    ' + line);
   const frames = trace.frames || [];
   const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
+  let review = null;
   frames.forEach((frame, frameIndex) => {
     const envelope = frame.envelope || {};
     if (frame.actor === 'client') {
+      review = frame.provenance && frame.provenance.recordingId;
       const prompt = ((envelope.params && envelope.params.prompt) || []).map((block) => block.text || '').join('\n');
       lines.push('you: ' + (prompt.split('\n')[0] || frame.action || ''));
       return;
@@ -1113,14 +1134,13 @@ function activity(trace) {
     if (trace.scenario === 'cit294-review-v1' && probes.length) {
       lines.push(who + ': deciding what to check');
       probes.forEach((probe, index) => lines.push('  probe ' + (index + 1) + ' (' + probe.action + '): ' + probe.question));
-      // An earlier turn's probes were accepted in its own lesson; the current
-      // turn's findings wait for the Client.
-      const accepted = frameIndex < lastPrompt ? probes.map((_, index) => index) : acceptedProbes;
+      // Earlier findings come from persisted choices; current ones wait for the Client.
+      const accepted = frameIndex < lastPrompt ? (acceptedReviews[review] || []) : acceptedProbes;
       if (accepted.length === 0) {
         hint = who + ': its findings wait until you accept a probe in the Client (Tab)';
         return;
       }
-      if (meta.diagnostic) lines.push(who + ': ' + meta.diagnostic.severity + ' ' + meta.diagnostic.message);
+
       for (const index of accepted) {
         const probe = probes[index];
         if (!probe || !probe.diagnostic) continue;
@@ -1161,6 +1181,12 @@ const clientServer = createServer((request, response) => {
       try {
         const order = JSON.parse(body);
         if (Array.isArray(order)) acceptedProbes = order.filter((index) => Number.isInteger(index));
+        else if (order && Array.isArray(order.order) && order.reviews && typeof order.reviews === 'object') {
+          acceptedProbes = order.order.filter((index) => Number.isInteger(index) && index >= 0);
+          acceptedReviews = Object.fromEntries(Object.entries(order.reviews)
+            .filter(([, indexes]) => Array.isArray(indexes))
+            .map(([key, indexes]) => [key, indexes.filter((index) => Number.isInteger(index) && index >= 0)]));
+        }
       } catch {}
       printActivity().catch(() => {});
       sendText(response, '', 204);
