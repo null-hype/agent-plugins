@@ -96,8 +96,8 @@ export const REVISIONS: Record<
 
 type ManifestFile = { state: string; revision: string; path: string; blobId: string; sha256: string; file: string };
 
-const gitBlobId = (bytes: Buffer) => createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
-const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+export const gitBlobId = (bytes: Buffer) => createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+export const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
 export function pklVersion(): string | null {
   try {
@@ -107,28 +107,47 @@ export function pklVersion(): string | null {
   }
 }
 
-/** One state's checker inputs, each verified against the history manifest or the supplement. Throws on any mismatch. */
-export function loadPinnedChecker(key: RevisionKey): Map<string, Buffer> {
+/** One checker input as pinned: its name under cit-294/, the committed file it was read from, and its ids. */
+export type PinnedInput = {
+  name: string;
+  /** The committed file, relative to tutorial-app. */
+  file: string;
+  /** Where its id is pinned: the history manifest, or this revision's supplement. */
+  pinnedBy: 'history' | 'supplement';
+  blobId: string;
+  sha256: string;
+  bytes: Buffer;
+};
+
+/** One state's checker inputs with their provenance, each verified against the history manifest or the supplement. Throws on any mismatch. */
+export function pinnedInputs(key: RevisionKey): PinnedInput[] {
   const { revision, supplement } = REVISIONS[key];
   const manifest = JSON.parse(readFileSync(path.join(HISTORY, 'manifest.json'), 'utf8')) as { files: ManifestFile[] };
-  const inputs = new Map<string, Buffer>();
+  const inputs: PinnedInput[] = [];
   for (const entry of manifest.files) {
     if (entry.revision !== revision || !entry.path.startsWith(`${CHECKER_DIR}/`)) continue;
-    const bytes = readFileSync(path.join(HISTORY, entry.file));
+    const file = path.join(HISTORY, entry.file);
+    const bytes = readFileSync(file);
     if (gitBlobId(bytes) !== entry.blobId || sha256(bytes) !== entry.sha256) {
       throw new Error(`${entry.path}@${entry.revision.slice(0, 8)} does not match the history manifest`);
     }
-    inputs.set(entry.path.slice(CHECKER_DIR.length + 1), bytes);
+    inputs.push({ name: entry.path.slice(CHECKER_DIR.length + 1), file: path.relative(APP, file), pinnedBy: 'history', blobId: entry.blobId, sha256: entry.sha256, bytes });
   }
   for (const [name, blobId] of Object.entries(supplement)) {
-    const bytes = readFileSync(path.join(SUPPLEMENT, 'inputs', key, name));
+    const file = path.join(SUPPLEMENT, 'inputs', key, name);
+    const bytes = readFileSync(file);
     if (gitBlobId(bytes) !== blobId) throw new Error(`${key}/${name} does not match its pinned blob id ${blobId}`);
-    inputs.set(name, bytes);
+    inputs.push({ name, file: path.relative(APP, file), pinnedBy: 'supplement', blobId, sha256: sha256(bytes), bytes });
   }
   for (const required of ['cit294.test.pkl', 'Reconcile.pkl', 'Observation.pkl', 'Claims.pkl', 'canary-reads.txt', 'observations/mat-blocked.json']) {
-    if (!inputs.has(required)) throw new Error(`pinned checker input missing for ${key}: ${required}`);
+    if (!inputs.some((input) => input.name === required)) throw new Error(`pinned checker input missing for ${key}: ${required}`);
   }
   return inputs;
+}
+
+/** One state's checker inputs, each verified against the history manifest or the supplement. Throws on any mismatch. */
+export function loadPinnedChecker(key: RevisionKey): Map<string, Buffer> {
+  return new Map(pinnedInputs(key).map(({ name, bytes }) => [name, bytes]));
 }
 
 export type CheckerRun = {
