@@ -171,6 +171,8 @@ export type AcpTraceConfig = {
 };
 
 export type AcpTraceState = {
+  /** Retained source text keyed by evidence URI + "@" + revision (empty if absent). */
+  evidenceFiles?: Record<string, string>;
   revision: number;
   scenario: string;
   frames: AcpFrame[];
