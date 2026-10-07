@@ -24,6 +24,21 @@ examples {
             question = "Does the check fail when the trace is deleted?"
             did = "Deleting the trace"
             what = "canary-reads.txt removed"
+            findingAt {
+              ["S1"] = "review-1.finding-1"
+              ["S2"] = "review-2.gap-1"
+              ["S3"] = "review-3.finding-1"
+            }
+            arm = null
+            field = null
+            reviewLine {
+              ["S1"] = 5
+              ["S2"] = 7
+              ["S3"] = 28
+            }
+            actionEmbedded = "emptied the blocked arm's embedded trace, the trace the checker reads"
+            whatEmbedded = "the blocked MAT arm's embedded trace emptied"
+            from = "S1"
           }
           state {
             id = "S1-pinned"
@@ -240,6 +255,21 @@ examples {
             question = "Does the check fail when the trace is deleted?"
             did = "Deleting the trace"
             what = "canary-reads.txt removed"
+            findingAt {
+              ["S1"] = "review-1.finding-1"
+              ["S2"] = "review-2.gap-1"
+              ["S3"] = "review-3.finding-1"
+            }
+            arm = null
+            field = null
+            reviewLine {
+              ["S1"] = 5
+              ["S2"] = 7
+              ["S3"] = 28
+            }
+            actionEmbedded = "emptied the blocked arm's embedded trace, the trace the checker reads"
+            whatEmbedded = "the blocked MAT arm's embedded trace emptied"
+            from = "S1"
           }
           state {
             id = "S2-pinned"
