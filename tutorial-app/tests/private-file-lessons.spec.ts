@@ -47,9 +47,43 @@ test('lesson 1: Alice says #117 passes; each of Bob\'s edits still passes it', a
   }
   expect(said).toContain('still left all 28 assertions passing');
 
-  // The lens opens the edit itself: the blocked arm's record, as Bob changed it.
-  await c.getByRole('button', { name: /review-1\.finding-2\.generic-crash/ }).click();
+  // Each lens opens the edit itself first: the record or trace as Bob left it.
   const peek = c.locator('.peekview-widget');
-  await expect(peek.locator('.peekview-title')).toContainText('mat-blocked.json@S1');
-  await expect(peek.locator('.monaco-editor').first()).toContainText('RuntimeError: disk full');
+  const opened = () => peek.locator('.monaco-editor').first().evaluate((element) => {
+    const monaco = (element.ownerDocument.defaultView as any).monaco;
+    return monaco.editor.getEditors().find((e: any) => e.getDomNode() === element).getModel().getValue() as string;
+  });
+  const lens = async (code: string) => {
+    if (await peek.count()) await page.keyboard.press('Escape');
+    await expect(peek).toHaveCount(0);
+    await c.getByRole('button', { name: new RegExp(code.replace(/\./g, '\\.')) }).click();
+    await expect(peek).toBeVisible();
+  };
+  for (const [code, file, holds] of [
+    ['review-1.finding-2.generic-crash', 'mat-blocked.json@S1', '"variant_error": "RuntimeError: disk full"'],
+    ['review-1.finding-3.emptied-bytes', 'mat-unblocked.json@S1', '"returned_bytes_hex": ""'],
+    ['review-1.finding-3.corrupted-pixels', 'png-blocked.json@S1', '"returned_bytes_hex": "ffffffff"'],
+    // The forged read: the trace with the private file's openat added to the blocked arm.
+    ['review-1.finding-1.forged-read', 'canary-reads.txt@S1', '"/work/dummy-canary.txt", O_RDONLY) = 14'],
+    // The deleted trace: the whole transcript Bob removed, as it was retained.
+    ['review-1.finding-1.deleted-trace', 'canary-reads.txt@S1', '### ARM: mat-blocked'],
+  ] as const) {
+    await lens(code);
+    await expect(peek.locator('.peekview-title')).toContainText(file);
+    await expect.poll(opened).toContain(holds);
+  }
+
+  // Beside the edit: the review's own words and the run's result, as files, not
+  // summaries. Only the reviewers' own run output, which nobody kept, is one.
+  await lens('review-1.finding-2.generic-crash');
+  for (const [group, holds] of [
+    ['linear-CIT-294-comment-97e70a90.md', '**A generic variant crash passes as successful blocking.**'],
+    ['result.txt@S1', 'mutation: the blocked MAT arm refused with RuntimeError: disk full'],
+  ] as const) {
+    const location = peek.locator(`[aria-level="2"][aria-label*="in ${group} on line"]`);
+    if (!(await location.count())) await peek.locator(`[aria-level="1"][aria-label*="in ${group},"]`).click();
+    await location.first().click();
+    await expect.poll(opened).toContain(holds);
+    expect(await opened()).not.toContain('Evidence summary');
+  }
 });

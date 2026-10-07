@@ -104,7 +104,7 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
     await page.locator('.codelens-decoration a', { hasText: `${finding}.deleted-trace` }).click();
     await expect(page.locator('.peekview-widget')).toHaveCount(0);
     await page.locator('.codelens-decoration a', { hasText: `${finding}.forged-read` }).click();
-    const widget = await peekSummary(page, 'an openat of the private file');
+    const widget = await peekSummary(page, 'REPRODUCTION');
     await expect(widget).toContainText('an openat of the private file, /work/dummy-canary.txt, added to the mat-blocked arm');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
   });
