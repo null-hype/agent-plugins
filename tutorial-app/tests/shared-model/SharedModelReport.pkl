@@ -1,0 +1,200 @@
+/// A lesson of part 5's "Shared model" chapter: one revision of the shared
+/// model, reviewed by Pkl, in the review form part 4 and the private-document
+/// chapter use (`cit294-review-v1`).
+///
+/// The Client holds the revision as a commit whose subject is the lesson's
+/// question and whose body says what changed. Pkl is the reviewer: the
+/// Questions asked of the revision come back as suggestions, the same words at
+/// every revision, and each accepted line carries what Pkl said of its member.
+///
+/// The chapter is one ACP session, a turn per lesson: a lesson starts from the
+/// previous lesson's solved trace with its own revision's prompt added, and
+/// Solve adds Pkl's reply.
+///
+/// What is CLAIMED lives here and in `SharedModel.pkl`. What Pkl SAID is read
+/// from the part's run directory, where the `evaluate-model` collector wrote it.
+///
+///   pkl eval SharedModelReport.pkl -p run=<part run dir> -p revision=<revision>
+module SharedModelReport
+
+import "pkl:json"
+
+import "../../../src/jev/pkl/Question.pkl"
+import "SharedModel.pkl" as model
+import "../rails-probes/traces/AcpTrace.pkl"
+
+/// The part's run directory.
+run: String = read("prop:run")
+/// The revision this lesson reviews.
+revision: String = read("prop:revision")
+
+local chapter: List<String> = model.revisions.keys.toList().sortBy((r) -> model.revisions[r].lesson.order)
+local told: model.Revision = model.revisions.getOrNull(revision) ?? throw("no revision \(revision) in SharedModel.pkl")
+local turns: List<String> = chapter.take(chapter.indexOf(revision) + 1)
+local function idsOf(rev: String): List<String> = model.questions.keys.toList().filter((id) -> model.questions[id].revision == rev)
+ids: List<String> = idsOf(revision)
+local function question(id: String): model.Asked = model.questions[id]
+local function member(id: String): String = (question(id).judge as Question.Model).member
+
+/// The collector's record of what Pkl said.
+local function collected(id: String): Dynamic =
+  new json.Parser {}.parse(read("\(run)/\(question(id).revision)/\(member(id)).json").text) as Dynamic
+local function evaluation(id: String): Dynamic = collected(id).evaluation
+local function refused(id: String): Boolean = evaluation(id).exitCode != 0
+/// What the model lets through: the value, or 0 when Pkl refuses it.
+local function answer(id: String): Number = if (refused(id)) 0 else evaluation(id).value as Number
+local function outcome(id: String): Question.Outcome = Question.outcome(question(id), answer(id))
+local pklVersion: String = collected(ids.first).pkl
+
+/// The revision's file, as the lesson holds it.
+local function fileOf(rev: String): String = "revisions/\(rev)/\(model.file)"
+local function lines(rev: String): List<String> = read("revisions/\(rev)/\(model.file)").text.split("\n")
+local function memberLine(rev: String, name: String): Int = lines(rev).findIndex((l) -> l.startsWith("\(name):")) + 1
+
+local function range(id: String): String =
+  let (e = question(id).expected) "\(e.min)–\(e.max)"
+
+local function answerText(id: String): String =
+  if (refused(id))
+    "Pkl refuses \(member(id)): \(evaluation(id).error.message.replaceAll("\n", " ")) The model lets 0 through; expected \(range(id)): \(outcome(id))."
+  else
+    "Pkl accepts \(member(id)) = \(evaluation(id).value); expected \(range(id)): \(outcome(id))."
+
+/// The rows the lens opens: where Pkl's error points in this revision (or the
+/// member as evaluated), then the member in every earlier revision, oldest first.
+local function rows(id: String): Listing<AcpTrace.Row> =
+  let (asked = question(id).revision)
+  new Listing<AcpTrace.Row> {
+  when (refused(id)) {
+    for (i, at in evaluation(id).error.locations) {
+      new {
+        role = if (i == 0 && evaluation(id).error.locations.length > 1) "constraint" else "value"
+        uri = fileOf(asked)
+        revision = asked
+        line = at.line
+        column = at.column
+        endColumn = at.endColumn
+        detail = "Where Pkl's error points in the \(asked) revision."
+      }
+    }
+  } else {
+    new {
+      role = "value"
+      uri = fileOf(asked)
+      revision = asked
+      line = memberLine(asked, member(id))
+      detail = "\(member(id)) as the \(asked) revision holds it."
+    }
+  }
+  for (rev in chapter.take(chapter.indexOf(asked))) {
+    new {
+      role = "value"
+      uri = fileOf(rev)
+      revision = rev
+      line = memberLine(rev, member(id))
+      detail = "\(member(id)) as the \(rev) revision holds it."
+    }
+  }
+}
+
+local function probe(id: String): AcpTrace.Probe = new {
+  action = "pkl eval -x \(member(id)) \(fileOf(question(id).revision))"
+  question = question(id).ask
+  diagnostic {
+    // The finding is Pkl's: an error when Pkl refuses the value, whatever the
+    // Question's outcome, which the message states.
+    severity = if (refused(id)) "error" else if (outcome(id) == "in-range") "info" else "warning"
+    code = id
+    message = "\(code): \(answerText(id))"
+    evaluationId = "\(pklVersion):\(id)"
+    related = rows(id)
+  }
+}
+
+local function ask(rev: String): AcpTrace.ClientFrame = new {
+  action = "send prompt"
+  envelope {
+    id = chapter.indexOf(rev) + 1
+    params {
+      sessionId = "shared-model"
+      prompt { new { text = "\(model.revisions[rev].lesson.title)?\n\n\(model.revisions[rev].change)\nThe shared model is \(fileOf(rev))." } }
+    }
+  }
+  provenance {
+    recordingId = "shared-model#\(rev)"
+    capturedAt = "generated"
+    scripted = "The subject question and the change are authored in SharedModel.pkl; the file is the committed revision."
+  }
+}
+
+local function reply(rev: String): AcpTrace.AgentFrame = new {
+  action = "reply with finding"
+  speaker = "pkl"
+  envelope {
+    id = chapter.indexOf(rev) + 1
+    result {
+      _meta {
+        diagnostic {
+          severity = if (idsOf(rev).any((id) -> refused(id))) "error" else "info"
+          code = "pkl.\(rev)"
+          message = "\(code): \(idsOf(rev).map((id) -> "\(question(id).ask) \(answerText(id))").join(" "))"
+          subject {
+            role = "fact"
+            uri = fileOf(rev)
+            revision = rev
+            detail = model.revisions[rev].change
+          }
+          related { for (id in idsOf(rev)) { for (row in rows(id)) { row } } }
+          evaluationId = "\(pklVersion):\(rev)"
+        }
+        probes { for (id in idsOf(rev)) { probe(id) } }
+      }
+    }
+  }
+  provenance {
+    recordingId = "shared-model#\(rev)/reply"
+    capturedAt = "generated"
+    scripted = "ACP framing authored; every value and error is what \(pklVersion) said of the committed revision."
+  }
+}
+
+starter: AcpTrace.Trace = new {
+  scenario = "cit294-review-v1"
+  frames {
+    for (rev in turns.dropLast(1)) { ask(rev); reply(rev) }
+    ask(revision)
+  }
+  nextTurn {
+    actor = "agent"
+    speaker = "pkl"
+    action = "evaluate the \(revision) revision"
+  }
+}
+
+solved: AcpTrace.Trace = new {
+  scenario = "cit294-review-v1"
+  frames {
+    for (rev in turns) { ask(rev); reply(rev) }
+  }
+  nextTurn = null
+}
+
+local bridge =
+  """
+  import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+  <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+  """
+
+output {
+  value = new Mapping {
+    ["ids"] = ids
+    // The revision's file, which arrives with its commit.
+    ["incoming"] = new Mapping { [fileOf(revision)] = read("revisions/\(revision)/\(model.file)").text }
+    ["starter"] = AcpTrace.renderer.renderDocument(starter)
+    ["solved"] = AcpTrace.renderer.renderDocument(solved)
+    ["prose"] = "\(bridge)\n\(told.lesson.prose)\n"
+  }
+  renderer = new JsonRenderer {}
+}

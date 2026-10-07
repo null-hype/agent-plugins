@@ -87,6 +87,7 @@ export default function AcpTraceBridge({
       revision: revisionRef.current,
       fixture: resolveAcpTraceFixture(ref, loadFrame),
       scenario: resolvedConfig.scenario,
+      readFile: (path) => documents[path]?.value,
     });
   }, [resolvedConfig.scenario, resolvedConfig.traceFile, traceText, documents]);
 

@@ -3,6 +3,7 @@ import type { StorybookConfig } from '@storybook/react-vite';
 import { mergeConfig } from 'vite';
 import { otelWarmLogPage } from './otel-warm-log-page';
 import { acpTracePages } from './acp-trace-pages';
+import { sharedModel } from './shared-model';
 
 const config: StorybookConfig = {
 	stories: ['../src/stories/**/*.mdx', '../src/stories/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
@@ -12,7 +13,7 @@ const config: StorybookConfig = {
 	staticDirs: [{ from: '../node_modules/monaco-editor/min', to: '/monaco' }],
 	async viteFinal(config) {
 		return mergeConfig(config, {
-			plugins: [otelWarmLogPage(), acpTracePages()],
+			plugins: [otelWarmLogPage(), acpTracePages(), sharedModel()],
 			// Astro compiles components with the automatic JSX runtime, so the
 			// bridges don't `import React`; match that here.
 			esbuild: { jsx: 'automatic' },
