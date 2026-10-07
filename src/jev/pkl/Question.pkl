@@ -6,9 +6,7 @@
 ///
 /// - a Jev Noul judge (`Jev.NoulQuestion`), whose answer is a probability, or
 /// - the deterministic checker (`Checker`), whose answer is what the checker did
-///   to the collected evidence (`CheckerAnswer`): it noticed, or it did not, or
-/// - a Pkl model (`Model`), whose answer is the value Pkl lets through for one of
-///   its members: the value as evaluated, or 0 when Pkl refuses it.
+///   to the collected evidence (`CheckerAnswer`): it noticed, or it did not.
 ///
 /// `expected` is the range a sound answer falls in, on a 0 to 1 scale. An answer
 /// outside it is data, recorded like any other. Only an answer that could not be
@@ -33,20 +31,11 @@ class Checker {
   type: "checker" = "checker"
 }
 
-/// A Pkl model as the answerer. Its answer is a member's value as Pkl
-/// evaluates it, on the 0 to 1 scale, or 0 when Pkl refuses the value (a
-/// violated type constraint): what the model lets through.
-class Model {
-  type: "model" = "model"
-  /// The member of the model the Question reads.
-  member: String(!isEmpty)
-}
-
 open class Question {
   /// Questions whose answers this one's collector reads.
   dependencies: Listing<Id> = new Listing {}
   /// Who answers. A Jev judge unless the Question says otherwise.
-  judge: *Jev.NoulQuestion|Checker|Model
+  judge: *Jev.NoulQuestion|Checker
   /// The name of the code that gathers the evidence.
   collector: String(!isEmpty)
   requiredEvidence: Listing<String(!isEmpty)>(!isEmpty)

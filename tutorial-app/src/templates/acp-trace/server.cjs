@@ -1,5 +1,3 @@
-const jevViewer = require('./jev-viewer.cjs');
-
 // CIT-330: a reply's probes may form a tree, where a probe with \`children\`
 // rests on them. Acceptance indexes count the whole tree in preorder, so a
 // flat list (no children) keeps the indexes it always had. These run in both
@@ -310,24 +308,6 @@ function renderClientPage() {
       // Captured artifacts are keyed by their source URI and revision. A detail
       // fallback is explicitly a summary, never impersonating the source file.
       const peekModels = new Map();
-      // A location marked editable is someone's working copy, not retained
-      // evidence: Peek opens it writable, and saving it (Ctrl+S) hands the text
-      // to the host, which owns what a save means. Its text is reset from the
-      // host only when the saved text changes, never under someone's typing.
-      const savedText = new Map();
-      const workingSource = new Map();
-      function workingLocation(monaco, entry, text) {
-        const path = entry.uri.replace(/^[a-z]+:\\/\\/[^/]*\\//i, '').replace(/^\\/+/, '');
-        const uri = monaco.Uri.from({ scheme: 'working', path: '/' + entry.revision + '/' + path });
-        let working = monaco.editor.getModel(uri);
-        if (!working) working = monaco.editor.createModel(text, /\\.pkl$/.test(path) ? 'pkl' : 'plaintext', uri);
-        else if (savedText.get(uri.toString()) !== text) working.setValue(text);
-        savedText.set(uri.toString(), text);
-        workingSource.set(uri.toString(), entry);
-        const line = Math.min(Math.max(1, entry.line || 1), working.getLineCount());
-        const end = Math.min(Math.max(line, entry.endLine || line), working.getLineCount());
-        return { uri, range: new monaco.Range(line, entry.column || 1, end, entry.endColumn || working.getLineMaxColumn(end)) };
-      }
       function evidenceLocations(monaco, related) {
         // Peek sorts its groups by URI. The authority, which no label shows,
         // keeps the rows' own order: the revision under review comes first.
@@ -339,7 +319,6 @@ function renderClientPage() {
         return related.map((entry) => {
           const key = entry.uri + '@' + (entry.revision || '');
           const captured = lastState && lastState.evidenceFiles && lastState.evidenceFiles[key];
-          if (entry.editable && typeof captured === 'string') return workingLocation(monaco, entry, captured);
           const isSource = typeof captured === 'string';
           const text = isSource ? captured :
             'Evidence summary (' + entry.role + ')\\nSource: ' + key +
@@ -388,17 +367,6 @@ function renderClientPage() {
           const listener = created.onDidChangeModel(lockEvidence);
           created.onDidDispose(() => listener.dispose());
           lockEvidence();
-          // Peek's embedded editor has no addCommand; onKeyDown is on every editor.
-          created.onKeyDown((event) => {
-            if (!(event.ctrlKey || event.metaKey) || event.keyCode !== monaco.KeyCode.KeyS) return;
-            const working = created.getModel();
-            const entry = working && workingSource.get(working.uri.toString());
-            if (!entry) return;
-            event.preventDefault();
-            event.stopPropagation();
-            window.parent.postMessage({ type: 'acp-trace-working-saved', uri: entry.uri, revision: entry.revision,
-              text: working.getValue() }, '*');
-          });
         });
         monaco.languages.setLanguageConfiguration(languageId, { comments: { lineComment: '#' } });
         monaco.languages.setMonarchTokensProvider(languageId, {
@@ -931,7 +899,7 @@ function renderClientPage() {
           commitEnd = 0;
           commitRanges = [];
         }
-        const records = ['smuggling-v1', 'jev-report-v1'].includes(payload.scenario)
+        const records = payload.scenario === 'smuggling-v1'
           ? renderRebaseTodoRecords(payload)
           : payload.scenario === 'cit294-review-v1'
             ? renderReviewRecords(payload)
@@ -964,7 +932,7 @@ function renderAgentPage() {
   return `${sharedHead('ACP Trace: Agent')}
   ${reasoningViewStyles()}
   <body>
-    <main class="agent"><section id="jev-view" aria-label="Jev diagnostics" hidden></section><section id="trace-view" aria-label="Agent reasoning" hidden></section><section id="chat-view" aria-label="Agent conversation" hidden></section><div id="monaco-root"></div></main>
+    <main class="agent"><section id="trace-view" aria-label="Agent reasoning" hidden></section><section id="chat-view" aria-label="Agent conversation" hidden></section><div id="monaco-root"></div></main>
     <script>
       ${monacoLoaderScript()}
 
@@ -1187,21 +1155,6 @@ function renderAgentPage() {
         return true;
       }
 
-      const jevViewer = ${jevViewer.viewer.toString()};
-      const jevHost = document.getElementById('jev-view');
-      const jevRoot = jevHost.attachShadow({ mode: 'open' });
-      jevRoot.innerHTML = ${JSON.stringify('<style>' + jevViewer.styles.replace(':root', ':host') + '\n:host{display:block;height:100%;overflow:auto}.workspace{min-height:100%;display:block}aside{padding:12px}aside h3{margin:12px 10px}#history{display:flex;flex-wrap:wrap}#history button{width:auto}#files{display:flex;flex-wrap:wrap}#files button{width:auto}#detail{border-left:0}#source{min-height:0}#detail h2{margin:16px 0}</style>' + jevViewer.markup)};
-      function renderJevView(payload) {
-        const active = payload.scenario === 'jev-report-v1';
-        jevHost.hidden = !active;
-        jevHost.style.display = active ? 'block' : 'none';
-        if (!active) return false;
-        const frame = [...payload.frames].reverse().find(frame => frame.reportView);
-        document.getElementById('trace-view').hidden = true;
-        if (frame) jevViewer(frame.reportView, jevRoot);
-        return true;
-      }
-
       let editor = null;
       let model = null;
       let currentRevision = null;
@@ -1250,7 +1203,7 @@ function renderAgentPage() {
       async function applyState(payload) {
         if (typeof payload.revision === 'number' && payload.revision === currentRevision) return;
         currentRevision = payload.revision;
-        document.querySelector('main.agent').classList.toggle('reasoning', renderJevView(payload) || renderChatView(payload) || renderReasoningView(payload));
+        document.querySelector('main.agent').classList.toggle('reasoning', renderChatView(payload) || renderReasoningView(payload));
         await ensureEditor();
         const next = renderEnvelopes(payload);
         if (model.getValue() !== next) model.setValue(next);
