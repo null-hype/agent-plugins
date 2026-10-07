@@ -96,6 +96,19 @@ local function visit(questions: Mapping<Id, Question>, id: String, trail: List<S
   else if (trail.contains(id)) throw("Question dependency cycle at \(id)")
   else questions[id].dependencies.toList().every((dep) -> visit(questions, dep, trail + List(id)))
 
+// CIT-334: one Question asked of successive workspace states, as a record.
+//
+// The declared/observed/checked/baseline split is Vaults.pkl's
+// (.dagger/internal/devenv-base/pkl): a declaration is what was claimed, an
+// observation is what was read back, `validInvestigation` is the check, and a
+// test module's examples are the committed baseline. What this adds is
+// provenance: every resource is retained under an immutable id or missing with
+// a reason, and is either historical (it existed when the claim was made) or
+// reproduced (it was made again since). Origin describes a resource; it is not a
+// validity rule here. Retained original output substantiates an answer as well
+// as a reproduction does; a case that needs a particular origin says so in its
+// own adapter tests.
+
 /// A retained resource or an explicit gap. A trace URI is provenance, never a
 /// promise that the workspace can be restored from it.
 class Evidence {
@@ -121,37 +134,58 @@ class WorkspaceState {
   limitations: Listing<String(!isEmpty)> = new {}
 }
 
+/// A probe: one change made to a copy of a captured state so the Question can be
+/// asked of it. It stays inside the state: the source does not change, and the
+/// state itself is not replaced.
+class Mutation {
+  action: String(!isEmpty)
+  /// The state's inputs the probe removed or rewrote, by uri.
+  affects: Listing<String(!isEmpty)>(!isEmpty)
+  evidence: Listing<Evidence>(!isEmpty)
+}
+
+/// A change of the investigation itself: the workspace moves to another
+/// captured state (another source) because of a finding.
 class Transition {
   from: String(!isEmpty)
   to: String(!isEmpty)
   action: String(!isEmpty)
+  /// The finding that prompted it: the one the record it leaves was delivered for.
+  finding: String(!isEmpty)
   evidence: Listing<Evidence>(!isEmpty)
 }
 
-/// A delivery plan is distinct from evidence of an installed feature version.
+/// Where a review round is delivered. A plan names its finding and scenario and
+/// may not have a version yet; a captured delivery has its version and the
+/// evidence that it was installed.
 class Delivery {
   feature: String(!isEmpty)
-  version: String(matches(Regex("[0-9]{8}\\.[0-9]{4}")))
+  version: String(matches(Regex("[0-9]{8}\\.[0-9]{4}")))?
   status: "planned"|"captured"
   finding: String(!isEmpty)
   scenario: String(!isEmpty)
   evidence: Evidence?
 }
 
+/// A claim, in its own words, and the value it states next to the value
+/// observed for the same property. A disagreement is data, not an invalid record.
 class Declaration {
   text: String(!isEmpty)
   evidence: Evidence
+  property: String(!isEmpty)?
+  declared: (Number|String)?
+  observed: (Number|String)?
+  observedFrom: Evidence?
 }
 
 /// The shared Question still defines the collector, judge and expectation.
 /// A forecast is a probability, not an expectation or an observed answer.
 class EvaluationRecord {
-  id: String(!isEmpty)
   questionId: Id
   question: Question
-  before: WorkspaceState
-  after: WorkspaceState
-  transition: Transition
+  state: WorkspaceState
+  /// The probe the answer was collected under; null when asked of the state as captured.
+  mutation: Mutation?
   delivery: Delivery
   declarations: Listing<Declaration> = new {}
   forecast: Number(isFinite, isBetween(0, 1))?
@@ -161,19 +195,64 @@ class EvaluationRecord {
   fixed outcome: Outcome = module.outcome(question, answer)
 }
 
+/// The same Question across states, in order, and what moved it between them.
+class Investigation {
+  questionId: Id
+  records: Listing<EvaluationRecord>(!isEmpty)
+  transitions: Listing<Transition> = new {}
+}
+
+local function stateValid(s: WorkspaceState): Boolean =
+  validEvidence(s.source) && s.source.availability == "retained" &&
+  s.inputs.toList().every((e) -> validEvidence(e)) &&
+  (s.image == null || validEvidence(s.image!!)) &&
+  (s.snapshot == null || validEvidence(s.snapshot!!))
+
+local function declarationValid(d: Declaration): Boolean =
+  validEvidence(d.evidence) &&
+  ((d.declared == null && d.observed == null) || d.property != null) &&
+  (if (d.observed == null) d.observedFrom == null
+   else d.observedFrom != null && validEvidence(d.observedFrom!!) && d.observedFrom!!.availability == "retained")
+
 function validRecord(r: EvaluationRecord): Boolean =
-  r.before.id != r.after.id &&
-  r.transition.from == r.before.id && r.transition.to == r.after.id &&
-  validEvidence(r.before.source) && validEvidence(r.after.source) &&
-  List(r.before, r.after).every((s) ->
-    s.inputs.toList().every((e) -> validEvidence(e)) &&
-    (s.image == null || validEvidence(s.image!!)) &&
-    (s.snapshot == null || validEvidence(s.snapshot!!))) &&
-  r.transition.evidence.toList().every((e) -> validEvidence(e)) &&
-  r.declarations.toList().every((d) -> validEvidence(d.evidence)) &&
+  stateValid(r.state) &&
+  (r.mutation == null || (
+    r.mutation!!.evidence.toList().every((e) -> validEvidence(e)) &&
+    r.mutation!!.affects.toList().every((uri) -> r.state.inputs.toList().any((e) -> e.uri == uri)))) &&
+  r.declarations.toList().every((d) -> declarationValid(d)) &&
   r.observations.toList().every((e) -> validEvidence(e)) &&
   (r.answer == null || (if (r.question.judge is Checker) r.answer is CheckerAnswer else r.answer is Number)) &&
   (r.answer == null || r.observations.toList().any((e) -> e.availability == "retained")) &&
   (if (r.delivery.status == "captured")
-    r.delivery.evidence != null && validEvidence(r.delivery.evidence!!) && r.delivery.evidence!!.availability == "retained"
+    r.delivery.version != null && r.delivery.evidence != null &&
+    validEvidence(r.delivery.evidence!!) && r.delivery.evidence!!.availability == "retained"
    else r.delivery.evidence == null)
+
+/// Every record is valid and asks the same Question; no two records share a
+/// state id, so a transition names each state unambiguously; each transition
+/// links one record's state to the next one's, changes the source, and is
+/// prompted by the finding the record it leaves was delivered for; no two
+/// rounds share a delivered version.
+function validInvestigation(i: Investigation): Boolean =
+  let (records = i.records.toList())
+  let (transitions = i.transitions.toList())
+  let (versions = records.map((r) -> r.delivery.version).filter((v) -> v != null))
+    records.every((r) -> r.questionId == i.questionId && r.question == records.first.question && validRecord(r)) &&
+    distinctStates(i) &&
+    transitions.length == records.length - 1 &&
+    transitions.filterIndexed((n, t) ->
+      t.from == records[n].state.id && t.to == records[n + 1].state.id &&
+      records[n].state.source.immutableId != records[n + 1].state.source.immutableId &&
+      t.evidence.toList().every((e) -> validEvidence(e))).length == transitions.length &&
+    transitionsFollowFindings(i) &&
+    versions.length == versions.toSet().length
+
+/// No two records share a state id.
+function distinctStates(i: Investigation): Boolean =
+  let (ids = i.records.toList().map((r) -> r.state.id)) ids.length == ids.toSet().length
+
+/// Each transition's finding is the finding the record it leaves was delivered for.
+function transitionsFollowFindings(i: Investigation): Boolean =
+  let (records = i.records.toList())
+    i.transitions.toList().filterIndexed((n, t) -> n < records.length && t.finding == records[n].delivery.finding).length ==
+      i.transitions.length

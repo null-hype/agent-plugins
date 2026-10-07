@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answerJson, answerText, reproductionDir, solvedFixture, type ProbeName } from './fixture';
 import { FORGED_LINE, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChecker, type CheckerRun, type RevisionKey } from './probes';
+import { RECORDED, captureInvestigation, evaluateRecord, writeCapture } from './records';
 
 // CIT-320: does the checker investigation agree with itself? The probes spec
 // asks the questions and records the answers; this spec trusts none of it. It
@@ -14,6 +15,12 @@ import { FORGED_LINE, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChec
 // noticed a probe is not a rule: that is the answer, recorded as data.
 // src/jev/pkl/Consistency.pkl decides; the facts and its verdict are written
 // to CONSISTENCY_OUT (default test-results/rails-probes/consistency).
+//
+// CIT-334: the same pass generates the shared evaluation record of the
+// `deleted-trace` Question (records.ts, traces/ReplayRecord.pkl) and requires it
+// to validate, to match its committed baseline, to reject a tampered capture,
+// and to say what the re-run says. Only the revisions records.ts names in
+// RECORDED have a record; each of those must, and no other may.
 
 test.skip(pklVersion() === null, 'pkl is not on PATH');
 
@@ -63,10 +70,63 @@ function attempt(fn: () => Rule): Rule {
   }
 }
 const sameRun = (a: CheckerRun, b: CheckerRun) => answerJson(a) === answerJson(b);
+const TRACES = path.join(APP, 'tests/rails-probes/traces');
+const SCHEMA_TESTS = ['Question.test.pkl', 'EvaluationRecord.test.pkl'].map((f) => path.join(APP, '../src/jev/pkl', f));
+
+/** `pkl test` as a rule: it held when every fact and example passed, and nothing was written instead of compared. */
+function pklTest(args: string[], what: string): Rule {
+  try {
+    const output = execFileSync('pkl', ['test', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return rule(!/examples written/.test(output) || !!process.env.CIT307_UPDATE, `${what}: pkl wrote examples instead of comparing them`);
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    // pkl exits 10 when it wrote examples: the rewrite CIT307_UPDATE asked for, otherwise a missing baseline.
+    if (failure.status === 10 && process.env.CIT307_UPDATE) return { held: true };
+    const failed = `${failure.stdout ?? ''}${failure.stderr ?? ''}`.split('\n').filter((l) => /✘|Error|expected|written/i.test(l));
+    return rule(false, `${what}: ${failed.slice(0, 3).join(' | ').trim()}`);
+  }
+}
+
+type GeneratedRecord = { state: { id: string }; answer: CheckerRun; outcome: string; declarations: { property: string; observed: number }[] };
 
 test('the checker investigation is consistent', () => {
   const runRules: Record<string, Rule> = {};
   const findings: Record<string, unknown> = {};
+
+  // CIT-334: the record's schema, the generated records against their baseline,
+  // and a tampered capture that must not evaluate.
+  mkdirSync(OUT, { recursive: true });
+  runRules['record-schema'] = pklTest(SCHEMA_TESTS, 'Question.test.pkl, EvaluationRecord.test.pkl');
+  const capture = writeCapture(path.join(OUT, 'records/capture.json'));
+  runRules['record-baseline'] = pklTest(
+    [path.join(TRACES, 'ReplayRecord.test.pkl'), '-p', `capture=${capture}`, ...(process.env.CIT307_UPDATE ? ['--overwrite'] : [])],
+    'ReplayRecord.test.pkl',
+  );
+  let records: GeneratedRecord[] = [];
+  runRules['record-valid'] = attempt(() => {
+    const generated = evaluateRecord(captureInvestigation());
+    writeFileSync(path.join(OUT, 'records/investigation.json'), generated);
+    records = JSON.parse(generated).records;
+    return { held: true };
+  });
+  runRules['record-scope'] = attempt(() => {
+    const ids = records.map((r) => r.state.id);
+    const expected = RECORDED.map((key) => `${key}-pinned`);
+    return rule(JSON.stringify(ids) === JSON.stringify(expected),
+      `generated records for ${ids.join(', ') || 'nothing'}; the recorded revisions are ${expected.join(', ')}`);
+  });
+  runRules['record-rejects-tampered'] = attempt(() => {
+    // A gap given an id, as though it had been retained.
+    const tampered = captureInvestigation();
+    const gap = tampered.records[0].observations.find((e) => e.availability === 'missing')!;
+    gap.immutableId = 'sha256:invented';
+    try {
+      evaluateRecord(tampered);
+    } catch {
+      return { held: true };
+    }
+    return rule(false, 'a missing observation with an invented id still evaluated as a record');
+  });
 
   for (const [i, key] of ORDER.entries()) {
     const state = key.toLowerCase();
@@ -191,11 +251,24 @@ test('the checker investigation is consistent', () => {
         `the lesson does not say "${answerText(probe, answer)}" or carries a different result.txt`,
       );
 
+      // CIT-334: the generated record says what the re-run says, for each recorded revision.
+      if (probe === 'deleted-trace' && RECORDED.includes(key)) {
+        rules['record-agrees'] = attempt(() => {
+          const generated = records.find((r) => r.state.id === `${key}-pinned`);
+          if (!generated) return rule(false, `no generated record for ${key}`);
+          const outcome = noticed(answer) ? 'in-range' : 'out-of-range';
+          const observed = generated.declarations.find((d) => d.property === 'assertsTotal')?.observed;
+          return rule(
+            !!recomputed && sameRun(recomputed, generated.answer) && generated.outcome === outcome && observed === baseline.assertsTotal,
+            `record: ${JSON.stringify(generated.answer)}, ${generated.outcome}, ${observed} asserts at baseline; re-run: ${recomputed ? answerJson(recomputed).replace(/\s+/g, ' ') : 'nothing'}, ${outcome}, ${baseline.assertsTotal}`,
+          );
+        });
+      }
+
       findings[id] = { answerer: 'checker', value: noticed(answer) ? 1 : 0, expected: EXPECTED, rules };
     }
   }
 
-  mkdirSync(OUT, { recursive: true });
   const factsFile = path.join(OUT, 'consistency-facts.json');
   writeFileSync(factsFile, `${JSON.stringify({ runId: process.env.CONSISTENCY_RUN_ID ?? 'local', runRules, findings }, null, 2)}\n`);
   const verdict = execFileSync('pkl', ['eval', '-f', 'json', '-p', `facts=${factsFile}`, path.join(APP, '../src/jev/pkl/Consistency.pkl')], { encoding: 'utf8' });
