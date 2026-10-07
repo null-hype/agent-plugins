@@ -266,10 +266,58 @@ function renderClientPage() {
         evidenceWidgetLine = lineNumber;
       }
 
+      // CIT-329: review evidence uses Monaco's native inline Peek. Other
+      // trace scenarios retain their existing content-widget presentation.
+      // Captured artifacts are keyed by their source URI and revision. A detail
+      // fallback is explicitly a summary, never impersonating the source file.
+      const peekModels = new Map();
+      function evidenceLocations(monaco, related) {
+        return related.map((entry) => {
+          const key = entry.uri + '@' + (entry.revision || '');
+          const captured = lastState && lastState.evidenceFiles && lastState.evidenceFiles[key];
+          const isSource = typeof captured === 'string';
+          const text = isSource ? captured :
+            'Evidence summary (' + entry.role + ')\\nSource: ' + key +
+            (entry.line ? ':' + entry.line : '') + '\\n\\n' + entry.detail;
+          const path = entry.uri.replace(/^[a-z]+:\\/\\/[^/]*\\//i, '').replace(/^\\/+/, '');
+          // Summaries may cite the same source but describe different ranges.
+          // Preserve that distinction without creating models on every render.
+          const identity = key + (isSource ? '' : ':' + entry.role + ':' + entry.line + ':' + entry.detail);
+          let evidenceModel = peekModels.get(identity);
+          if (!evidenceModel) {
+            const uri = monaco.Uri.from({ scheme: 'evidence',
+              path: '/' + (isSource ? 'captured' : 'summary') + '/' + entry.role + '/' + path,
+              query: 'rev=' + encodeURIComponent(entry.revision || '') +
+                (isSource ? '' : '&entry=' + peekModels.size),
+            });
+            evidenceModel = monaco.editor.getModel(uri) || monaco.editor.createModel(text,
+              isSource && /\\.json(?:#.*)?$/.test(entry.uri) ? 'json' : 'plaintext', uri);
+            peekModels.set(identity, evidenceModel);
+          } else if (evidenceModel.getValue() !== text) {
+            evidenceModel.setValue(text);
+          }
+          const line = isSource ? Math.min(Math.max(1, entry.line || 1), evidenceModel.getLineCount()) : Math.min(4, evidenceModel.getLineCount());
+          return { uri: evidenceModel.uri,
+            range: new monaco.Range(line, 1, line, evidenceModel.getLineMaxColumn(line)) };
+        });
+      }
+
       function configureLanguage(monaco) {
         const languageId = 'acp-warm-log';
         if (monaco.languages.getLanguages().some((l) => l.id === languageId)) return;
         monaco.languages.register({ id: languageId });
+        // Peek inherits the editable log's options. Lock retained evidence via
+        // public editor lifecycle APIs when its model is attached or switched.
+        monaco.editor.onDidCreateEditor((created) => {
+          const lockEvidence = () => {
+            if (created.getModel()?.uri.scheme === 'evidence') {
+              created.updateOptions({ readOnly: true, domReadOnly: true });
+            }
+          };
+          const listener = created.onDidChangeModel(lockEvidence);
+          created.onDidDispose(() => listener.dispose());
+          lockEvidence();
+        });
         monaco.languages.setLanguageConfiguration(languageId, { comments: { lineComment: '#' } });
         monaco.languages.setMonarchTokensProvider(languageId, {
           tokenizer: {
@@ -283,6 +331,7 @@ function renderClientPage() {
 
         monaco.languages.registerHoverProvider(languageId, {
           provideHover(hoverModel, position) {
+            if (hoverModel !== model) return null;
             const diagnostic = diagnosticsByLine[position.lineNumber];
             if (!diagnostic) return null;
             const related = relatedByLine[position.lineNumber] || [];
@@ -343,6 +392,7 @@ function renderClientPage() {
         monaco.languages.registerCodeLensProvider(languageId, {
           onDidChange: lensChanged.event,
           provideCodeLenses(lensModel) {
+            if (lensModel !== model) return { lenses: [], dispose() {} };
             const lenses = [];
             for (let lineNumber = 1; lineNumber <= lensModel.getLineCount(); lineNumber += 1) {
               const diagnostic = diagnosticsByLine[lineNumber];
@@ -360,7 +410,10 @@ function renderClientPage() {
               const prefix = diagnostic.severity === 'warning' ? '⚠ ' : diagnostic.severity === 'info' ? 'ℹ ' : '✗ ';
               lenses.push({
                 range: new monaco.Range(lineNumber, 1, lineNumber, 1),
-                command: { id: PEEK_EVIDENCE_COMMAND, title: prefix + diagnostic.code + ' · ' + relatedCount + ' related', arguments: [lineNumber] },
+                command: lastState && lastState.scenario === 'cit294-review-v1'
+                  ? { id: 'editor.action.peekLocations', title: prefix + diagnostic.code + ' · ' + relatedCount + ' related',
+                      arguments: [lensModel.uri, { lineNumber, column: 1 }, evidenceLocations(monaco, relatedByLine[lineNumber] || []), 'peek'] }
+                  : { id: PEEK_EVIDENCE_COMMAND, title: prefix + diagnostic.code + ' · ' + relatedCount + ' related', arguments: [lineNumber] },
               });
             }
             return { lenses, dispose() {} };
