@@ -693,7 +693,7 @@ function renderClientPage() {
         const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
         for (const frame of frames.slice(lastPrompt + 1)) {
           const meta = frame.actor === 'agent' ? metaOf(frame.envelope || {}) : null;
-          if (meta && meta.diagnostic) return probeTree((meta.probes || []).slice(0, 2));
+          if (meta && meta.diagnostic) return probeTree(meta.probes || []);
         }
         return [];
       }
@@ -1142,7 +1142,7 @@ function renderAgentPage() {
             const planned = (metaOf(envelope) || {}).probes || [];
             if (planned.length) {
               const list = el('ul', 'divergence');
-              planned.slice(0, 2).forEach((probe, index) => {
+              planned.forEach((probe, index) => {
                 const item = el('li', '');
                 item.appendChild(el('span', 'source', 'Probe ' + (index + 1)));
                 item.appendChild(document.createTextNode(probe.question));
@@ -1326,7 +1326,7 @@ function activity(trace) {
     if (frame.actor === 'client') {
       review = frame.provenance && frame.provenance.recordingId;
       const prompt = ((envelope.params && envelope.params.prompt) || []).map((block) => block.text || '').join('\n');
-      lines.push('you: ' + (prompt.split('\n')[0] || frame.action || ''));
+      lines.push((frame.speaker || 'you') + ': ' + (prompt.split('\n')[0] || frame.action || ''));
       return;
     }
     const who = frame.speaker || 'agent';

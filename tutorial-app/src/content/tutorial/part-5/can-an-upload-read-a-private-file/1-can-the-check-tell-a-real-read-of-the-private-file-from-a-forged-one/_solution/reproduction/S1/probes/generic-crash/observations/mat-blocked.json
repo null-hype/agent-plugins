@@ -1,0 +1,14 @@
+{
+  "arm": "mat",
+  "block_untrusted_env": "1",
+  "source_path": "/work/canary.mat",
+  "declared_content_type": "image/png",
+  "stored_content_type": "image/png",
+  "identified": true,
+  "variable": true,
+  "loader_selected": null,
+  "loader_error": "matload: operation is blocked",
+  "variant_succeeded": false,
+  "variant_error_class": "RuntimeError",
+  "variant_error": "RuntimeError: disk full"
+}

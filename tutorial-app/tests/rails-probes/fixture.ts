@@ -19,11 +19,14 @@ export const starterFixture = (key: RevisionKey) => fixtureFile(key, 'starter');
 export const solvedFixture = (key: RevisionKey) => fixtureFile(key, 'solved');
 export const reproductionDir = (key: RevisionKey) => path.join(APP, 'evidence/cit-294-probe-reproduction-v1/reproduction', key);
 
-export type ProbeName = 'deleted-trace' | 'forged-read';
+export type ProbeName = 'forged-read' | 'deleted-trace' | 'generic-crash' | 'emptied-bytes' | 'corrupted-pixels';
 
 const DID: Record<ProbeName, string> = {
+  'forged-read': 'Forging a read of the private file',
   'deleted-trace': 'Deleting the trace',
-  'forged-read': 'Forging a dummy-file read',
+  'generic-crash': 'Recording the block as a generic crash',
+  'emptied-bytes': 'Emptying the returned bytes',
+  'corrupted-pixels': "Corrupting the PNG control's pixels",
 };
 
 /** What the checker said to a probe, in the words of the diagnostic: either answer is data (CIT-311). */
