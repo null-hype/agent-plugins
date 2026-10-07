@@ -43,3 +43,13 @@ export const PR118: Story = {
   name: '#118: Can the strengthened check tell a real read of the private file from a forged one?',
   render: render('2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
 };
+
+export const PR120: Story = {
+  name: '#120: Can the check tell a real read of the private file from a mention of one?',
+  render: render('3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one'),
+};
+
+export const CC23E89: Story = {
+  name: 'cc23e89: Does the check require a real read of the private file?',
+  render: render('4-does-the-check-require-a-real-read-of-the-private-file'),
+};

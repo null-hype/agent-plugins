@@ -13,13 +13,15 @@ import { REPRODUCTION_ID, REVISIONS, noticed, type CheckerRun, type RevisionKey 
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODULE = path.join(APP, 'tests/rails-probes/traces/CheckerProbes.pkl');
+// Named by the review of the revision, or by the revision when none is recorded.
 const fixtureFile = (key: RevisionKey, kind: 'starter' | 'solved') =>
-  path.join(APP, `src/stories/fixtures/rails-matlab-review-${REVISIONS[key].review}.${kind}.json`);
+  path.join(APP, `src/stories/fixtures/rails-matlab-${REVISIONS[key].review ? `review-${REVISIONS[key].review}` : key.toLowerCase()}.${kind}.json`);
 export const starterFixture = (key: RevisionKey) => fixtureFile(key, 'starter');
 export const solvedFixture = (key: RevisionKey) => fixtureFile(key, 'solved');
 export const reproductionDir = (key: RevisionKey) => path.join(APP, 'evidence/cit-294-probe-reproduction-v1/reproduction', key);
 
-export type ProbeName = 'forged-read' | 'deleted-trace' | 'generic-crash' | 'emptied-bytes' | 'corrupted-pixels' | 'swapped-source' | 'changed-config';
+export type ProbeName = 'forged-read' | 'deleted-trace' | 'generic-crash' | 'emptied-bytes' | 'corrupted-pixels' | 'swapped-source' | 'changed-config'
+  | 'prose-mention' | 'failed-open' | 'other-directory';
 
 const DID: Record<ProbeName, string> = {
   'forged-read': 'Forging a read of the private file',
@@ -29,6 +31,9 @@ const DID: Record<ProbeName, string> = {
   'corrupted-pixels': "Corrupting the PNG control's pixels",
   'swapped-source': "Recording a different upload for the blocked arm",
   'changed-config': "Recording a different configuration for the blocked arm",
+  'prose-mention': 'Replacing the real read with a prose mention of the private file',
+  'failed-open': 'Replacing the real read with a failed open of the private file',
+  'other-directory': 'Replacing the real read with an open of a same-named file elsewhere',
 };
 
 /** What the checker said to a probe, in the words of the diagnostic: either answer is data (CIT-311). */

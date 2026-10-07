@@ -1,0 +1,34 @@
+{
+  "scenario": "cit294-review-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "speaker": "alice",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_cit294-04",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Does the check require a real read of the private file?\n\nAlice, cc23e89 (the last commit of #120):\nCIT-303 PR follow-up: parse trace evidence instead of substring-matching it\n\nReview of PR #120 found the independent-read check still only did a\nbare substring match on the retained trace text, and nothing required\nvalid trace evidence to exist for an arm whose expected open-count was\nalready zero -- so deleting a blocked arm's whole trace, or replacing\nreal evidence with a prose mention/failed EACCES open/different-directory\nopen, still passed with empty diagnostics. Reconcile.pkl now requires a\nparsed, successful openat of the exact path, plus proof-of-capture (a\nsuccessful open of the arm's own source file) for every arm; run_arms.sh\ncollects trace text under the same criterion and no longer merges\nstrace's stderr with the script's own JSON stdout."
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "cit294-s4#0",
+        "capturedAt": "2026-10-04",
+        "scripted": "ACP framing and the subject question authored; the body quotes the cc23e89 commit message verbatim."
+      }
+    }
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "pkl",
+    "action": "run the checker on cc23e89"
+  }
+}

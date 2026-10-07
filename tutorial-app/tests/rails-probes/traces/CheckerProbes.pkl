@@ -35,7 +35,11 @@ run: String = read("prop:run")
 /// One revision's amendment: what its PR and its review say. Nothing measured.
 class Revision {
   pr: Int
-  review: Int
+  /// The review of this revision; null when none is recorded.
+  review: Int?
+  /// Who replies on Solve: the reviewer, or the checker itself when no review is recorded.
+  reviewer: String = "bob"
+  replyAction: String = "review PR \(pr)"
   ticket: String
   sessionId: String
   /// The commit message the Client holds: the subject question, then the PR's claims.
@@ -44,6 +48,9 @@ class Revision {
   /// The finding's id in the recorded review history
   /// (`src/lib/reviewHistory/declarations.ts`), verbatim (CIT-313).
   findingId: String
+  /// Its code, where the history spells it differently (a second-hand finding).
+  findingCode: String = findingId
+  findingSeverity: String = "error"
   /// The finding, in the review's words.
   finding: String
   /// Where the review points.
@@ -54,9 +61,11 @@ class Revision {
   axiom: AcpTrace.Row
   promptScripted: String
   replyScripted: String
-  /// Whether the pull request claims the check now flags the edits earlier
-  /// reviews made, as #118 does ("all now flagged"). Its words are in `prompt`.
-  claimsFlagged: Boolean = false
+  /// The probes the pull request claims the check now flags: the author's
+  /// forecast for each, which the run then answers. Its words are in `prompt`.
+  claimed: Listing<Question.Id> = new {}
+  /// Where the pull request makes that claim.
+  claimSaid: AcpTrace.Row?
   /// This revision's lesson in the chapter (CIT-316).
   lesson: Question.Lesson
 }
@@ -163,7 +172,13 @@ revisions: Mapping<String, Revision> = new {
       `cit294.test.pkl` gained eight negative-control facts covering the review's five exact mutations (deleted trace, forged blocked-arm read, generic crash, emptied bytes, corrupted PNG pixels) plus the two direct-`Reconcile.check` attacks it named (crash with no error info; stripped bytes with the boolean left `true`) — all now flagged.
       `pkl test --junit-reports reports cit294.test.pkl`: 18 facts / 56 asserts / 4 examples, 100% pass
       """
-    claimsFlagged = true
+    claimed { "forged-read"; "deleted-trace"; "generic-crash"; "emptied-bytes"; "corrupted-pixels" }
+    claimSaid {
+      role = "observation"
+      uri = "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md"
+      line = 10
+      detail = "#118: the review's five exact mutations, all now flagged"
+    }
     capturedAt = "2026-10-04"
     findingId = "review-2.gap-1"
     finding = "The trace negative controls mutate the derived count, not the retained trace."
@@ -224,6 +239,165 @@ revisions: Mapping<String, Revision> = new {
         """
     }
   }
+  ["S3"] {
+    pr = 120
+    review = 3
+    ticket = "CIT-303"
+    sessionId = "sess_cit294-03"
+    prompt =
+      """
+      Can the check tell a real read of the private file from a mention of one?
+
+      Alice, #120:
+      1. **Trace negative controls mutated the derived count, not the retained trace.** `Reconcile.pkl` now re-derives the independent open count from a new `independent_trace_text` field (the retained per-arm `strace` lines embedded in each observation), not from the `independent_dummy_file_openat_count` int alone — plus a new `trace-count-mismatch` flag if the two ever disagree. Deleting or forging the retained trace text is now caught; it wasn't before.
+      2. **Input/configuration identity was incompletely checked.** `Claims.pkl` now pins the expected source-file sha256 and runtime config (`load_defaults`/`variant_processor`) for all four arms, not just the unblocked MAT arm. `Reconcile.pkl` flags `source-identity-mismatch`/`runtime-config-mismatch` on any arm that drifts from its pinned value.
+      - [x] Restored, unmodified suite passes 100% (`pkl test`: 25 facts / 71 asserts / 4 examples); real repo working tree was never touched during mutation testing.
+      """
+    claimed { "forged-read"; "deleted-trace"; "swapped-source"; "changed-config" }
+    claimSaid {
+      role = "observation"
+      uri = "evidence/cit-294-review-history-v1/captures/github-pr-120-body.md"
+      line = 5
+      detail = "#120: deleting or forging the retained trace text is now caught; source and configuration are pinned for all four arms"
+    }
+    capturedAt = "2026-10-04"
+    findingId = "review-3.finding-1"
+    findingCode = "review-3.finding-1.second-hand"
+    finding = "nothing required valid trace evidence to exist for an arm whose expected open-count was already zero"
+    subject {
+      role = "axiom"
+      uri = "\(checkerDir)/Reconcile.pkl"
+      revision = short
+      line = 105
+      detail = "at S3 the trace check only compares open counts, so a blocked arm (expected count zero) accepts an empty trace"
+    }
+    reviewSaid {
+      role = "observation"
+      uri = "evidence/cit-294-review-history-v1/captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt"
+      line = 25
+      detail = "SECOND-HAND: review 3's own text could not be retrieved; this is its account in the next commit's message, cc23e89"
+    }
+    axiom {
+      role = "axiom"
+      uri = "\(checkerDir)/Reconcile.pkl"
+      revision = short
+      line = 30
+      detail = "traceOpenCount at S3 counts any line of the embedded trace that mentions dummy-canary.txt"
+    }
+    promptScripted = "ACP framing and the subject question authored; the body quotes the PR 120 description verbatim."
+    replyScripted =
+      "ACP framing authored. Review 3's own text could not be retrieved (captures/review-3-retrieval-check.json); its words are the second-hand account in the cc23e89 commit message."
+    lesson {
+      order = 3
+      title = "Can the check tell a real read of the private file from a mention of one"
+      prose =
+        """
+        # Can the check tell a real read of the private file from a mention of one?
+
+        Alice answers the second review with pull request #120, the newest commit in
+        the **Client**. Her checker no longer takes the open count on trust: it counts
+        reads of the private file in the trace itself, which each arm's record now
+        carries (`independent_trace_text`). The committed transcript,
+        `canary-reads.txt`, stays in the repository, and from here on no check reads
+        it, so Bob's trace questions now edit the trace the checker does read. Alice
+        says deleting or forging that trace "is now caught; it wasn't before", and
+        that the upload and the configuration are now checked for all four arms.
+
+        Select **Solve** for Bob's third review. Its own text was never found: what
+        it said survives only second-hand, in the message of Alice's next commit, and
+        the lesson labels it so. Bob asks the seven questions again, word for word, and
+        three more. Each replaces the real read of the private file, in the arm that
+        does read it, with something that only looks like one: a prose mention, a
+        failed open, an open of a file with the same name somewhere else. Alice made
+        no claim about those; they are new.
+
+        Here the checker \(found). Open the lens on an accepted line: Peek opens the
+        record as Bob edited it, at the trace he changed.
+        """
+    }
+  }
+  ["S4"] {
+    pr = 120
+    review = null
+    reviewer = "pkl"
+    replyAction = "run the checker on cc23e89"
+    ticket = "CIT-303"
+    sessionId = "sess_cit294-04"
+    prompt =
+      """
+      Does the check require a real read of the private file?
+
+      Alice, cc23e89 (the last commit of #120):
+      CIT-303 PR follow-up: parse trace evidence instead of substring-matching it
+
+      Review of PR #120 found the independent-read check still only did a
+      bare substring match on the retained trace text, and nothing required
+      valid trace evidence to exist for an arm whose expected open-count was
+      already zero -- so deleting a blocked arm's whole trace, or replacing
+      real evidence with a prose mention/failed EACCES open/different-directory
+      open, still passed with empty diagnostics. Reconcile.pkl now requires a
+      parsed, successful openat of the exact path, plus proof-of-capture (a
+      successful open of the arm's own source file) for every arm; run_arms.sh
+      collects trace text under the same criterion and no longer merges
+      strace's stderr with the script's own JSON stdout.
+      """
+    claimed { "deleted-trace"; "prose-mention"; "failed-open"; "other-directory" }
+    claimSaid {
+      role = "observation"
+      uri = "evidence/cit-294-review-history-v1/captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt"
+      line = 30
+      detail = "cc23e89: Reconcile.pkl now requires a parsed, successful openat of the exact path, plus proof-of-capture for every arm"
+    }
+    capturedAt = "2026-10-04"
+    findingId = "landed.history"
+    findingCode = "landed.merge-to-main"
+    findingSeverity = "info"
+    finding = "Merged to main as bc97c0e (parents be95c86 and cc23e89). No review of the final revision, cc23e89, is recorded."
+    subject {
+      role = "fact"
+      uri = "evidence/cit-294-review-history-v1/captures/git-landing-facts.json"
+      line = 2
+      detail = "the merge commit and its parents"
+    }
+    reviewSaid {
+      role = "observation"
+      uri = "evidence/cit-294-review-history-v1/captures/review-3-retrieval-check.json"
+      line = 1
+      detail = "no review of cc23e89 is recorded; where review 3 was looked for, and not found"
+    }
+    axiom {
+      role = "axiom"
+      uri = "\(checkerDir)/Reconcile.pkl"
+      revision = short
+      line = 38
+      detail = "successfulOpenatCount: a read counts only as a successful openat of the exact quoted path"
+    }
+    promptScripted = "ACP framing and the subject question authored; the body quotes the cc23e89 commit message verbatim."
+    replyScripted = "No review of this revision is recorded. The reply is the pinned checker's own answers, run again for this lesson; nothing in it is a reviewer's."
+    lesson {
+      order = 4
+      title = "Does the check require a real read of the private file"
+      prose =
+        """
+        # Does the check require a real read of the private file?
+
+        Alice's last commit, `cc23e89`, answers the third review as she recounts it.
+        Her checker now counts a read of the private file only if the trace shows a
+        successful `openat` of its exact path, and every arm's trace must show its own
+        upload being opened, so an empty trace is no longer taken as proof that nothing
+        was read. She says each of review 3's edits now fails the suite.
+
+        No one reviewed this commit. It was merged. So **Solve** has no reviewer to
+        bring back: it brings back the checker itself, asked every question Bob asked
+        of the three commits before it, word for word, each against what Alice
+        claimed. The pending line in the **Agent** names Pkl, not Bob, and the reply
+        says plainly that no review was recorded.
+
+        Here the checker \(found). A green run is the only answer this revision ever
+        got. Whether it is the right answer is a question for the next reviewer.
+        """
+    }
+  }
 }
 
 /// The revisions in chapter order, by `lesson.order`, which must count 1, 2, ...
@@ -239,6 +413,17 @@ local short = checker.take(8)
 local checkerDir = "docs/investigations/CIT-265/cit-294"
 local reproductionUri = "evidence/cit-294-probe-reproduction-v1/reproduction/\(state)"
 local finding = claims.findingId
+/// The revisions up to this one, latest first.
+local sinceStart: List<String> = chapter.take(chapter.indexOf(state) + 1).reverse()
+/// The finding a probe tests here: the one this revision's review names, or
+/// else the latest earlier review's (a probe it does not speak to carries over).
+local function findingOf(q: Probe): String =
+  sinceStart.map((s) -> q.findingAt.getOrNull(s)).filterNonNull().first
+/// Whether the checker reads each arm's embedded trace (from #120 on).
+local embedded: Boolean =
+  read("../../../evidence/cit-294-review-history-v1/files/\(checker)/\(checkerDir)/observations/mat-blocked.json").text.contains("\"independent_trace_text\"")
+local function whatOf(q: Probe): String = if (embedded && q.whatEmbedded != null) q.whatEmbedded!! else q.what
+local function actionOf(q: Probe): String = if (embedded && q.actionEmbedded != null) q.actionEmbedded!! else q.action
 /// The history's run id (`REVIEW_HISTORY_RUN_ID` in `src/lib/reviewHistory/identity.ts`):
 /// evaluation ids are `<run>:<finding id>`, as the history spells them (CIT-313).
 local historyRun = "cit-294-117-118-120"
@@ -262,6 +447,10 @@ class Probe extends Question.Question {
   field: String?
   /// Where each revision's review speaks to it, by line.
   reviewLine: Mapping<String, Int>
+  /// What the probe does, and to what, from #120 on, where the checker reads
+  /// each arm's embedded trace (`independent_trace_text`) instead of the transcript.
+  actionEmbedded: String?
+  whatEmbedded: String?
   /// The revision whose review raised it. It is asked of that revision and every
   /// later one, never an earlier one, which would leak a later review back.
   from: String = "S1"
@@ -278,7 +467,7 @@ questions: Mapping<Question.Id, Probe> = new {
 }
 
 /// The probes in the order the reviewer offers them.
-local offered: List<Probe> = List(forgedRead, deletedTrace, genericCrash, emptiedBytes, corruptedPixels, swappedSource, changedConfig)
+local offered: List<Probe> = List(forgedRead, deletedTrace, genericCrash, emptiedBytes, corruptedPixels, swappedSource, changedConfig, proseMention, failedOpen, otherDirectory)
 /// The probes this revision is asked: those raised by its own review or an earlier one.
 local asked: List<Probe> = offered.filter((q) -> revisions[q.from].lesson.order <= claims.lesson.order)
 
@@ -288,8 +477,10 @@ local deletedTrace = new Probe {
   question = "Does the check fail when the trace is deleted?"
   did = "Deleting the trace"
   what = "canary-reads.txt removed"
-  findingAt { ["S1"] = "review-1.finding-1"; ["S2"] = "review-2.gap-1" }
-  reviewLine { ["S1"] = 5; ["S2"] = 7 }
+  actionEmbedded = "emptied the blocked arm's embedded trace, the trace the checker reads"
+  whatEmbedded = "the blocked MAT arm's embedded trace emptied"
+  findingAt { ["S1"] = "review-1.finding-1"; ["S2"] = "review-2.gap-1"; ["S3"] = "review-3.finding-1" }
+  reviewLine { ["S1"] = 5; ["S2"] = 7; ["S3"] = 28 }
 }
 local forgedRead = new Probe {
   name = "forged-read"
@@ -297,6 +488,8 @@ local forgedRead = new Probe {
   question = "Does the check fail when a read of the private file is forged?"
   did = "Forging a read of the private file"
   what = "an openat of the private file, /work/dummy-canary.txt, added to the mat-blocked arm of canary-reads.txt"
+  actionEmbedded = "forged a read of the private file into the blocked arm's embedded trace"
+  whatEmbedded = "an openat of the private file, /work/dummy-canary.txt, added to the blocked MAT arm's embedded trace"
   findingAt { ["S1"] = "review-1.finding-1"; ["S2"] = "review-2.gap-1" }
   reviewLine { ["S1"] = 5; ["S2"] = 7 }
 }
@@ -357,6 +550,44 @@ local changedConfig = new Probe {
   field = "independent_rails_load_defaults"
   reviewLine { ["S2"] = 9 }
 }
+// Review 3's edits, known second-hand: the unblocked arm's real read of the
+// private file replaced by something that only looks like one.
+local proseMention = new Probe {
+  name = "prose-mention"
+  action = "replaced the unblocked arm's real read with a prose mention of the private file"
+  question = "Does the check fail when the real read is only a mention of the private file?"
+  did = "Replacing the real read with a prose mention of the private file"
+  what = "the unblocked MAT arm's real read of the private file replaced by a prose mention of it"
+  from = "S3"
+  findingAt { ["S3"] = "review-3.finding-2" }
+  arm = "mat-unblocked"
+  field = "independent_trace_text"
+  reviewLine { ["S3"] = 29 }
+}
+local failedOpen = new Probe {
+  name = "failed-open"
+  action = "replaced the unblocked arm's real read with a failed (EACCES) open of the private file"
+  question = "Does the check fail when the real read is a failed open?"
+  did = "Replacing the real read with a failed open of the private file"
+  what = "the unblocked MAT arm's real read of the private file replaced by a failed (EACCES) open of it"
+  from = "S3"
+  findingAt { ["S3"] = "review-3.finding-2" }
+  arm = "mat-unblocked"
+  field = "independent_trace_text"
+  reviewLine { ["S3"] = 29 }
+}
+local otherDirectory = new Probe {
+  name = "other-directory"
+  action = "replaced the unblocked arm's real read with an open of /tmp/dummy-canary.txt"
+  question = "Does the check fail when the real read is of a same-named file elsewhere?"
+  did = "Replacing the real read with an open of a same-named file elsewhere"
+  what = "the unblocked MAT arm's real read of the private file replaced by an open of /tmp/dummy-canary.txt"
+  from = "S3"
+  findingAt { ["S3"] = "review-3.finding-2" }
+  arm = "mat-unblocked"
+  field = "independent_trace_text"
+  reviewLine { ["S3"] = 29 }
+}
 
 local function answer(q: Probe): Question.CheckerAnswer =
   new json.Parser {}.parse(read("\(run)/probes/\(q.name)/answer.json")).toTyped(Question.CheckerAnswer)
@@ -384,7 +615,8 @@ local found: String =
   if (foundSame) "still passing all \(answer(deletedTrace).assertsTotal) assertions, whichever edit Bob made"
   else
     let (missed = asked.filter((q) -> !Question.noticed(answer(q))))
-      "catching \(asked.length - missed.length) of Bob's \(asked.length) edits, and still passing every assertion for the rest: \(missed.map((q) -> q.did.toLowerCase()).join("; ")); a reproduction of what each edit did is the lens's last row"
+      if (missed.isEmpty) "failing the suite on every one of the \(asked.length) edits"
+      else "catching \(asked.length - missed.length) of Bob's \(asked.length) edits, and still passing every assertion for the rest: \(missed.map((q) -> q.did.toLowerCase()).join("; ")); a reproduction of what each edit did is the lens's last row"
 
 /// The row that shows what a probe produced. Labelled a reproduction, never the reviewers' own output.
 local function reproduction(q: Probe): AcpTrace.Row =
@@ -396,7 +628,7 @@ local function reproduction(q: Probe): AcpTrace.Row =
       revision = state
       line = 4
       detail =
-        "REPRODUCTION \(reproductionId) (a new run, not the reviewers' own output): \(q.what); checker \(short); pkl test exit \(a.exitCode), \(counts(a))"
+        "REPRODUCTION \(reproductionId) (a new run, not the reviewers' own output): \(whatOf(q)); checker \(short); pkl test exit \(a.exitCode), \(counts(a))"
     }
 
 /// The trace as retained, which the lesson holds after Solve.
@@ -408,7 +640,9 @@ local transcript: AcpTrace.Row = new {
   uri = "reproduction/\(state)/runs/baseline/canary-reads.txt"
   revision = state
   line = 1
-  detail = "the strace transcript of the four arms, as retained: what the deleted-trace probe removes"
+  detail =
+    if (embedded) "the committed strace transcript of the four arms; from #120 on, the checker reads each arm's embedded copy instead"
+    else "the strace transcript of the four arms, as retained: what the deleted-trace probe removes"
 }
 
 /// The trace as the forged-read probe left it, at the openat it added: the line
@@ -427,43 +661,65 @@ local notRetained: AcpTrace.Row = new {
   detail = "expected the deleted-trace run's output | actual -- not retained -- [missing]"
 }
 
-/// The record a probe edited, as the probe left it, at the line it changed.
-local function edited(q: Probe): AcpTrace.Row =
-  let (pinned = read("../../../evidence/cit-294-review-history-v1/files/\(checker)/\(checkerDir)/observations/\(q.arm).json").text.split("\n"))
+/// The record a probe edited, as the probe left it, at the field it changed.
+local function editedAt(q: Probe, arm: String, field: String): AcpTrace.Row =
+  let (pinned = read("../../../evidence/cit-294-review-history-v1/files/\(checker)/\(checkerDir)/observations/\(arm).json").text.split("\n"))
     new {
       role = "observation"
       // The lesson holds the edited record after Solve, at this path.
-      uri = "reproduction/\(state)/probes/\(q.name)/observations/\(q.arm).json"
+      uri = "reproduction/\(state)/probes/\(q.name)/observations/\(arm).json"
       revision = state
-      line = pinned.findIndex((l) -> l.trimStart().startsWith("\"\(q.field)\":")) + 1
-      detail = "\(q.arm).json as the probe left it: \(q.what)"
+      line = pinned.findIndex((l) -> l.trimStart().startsWith("\"\(field)\":")) + 1
+      detail = "\(arm).json as the probe left it: \(whatOf(q))"
     }
 
-/// Where the review that raised a probe's finding says so.
+/// The first row a probe's lens opens: the edit itself, in the trace the
+/// checker reads or the record the probe changed.
+local function edit(q: Probe): AcpTrace.Row =
+  if (q.arm != null) editedAt(q, q.arm!!, q.field!!)
+  else if (embedded) editedAt(q, "mat-blocked", "independent_trace_text")
+  else if (q == forgedRead) forgedTrace
+  else transcript
+
+/// Where this revision's review speaks to a probe.
 local function raised(q: Probe): AcpTrace.Row = (claims.reviewSaid) {
   line = q.reviewLine[state]
 }
 
+local function claimedHere(q: Probe): Boolean = claims.claimed.toList().contains(q.name)
+
 /// The author's claim about a probe, when her pull request makes one: her
-/// forecast that the check now flags it, and whether the run bears it out. A
-/// probe raised by this revision's own review was unknown to her, so carries none.
+/// forecast that the check now flags it, and whether the run bears it out.
 local function claimNote(q: Probe): String =
-  if (claims.claimsFlagged && q.from != state)
+  if (claimedHere(q))
     " Alice claimed #\(claims.pr) flags it; it \(if (Question.noticed(answer(q))) "does" else "does not")."
   else ""
 
+/// What a probe's lens opens: the edit, where this revision's review speaks to
+/// it, where the pull request claims it, why it went as it did, and the run.
+local function rowsOf(q: Probe): Listing<AcpTrace.Row> = new {
+  edit(q)
+  when (q.reviewLine.containsKey(state)) { raised(q) }
+  when (claimedHere(q) && claims.claimSaid != null) { claims.claimSaid!! }
+  when (q == forgedRead) { claims.axiom }
+  when (q == deletedTrace && claims.review != null) { notRetained }
+  reproduction(q)
+}
+
 
 local function probe(q: Probe, rows: Listing<AcpTrace.Row>): AcpTrace.Probe = new {
-  action = q.action
+  action = actionOf(q)
   question = q.question
   diagnostic {
     severity = if (Question.noticed(answer(q))) "info" else "error"
-    code = "\(q.findingAt[state]).\(q.name)"
+    code = "\(findingOf(q)).\(q.name)"
     message = "\(code): \(answerText(q))\(claimNote(q))"
     evaluationId = "\(historyRun):\(code)"
     related = rows
   }
 }
+
+local recording = if (claims.review != null) "cit294-review-\(claims.review)" else "cit294-\(state.toLowerCase())"
 
 local ask: AcpTrace.ClientFrame = new {
   action = "send prompt"
@@ -476,7 +732,7 @@ local ask: AcpTrace.ClientFrame = new {
     }
   }
   provenance {
-    recordingId = "cit294-review-\(claims.review)#0"
+    recordingId = "\(recording)#0"
     capturedAt = claims.capturedAt
     scripted = claims.promptScripted
   }
@@ -487,8 +743,8 @@ starter: AcpTrace.Trace = new {
   frames { ask }
   nextTurn {
     actor = "agent"
-    speaker = "bob"
-    action = "review PR \(claims.pr)"
+    speaker = claims.reviewer
+    action = claims.replyAction
   }
 }
 
@@ -498,14 +754,15 @@ solved: AcpTrace.Trace = new {
     ask
     new AcpTrace.AgentFrame {
       action = "reply with finding"
-      speaker = "bob"
+      speaker = claims.reviewer
       envelope {
         id = 1
         result {
           _meta {
             diagnostic {
-              code = finding
-              message = "\(finding): \(claims.finding)"
+              code = claims.findingCode
+              severity = claims.findingSeverity
+              message = "\(code): \(claims.finding)"
               subject = claims.subject
               related {
                 claims.reviewSaid
@@ -517,31 +774,13 @@ solved: AcpTrace.Trace = new {
               evaluationId = "\(historyRun):\(finding)"
             }
             probes {
-              probe(forgedRead, new Listing {
-                forgedTrace
-                claims.reviewSaid
-                claims.axiom
-                reproduction(forgedRead)
-              })
-              probe(deletedTrace, new Listing {
-                transcript
-                claims.reviewSaid
-                notRetained
-                reproduction(deletedTrace)
-              })
-              for (q in asked.drop(2)) {
-                probe(q, new Listing {
-                  edited(q)
-                  raised(q)
-                  reproduction(q)
-                })
-              }
+              for (q in asked) { probe(q, rowsOf(q)) }
             }
           }
         }
       }
       provenance {
-        recordingId = "cit294-review-\(claims.review)#1"
+        recordingId = "\(recording)#1"
         capturedAt = claims.capturedAt
         scripted = claims.replyScripted
       }
