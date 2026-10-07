@@ -74,12 +74,25 @@ local function exchange(id: String): String =
 local function answerText(id: String): String =
   "\(scorer(id)) answered \(pct(id)); expected \(range(id)): \(outcome(id)).\(mockNote(id))"
 
+/// Compare each repeated request to the prerequisite observation it follows.
+local function comparison(id: String): String =
+  if (question(id).dependencies.isEmpty) "" else
+    let (prior = question(id).dependencies.first)
+    let (before = state(prior)["http"]["response"]["status"])
+    let (after = state(id)["http"]["response"]["status"])
+      " Same request as \(prior): HTTP \(before) → \(after). \(if (before == after) "Owner access is preserved." else "The owner check denies the previously exposed document.")"
+
+local function change(rev: String): String =
+  if (rev == chapter.first) "" else
+    let (prior = chapter[chapter.indexOf(rev) - 1])
+    "\n\nWhy this change: the baseline returned Bob's private document to Alice (\(exchange(idsOf(prior).first))). Signing in alone did not enforce ownership.\nReplace the baseline policy:\n\(policy(prior))\nwith the owner check above. Review the same Alice and Bob requests again: does it close the leak while preserving the owner's access?"
+
 /// The rows the lens opens: the answer, what it was asked, and the evidence it judged.
 local function rows(id: String): Listing<AcpTrace.Row> = new {
   new {
     role = "observation"
     uri = "questions/\(id)/response.json"
-    detail = "\(answerText(id)) Run \(runId); model \(answer(id)["model"])."
+    detail = "\(answerText(id))\(comparison(id)) Run \(runId); model \(answer(id)["model"])."
   }
   new {
     role = "axiom"
@@ -97,6 +110,14 @@ local function rows(id: String): Listing<AcpTrace.Row> = new {
     uri = "questions/\(id)/request.json"
     detail = "What \(if (mock(id)) "the mock backend" else "Jev") was sent: this state and the question, without its expected range."
   }
+  for (prior in question(id).dependencies) {
+    new {
+      role = "observation"
+      uri = "questions/\(prior)/state.json"
+      revision = question(prior).revision
+      detail = "Baseline: \(exchange(prior))\n\(policy(question(prior).revision))"
+    }
+  }
 }
 
 local function probe(id: String): AcpTrace.Probe = new {
@@ -105,7 +126,7 @@ local function probe(id: String): AcpTrace.Probe = new {
   diagnostic {
     severity = if (outcome(id) == "in-range") "info" else "error"
     code = id
-    message = "\(code): \(answerText(id))"
+    message = "\(code): \(answerText(id))\(comparison(id))"
     evaluationId = "\(runId):\(contractDigest):\(id)"
     related = rows(id)
   }
@@ -138,7 +159,7 @@ local function ask(rev: String): AcpTrace.ClientFrame = new {
     id = chapter.indexOf(rev) + 1
     params {
       sessionId = runId
-      prompt { new { text = "\(contract.revisions[rev].subject)\n\nThe document route's authorization policy, as the run recorded it:\n\(policy(rev))" } }
+      prompt { new { text = "\(contract.revisions[rev].subject)\n\nThe document route's authorization policy, as the run recorded it:\n\(policy(rev))\(change(rev))" } }
     }
   }
   provenance {
