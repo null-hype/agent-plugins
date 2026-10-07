@@ -36,7 +36,8 @@ What Vaults has no need for, and the record adds:
 - **Historical vs reproduced origin.**
   - The PR bodies, reviews and pinned inputs are `historical`.
   - The probe's `answer.json`, `result.txt`, `mutation.txt` and the baseline run are `reproduced`.
-  - A declaration must cite historical evidence. An observed value must cite a retained reproduction.
+  - Origin is descriptive in the shared schema. Any retained resource, original or reproduced, can substantiate an answer or an observed value; a missing one never can, and never carries an id.
+  - This case's expectations are its adapter's facts (`ReplayRecord.test.pkl`): each declaration cites the PR's historical body, each observed value and each answer a retained reproduction.
 - **Missing evidence as a value.** Each of these is a `missing` resource with a reason, and can never carry an id:
   - the reviewer's own deleted-trace output,
   - the image digest,
@@ -55,6 +56,8 @@ What Vaults has no need for, and the record adds:
   - It is prompted by `review-1.finding-1`.
   - Its evidence is the retained review-1 comment and PR 118's body.
   - It must link consecutive records' states and change their source commit.
+  - Its `finding` must be the delivery finding of the record it leaves.
+  - No two records may share a state id, so `from`/`to` are unambiguous.
 
 PR 154's first version had a single `before`/`after` + `transition`. That was the probe, so the two were conflated.
 
@@ -79,8 +82,9 @@ already runs. It now adds these rules, and `Consistency.pkl` decides as before:
 | `record-schema` | `Question.test.pkl` and `EvaluationRecord.test.pkl` pass. Neither ran in CI before. |
 | `record-baseline` | `ReplayRecord.test.pkl` passes against its committed `-expected.pcf`. Writing examples instead of comparing them does not count. |
 | `record-valid` | The capture evaluates as a record. |
+| `record-scope` | The generated records are exactly the revisions `records.ts` names in `RECORDED` (S1, S2), in order. |
 | `record-rejects-tampered` | A capture whose missing observation was given an invented id does **not** evaluate. |
-| `s1-deleted-trace` / `s2-deleted-trace`: `record-agrees` | The generated record's answer equals the checker re-run on the recorded mutation, its Pkl `outcome` matches the spec's `noticed()`, and its observed baseline count equals the re-run baseline. |
+| `record-agrees`, on `s1-deleted-trace` / `s2-deleted-trace` only | The generated record's answer equals the checker re-run on the recorded mutation, its Pkl `outcome` matches the spec's `noticed()`, and its observed baseline count equals the re-run baseline. A missing record for S1 or S2 breaks the rule; S3 and S4 have no record in this slice and keep every other rule. |
 
 To rewrite the baseline after an intended change, run:
 

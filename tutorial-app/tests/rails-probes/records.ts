@@ -19,7 +19,12 @@ const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const HISTORY = 'evidence/cit-294-review-history-v1';
 const TRACES = path.join(APP, 'tests/rails-probes/traces');
 const QUESTION = 'deleted-trace';
-const ORDER: RevisionKey[] = ['S1', 'S2'];
+/**
+ * The revisions this slice records (CIT-334: S1 and S2). The consistency pass
+ * requires a generated record for each of these, and only these; the other
+ * revisions keep their existing checks without one.
+ */
+export const RECORDED: readonly RevisionKey[] = ['S1', 'S2'];
 /** The review of each revision, by its capture id in the history manifest. */
 const REVIEW: Record<RevisionKey, string> = { S1: 'linear:CIT-294:comment:97e70a90', S2: 'linear:CIT-297:comment:271bc302' };
 
@@ -123,9 +128,9 @@ function record(key: RevisionKey) {
 export function captureInvestigation() {
   return {
     questionId: QUESTION,
-    records: ORDER.map(record),
-    transitions: ORDER.slice(1).map((to, n) => {
-      const from = ORDER[n];
+    records: RECORDED.map(record),
+    transitions: RECORDED.slice(1).map((to, n) => {
+      const from = RECORDED[n];
       return {
         from: `${from}-pinned`,
         to: `${to}-pinned`,
