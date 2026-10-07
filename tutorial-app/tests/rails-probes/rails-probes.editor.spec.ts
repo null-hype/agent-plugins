@@ -90,7 +90,8 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
     await page.locator('.codelens-decoration a', { hasText: `${finding}.deleted-trace` }).click();
     const widget = await peekSummary(page, 'canary-reads.txt removed');
     const markers = await page.evaluate(() => (window as any).monaco.editor.getModelMarkers({}).map((m: any) => m.message as string));
-    expect(markers).toContain(`${finding}.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`);
+    // The answer, then (from #118 on) whether it bears out Alice's claim.
+    expect(markers.some((m: string) => m.startsWith(`${finding}.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`))).toBe(true);
     await expect(widget).toContainText(`REPRODUCTION ${REPRODUCTION_ID}`);
     await expect(widget).toContainText('canary-reads.txt removed');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);

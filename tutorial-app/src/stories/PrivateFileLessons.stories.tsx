@@ -38,3 +38,8 @@ export const PR117: Story = {
   name: '#117: Can the check tell a real read of the private file from a forged one?',
   render: render('1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
 };
+
+export const PR118: Story = {
+  name: '#118: Can the strengthened check tell a real read of the private file from a forged one?',
+  render: render('2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
+};
