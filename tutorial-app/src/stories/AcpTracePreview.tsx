@@ -6,6 +6,8 @@ import type { AcpTraceState } from '../lib/acpTraceProtocol';
 type Props = {
 	payload?: AcpTraceState;
 	height?: number;
+	/** False for lessons that run the Client alone (part 5: agent activity is a terminal). */
+	agent?: boolean;
 };
 
 // Mirrors OtelWarmLogPreview's shape (payload -> postMessage once each iframe
@@ -66,7 +68,7 @@ function Pane({
 	);
 }
 
-export default function AcpTracePreview({ payload, height = 360 }: Props) {
+export default function AcpTracePreview({ payload, height = 360, agent = true }: Props) {
 	// As AcpTraceBridge does: the Client reports which suggestions the viewer
 	// accepted, per recording and in order, and both panes get that back. The
 	// coarse flag alone let one accepted question reveal every finding.
@@ -91,15 +93,17 @@ export default function AcpTracePreview({ payload, height = 360 }: Props) {
 	// acp-trace/server.cjs), the same handshake otel-warm-log's own page uses
 	// -- no Storybook-only shim needed to fake that signal anymore.
 	return (
-		<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+		<div style={{ display: 'grid', gridTemplateColumns: agent ? '1fr 1fr' : '1fr', gap: 12 }}>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Client</div>
 				<Pane html={clientPageHtml} payload={clientPayload} height={height} label="acp-trace client preview" onAccepted={onAccepted} />
 			</div>
-			<div>
-				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Agent</div>
-				<Pane html={agentPageHtml} payload={agentPayload} height={height} label="acp-trace agent preview" />
-			</div>
+			{agent && (
+				<div>
+					<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Agent</div>
+					<Pane html={agentPageHtml} payload={agentPayload} height={height} label="acp-trace agent preview" />
+				</div>
+			)}
 		</div>
 	);
 }

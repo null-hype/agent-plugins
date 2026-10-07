@@ -26,7 +26,6 @@ test('focus on the suggestion shows what accepting it unfolds', async ({ page })
 test('Tab unfolds the root into a heading and its questions; the split shows once both are accepted', async ({ page }) => {
   await page.goto('/iframe.html?id=replay-forecast-registration--root-question&viewMode=story&args=solved:!true');
   const c = client(page);
-  const agent = page.frameLocator('iframe[title="acp-trace agent preview"]').locator('#chat-view');
   const box = c.getByRole('textbox', { name: 'Editor content', exact: true });
   await c.locator('.ghost-text-decoration').first().waitFor();
 
@@ -34,27 +33,47 @@ test('Tab unfolds the root into a heading and its questions; the split shows onc
   await expect.poll(() => modelText(c)).toMatch(/\n# Was Meridian ever exposed to CVE-2026-66066\? Forecast: 50% yes\.\n$/);
   await expect(c.locator('.acp-heading').first()).toBeVisible();
   await expect(c.locator('.ghost-text-decoration').first()).toContainText('Would an uploaded file');
-  await box.press('Tab');
-  await expect(c.locator('.ghost-text-decoration').first()).toContainText('Could an attacker');
-  // One of the two questions is not enough to combine them.
-  await expect(c.getByRole('button', { name: /forecast\.registered/ })).toHaveCount(2);
-  await expect(c.getByRole('button', { name: /forecast\.split/ })).toHaveCount(0);
-  await expect(agent).not.toContainText('imply 32%');
-
-  await box.press('Tab');
-  const split = c.getByRole('button', { name: /forecast\.split/ });
-  await expect(split).toBeVisible();
-  await expect(agent).toContainText('imply 32% read as independent (40% × 80%): a difference of -0.18');
-  await expect(c.locator('.ghost-text-decoration')).toHaveCount(0);
-
-  await split.click();
-  const peek = c.locator('.peekview-widget');
-  await expect(peek).toBeVisible();
+  // The root's own Peek: the reading frozen before the split, and the one the
+  // split froze, both Pkl's static expected file, at their two revisions.
   const evidence = async () => c.locator('.peekview-widget .monaco-editor').evaluate((element) => {
     const monaco = (element.ownerDocument.defaultView as any).monaco;
     const editor = monaco.editor.getEditors().find((e: any) => e.getDomNode() === element);
     return { text: editor.getModel().getValue(), readOnly: editor.getOption(monaco.editor.EditorOption.readOnly) };
   });
+  const peek = c.locator('.peekview-widget');
+  await c.getByRole('button', { name: /forecast\.registered/ }).first().click();
+  await expect(peek).toBeVisible();
+  for (const [revision, file] of [['5282c7e', new URL('../src/stories/frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf', import.meta.url)],
+    ['12f2351', new URL(tree + 'WasIVulnerable.test.pkl-expected.pcf', import.meta.url)]] as const) {
+    const group = peek.getByRole('treeitem', { name: new RegExp(`expected@${revision}/`) });
+    if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
+    await peek.getByRole('treeitem', { name: /\["readings"\].* in WasIVulnerable\.test\.pkl-expected\.pcf on line 2 /, expanded: undefined })
+      .and(peek.locator(`[aria-level="2"]`)).filter({ hasText: revision === '5282c7e' ? /new \{\}\s*\}$/ : /implied = 0\.32/ }).click();
+    await expect.poll(evidence).toEqual({ text: readFileSync(file, 'utf8'), readOnly: true });
+  }
+  await page.keyboard.press('Escape');
+  await expect(peek).toHaveCount(0);
+  // A Tab with the cursor off the suggestion line is taken back, not a reset.
+  await box.press('Tab');
+  await expect.poll(() => modelText(c)).toMatch(/\n# Was Meridian ever exposed to CVE-2026-66066\? Forecast: 50% yes\.\n$/);
+  // Back on the suggestion line, the next question is offered again.
+  await box.press('Control+End');
+  await expect(c.locator('.ghost-text-decoration').first()).toContainText('Would an uploaded file');
+
+  await box.press('Tab');
+  await expect(c.locator('.ghost-text-decoration').first()).toContainText('Could an attacker');
+  // One of the two questions is not enough to combine them.
+  await expect(c.getByRole('button', { name: /forecast\.registered/ })).toHaveCount(2);
+  await expect(c.getByRole('button', { name: /forecast\.split/ })).toHaveCount(0);
+
+  await box.press('Tab');
+  const split = c.getByRole('button', { name: /forecast\.split/ });
+  await expect(split).toBeVisible();
+  await expect(split).toContainText('forecast.split');
+  await expect(c.locator('.ghost-text-decoration')).toHaveCount(0);
+
+  await split.click();
+  await expect(peek).toBeVisible();
   // Registration and read-back are separate locations in the retained log.
   for (const [file, line] of [['WasIVulnerable.pkl', 46], ['monitor.json', 8], ['monitor.json', 32]] as const) {
     const group = peek.getByRole('treeitem', { name: new RegExp(`symbols? in ${file.replace('.', '\\.')},`) });
@@ -86,15 +105,20 @@ test('review without captured source exposes an explicit summary in native Peek'
   await expect(c.locator('.evidence-widget')).toHaveCount(0);
 });
 
-test('accepting one question reveals only that question\'s finding in the Agent pane', async ({ page }) => {
+test('accepting one question reports only that question to the host', async ({ page }) => {
   await page.goto('/iframe.html?id=lessons-private-document--baseline&viewMode=story&args=solved:!true');
+  // Part 5 runs the Client alone, as TutorialKit does.
+  await expect(page.locator('iframe[title="acp-trace agent preview"]')).toHaveCount(0);
+  await page.evaluate(() => {
+    (window as any).reported = [];
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'acp-trace-suggestion-accepted') (window as any).reported.push(event.data.order);
+    });
+  });
   const c = client(page);
-  const agent = page.frameLocator('iframe[title="acp-trace agent preview"]');
   await c.locator('.ghost-text-decoration').first().waitFor();
-  await expect(agent.locator('#chat-view')).toContainText('Deciding what to check');
-  // The first ghost-text alternative is Alice's question.
   await c.getByRole('textbox', { name: 'Editor content', exact: true }).press('Tab');
   await expect(c.getByRole('button', { name: /baseline-alice-reads/ })).toBeVisible();
-  await expect(agent.locator('#chat-view')).toContainText('expected 0–20%');
-  await expect(agent.locator('#chat-view')).not.toContainText('expected 80–100%');
+  await expect(c.getByRole('button', { name: /baseline-bob-reads/ })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as any).reported.at(-1))).toEqual([0]);
 });

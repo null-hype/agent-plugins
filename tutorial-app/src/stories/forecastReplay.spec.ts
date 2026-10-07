@@ -24,6 +24,18 @@ describe('forecast replay', () => {
   });
 });
 
+describe('the split\'s frozen readings', () => {
+  const file = 'src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf';
+  const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', cwd: fileURLToPath(new URL('../../..', import.meta.url)) });
+  const hasHistory = (() => { try { git('cat-file', '-e', '5282c7e^{commit}'); return true; } catch { return false; } })();
+
+  // Retained as git holds it; a shallow clone without the commit skips this.
+  it.skipIf(!hasHistory)('keeps the reading frozen before the split exactly as 5282c7e froze it', () => {
+    expect(readFileSync(new URL('./frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf', import.meta.url), 'utf8')).toBe(git('show', `5282c7e:${file}`));
+    expect(readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8')).toBe(git('show', `12f2351:${file}`));
+  });
+});
+
 describe('forecast replay evidence', () => {
   const replay = JSON.parse(readFileSync(committed, 'utf8'));
   const questions = new URL('../../../src/cve-2026-66066/questions/', import.meta.url);
