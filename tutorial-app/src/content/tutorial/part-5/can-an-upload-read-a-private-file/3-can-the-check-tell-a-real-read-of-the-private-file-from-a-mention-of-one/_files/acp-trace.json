@@ -1,0 +1,34 @@
+{
+  "scenario": "cit294-review-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "speaker": "alice",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_cit294-03",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Can the check tell a real read of the private file from a mention of one?\n\nAlice, #120:\n1. **Trace negative controls mutated the derived count, not the retained trace.** `Reconcile.pkl` now re-derives the independent open count from a new `independent_trace_text` field (the retained per-arm `strace` lines embedded in each observation), not from the `independent_dummy_file_openat_count` int alone — plus a new `trace-count-mismatch` flag if the two ever disagree. Deleting or forging the retained trace text is now caught; it wasn't before.\n2. **Input/configuration identity was incompletely checked.** `Claims.pkl` now pins the expected source-file sha256 and runtime config (`load_defaults`/`variant_processor`) for all four arms, not just the unblocked MAT arm. `Reconcile.pkl` flags `source-identity-mismatch`/`runtime-config-mismatch` on any arm that drifts from its pinned value.\n- [x] Restored, unmodified suite passes 100% (`pkl test`: 25 facts / 71 asserts / 4 examples); real repo working tree was never touched during mutation testing."
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "cit294-review-3#0",
+        "capturedAt": "2026-10-04",
+        "scripted": "ACP framing and the subject question authored; the body quotes the PR 120 description verbatim."
+      }
+    }
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "bob",
+    "action": "review PR 120"
+  }
+}

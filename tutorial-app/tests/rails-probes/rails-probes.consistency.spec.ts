@@ -20,8 +20,11 @@ test.skip(pklVersion() === null, 'pkl is not on PATH');
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.resolve(APP, process.env.CONSISTENCY_OUT ?? '../test-results/rails-probes/consistency');
 const CHAPTER = path.join(APP, 'src/content/tutorial/part-5/can-an-upload-read-a-private-file');
-const ORDER: RevisionKey[] = ['S1', 'S2'];
-const PROBES: ProbeName[] = ['deleted-trace', 'forged-read', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config'];
+const ORDER: RevisionKey[] = ['S1', 'S2', 'S3', 'S4'];
+const PROBES: ProbeName[] = [
+  'deleted-trace', 'forged-read', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config',
+  'prose-mention', 'failed-open', 'other-directory',
+];
 // The fields each edit to a recorded observation may change, as the review that
 // raised it describes the edit. Declared here, not read from probes.ts, so the
 // probes' own code cannot vouch for itself.
@@ -31,6 +34,15 @@ const EDITED: Partial<Record<ProbeName, { arm: string; fields: string[] }>> = {
   'corrupted-pixels': { arm: 'png-blocked', fields: ['returned_bytes_hex'] },
   'swapped-source': { arm: 'mat-blocked', fields: ['independent_source_sha256'] },
   'changed-config': { arm: 'mat-blocked', fields: ['independent_rails_load_defaults', 'independent_active_storage_variant_processor'] },
+  'prose-mention': { arm: 'mat-unblocked', fields: ['independent_trace_text'] },
+  'failed-open': { arm: 'mat-unblocked', fields: ['independent_trace_text'] },
+  'other-directory': { arm: 'mat-unblocked', fields: ['independent_trace_text'] },
+};
+// From #120 on, the checker reads each arm's embedded trace: the trace probes
+// edit the blocked arm's, emptying it or adding exactly the forged read.
+const TRACE_EDIT: Partial<Record<ProbeName, (pinned: string) => string>> = {
+  'deleted-trace': () => '',
+  'forged-read': (pinned) => `${pinned}\n${FORGED_LINE}`,
 };
 
 /** The top-level fields whose values differ between two JSON objects. */
@@ -121,6 +133,18 @@ test('the checker investigation is consistent', () => {
       let mutated: Map<string, Buffer> | null = null;
       rules['mutation-as-claimed'] = attempt(() => {
         const files = new Map(inputs);
+        const traceEdit = TRACE_EDIT[probe];
+        if (traceEdit && existsSync(path.join(recorded, 'probes', probe, 'observations/mat-blocked.json'))) {
+          const file = 'observations/mat-blocked.json';
+          const text = readFileSync(path.join(recorded, 'probes', probe, file), 'utf8');
+          files.set(file, Buffer.from(text));
+          mutated = files;
+          const before = JSON.parse(inputs.get(file)!.toString('utf8'));
+          const after = JSON.parse(text);
+          const changed = changedFields(before, after);
+          return rule(JSON.stringify(changed) === '["independent_trace_text"]' && after.independent_trace_text === traceEdit(before.independent_trace_text),
+            `the recorded ${file} changes ${changed.join(', ') || 'nothing'}, not just the embedded trace as the probe says`);
+        }
         const edit = EDITED[probe];
         if (edit) {
           const file = `observations/${edit.arm}.json`;
