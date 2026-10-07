@@ -5,10 +5,18 @@ import { describe, expect, it } from 'vitest';
 
 const module = fileURLToPath(new URL('./ForecastReplay.pkl', import.meta.url));
 const committed = new URL('./forecast-replay.json', import.meta.url);
+const hasPkl = (() => {
+  try {
+    execFileSync('pkl', ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+})();
 
 describe('forecast replay', () => {
   // The story reads the rendered JSON; Pkl is the record it comes from.
-  it('is what ForecastReplay.pkl renders from the tree and the retained round', () => {
+  it.skipIf(!hasPkl)('is what ForecastReplay.pkl renders from the tree and the retained round', () => {
     const rendered = execFileSync('pkl', ['eval', '-f', 'json', module], { encoding: 'utf8' });
     expect(readFileSync(committed, 'utf8')).toBe(rendered);
   });
