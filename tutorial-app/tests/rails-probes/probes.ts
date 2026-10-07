@@ -203,3 +203,38 @@ export function forgedRead(pinned: Map<string, Buffer>): Map<string, Buffer> {
   return files;
 }
 
+
+/**
+ * One review-1 edit to a recorded observation: each `[from, to]` line of
+ * `observations/<arm>.json` is replaced, and must occur exactly once. Returns the
+ * files and the edited observation, so the lesson can show the edit itself.
+ */
+function editObservation(pinned: Map<string, Buffer>, arm: string, lines: [string, string][]) {
+  const files = copyFiles(pinned);
+  const file = `observations/${arm}.json`;
+  let text = files.get(file)!.toString('utf8');
+  for (const [from, to] of lines) {
+    if (text.split(from).length !== 2) throw new Error(`${file}: expected exactly one ${from}`);
+    text = text.replace(from, to);
+  }
+  files.set(file, Buffer.from(text, 'utf8'));
+  return { files, file, text };
+}
+
+/** Probe 3: the blocked arm's refusal becomes a generic crash ("RuntimeError: disk full", review 1, point 2). */
+export const genericCrash = (pinned: Map<string, Buffer>) =>
+  editObservation(pinned, 'mat-blocked', [
+    ['"variant_error_class": "Vips::Error"', '"variant_error_class": "RuntimeError"'],
+    ['"variant_error": "matload: operation is blocked"', '"variant_error": "RuntimeError: disk full"'],
+  ]);
+
+/** Probe 4: the private file's returned bytes are emptied, and their count set to zero (review 1, point 3). */
+export const emptiedBytes = (pinned: Map<string, Buffer>) =>
+  editObservation(pinned, 'mat-unblocked', [
+    ['"returned_bytes_hex": "4b5232532d43414e4152592d4349543239342d30313233343536373839616263"', '"returned_bytes_hex": ""'],
+    ['"returned_byte_count": 32', '"returned_byte_count": 0'],
+  ]);
+
+/** Probe 5: the blocked PNG control's pixels are corrupted to ffffffff (review 1, point 3). */
+export const corruptedPixels = (pinned: Map<string, Buffer>) =>
+  editObservation(pinned, 'png-blocked', [['"returned_bytes_hex": "00000000"', '"returned_bytes_hex": "ffffffff"']]);

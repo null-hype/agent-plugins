@@ -86,7 +86,7 @@ function compile(key: RevisionKey) {
   return { files, starter, solved, prose };
 }
 
-test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) => {
+test('Can an upload read a private file', { tag: '@tutorial' }, async ({}, testInfo) => {
   // The lesson file state at the end of the previous lesson. Each lesson starts
   // from it with only the trace replaced (the incoming turn), so the reporter's
   // continuity check holds the second lesson to what the first one left.
@@ -133,25 +133,23 @@ for (const { key } of CHAPTER) {
     expect(run.assertsPassed).toBeLessThan(run.assertsTotal!);
     // And a "noticed" answer is written up as data, not rejected: the fixture says what failed.
     expect(noticed(run)).toBe(true);
-    const messages = renderTraces(key, new Map((['deleted-trace', 'forged-read'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
+    const messages = renderTraces(key, new Map((['forged-read', 'deleted-trace', 'generic-crash', 'emptied-bytes', 'corrupted-pixels'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
     expect(messages).toContain(answerText('deleted-trace', run));
     expect(messages).toContain(`${run.assertsPassed} of ${run.assertsTotal} assertions pass`);
     expect(messages).not.toContain(`Deleting the trace still left all ${run.assertsTotal} assertions passing.`);
   });
 }
 
-// The same previews the budget-authority lessons use: Client is the commit-message
-// editor, Agent is the reviewer. Solve swaps the starter trace for the solved one.
+// Part 5's layout: the Client (the commit-message editor) is the only preview,
+// and the reviewer's activity prints to the terminal. Solve swaps the starter
+// trace for the solved one.
 const LESSON_META = {
   template: 'acp-trace',
   prepareCommands: ['npm install'],
   mainCommand: 'npm run dev',
-  previews: [
-    [4173, 'Client'],
-    [4174, 'Agent'],
-  ],
-  editor: true,
-  terminal: false,
+  previews: [[4173, 'Client']],
+  editor: false,
+  terminal: { open: true, panels: [['output', 'Agent']] },
 };
 
 const BRIDGE = `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';

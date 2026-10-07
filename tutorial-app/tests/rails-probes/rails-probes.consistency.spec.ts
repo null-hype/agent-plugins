@@ -19,7 +19,7 @@ test.skip(pklVersion() === null, 'pkl is not on PATH');
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.resolve(APP, process.env.CONSISTENCY_OUT ?? '../test-results/rails-probes/consistency');
-const CHAPTER = path.join(APP, 'src/content/tutorial/part-4/can-the-checker-be-trusted');
+const CHAPTER = path.join(APP, 'src/content/tutorial/part-5/can-an-upload-read-a-private-file');
 const ORDER: RevisionKey[] = ['S1', 'S2'];
 const PROBES: ProbeName[] = ['deleted-trace', 'forged-read'];
 // What each probe expects of a checker that can be trusted: that it notices

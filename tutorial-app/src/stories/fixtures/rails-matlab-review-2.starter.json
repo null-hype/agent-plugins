@@ -4,6 +4,7 @@
     {
       "actor": "client",
       "action": "send prompt",
+      "speaker": "alice",
       "envelope": {
         "jsonrpc": "2.0",
         "id": 1,
@@ -27,7 +28,7 @@
   ],
   "nextTurn": {
     "actor": "agent",
-    "speaker": "reviewer",
+    "speaker": "bob",
     "action": "review PR 118"
   }
 }

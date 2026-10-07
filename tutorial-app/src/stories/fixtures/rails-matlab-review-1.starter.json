@@ -4,6 +4,7 @@
     {
       "actor": "client",
       "action": "send prompt",
+      "speaker": "alice",
       "envelope": {
         "jsonrpc": "2.0",
         "id": 1,
@@ -13,7 +14,7 @@
           "prompt": [
             {
               "type": "text",
-              "text": "CIT-294: Can the check tell a real file read from a forged one?\n\nRun the Rails → libvips → libmatio/HDF5 chain live, under strace.\nFour arms: MAT canary and PNG control, each unblocked and blocked.\npkl test: 8 facts, 28 asserts, all passing."
+              "text": "Can the check tell a real read of the private file from a forged one?\n\nAlice, #117:\nRuns the real Rails -> libvips `matload` -> libmatio/HDF5 -> dummy file bytes -> returned variant chain live, byte-exact.\nFour runs on one pinned Rails 7.0.10/libvips 8.13.0/libmatio 1.5.23 image: unblocked MAT canary (disclosure), blocked MAT canary (refused, no disclosure), PNG control under both blocking states.\n`pkl test cit294.test.pkl` from `cit-294/` passes (8 facts / 28 asserts / 4 examples) against the live observations"
             }
           ]
         }
@@ -21,13 +22,13 @@
       "provenance": {
         "recordingId": "cit294-review-1#0",
         "capturedAt": "2026-10-04T01:15:37.196Z",
-        "scripted": "ACP framing and the subject question authored; the body is condensed from the PR 117 description."
+        "scripted": "ACP framing and the subject question authored; the body quotes the PR 117 description verbatim."
       }
     }
   ],
   "nextTurn": {
     "actor": "agent",
-    "speaker": "reviewer",
+    "speaker": "bob",
     "action": "review PR 117"
   }
 }
