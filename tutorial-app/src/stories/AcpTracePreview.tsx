@@ -24,7 +24,7 @@ function Pane({
 	payload?: AcpTraceState;
 	height: number;
 	label: string;
-	onAccepted?: (accepted: boolean) => void;
+	onAccepted?: (accepted: boolean, recordingId: unknown, order: unknown) => void;
 }) {
 	const frameRef = useRef<HTMLIFrameElement>(null);
 	const readyRef = useRef(false);
@@ -47,7 +47,7 @@ function Pane({
 				readyRef.current = true;
 				send();
 			} else if (event.data?.type === 'acp-trace-suggestion-accepted') {
-				onAccepted?.(Boolean(event.data.accepted));
+				onAccepted?.(Boolean(event.data.accepted), event.data.recordingId, event.data.order);
 			}
 		};
 		window.addEventListener('message', onMessage);
@@ -67,12 +67,24 @@ function Pane({
 }
 
 export default function AcpTracePreview({ payload, height = 360 }: Props) {
-	// The Client pane reports when the viewer accepts the agent's suggestion; the
-	// Agent pane holds the finding back until then. Both still get the same trace.
+	// As AcpTraceBridge does: the Client reports which suggestions the viewer
+	// accepted, per recording and in order, and both panes get that back. The
+	// coarse flag alone let one accepted question reveal every finding.
 	const [accepted, setAccepted] = useState(false);
+	const [acceptedReviews, setAcceptedReviews] = useState<Record<string, number[]>>({});
+	const onAccepted = (flag: boolean, recordingId: unknown, order: unknown) => {
+		setAccepted(flag);
+		if (typeof recordingId === 'string' && Array.isArray(order) && order.every((index) => Number.isInteger(index) && index >= 0)) {
+			setAcceptedReviews((previous) => ({ ...previous, [recordingId]: order }));
+		}
+	};
+	const clientPayload = useMemo(
+		() => (payload ? ({ ...payload, acceptedReviews } as AcpTraceState) : payload),
+		[payload, acceptedReviews],
+	);
 	const agentPayload = useMemo(
-		() => (payload ? ({ ...payload, accepted } as AcpTraceState) : payload),
-		[payload, accepted],
+		() => (payload ? ({ ...payload, acceptedReviews, accepted } as AcpTraceState) : payload),
+		[payload, acceptedReviews, accepted],
 	);
 
 	// Both pages now announce `lesson-preview-ready` themselves (see
@@ -82,7 +94,7 @@ export default function AcpTracePreview({ payload, height = 360 }: Props) {
 		<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Client</div>
-				<Pane html={clientPageHtml} payload={payload} height={height} label="acp-trace client preview" onAccepted={setAccepted} />
+				<Pane html={clientPageHtml} payload={clientPayload} height={height} label="acp-trace client preview" onAccepted={onAccepted} />
 			</div>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Agent</div>
