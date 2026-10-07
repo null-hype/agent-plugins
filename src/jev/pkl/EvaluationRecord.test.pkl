@@ -1,3 +1,8 @@
+/// CIT-334: the shared evaluation record, on synthetic states. Nothing here is
+/// about Rails or a PR; tutorial-app/tests/rails-probes/traces/ReplayRecord.test.pkl
+/// checks the generated records of a real investigation.
+///
+///   pkl test src/jev/pkl/EvaluationRecord.test.pkl
 amends "pkl:test"
 
 import "Question.pkl"
@@ -9,6 +14,7 @@ local kept = new Question.Evidence {
   availability = "retained"
   immutableId = "sha256:abc"
 }
+local rerun = (kept) { uri = "answer.json"; origin = "reproduced"; immutableId = "sha256:def" }
 local gap = new Question.Evidence {
   uri = "original-output"
   origin = "historical"
@@ -22,21 +28,29 @@ local q = new Question.Question {
   expected { min = 1; max = 1 }
 }
 local base = new Question.EvaluationRecord {
-  id = "evaluation-1"
   questionId = "remove-input"
   question = q
-  before { id = "before"; source = kept; scope { "checker inputs" } }
-  after { id = "after"; source = kept; scope { "checker inputs" } }
-  transition { from = "before"; to = "after"; action = "Remove input"; evidence { kept } }
+  state { id = "r1"; source = (kept) { uri = "repo"; immutableId = "git-commit:1" }; scope { "checker inputs" }; inputs { kept } }
+  mutation { action = "Remove input"; affects { "inputs.json" }; evidence { rerun } }
   delivery {
     feature = "example"
-    version = "20261008.0811"
     status = "planned"
     finding = "finding-1"
     scenario = "example-scenario"
   }
+  declarations {
+    new { text = "28 asserts"; evidence = kept; property = "assertsTotal"; declared = 28; observed = 28; observedFrom = rerun }
+  }
   answer = new Question.CheckerAnswer { exitCode = 0; assertsPassed = 28; assertsTotal = 28 }
-  observations { (kept) { origin = "reproduced" }; gap }
+  observations { rerun; gap }
+}
+local second = (base) {
+  state { id = "r2"; source { immutableId = "git-commit:2" } }
+}
+local investigation = new Question.Investigation {
+  questionId = "remove-input"
+  records { base; second }
+  transitions { new { from = "r1"; to = "r2"; action = "Revise after finding-1"; finding = "finding-1"; evidence { kept } } }
 }
 
 facts {
@@ -51,14 +65,37 @@ facts {
     !Question.validEvidence((gap) { immutableId = "invented" })
     !Question.validEvidence((kept) { immutableId = null })
   }
-  ["State transitions must link the captured states"] {
-    !Question.validRecord((base) { transition { from = "unrelated" } })
-    !Question.validRecord((base) { after { id = "before" } })
+  ["A probe stays inside its state: it can only affect the state's own inputs"] {
+    !Question.validRecord((base) { mutation { affects { "not-an-input" } } })
+    Question.validRecord((base) { mutation = null })
+  }
+  ["A transition links consecutive states and changes the source"] {
+    Question.validInvestigation(investigation)
+    !Question.validInvestigation((investigation) { transitions { [0] { to = "r1" } } })
+    !Question.validInvestigation((investigation) { records { [1] { state { source { immutableId = "git-commit:1" } } } } })
+    !Question.validInvestigation((investigation) { transitions = new Listing {} })
+  }
+  ["Every record in an investigation asks the same Question"] {
+    !Question.validInvestigation((investigation) { records { [1] { questionId = "other" } } })
+    !Question.validInvestigation((investigation) { records { [1] { question { expected { min = 0 } } } } })
   }
   ["A planned version cannot imply a delivered capture"] {
+    Question.validRecord((base) { delivery { version = "20261008.0811" } })
     !Question.validRecord((base) { delivery { status = "captured" } })
-    Question.validRecord((base) { delivery { status = "captured"; evidence = kept } })
+    !Question.validRecord((base) { delivery { status = "captured"; evidence = kept } })
+    Question.validRecord((base) { delivery { status = "captured"; version = "20261008.0811"; evidence = kept } })
     !Question.validRecord((base) { delivery { evidence = kept } })
+  }
+  ["Two review rounds are two versions"] {
+    !Question.validInvestigation((investigation) {
+      records { [0] { delivery { version = "20261008.0811" } }; [1] { delivery { version = "20261008.0811" } } }
+    })
+  }
+  ["A declared value is observed from a reproduction, and may disagree"] {
+    Question.validRecord((base) { declarations { [0] { observed = 27 } } })
+    !Question.validRecord((base) { declarations { [0] { observedFrom = kept } } })
+    !Question.validRecord((base) { declarations { [0] { observedFrom = null } } })
+    !Question.validRecord((base) { declarations { [0] { property = null } } })
   }
   ["Missing answers remain not collected"] {
     (base) { answer = null }.outcome == "not-collected"
