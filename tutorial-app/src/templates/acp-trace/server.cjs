@@ -509,12 +509,17 @@ function renderClientPage() {
           setTimeout(() => renderIntoEditor(renderReviewRecords(lastState)).catch(() => {}), 0);
         });
         // The suggestion is offered on its line whenever the cursor returns
-        // there, e.g. after a Peek closes and leaves it on the line it opened from.
-        editor.onDidChangeCursorPosition((event) => {
-          if (!suggestion || !model || event.position.lineNumber !== model.getLineCount()) return;
-          if (model.getLineContent(event.position.lineNumber) !== '' || !probeOffers(suggestion.nodes, acceptedOrder).length) return;
-          editor.trigger('acp-trace', 'editor.action.inlineSuggest.trigger', {});
-        });
+        // there, and again when the editor takes focus back: a Peek takes focus
+        // and inline suggestions do not keep on blur, so the next Tab would
+        // otherwise find nothing to accept. The trigger waits for the cursor
+        // change to settle; triggered while it is handled, it is cancelled.
+        const reoffer = (position) => {
+          if (!suggestion || !model || !position || position.lineNumber !== model.getLineCount()) return;
+          if (model.getLineContent(position.lineNumber) !== '' || !probeOffers(suggestion.nodes, acceptedOrder).length) return;
+          setTimeout(() => editor.trigger('acp-trace', 'editor.action.inlineSuggest.trigger', {}), 0);
+        };
+        editor.onDidChangeCursorPosition((event) => reoffer(event.position));
+        editor.onDidFocusEditorText(() => reoffer(editor.getPosition()));
         editor.onMouseDown((e) => {
           if (e.target.type !== window.monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
           const lineNumber = e.target.position && e.target.position.lineNumber;
