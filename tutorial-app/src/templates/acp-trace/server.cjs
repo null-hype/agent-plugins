@@ -310,10 +310,29 @@ function renderClientPage() {
       // Captured artifacts are keyed by their source URI and revision. A detail
       // fallback is explicitly a summary, never impersonating the source file.
       const peekModels = new Map();
+      // A location marked editable is someone's working copy, not retained
+      // evidence: Peek opens it writable, and saving it (Ctrl+S) hands the text
+      // to the host, which owns what a save means. Its text is reset from the
+      // host only when the saved text changes, never under someone's typing.
+      const savedText = new Map();
+      const workingSource = new Map();
+      function workingLocation(monaco, entry, text) {
+        const path = entry.uri.replace(/^[a-z]+:\\/\\/[^/]*\\//i, '').replace(/^\\/+/, '');
+        const uri = monaco.Uri.from({ scheme: 'working', path: '/' + entry.revision + '/' + path });
+        let working = monaco.editor.getModel(uri);
+        if (!working) working = monaco.editor.createModel(text, /\\.pkl$/.test(path) ? 'pkl' : 'plaintext', uri);
+        else if (savedText.get(uri.toString()) !== text) working.setValue(text);
+        savedText.set(uri.toString(), text);
+        workingSource.set(uri.toString(), entry);
+        const line = Math.min(Math.max(1, entry.line || 1), working.getLineCount());
+        const end = Math.min(Math.max(line, entry.endLine || line), working.getLineCount());
+        return { uri, range: new monaco.Range(line, entry.column || 1, end, entry.endColumn || working.getLineMaxColumn(end)) };
+      }
       function evidenceLocations(monaco, related) {
         return related.map((entry) => {
           const key = entry.uri + '@' + (entry.revision || '');
           const captured = lastState && lastState.evidenceFiles && lastState.evidenceFiles[key];
+          if (entry.editable && typeof captured === 'string') return workingLocation(monaco, entry, captured);
           const isSource = typeof captured === 'string';
           const text = isSource ? captured :
             'Evidence summary (' + entry.role + ')\\nSource: ' + key +
@@ -339,8 +358,9 @@ function renderClientPage() {
           const line = isSource ? Math.min(Math.max(1, entry.line || 1), evidenceModel.getLineCount()) : Math.min(4, evidenceModel.getLineCount());
           // A captured location may span lines (a JSON entry, a Pkl node).
           const end = isSource ? Math.min(Math.max(line, entry.endLine || line), evidenceModel.getLineCount()) : line;
+          // A location may name the columns it spans (a Pkl error's carets).
           return { uri: evidenceModel.uri,
-            range: new monaco.Range(line, 1, end, evidenceModel.getLineMaxColumn(end)) };
+            range: new monaco.Range(line, isSource && entry.column || 1, end, isSource && entry.endColumn || evidenceModel.getLineMaxColumn(end)) };
         });
       }
 
@@ -359,6 +379,17 @@ function renderClientPage() {
           const listener = created.onDidChangeModel(lockEvidence);
           created.onDidDispose(() => listener.dispose());
           lockEvidence();
+          // Peek's embedded editor has no addCommand; onKeyDown is on every editor.
+          created.onKeyDown((event) => {
+            if (!(event.ctrlKey || event.metaKey) || event.keyCode !== monaco.KeyCode.KeyS) return;
+            const working = created.getModel();
+            const entry = working && workingSource.get(working.uri.toString());
+            if (!entry) return;
+            event.preventDefault();
+            event.stopPropagation();
+            window.parent.postMessage({ type: 'acp-trace-working-saved', uri: entry.uri, revision: entry.revision,
+              text: working.getValue() }, '*');
+          });
         });
         monaco.languages.setLanguageConfiguration(languageId, { comments: { lineComment: '#' } });
         monaco.languages.setMonarchTokensProvider(languageId, {

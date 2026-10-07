@@ -83,12 +83,16 @@ class ProbeDiagnostic {
   related: Listing<Row>
 }
 
-/// One evidence row. `revision` and `line` are left out of the JSON when unset.
+/// One evidence row. `revision` and the range are left out of the JSON when unset.
 class Row {
   role: String
   uri: String
   revision: String?
   line: Int?
+  /// Where a range ends, and the columns it spans (a Pkl error's carets).
+  endLine: Int?
+  column: Int?
+  endColumn: Int?
   detail: String
 }
 

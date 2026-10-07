@@ -1,0 +1,104 @@
+/// The shared model: who can read Bob's private document, as chances, kept in
+/// one Pkl module that several people revise. Each revision is one lesson of
+/// part 5's "Shared model" chapter, asked the same Questions word for word, as
+/// the rails probes ask theirs of each checker state.
+///
+/// Pkl answers. Each Question reads one member of the revision's model; the
+/// answer is what the model lets through for it: the value Pkl evaluates, or 0
+/// when Pkl refuses the value. `expected` is the same at every revision, so an
+/// out-of-range answer is a revision that lets a leak through, recorded as data.
+///
+/// The revisions are committed files (`revisions/<revision>/PrivateDocument.pkl`).
+module SharedModel
+
+import "../../../src/jev/pkl/Question.pkl"
+
+class Revision {
+  /// What the revision is, in the words of whoever made it.
+  change: String
+  lesson: Question.Lesson
+}
+
+class Asked extends Question.Question {
+  ask: String
+  revision: String
+}
+
+/// The file every revision holds, under `revisions/<revision>/`.
+file: String = "PrivateDocument.pkl"
+
+revisions: Mapping<String, Revision> = new {
+  ["baseline"] {
+    change = "The model as committed."
+    lesson {
+      order = 1
+      title = "Does the committed model keep the document private"
+      prose = """
+        # Does the committed model keep the document private?
+
+        The **Client** holds a commit whose subject is a question, and whose body is the
+        shared model, `\(file)`, as committed: who can read Bob's private document,
+        written as chances. Its types say what a sound answer is: a reader who does not
+        own the document is a `NotOwner`, held to even odds or less.
+
+        Select **Solve** to have Pkl review it. Its two questions come back as grey
+        suggestions: "\(alice.ask)" and "\(bob.ask)". Press **Tab** to accept the one
+        shown, or **Alt+]** to switch first. Each finding is what Pkl let through for
+        that reader.
+
+        Open the lens above an accepted line: Peek shows the committed file itself.
+
+        Solve replays what Pkl said when these lessons were generated; it runs nothing.
+        """
+    }
+  }
+  ["alice"] {
+    change = "Alice raises her own chance of reading Bob's document to 0.8."
+    lesson {
+      order = 2
+      title = "Does the model catch Alice's edit"
+      prose = """
+        # Does the model catch Alice's edit?
+
+        The review goes on from where the first lesson left it. Alice has revised the
+        shared model: her commit, below the first, raises `aliceReads` from 0.05 to 0.8.
+        Nothing else changes.
+
+        Select **Solve** to have Pkl review her revision, with the same two questions.
+        Accept "\(alice.ask)": Pkl refuses her value, in its own words, because it
+        breaks the `NotOwner` type. Open its lens: Peek holds the committed file and
+        Alice's revision together, at the value each holds, with the constraint her
+        value broke.
+
+        Because Pkl refused it, the model lets nothing through for Alice: the answer is
+        within range. The type caught the edit. Whether a type can always be trusted to
+        is the next lesson's question.
+        """
+    }
+  }
+}
+
+local alice: Asked = new {
+  ask = "Can Alice read Bob's private document?"
+  revision = "baseline"
+  judge = new Question.Model { member = "aliceReads" }
+  collector = "evaluate-model"
+  requiredEvidence { "evaluation" }
+  expected { min = 0; max = 0.5 }
+}
+
+local bob: Asked = new {
+  ask = "Can Bob read it?"
+  revision = "baseline"
+  judge = new Question.Model { member = "bobReads" }
+  collector = "evaluate-model"
+  requiredEvidence { "evaluation" }
+  expected { min = 0.8; max = 1 }
+}
+
+questions: Mapping<Question.Id, Asked> = new {
+  for (rev, _ in revisions) {
+    ["\(rev)-alice-reads"] = (alice) { revision = rev }
+    ["\(rev)-bob-reads"] = (bob) { revision = rev }
+  }
+}
