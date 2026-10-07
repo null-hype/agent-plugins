@@ -9,6 +9,9 @@ const markers = (page: Page) => client(page).locator('body').evaluate((el) =>
   (el.ownerDocument.defaultView as any).monaco.editor.getModelMarkers({}).map((m: any) => m.message).join('\n') as string);
 const groups = (page: Page) => client(page).locator('.peekview-widget [aria-level="1"]').evaluateAll((els) =>
   els.map((e) => e.getAttribute('aria-label')!));
+// What a learner reads: each group's file name, and the file Peek opens first.
+const shown = (page: Page) => client(page).locator('.peekview-widget [aria-level="1"] .label-name').allInnerTexts();
+const opened = (page: Page) => client(page).locator('.peekview-widget .peekview-title').innerText();
 
 test('lesson 1: Pkl accepts the committed model', async ({ page }) => {
   await page.goto(story('committed'));
@@ -24,6 +27,8 @@ test('lesson 1: Pkl accepts the committed model', async ({ page }) => {
   await expect(c.locator('.peekview-widget')).not.toContainText('Evidence summary');
   // One location, so Peek shows no list: its title names the file.
   await expect(c.locator('.peekview-widget .peekview-title')).toContainText('revisions/baseline');
+  expect(await opened(page)).toContain('PrivateDocument.pkl@baseline');
+  expect(await opened(page)).not.toContain('captured');
 });
 
 test("lesson 2: Pkl rejects Alice's edit, and Peek holds both revisions", async ({ page }) => {
@@ -41,6 +46,9 @@ test("lesson 2: Pkl rejects Alice's edit, and Peek holds both revisions", async 
   const files = (await groups(page)).join('\n');
   expect(files).toMatch(/revisions\/baseline\/PrivateDocument\.pkl/);
   expect(files).toMatch(/revisions\/alice\/PrivateDocument\.pkl/);
+  // The revision under review opens first, and each group names its revision.
+  expect(await opened(page)).toContain('PrivateDocument.pkl@alice');
+  expect(await shown(page)).toEqual(['PrivateDocument.pkl@alice', 'PrivateDocument.pkl@baseline']);
 });
 
 test('lesson 3: Alice loosens the type, Pkl accepts her value, and the leak is the finding', async ({ page }) => {
@@ -59,6 +67,8 @@ test('lesson 3: Alice loosens the type, Pkl accepts her value, and the leak is t
   await expect(peek).not.toContainText('Evidence summary');
   const files = (await groups(page)).join('\n');
   for (const rev of ['baseline', 'alice', 'loosened']) expect(files).toMatch(new RegExp(`revisions/${rev}/PrivateDocument\\.pkl`));
+  expect(await opened(page)).toContain('PrivateDocument.pkl@loosened');
+  expect(await shown(page)).toEqual(['PrivateDocument.pkl@loosened', 'PrivateDocument.pkl@baseline', 'PrivateDocument.pkl@alice']);
   // What the revision changed is among the locations: the type it loosened.
   const loosened = peek.getByRole('treeitem', { name: /revisions\/loosened\/PrivateDocument\.pkl/ }).first();
   if (await loosened.getAttribute('aria-expanded') !== 'true') await loosened.click();
