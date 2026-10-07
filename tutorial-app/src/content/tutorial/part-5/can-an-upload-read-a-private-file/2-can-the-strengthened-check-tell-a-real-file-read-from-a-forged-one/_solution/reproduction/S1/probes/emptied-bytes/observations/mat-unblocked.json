@@ -1,0 +1,16 @@
+{
+  "arm": "mat",
+  "block_untrusted_env": null,
+  "source_path": "/work/canary.mat",
+  "declared_content_type": "image/png",
+  "stored_content_type": "image/png",
+  "identified": true,
+  "variable": true,
+  "loader_selected": "matload",
+  "variant_succeeded": true,
+  "returned_bytes_hex": "",
+  "returned_byte_count": 0,
+  "matches_dummy_file": true,
+  "recovered_text": "\"KR2S-CANARY-CIT294-0123456789abc\"",
+  "expected_text": "\"KR2S-CANARY-CIT294-0123456789abc\""
+}

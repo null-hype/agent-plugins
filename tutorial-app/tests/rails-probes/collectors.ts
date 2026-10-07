@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Collector } from '../questions/collectors';
 import { answerJson, type ProbeName } from './fixture';
-import { FORGED_LINE, REPRODUCTION_ID, REVISIONS, deletedTrace, forgedRead, loadPinnedChecker, runChecker, type CheckerRun, type RevisionKey } from './probes';
+import { FORGED_LINE, REPRODUCTION_ID, REVISIONS, corruptedPixels, deletedTrace, emptiedBytes, forgedRead, genericCrash, loadPinnedChecker, runChecker, type CheckerRun, type RevisionKey } from './probes';
 
 // CIT-317: the collectors the two Questions in `traces/CheckerProbes.pkl` name.
 // Each asks its probe of every checker state, for real, in its own copy of the
@@ -40,6 +40,17 @@ function mutate(name: ProbeName, pinned: Map<string, Buffer>, trace: string) {
     const files = deletedTrace(pinned);
     expect(files.has('canary-reads.txt')).toBe(false);
     return { files, what: 'canary-reads.txt removed', record: { 'mutation.txt': 'removed: canary-reads.txt (the whole retained strace transcript)\n' } };
+  }
+  // An edit to one recorded observation: the lesson keeps the edited record.
+  const edits = { 'generic-crash': genericCrash, 'emptied-bytes': emptiedBytes, 'corrupted-pixels': corruptedPixels } as const;
+  if (name in edits) {
+    const { files, file, text } = edits[name as keyof typeof edits](pinned);
+    const what = {
+      'generic-crash': 'the blocked MAT arm refused with RuntimeError: disk full instead of the matload block',
+      'emptied-bytes': "the unblocked MAT arm's returned bytes emptied and their count set to 0",
+      'corrupted-pixels': "the blocked PNG control's pixels set to ffffffff",
+    }[name as keyof typeof edits];
+    return { files, what, record: { [file]: text, 'mutation.txt': `edited ${file}: ${what}\n` } };
   }
   // A dummy-file read in the blocked arm, which blocking should prevent.
   const files = forgedRead(pinned);
@@ -83,6 +94,9 @@ const probe = (name: ProbeName): Collector => (partDir) =>
   });
 
 export const railsProbes: Record<string, Collector> = {
-  'deleted-trace': probe('deleted-trace'),
   'forged-read': probe('forged-read'),
+  'deleted-trace': probe('deleted-trace'),
+  'generic-crash': probe('generic-crash'),
+  'emptied-bytes': probe('emptied-bytes'),
+  'corrupted-pixels': probe('corrupted-pixels'),
 };

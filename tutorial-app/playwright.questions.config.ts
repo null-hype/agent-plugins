@@ -35,8 +35,10 @@ const PARTS: { name: string; module: string; outDir?: string; chapter?: { title:
   {
     name: 'rails-probes',
     module: 'tests/rails-probes/traces/CheckerProbes.pkl',
-    // The tutorial reporter writes the lesson into src/content/tutorial/part-4
-    // (the chapter directory is rewritten on every compile; commit what it produces).
+    // CIT-328: part 5's "Can an upload read a private file?", one lesson per pull
+    // request and its review (the chapter directory is rewritten on every compile;
+    // commit what it produces).
+    outDir: './src/content/tutorial/part-5',
     projects: [
       { name: 'lesson', testMatch: 'rails-probes/rails-probes.tutorial.spec.ts' },
       // CIT-320: checks the committed records agree with each other and with a
