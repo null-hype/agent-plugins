@@ -1,0 +1,76 @@
+amends "pkl:test"
+
+import "Question.pkl"
+import "Jev.pkl"
+
+local kept = new Question.Evidence {
+  uri = "inputs.json"
+  origin = "historical"
+  availability = "retained"
+  immutableId = "sha256:abc"
+}
+local gap = new Question.Evidence {
+  uri = "original-output"
+  origin = "historical"
+  availability = "missing"
+  reason = "Not retained"
+}
+local q = new Question.Question {
+  judge = new Question.Checker {}
+  collector = "remove-input"
+  requiredEvidence { "exitCode" }
+  expected { min = 1; max = 1 }
+}
+local base = new Question.EvaluationRecord {
+  id = "evaluation-1"
+  questionId = "remove-input"
+  question = q
+  before { id = "before"; source = kept; scope { "checker inputs" } }
+  after { id = "after"; source = kept; scope { "checker inputs" } }
+  transition { from = "before"; to = "after"; action = "Remove input"; evidence { kept } }
+  delivery {
+    feature = "example"
+    version = "20261008.0811"
+    status = "planned"
+    finding = "finding-1"
+    scenario = "example-scenario"
+  }
+  answer = new Question.CheckerAnswer { exitCode = 0; assertsPassed = 28; assertsTotal = 28 }
+  observations { (kept) { origin = "reproduced" }; gap }
+}
+
+facts {
+  ["Shared assessment preserves unexpected answers"] {
+    Question.validRecord(base)
+    base.outcome == "out-of-range"
+    !Question.failsRun(base.outcome)
+  }
+  ["Missing evidence has a reason and no fabricated immutable identity"] {
+    Question.validEvidence(gap)
+    !Question.validEvidence((gap) { reason = null })
+    !Question.validEvidence((gap) { immutableId = "invented" })
+    !Question.validEvidence((kept) { immutableId = null })
+  }
+  ["State transitions must link the captured states"] {
+    !Question.validRecord((base) { transition { from = "unrelated" } })
+    !Question.validRecord((base) { after { id = "before" } })
+  }
+  ["A planned version cannot imply a delivered capture"] {
+    !Question.validRecord((base) { delivery { status = "captured" } })
+    Question.validRecord((base) { delivery { status = "captured"; evidence = kept } })
+    !Question.validRecord((base) { delivery { evidence = kept } })
+  }
+  ["Missing answers remain not collected"] {
+    (base) { answer = null }.outcome == "not-collected"
+    !Question.validRecord((base) { observations = new Listing { gap } })
+  }
+  ["Forecasts remain distinct from answers and policy expectations"] {
+    (base) { forecast = 0.4 }.outcome == "out-of-range"
+    !Question.validRecord((base) { answer = 0.4 })
+    Question.validRecord((base) {
+      question { judge = new Jev.NoulQuestion { instructions = "Does it hold?" } }
+      answer = 0.4
+      forecast = 0.8
+    })
+  }
+}
