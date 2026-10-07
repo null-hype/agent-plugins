@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Collector } from '../questions/collectors';
 import { answerJson, type ProbeName } from './fixture';
-import { FORGED_LINE, REPRODUCTION_ID, REVISIONS, corruptedPixels, deletedTrace, emptiedBytes, forgedRead, genericCrash, loadPinnedChecker, runChecker, type CheckerRun, type RevisionKey } from './probes';
+import { FORGED_LINE, REPRODUCTION_ID, REVISIONS, changedConfig, corruptedPixels, deletedTrace, emptiedBytes, forgedRead, genericCrash, loadPinnedChecker, runChecker, swappedSource, type CheckerRun, type RevisionKey } from './probes';
 
 // CIT-317: the collectors the two Questions in `traces/CheckerProbes.pkl` name.
 // Each asks its probe of every checker state, for real, in its own copy of the
@@ -42,13 +42,15 @@ function mutate(name: ProbeName, pinned: Map<string, Buffer>, trace: string) {
     return { files, what: 'canary-reads.txt removed', record: { 'mutation.txt': 'removed: canary-reads.txt (the whole retained strace transcript)\n' } };
   }
   // An edit to one recorded observation: the lesson keeps the edited record.
-  const edits = { 'generic-crash': genericCrash, 'emptied-bytes': emptiedBytes, 'corrupted-pixels': corruptedPixels } as const;
+  const edits = { 'generic-crash': genericCrash, 'emptied-bytes': emptiedBytes, 'corrupted-pixels': corruptedPixels, 'swapped-source': swappedSource, 'changed-config': changedConfig } as const;
   if (name in edits) {
     const { files, file, text } = edits[name as keyof typeof edits](pinned);
     const what = {
       'generic-crash': 'the blocked MAT arm refused with RuntimeError: disk full instead of the matload block',
       'emptied-bytes': "the unblocked MAT arm's returned bytes emptied and their count set to 0",
       'corrupted-pixels': "the blocked PNG control's pixels set to ffffffff",
+      'swapped-source': "the blocked MAT arm's source sha256 replaced with another valid one",
+      'changed-config': "the blocked MAT arm's Rails defaults set to 6.1 and its variant processor to mini_magick",
     }[name as keyof typeof edits];
     return { files, what, record: { [file]: text, 'mutation.txt': `edited ${file}: ${what}\n` } };
   }
@@ -67,8 +69,11 @@ function mutate(name: ProbeName, pinned: Map<string, Buffer>, trace: string) {
   };
 }
 
-const probe = (name: ProbeName): Collector => (partDir) =>
-  (Object.keys(REVISIONS) as RevisionKey[]).map((key) => {
+// A probe is asked from the revision whose review raised it (`from` in
+// CheckerProbes.pkl) on: never of a revision before it, which would leak a
+// later review into an earlier lesson.
+const probe = (name: ProbeName): Collector => (partDir, { question }) =>
+  (Object.keys(REVISIONS) as RevisionKey[]).slice((Object.keys(REVISIONS) as RevisionKey[]).indexOf(question.from)).map((key) => {
     const { baseline: expected } = REVISIONS[key];
     const pinned = loadPinnedChecker(key);
     const trace = pinned.get('canary-reads.txt')!.toString('utf8');
@@ -101,4 +106,6 @@ export const railsProbes: Record<string, Collector> = {
   'generic-crash': probe('generic-crash'),
   'emptied-bytes': probe('emptied-bytes'),
   'corrupted-pixels': probe('corrupted-pixels'),
+  'swapped-source': probe('swapped-source'),
+  'changed-config': probe('changed-config'),
 };

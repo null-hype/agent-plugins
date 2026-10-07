@@ -54,6 +54,9 @@ class Revision {
   axiom: AcpTrace.Row
   promptScripted: String
   replyScripted: String
+  /// Whether the pull request claims the check now flags the edits earlier
+  /// reviews made, as #118 does ("all now flagged"). Its words are in `prompt`.
+  claimsFlagged: Boolean = false
   /// This revision's lesson in the chapter (CIT-316).
   lesson: Question.Lesson
 }
@@ -153,12 +156,14 @@ revisions: Mapping<String, Revision> = new {
     sessionId = "sess_cit294-02"
     prompt =
       """
-      CIT-297: Can the strengthened check tell a real file read from a forged one?
+      Can the strengthened check tell a real read of the private file from a forged one?
 
-      Independent read evidence now reaches the checker: run_arms.sh derives the dummy-file open count outside the Ruby process.
-      Deleting the trace, or forging a dummy-file read into the blocked arm, is now flagged.
-      pkl test: 18 facts, 56 asserts, all passing.
+      Alice, #118:
+      **Independent read evidence now reaches the checker.** `run_arms.sh` derives `independent_dummy_file_openat_count` (plus source/image identity and the live `load_defaults`/`variant_processor` config) entirely outside `canary_runner.rb`'s own process and merges it into each arm's JSON; `Reconcile.pkl` checks it against `Claims.pkl`'s `independentReadExpected`. Deleting the trace, or forging a dummy-file read into the blocked arm, is now flagged.
+      `cit294.test.pkl` gained eight negative-control facts covering the review's five exact mutations (deleted trace, forged blocked-arm read, generic crash, emptied bytes, corrupted PNG pixels) plus the two direct-`Reconcile.check` attacks it named (crash with no error info; stripped bytes with the boolean left `true`) — all now flagged.
+      `pkl test --junit-reports reports cit294.test.pkl`: 18 facts / 56 asserts / 4 examples, 100% pass
       """
+    claimsFlagged = true
     capturedAt = "2026-10-04"
     findingId = "review-2.gap-1"
     finding = "The trace negative controls mutate the derived count, not the retained trace."
@@ -186,32 +191,36 @@ revisions: Mapping<String, Revision> = new {
         "independent-read-mismatch compares the observed open count with the claim; nothing re-derives that count from canary-reads.txt"
     }
     promptScripted =
-      "ACP framing and the subject question authored; the body is condensed from the PR 118 description. capturedAt is the evidence bundle's collection date."
+      "ACP framing and the subject question authored; the body quotes the PR 118 description verbatim. capturedAt is the evidence bundle's collection date."
     replyScripted =
       "ACP framing authored; the review text is retrieved verbatim. capturedAt is the evidence bundle's collection date."
     lesson {
       order = 2
-      title = "Can the strengthened check tell a real file read from a forged one"
+      title = "Can the strengthened check tell a real read of the private file from a forged one"
       prose =
         """
-        # Can the strengthened check tell a real file read from a forged one?
+        # Can the strengthened check tell a real read of the private file from a forged one?
 
-        Pull request #118 answers the first review. Its description says the
-        independent read evidence now reaches the checker, and that deleting the trace,
-        or forging a dummy-file read into the blocked arm, "is now flagged". The
-        **Client** holds the commit that change was written as.
+        Alice answers Bob's first review with pull request #118, the new commit in the
+        **Client**, below the first. Her checker now reads evidence gathered outside
+        the Rails process: an open count of the private file taken from the `strace`
+        transcript, the upload's sha256, and the live Rails configuration. Her
+        description says each of Bob's five edits is "now flagged".
 
-        The two questions are the ones asked of #117, word for word. Select **Solve**
-        to ask the reviewer, and take either suggestion with **Tab** (or **Alt+]** to
-        switch first), or both. The **Agent** holds back its finding until you accept.
+        That is a forecast, and this lesson checks it. Select **Solve** for Bob's second
+        review. His first five questions are the ones he asked of #117, word for word,
+        each now carrying Alice's claim and whether the run bears it out. Two more are
+        new: his review notices that the upload's sha256 and the configuration are
+        recorded for every arm but checked for one, and edits the blocked arm's to
+        see. Press **Tab** to accept each.
 
-        Open the lens above an accepted line, **`review-2.gap-1.deleted-trace`** or
-        **`review-2.gap-1.forged-read`**. The **reproduction** row is the probe run
-        again, for real, against the checker as #118 submitted it. It is a new run, not
-        the reviewer's own output, which was not kept. It shows the checker \(found).\(
-          if (foundSame) " The new tests change the derived open count; neither probe touches that count, because both change the retained trace." else ""
-        ) The files for each run
-        appear in the editor after Solve, beside the first lesson's.
+        Open a lens. Peek opens the edit Bob made to #118's own records, then his
+        review's words beside it, then the checker's result. Here the checker
+        \(found).\(
+          if (asked.take(2).every((q) -> !Question.noticed(answer(q))))
+            " The new negative controls change the open count, a number derived from the trace; Bob's trace edits change the trace and leave that number alone, so they still pass."
+          else ""
+        )
         """
     }
   }
@@ -251,8 +260,11 @@ class Probe extends Question.Question {
   /// the field the lens opens at; null for a probe of the trace.
   arm: String?
   field: String?
-  /// Where the review that raised it says so.
-  raisedAt: Int
+  /// Where each revision's review speaks to it, by line.
+  reviewLine: Mapping<String, Int>
+  /// The revision whose review raised it. It is asked of that revision and every
+  /// later one, never an earlier one, which would leak a later review back.
+  from: String = "S1"
   judge = new Question.Checker {}
   collector = name
   requiredEvidence { "exitCode" }
@@ -266,7 +278,9 @@ questions: Mapping<Question.Id, Probe> = new {
 }
 
 /// The probes in the order the reviewer offers them.
-local offered: List<Probe> = List(forgedRead, deletedTrace, genericCrash, emptiedBytes, corruptedPixels)
+local offered: List<Probe> = List(forgedRead, deletedTrace, genericCrash, emptiedBytes, corruptedPixels, swappedSource, changedConfig)
+/// The probes this revision is asked: those raised by its own review or an earlier one.
+local asked: List<Probe> = offered.filter((q) -> revisions[q.from].lesson.order <= claims.lesson.order)
 
 local deletedTrace = new Probe {
   name = "deleted-trace"
@@ -275,7 +289,7 @@ local deletedTrace = new Probe {
   did = "Deleting the trace"
   what = "canary-reads.txt removed"
   findingAt { ["S1"] = "review-1.finding-1"; ["S2"] = "review-2.gap-1" }
-  raisedAt = 5
+  reviewLine { ["S1"] = 5; ["S2"] = 7 }
 }
 local forgedRead = new Probe {
   name = "forged-read"
@@ -284,7 +298,7 @@ local forgedRead = new Probe {
   did = "Forging a read of the private file"
   what = "an openat of the private file, /work/dummy-canary.txt, added to the mat-blocked arm of canary-reads.txt"
   findingAt { ["S1"] = "review-1.finding-1"; ["S2"] = "review-2.gap-1" }
-  raisedAt = 5
+  reviewLine { ["S1"] = 5; ["S2"] = 7 }
 }
 local genericCrash = new Probe {
   name = "generic-crash"
@@ -295,7 +309,7 @@ local genericCrash = new Probe {
   findingAt { ["S1"] = "review-1.finding-2"; ["S2"] = "review-2.reassessed.findings-2-3" }
   arm = "mat-blocked"
   field = "variant_error"
-  raisedAt = 7
+  reviewLine { ["S1"] = 7; ["S2"] = 3 }
 }
 local emptiedBytes = new Probe {
   name = "emptied-bytes"
@@ -306,7 +320,7 @@ local emptiedBytes = new Probe {
   findingAt { ["S1"] = "review-1.finding-3"; ["S2"] = "review-2.reassessed.findings-2-3" }
   arm = "mat-unblocked"
   field = "returned_bytes_hex"
-  raisedAt = 9
+  reviewLine { ["S1"] = 9; ["S2"] = 3 }
 }
 local corruptedPixels = new Probe {
   name = "corrupted-pixels"
@@ -317,7 +331,31 @@ local corruptedPixels = new Probe {
   findingAt { ["S1"] = "review-1.finding-3"; ["S2"] = "review-2.reassessed.findings-2-3" }
   arm = "png-blocked"
   field = "returned_bytes_hex"
-  raisedAt = 9
+  reviewLine { ["S1"] = 9; ["S2"] = 3 }
+}
+local swappedSource = new Probe {
+  name = "swapped-source"
+  action = "replaced the blocked arm's source sha256 with another valid one"
+  question = "Does the check fail when the blocked arm records a different upload?"
+  did = "Recording a different upload for the blocked arm"
+  what = "the blocked MAT arm's source sha256 replaced with another valid one"
+  from = "S2"
+  findingAt { ["S2"] = "review-2.gap-2" }
+  arm = "mat-blocked"
+  field = "independent_source_sha256"
+  reviewLine { ["S2"] = 9 }
+}
+local changedConfig = new Probe {
+  name = "changed-config"
+  action = "set the blocked arm's Rails defaults to 6.1 and its variant processor to mini_magick"
+  question = "Does the check fail when the blocked arm records a different configuration?"
+  did = "Recording a different configuration for the blocked arm"
+  what = "the blocked MAT arm's Rails defaults set to 6.1 and its variant processor to mini_magick"
+  from = "S2"
+  findingAt { ["S2"] = "review-2.gap-2" }
+  arm = "mat-blocked"
+  field = "independent_rails_load_defaults"
+  reviewLine { ["S2"] = 9 }
 }
 
 local function answer(q: Probe): Question.CheckerAnswer =
@@ -338,13 +376,15 @@ local function answerText(q: Probe): String =
       "\(q.did) still left all \(a.assertsTotal) assertions passing."
 
 /// What the run found, in words the lesson can end on. Both answers are told.
-local foundSame = offered.every((q) -> !Question.noticed(answer(q)))
+local foundSame = asked.every((q) -> !Question.noticed(answer(q)))
 local function each(q: Probe, what: String): String =
   let (a = answer(q))
     "\(what) \(if (Question.noticed(a)) "made it fail (\(counts(a)))" else "still left all \(a.assertsTotal) assertions passing")"
 local found: String =
   if (foundSame) "still passing all \(answer(deletedTrace).assertsTotal) assertions, whichever edit Bob made"
-  else "different answers: \(each(deletedTrace, "deleting the trace")), and \(each(forgedRead, "forging a read"))"
+  else
+    let (missed = asked.filter((q) -> !Question.noticed(answer(q))))
+      "catching \(asked.length - missed.length) of Bob's \(asked.length) edits, and still passing every assertion for the rest: \(missed.map((q) -> q.did.toLowerCase()).join("; ")); a reproduction of what each edit did is the lens's last row"
 
 /// The row that shows what a probe produced. Labelled a reproduction, never the reviewers' own output.
 local function reproduction(q: Probe): AcpTrace.Row =
@@ -401,8 +441,17 @@ local function edited(q: Probe): AcpTrace.Row =
 
 /// Where the review that raised a probe's finding says so.
 local function raised(q: Probe): AcpTrace.Row = (claims.reviewSaid) {
-  line = q.raisedAt
+  line = q.reviewLine[state]
 }
+
+/// The author's claim about a probe, when her pull request makes one: her
+/// forecast that the check now flags it, and whether the run bears it out. A
+/// probe raised by this revision's own review was unknown to her, so carries none.
+local function claimNote(q: Probe): String =
+  if (claims.claimsFlagged && q.from != state)
+    " Alice claimed #\(claims.pr) flags it; it \(if (Question.noticed(answer(q))) "does" else "does not")."
+  else ""
+
 
 local function probe(q: Probe, rows: Listing<AcpTrace.Row>): AcpTrace.Probe = new {
   action = q.action
@@ -410,7 +459,7 @@ local function probe(q: Probe, rows: Listing<AcpTrace.Row>): AcpTrace.Probe = ne
   diagnostic {
     severity = if (Question.noticed(answer(q))) "info" else "error"
     code = "\(q.findingAt[state]).\(q.name)"
-    message = "\(code): \(answerText(q))"
+    message = "\(code): \(answerText(q))\(claimNote(q))"
     evaluationId = "\(historyRun):\(code)"
     related = rows
   }
@@ -463,7 +512,7 @@ solved: AcpTrace.Trace = new {
                 claims.axiom
                 transcript
                 notRetained
-                for (q in offered) { reproduction(q) }
+                for (q in asked) { reproduction(q) }
               }
               evaluationId = "\(historyRun):\(finding)"
             }
@@ -480,7 +529,7 @@ solved: AcpTrace.Trace = new {
                 notRetained
                 reproduction(deletedTrace)
               })
-              for (q in offered.drop(2)) {
+              for (q in asked.drop(2)) {
                 probe(q, new Listing {
                   edited(q)
                   raised(q)

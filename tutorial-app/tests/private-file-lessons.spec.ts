@@ -87,3 +87,57 @@ test('lesson 1: Alice says #117 passes; each of Bob\'s edits still passes it', a
     expect(await opened()).not.toContain('Evidence summary');
   }
 });
+
+// Review 2's own two edits: the blocked arm's identity, which #118 records but
+// checks for one arm only. Asked from #118 on, never of #117.
+const REVIEW_2 = [
+  ['review-2.gap-1.forged-read', 'Does the check fail when a read of the private file is forged?', '✗'],
+  ['review-2.gap-1.deleted-trace', 'Does the check fail when the trace is deleted?', '✗'],
+  ['review-2.reassessed.findings-2-3.generic-crash', 'Does the check fail when the block is a generic crash?', 'ℹ'],
+  ['review-2.reassessed.findings-2-3.emptied-bytes', 'Does the check fail when the returned bytes are emptied?', 'ℹ'],
+  ['review-2.reassessed.findings-2-3.corrupted-pixels', "Does the check fail when the PNG control's pixels are corrupted?", 'ℹ'],
+  ['review-2.gap-2.swapped-source', 'Does the check fail when the blocked arm records a different upload?', '✗'],
+  ['review-2.gap-2.changed-config', 'Does the check fail when the blocked arm records a different configuration?', '✗'],
+] as const;
+
+test("lesson 2: Alice says #118 flags every edit; Bob finds two that pass, and two more", async ({ page }) => {
+  await page.goto(story('pr-118'));
+  const c = client(page);
+  // Lesson 1's review stays above the new commit; this commit is Alice's #118.
+  await expect(c.locator('.view-lines')).toContainText('Can the strengthened check tell a real read of the private file from a forged one?');
+  const editor = c.getByRole('textbox', { name: 'Editor content', exact: true });
+  for (const [, question] of REVIEW_2) {
+    await expect(async () => {
+      const lines = (await typed(page)).split('Can the strengthened check')[1] ?? '';
+      if (!lines.includes(question)) {
+        expect(await shown(page)).toContain(question);
+        await editor.press('Tab');
+      }
+      expect((await typed(page)).split('Can the strengthened check')[1]).toContain(question);
+    }).toPass({ timeout: 15_000 });
+  }
+  const said = await markers(page);
+  for (const [code, , mark] of REVIEW_2) {
+    await expect(c.getByRole('button', { name: new RegExp(`${code.replace(/\./g, '\\.')}\\b`) })).toContainText(mark);
+    expect(said).toContain(`${code}: `);
+  }
+  // Alice's claim is her forecast for each of review 1's edits; the run answers it.
+  expect(said).toContain('review-2.gap-1.forged-read: Forging a read of the private file still left all 56 assertions passing. Alice claimed #118 flags it; it does not.');
+  expect(said).toMatch(/review-2\.reassessed\.findings-2-3\.generic-crash: Recording the block as a generic crash made the check fail[^\n]*Alice claimed #118 flags it; it does\./);
+  // Review 2's own edits carry no claim: #118 did not know of them.
+  expect(said).toMatch(/review-2\.gap-2\.swapped-source: [^\n]*still left all 56 assertions passing\.$/m);
+
+  const peek = c.locator('.peekview-widget');
+  const opened = () => peek.locator('.monaco-editor').first().evaluate((element) => {
+    const monaco = (element.ownerDocument.defaultView as any).monaco;
+    return monaco.editor.getEditors().find((e: any) => e.getDomNode() === element).getModel().getValue() as string;
+  });
+  await c.getByRole('button', { name: /review-2\.gap-2\.swapped-source/ }).click();
+  await expect(peek.locator('.peekview-title')).toContainText('mat-blocked.json@S2');
+  await expect.poll(opened).toContain('"independent_source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"');
+  // Beside it, review 2's own words.
+  const location = peek.locator('[aria-level="2"][aria-label*="in linear-CIT-297-comment-271bc302.md on line"]');
+  if (!(await location.count())) await peek.locator('[aria-level="1"][aria-label*="in linear-CIT-297-comment-271bc302.md,"]').click();
+  await location.first().click();
+  await expect.poll(opened).toContain('Replacing the blocked MAT arm\'s source SHA with a different valid SHA still passes everything');
+});

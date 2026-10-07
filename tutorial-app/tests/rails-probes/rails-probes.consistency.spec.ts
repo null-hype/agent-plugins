@@ -132,7 +132,8 @@ test('the checker investigation is consistent', () => {
       rules['full-pass-when-unnoticed'] = rule(noticed(answer) || answer.assertsTotal === declared.asserts,
         `"not noticed" with ${answer.assertsTotal} assertions, the baseline ran ${declared.asserts}`);
       rules['lesson-says-answer'] = rule(
-        (messages.get(probe) ?? '').endsWith(answerText(probe, answer)) &&
+        // The message states the answer; a revision's author may have made a claim about it, told after.
+        (messages.get(probe) ?? '').includes(`: ${answerText(probe, answer)}`) &&
           existsSync(lesson(`reproduction/${key}/probes/${probe}/result.txt`)) &&
           readFileSync(lesson(`reproduction/${key}/probes/${probe}/result.txt`), 'utf8') ===
             readFileSync(path.join(recorded, 'probes', probe, 'result.txt'), 'utf8'),

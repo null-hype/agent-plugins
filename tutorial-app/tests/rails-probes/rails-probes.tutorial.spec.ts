@@ -139,7 +139,7 @@ for (const { key } of CHAPTER) {
     expect(run.assertsPassed).toBeLessThan(run.assertsTotal!);
     // And a "noticed" answer is written up as data, not rejected: the fixture says what failed.
     expect(noticed(run)).toBe(true);
-    const messages = renderTraces(key, new Map((['forged-read', 'deleted-trace', 'generic-crash', 'emptied-bytes', 'corrupted-pixels'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
+    const messages = renderTraces(key, new Map((['forged-read', 'deleted-trace', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
     expect(messages).toContain(answerText('deleted-trace', run));
     expect(messages).toContain(`${run.assertsPassed} of ${run.assertsTotal} assertions pass`);
     expect(messages).not.toContain(`Deleting the trace still left all ${run.assertsTotal} assertions passing.`);
