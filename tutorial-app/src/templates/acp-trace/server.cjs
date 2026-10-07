@@ -329,6 +329,13 @@ function renderClientPage() {
         return { uri, range: new monaco.Range(line, entry.column || 1, end, entry.endColumn || working.getLineMaxColumn(end)) };
       }
       function evidenceLocations(monaco, related) {
+        // Peek sorts its groups by URI. The authority, which no label shows,
+        // keeps the rows' own order: the revision under review comes first.
+        const rank = new Map();
+        for (const entry of related) {
+          const key = entry.uri + '@' + (entry.revision || '');
+          if (!rank.has(key)) rank.set(key, 'r' + String(rank.size).padStart(3, '0'));
+        }
         return related.map((entry) => {
           const key = entry.uri + '@' + (entry.revision || '');
           const captured = lastState && lastState.evidenceFiles && lastState.evidenceFiles[key];
@@ -340,12 +347,14 @@ function renderClientPage() {
           const path = entry.uri.replace(/^[a-z]+:\\/\\/[^/]*\\//i, '').replace(/^\\/+/, '');
           // Summaries may cite the same source but describe different ranges.
           // Preserve that distinction without creating models on every render.
-          const identity = key + (isSource ? '' : ':' + entry.role + ':' + entry.line + ':' + entry.detail);
+          const identity = rank.get(key) + ':' + key + (isSource ? '' : ':' + entry.role + ':' + entry.line + ':' + entry.detail);
           let evidenceModel = peekModels.get(identity);
           if (!evidenceModel) {
-            const uri = monaco.Uri.from({ scheme: 'evidence',
-              // The revision leads the path, where Peek's list and title show it.
-              path: '/' + (isSource ? 'captured' : 'summary') + '/' + entry.role + (entry.revision ? '@' + entry.revision : '') + '/' + path,
+            const uri = monaco.Uri.from({ scheme: 'evidence', authority: rank.get(key),
+              // A captured file is named as it was captured, at its revision
+              // (\`PrivateDocument.pkl@alice\`), where Peek's list and title show it.
+              path: isSource ? '/' + path + (entry.revision ? '@' + entry.revision : '')
+                : '/summary/' + entry.role + (entry.revision ? '@' + entry.revision : '') + '/' + path,
               query: 'rev=' + encodeURIComponent(entry.revision || '') +
                 (isSource ? '' : '&entry=' + peekModels.size),
             });
@@ -526,6 +535,22 @@ function renderClientPage() {
           wordWrap: 'on',
         });
         editor.onDidLayoutChange(revealNewest);
+        // CIT-328: a review lens opens Peek on its first location, the revision
+        // under review, not on whichever location Monaco finds nearest the lens
+        // line. Peek has no public way to choose one; its controller's widget
+        // does, once the lens's locations have resolved into its model.
+        let selectedIn = null;
+        const selectFirst = (tries) => {
+          const peek = editor.getContribution('editor.contrib.referencesController');
+          const first = peek && peek._model && peek._model.references && peek._model.references[0];
+          if (first && peek._widget && peek._model !== selectedIn) {
+            selectedIn = peek._model;
+            peek._widget.setSelection(first);
+          } else if (tries > 0) requestAnimationFrame(() => selectFirst(tries - 1));
+        };
+        document.getElementById('monaco-root').addEventListener('click', (event) => {
+          if (lastState && lastState.scenario === 'cit294-review-v1' && event.target.closest('.codelens-decoration')) selectFirst(60);
+        }, true);
         // The only edit a viewer may make is accepting the agent's suggestion,
         // and accepting it is what applies its diagnostics. Anything else is
         // taken back.

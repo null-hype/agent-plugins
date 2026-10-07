@@ -57,6 +57,6 @@ test("Alice's edit that breaks the model's type comes back as Pkl's own diagnost
   // then her working copy (the constraint and her value).
   await expect(peek.locator('[aria-level="1"]')).toHaveCount(2);
   const files = await peek.locator('[aria-level="1"]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
-  expect(files[0]).toMatch(/base\/PrivateDocument\.pkl/);
+  expect(files[0]).toMatch(/PrivateDocument\.pkl@base/);
   expect(files[1]).toMatch(/alice\/PrivateDocument\.pkl/);
 });

@@ -43,19 +43,20 @@ test('Tab unfolds the root into a heading and its questions; the split shows onc
   const peek = c.locator('.peekview-widget');
   await c.getByRole('button', { name: /question\.split\W+5 related/ }).click();
   await expect(peek).toBeVisible();
-  const groups = await peek.locator('[aria-level="1"]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!.replace(/.*full path \/captured\/([^/]+)\/.*\/(\S+)$/, '$1 $2')));
-  expect(groups).toEqual(['split-base@5282c7e WasIVulnerable.pkl', 'split-base@5282c7e WasIVulnerable.test.pkl-expected.pcf',
-    'split-head@12f2351 WasIVulnerable.pkl', 'split-head@12f2351 WasIVulnerable.test.pkl-expected.pcf']);
+  const groups = await peek.locator('[aria-level="1"]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!.replace(/.*full path \/.*\/(\S+)$/, '$1')));
+  expect(groups).toEqual(['WasIVulnerable.pkl@5282c7e', 'WasIVulnerable.test.pkl-expected.pcf@5282c7e',
+    'WasIVulnerable.pkl@12f2351', 'WasIVulnerable.test.pkl-expected.pcf@12f2351']);
   const frozen = (commit: string, file: string) => readFileSync(new URL(`../src/stories/frozen/${commit}/${file}`, import.meta.url), 'utf8');
   for (const [side, file, text] of [
     ['split-base@5282c7e', 'WasIVulnerable.test.pkl-expected.pcf', /new \{\}\s*\}$/],
     ['split-head@12f2351', 'WasIVulnerable.pkl', /Round 1 splits the root/],
     ['split-head@12f2351', 'WasIVulnerable.test.pkl-expected.pcf', /implied = 0\.32/],
   ] as const) {
-    const group = peek.getByRole('treeitem', { name: new RegExp(`${side}/.*/${file.replace(/\./g, '\\.')}$`) });
+    const named = `${file}@${side.split('@')[1]}`;
+    const group = peek.getByRole('treeitem', { name: new RegExp(`/${named.replace(/\./g, '\\.')}$`) });
     if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
     // The location itself, under its side's group (both sides hold this file).
-    await peek.locator(`[aria-level="2"][aria-label*="${file} on line"]`).filter({ hasText: text }).click();
+    await peek.locator(`[aria-level="2"][aria-label*="${named} on line"]`).filter({ hasText: text }).click();
     await expect.poll(evidence).toEqual({ text: frozen(side.split('@')[1], file), readOnly: true });
   }
   await page.keyboard.press('Escape');
@@ -85,6 +86,10 @@ test('Tab unfolds the root into a heading and its questions; the split shows onc
   // Registration and read-back are separate locations in the retained log.
   for (const [file, line] of [['WasIVulnerable.pkl', 46], ['monitor.json', 8], ['monitor.json', 32]] as const) {
     const group = peek.getByRole('treeitem', { name: new RegExp(`symbols? in ${file.replace('.', '\\.')},`) });
+    // Peek opens on its first location; the tree only renders the rows in view.
+    for (const open of await peek.locator('[aria-level="1"][aria-expanded="true"]').all()) {
+      if (await open.getAttribute('aria-label') !== await group.getAttribute('aria-label')) await open.click();
+    }
     if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
     await peek.getByRole('treeitem', { name: new RegExp(`in ${file.replace('.', '\\.')} on line ${line} `) }).click();
     const original = readFileSync(new URL((file.endsWith('.pkl') ? tree : round) + file, import.meta.url), 'utf8');
