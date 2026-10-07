@@ -49,10 +49,31 @@ local function objectRange(text: List<String>, start: Int): Pair<Int, Int> =
 local entryStarts: List<Int> = monitorLines.toList().mapIndexed((i, l) -> if (l == "  {") i + 1 else 0).filter((n) -> n > 0)
 local entries = log.mapIndexed((i, e) -> Pair(e, objectRange(monitorLines, entryStarts[i])))
 
+/// The split, as `pkl test` keeps it: the reading frozen before the root was
+/// split (5282c7e, which froze the root alone) and the one the split froze
+/// (12f2351). Same file, two revisions, both static. The earlier one is
+/// retained under `frozen/` (forecastReplay.spec.ts checks it against git);
+/// the later one is the tree's own expected file, unchanged since.
+const frozenBefore = "5282c7e"
+const frozenAfter = "12f2351"
+local expectedFile = "WasIVulnerable.test.pkl-expected.pcf"
+
+local function readings(text: List<String>): Pair<Int, Int> =
+  objectRange(text, find(text, 1, (l) -> l == "  [\"readings\"] {"))
+
+local function frozen(id: String): List<Location> =
+  if (tree.nodes[id].all.isEmpty) List() else List(
+    (at("expected", expectedFile, readings(read("frozen/\(frozenBefore)/\(expectedFile)").text.split("\n")),
+      "The reading frozen at \(frozenBefore), before the split: \(id) alone, nothing implied.")) { revision = frozenBefore },
+    (at("expected", expectedFile, readings(lines(expectedFile)),
+      "The reading the split froze at \(frozenAfter): \(tree.readings[id].forecast) against the \(tree.readings[id].implied) its questions imply.")) { revision = frozenAfter }
+  ) + tree.nodes[id].all.toList().map((child) -> node(child))
+
 local function percent(p: Number): String = "\((p * 100).round().toInt())%"
 
 class Location {
   role: String
+  revision: String?
   uri: String
   line: Int
   endLine: Int
@@ -118,7 +139,7 @@ local function probe(id: String, depth: Int): Dynamic =
   new Dynamic {
     question = "\(n.ask) Forecast: \(percent(n.forecast)) yes."
     action = "inspect the recorded registration and read-back"
-    diagnostic = diagnostic(id, "forecast.registered", registered(id), List(node(id)) + registration(id))
+    diagnostic = diagnostic(id, "forecast.registered", registered(id), frozen(id) + List(node(id)) + registration(id))
     when (!n.all.isEmpty) {
       children { for (child in n.all) { probe(child, depth + 1) } }
       // Shown once every question it rests on has been accepted.

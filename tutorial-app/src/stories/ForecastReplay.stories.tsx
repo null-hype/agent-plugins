@@ -7,6 +7,8 @@ import replay from './forecast-replay.json';
 import treeText from '../../../src/cve-2026-66066/questions/WasIVulnerable.pkl?raw';
 import registerText from '../../../src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/register.json?raw';
 import monitorText from '../../../src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json?raw';
+import frozenBefore from './frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf?raw';
+import frozenAfter from '../../../src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf?raw';
 import readingText from '../../../src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/reading.txt?raw';
 
 const meta = {
@@ -26,6 +28,9 @@ const evidenceFiles = {
   [source + round + 'register.json@']: registerText,
   [source + round + 'monitor.json@']: monitorText,
   [source + round + 'reading.txt@']: readingText,
+  // The split's frozen reading, before (5282c7e) and as the split froze it (12f2351).
+  [source + 'WasIVulnerable.test.pkl-expected.pcf@5282c7e']: frozenBefore,
+  [source + 'WasIVulnerable.test.pkl-expected.pcf@12f2351']: frozenAfter,
 };
 const config = { traceFile: '/acp-trace.json', scenario: replay.starter.scenario };
 const fixture = { data: {}, files: {}, solved: {}, focus: '' } satisfies Lesson;
@@ -33,7 +38,7 @@ const fixture = { data: {}, files: {}, solved: {}, focus: '' } satisfies Lesson;
 export const RootQuestion: Story = {
   name: 'Root forecast and recorded registration',
   render: ({ solved }) => (
-    <AcpTracePreview height={560} payload={{ ...deriveAcpTraceState(fixture, {
+    <AcpTracePreview height={560} agent={false} payload={{ ...deriveAcpTraceState(fixture, {
       '/acp-trace.json': JSON.stringify(solved ? replay.solved : replay.starter),
     }, { config }), evidenceFiles }} />
   ),

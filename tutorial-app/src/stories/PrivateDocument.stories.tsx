@@ -18,12 +18,14 @@ type Story = StoryObj<typeof meta>;
 const fixture = { data: {}, files: {}, solved: {}, focus: '' } satisfies Lesson;
 const config = { traceFile: '/acp-trace.json', scenario: 'cit294-review-v1' };
 
+// Part 5 runs the Client alone; agent activity is the lesson's terminal.
 // Read the generated lesson traces directly, so the toggle reveals the same
 // recorded reply as TutorialKit's Solve without maintaining another fixture.
 export const Baseline: Story = {
   name: 'Is the private document private?',
   render: ({ solved }) => (
     <AcpTracePreview
+      agent={false}
       payload={deriveAcpTraceState(fixture, {
         '/acp-trace.json': JSON.stringify(solved ? baselineSolved : baselineStarter),
       }, { config })}
@@ -36,6 +38,7 @@ export const OwnerCheck: Story = {
   name: 'Does the owner check keep the document private?',
   render: ({ solved }) => (
     <AcpTracePreview
+      agent={false}
       payload={deriveAcpTraceState(fixture, {
         '/acp-trace.json': JSON.stringify(solved ? patchedSolved : patchedStarter),
       }, { config })}
