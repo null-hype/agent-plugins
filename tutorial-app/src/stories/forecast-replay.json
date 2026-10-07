@@ -1,6 +1,8 @@
 {
   "source": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/",
   "roundId": "20261006T065648Z-stub",
+  "frozenBefore": "5282c7e",
+  "frozenAfter": "12f2351",
   "starter": {
     "scenario": "cit294-review-v1",
     "frames": [
@@ -77,6 +79,36 @@
                 "evaluationId": "20261006T065648Z-stub:was-i-vulnerable:forecast.registered",
                 "related": [
                   {
+                    "role": "expected",
+                    "revision": "5282c7e",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                    "line": 2,
+                    "endLine": 4,
+                    "detail": "The reading frozen at 5282c7e, before the split: was-i-vulnerable alone, nothing implied."
+                  },
+                  {
+                    "role": "expected",
+                    "revision": "12f2351",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                    "line": 2,
+                    "endLine": 11,
+                    "detail": "The reading the split froze at 12f2351: 0.5 against the 0.32 its questions imply."
+                  },
+                  {
+                    "role": "fact",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                    "line": 78,
+                    "endLine": 81,
+                    "detail": "Would an uploaded file reach libvips' matload? Active Storage makes variants, the variant processor is :vips, and the deployed libvips has matload (conditions 1 to 3). Forecast 0.4, set before anything answers it. No resolution is recorded."
+                  },
+                  {
+                    "role": "fact",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                    "line": 82,
+                    "endLine": 85,
+                    "detail": "Could an attacker get a crafted upload rendered? The direct uploads endpoint is reachable, a variation key is scrapeable, and Rails predates the fix (conditions 4 to 6). Forecast 0.8, set before anything answers it. No resolution is recorded."
+                  },
+                  {
                     "role": "fact",
                     "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
                     "line": 68,
@@ -144,6 +176,36 @@
                     "message": "forecast.registered: Forecast 50%, registered once and read back as 50%, not moved. Unresolved in this round.",
                     "evaluationId": "20261006T065648Z-stub:was-i-vulnerable:forecast.registered",
                     "related": [
+                      {
+                        "role": "expected",
+                        "revision": "5282c7e",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                        "line": 2,
+                        "endLine": 4,
+                        "detail": "The reading frozen at 5282c7e, before the split: was-i-vulnerable alone, nothing implied."
+                      },
+                      {
+                        "role": "expected",
+                        "revision": "12f2351",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                        "line": 2,
+                        "endLine": 11,
+                        "detail": "The reading the split froze at 12f2351: 0.5 against the 0.32 its questions imply."
+                      },
+                      {
+                        "role": "fact",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 78,
+                        "endLine": 81,
+                        "detail": "Would an uploaded file reach libvips' matload? Active Storage makes variants, the variant processor is :vips, and the deployed libvips has matload (conditions 1 to 3). Forecast 0.4, set before anything answers it. No resolution is recorded."
+                      },
+                      {
+                        "role": "fact",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 82,
+                        "endLine": 85,
+                        "detail": "Could an attacker get a crafted upload rendered? The direct uploads endpoint is reachable, a variation key is scrapeable, and Rails predates the fix (conditions 4 to 6). Forecast 0.8, set before anything answers it. No resolution is recorded."
+                      },
                       {
                         "role": "fact",
                         "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",

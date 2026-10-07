@@ -1,0 +1,8 @@
+examples {
+  ["readings"] {
+    new {}
+  }
+  ["scores"] {
+    new {}
+  }
+}
