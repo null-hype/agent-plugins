@@ -1,6 +1,7 @@
 import { expect, test, type TestInfo } from '@playwright/test';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   answerJson,
   answerText,
@@ -42,6 +43,7 @@ import { EVALUATION_SPECS, evaluationIdOf } from '../../src/lib/reviewHistory';
 // CIT-316: each lesson's title, place and prose are authored in
 // `traces/CheckerProbes.pkl`, beside the questions they tell.
 const CHAPTER = chapter();
+const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 async function attachTutorial(testInfo: TestInfo, index: number, name: string, body: string, contentType = 'text/plain') {
   await testInfo.attach(`tutorial:${index}:${name}`, { body, contentType });
@@ -105,6 +107,10 @@ test('Can an upload read a private file', { tag: '@tutorial' }, async ({}, testI
       // What Solve leaves: the solved trace and this state's reproduction files.
       const added = new Map<string, string>([['acp-trace.json', solved]]);
       for (const [file, body] of files) added.set(`reproduction/${key}/${file}`, body);
+      // The review's own words, which the trace's rows cite, as files the lens opens.
+      for (const uri of new Set([...solved.matchAll(/"uri": "(evidence\/cit-294-review-history-v1\/captures\/[^"#]+)"/g)].map((m) => m[1]))) {
+        added.set(uri, readFileSync(path.join(APP_DIR, uri), 'utf8'));
+      }
       // The first lesson restates what it leaves untouched: the reporter builds a
       // step's end state from file/ attachments alone, so nothing carries by itself.
       const declared = index === 1 ? new Map([...before, ...added]) : added;
