@@ -28,7 +28,7 @@ const launchOptions = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   : {};
 
 // `outDir` is the tutorial part its lessons are written into (the reporter's default
-// is part-4). A part with a `chapter` tells its Questions' own lessons: each
+// is part-5). A part with a `chapter` tells its Questions' own lessons: each
 // Question with a `lesson` renders it through `lessonModule` from its answer, and
 // the tutorial reporter compiles them into that chapter.
 const PARTS: { name: string; module: string; outDir?: string; chapter?: { title: string; lessonModule: string }; projects: Project[] }[] = [
@@ -54,27 +54,12 @@ const PARTS: { name: string; module: string; outDir?: string; chapter?: { title:
         name: 'playback',
         testMatch: 'rails-probes/rails-probes.playback.spec.ts',
         dependencies: ['lesson'],
-        use: { baseURL: 'http://localhost:4321', headless: true, viewport: { width: 1440, height: 900 }, launchOptions, screenshot: 'only-on-failure' },
+        // RAILS_PROBES_PLAYBACK_URL points it at another dev server (a worktree's, say).
+        // Against a running dev server, pass --no-deps: the lesson project rewrites
+        // the chapter directory, and a dev server serving it can wedge a lesson's bundle.
+        use: { baseURL: process.env.RAILS_PROBES_PLAYBACK_URL ?? 'http://localhost:4321', headless: true, viewport: { width: 1440, height: 900 }, launchOptions, screenshot: 'only-on-failure' },
       },
     ],
-  },
-  {
-    // CIT-318: the jev-playwright Questions, scored by a canned mock answer unless
-    // JEV_BACKEND=real (see jev-playwright's README). Needs jev-playwright's
-    // `npm ci` and `.venv`; no server. CIT-328: their lesson project tells each
-    // revision they were asked of as one lesson of part 5's "Private document".
-    name: 'jev',
-    module: '../jev-playwright/report-expected.pcf',
-    outDir: './src/content/tutorial/part-5',
-    projects: [{ name: 'lesson', testMatch: 'jev/jev.tutorial.spec.ts' }],
-  },
-  {
-    // The shared model: one Pkl module several people revise, each revision a
-    // lesson of part 5's "Shared model" chapter. Pkl answers; needs only `pkl`.
-    name: 'shared-model',
-    module: 'tests/shared-model/SharedModel.pkl',
-    outDir: './src/content/tutorial/part-5',
-    projects: [{ name: 'lesson', testMatch: 'shared-model/shared-model.tutorial.spec.ts' }],
   },
 ];
 
@@ -92,10 +77,6 @@ if (!process.env.QUESTIONS_SNAPSHOT) {
   );
   process.env.QUESTIONS_SNAPSHOT = path.join(process.env.QUESTIONS_RUN_DIR, 'questions.json');
   writeFileSync(process.env.QUESTIONS_SNAPSHOT, JSON.stringify(snapshot, null, 2) + '\n');
-  // The jev collectors' scorer (jev-playwright/score.mjs) reads these.
-  process.env.JEV_BACKEND ??= 'mock';
-  process.env.JEV_MOCK_ANSWERS ??= path.resolve('../jev-playwright/fixtures/answers.json');
-  process.env.JEV_RUN_ID ??= path.basename(process.env.QUESTIONS_RUN_DIR);
 }
 const questions: Record<string, Record<string, any>> = JSON.parse(readFileSync(process.env.QUESTIONS_SNAPSHOT, 'utf8'));
 
@@ -131,9 +112,9 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   workers: 1,
-  // part-4 is the rails probes' tutorial part; a part with its own `outDir` names
-  // it in its projects' metadata, which the reporter prefers.
-  reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/part-4' }]],
+  // A part names its tutorial part (`outDir`) in its projects' metadata, which
+  // the reporter prefers over this default.
+  reporter: [['list'], ['./reporters/tutorial.ts', { outDir: './src/content/tutorial/part-5' }]],
   projects,
   // RAILS_PROBES_NO_SERVERS=1 skips both servers, for runs that need neither
   // (the root Dagger module's RailsProbes).
