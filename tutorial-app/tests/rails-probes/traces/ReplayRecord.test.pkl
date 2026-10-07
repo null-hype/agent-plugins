@@ -1,0 +1,61 @@
+/// CIT-334: the `deleted-trace` Question across both checker revisions, checked
+/// and baselined the way `.dagger/internal/devenv-base/pkl/Vaults.test.pkl`
+/// checks the vault inventory. The capture (`../records.ts`) is the observed
+/// half; the facts are the check; the examples are the generated records,
+/// committed as `ReplayRecord.test.pkl-expected.pcf`, so any change to what was
+/// captured shows up as a reviewable diff.
+///
+///   pkl test ReplayRecord.test.pkl -p capture=<file>
+///
+/// `rails-probes.consistency.spec.ts` writes the capture and runs this in the
+/// `rails-probes` check. `CIT307_UPDATE=1` there rewrites the baseline.
+amends "pkl:test"
+
+import "ReplayRecord.pkl"
+import "../../../../src/jev/pkl/Question.pkl"
+
+local investigation = ReplayRecord.investigation
+local records = investigation.records.toList()
+local first = records.first
+
+facts {
+  ["Both checker revisions validate through the same record"] {
+    records.length == 2
+    records.every((r) -> Question.validRecord(r))
+    Question.validInvestigation(investigation)
+  }
+  ["The probe stays inside its revision; the transition changes it"] {
+    records.every((r) -> r.mutation != null && r.mutation.affects.toList().every((uri) -> uri.endsWith("/canary-reads.txt")))
+    investigation.transitions.toList().every((t) -> t.from != t.to)
+    records[0].state.source.immutableId != records[1].state.source.immutableId
+  }
+  ["Each PR's declared assertion count is the one reproduced"] {
+    records.every((r) -> r.declarations.toList().every((d) -> d.declared == d.observed))
+  }
+  ["What was not retained is missing, with a reason, not reconstructed"] {
+    records.every((r) -> r.observations.toList().any((e) -> e.availability == "missing" && e.origin == "historical"))
+    records.every((r) -> r.state.image?.availability == "missing" && r.state.snapshot?.availability == "missing")
+  }
+  ["A tampered record does not validate"] {
+    // A gap given an id it never had.
+    !Question.validRecord((first) { observations { [3] { immutableId = "sha256:invented" } } })
+    // A forecast put where the checker's answer goes.
+    !Question.validRecord((first) { answer = 0.4 })
+    // A probe that claims to change something outside the pinned inputs.
+    !Question.validRecord((first) { mutation { affects { "tutorial-app/package.json" } } })
+    // A reproduced value claimed as the PR's own declaration.
+    !Question.validRecord((first) { declarations { [0] { evidence { origin = "reproduced" } } } })
+    // The rounds run backwards.
+    !Question.validInvestigation((investigation) { transitions { [0] { from = "S2-pinned"; to = "S1-pinned" } } })
+    // Both rounds delivered as one version.
+    !Question.validInvestigation((investigation) {
+      records { [0] { delivery { version = "20261008.0811" } }; [1] { delivery { version = "20261008.0811" } } }
+    })
+  }
+}
+
+examples {
+  ["generated records"] {
+    investigation
+  }
+}

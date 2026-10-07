@@ -1,0 +1,486 @@
+examples {
+  ["generated records"] {
+    new {
+      questionId = "deleted-trace"
+      records {
+        new {
+          questionId = "deleted-trace"
+          question {
+            dependencies {}
+            judge {
+              type = "checker"
+            }
+            collector = "deleted-trace"
+            requiredEvidence {
+              "exitCode"
+            }
+            expected {
+              min = 1
+              max = 1
+            }
+            lesson = null
+            name = "deleted-trace"
+            action = "removed canary-reads.txt, the whole retained trace"
+            question = "Does the check fail when the trace is deleted?"
+            did = "Deleting the trace"
+            what = "canary-reads.txt removed"
+          }
+          state {
+            id = "S1-pinned"
+            source {
+              uri = "https://github.com/null-hype/agent-plugins"
+              origin = "historical"
+              availability = "retained"
+              immutableId = "git-commit:20aafd26372a832224be824f72f4a615ee671094"
+              reason = null
+            }
+            scope {
+              "The checker modules and retained arm evidence the pinned suite reads"
+            }
+            inputs {
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/Reconcile.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:efee9ff22bdf347d9a55c1a4e8e79261baba85c1"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/cit294.test.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:b16d9f875bd4650f25fc7fb87a05f70d34f6adcb"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/run_arms.sh"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:76361b9554c5013fe356cd4bae4ac9b1f39dfdc9"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:173360554c299e0d1c9b2fd834b890bb93826923"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:e004ce5ba7ec3137b8e835a9108d363cbbc8da58"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/mat-blocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:cecce99462f757b6cfb6e57df8a1d7dd692cb5de"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/png-unblocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:5db92dbc46636a17394f27e2a32301e23e348f10"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/observations/png-blocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:c815474d2d958c723a81392d5a2c13b09693c5c2"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-probe-reproduction-v1/inputs/S1/Claims.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:a6cf7949c033dcfb5b4ae85dbe53413443cc97f5"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-probe-reproduction-v1/inputs/S1/Observation.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:6e1594b8483db9a0b272e01daa9e3edf1d10271b"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-probe-reproduction-v1/inputs/S1/cit294.test.pkl-expected.pcf"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:73d902a2a97e4ecfed10775c831b3f3427cab44a"
+                reason = null
+              }
+            }
+            image {
+              uri = "S1/image"
+              origin = "historical"
+              availability = "missing"
+              immutableId = null
+              reason = "No image digest was recorded for this checker revision."
+            }
+            snapshot {
+              uri = "S1/snapshot"
+              origin = "historical"
+              availability = "missing"
+              immutableId = null
+              reason = "No container snapshot was taken; only the checker inputs were retained."
+            }
+            limitations {
+              "The application and its runtime state are not captured, only the checker inputs."
+            }
+          }
+          mutation {
+            action = "Remove the retained trace from a copy of the pinned inputs"
+            affects {
+              "evidence/cit-294-review-history-v1/files/20aafd26372a832224be824f72f4a615ee671094/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+            }
+            evidence {
+              new {
+                uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/mutation.txt"
+                origin = "reproduced"
+                availability = "retained"
+                immutableId = "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+                reason = null
+              }
+            }
+          }
+          delivery {
+            feature = "cve-2026-66066"
+            version = null
+            status = "planned"
+            finding = "review-1.finding-1"
+            scenario = "test/_global/cve-2026-66066-forensics"
+            evidence = null
+          }
+          declarations {
+            new {
+              text = "- [x] `pkl test cit294.test.pkl` from `cit-294/` passes (8 facts / 28 asserts / 4 examples) against the live observations"
+              evidence {
+                uri = "evidence/cit-294-review-history-v1/captures/github-pr-117-body.md"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "sha256:645dd313cd115bab8aa1a42a4c2edb9347792cc60df8a888171bcac972571c5f"
+                reason = null
+              }
+              property = "assertsTotal"
+              declared = 28
+              observed = 28
+              observedFrom {
+                uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S1/runs/baseline/result.txt"
+                origin = "reproduced"
+                availability = "retained"
+                immutableId = "sha256:b54572e0f08b9ef32ffed96478c1b314b7b65d350b31b11e591123f431b5d8e5"
+                reason = null
+              }
+            }
+          }
+          forecast = null
+          answer {
+            exitCode = 0
+            testsPassed = 12
+            testsTotal = 12
+            assertsPassed = 28
+            assertsTotal = 28
+          }
+          observations {
+            new {
+              uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/answer.json"
+              origin = "reproduced"
+              availability = "retained"
+              immutableId = "sha256:a49a331f6df221e643af0c89805d18527cb97e086db1106ce4ae2bfd2f24c9d6"
+              reason = null
+            }
+            new {
+              uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/result.txt"
+              origin = "reproduced"
+              availability = "retained"
+              immutableId = "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+              reason = null
+            }
+            new {
+              uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S1/runs/baseline/result.txt"
+              origin = "reproduced"
+              availability = "retained"
+              immutableId = "sha256:b54572e0f08b9ef32ffed96478c1b314b7b65d350b31b11e591123f431b5d8e5"
+              reason = null
+            }
+            new {
+              uri = "S1/original-mutation-output"
+              origin = "historical"
+              availability = "missing"
+              immutableId = null
+              reason = "The reviewer's own deleted-trace output was not retained."
+            }
+          }
+          outcome = "out-of-range"
+        }
+        new {
+          questionId = "deleted-trace"
+          question {
+            dependencies {}
+            judge {
+              type = "checker"
+            }
+            collector = "deleted-trace"
+            requiredEvidence {
+              "exitCode"
+            }
+            expected {
+              min = 1
+              max = 1
+            }
+            lesson = null
+            name = "deleted-trace"
+            action = "removed canary-reads.txt, the whole retained trace"
+            question = "Does the check fail when the trace is deleted?"
+            did = "Deleting the trace"
+            what = "canary-reads.txt removed"
+          }
+          state {
+            id = "S2-pinned"
+            source {
+              uri = "https://github.com/null-hype/agent-plugins"
+              origin = "historical"
+              availability = "retained"
+              immutableId = "git-commit:8d097c8e16bd1db44d5d4f558ad99938585e1001"
+              reason = null
+            }
+            scope {
+              "The checker modules and retained arm evidence the pinned suite reads"
+            }
+            inputs {
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/Reconcile.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:8c26d8305111a7bbf6e8eb3933ae10b90be12294"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/cit294.test.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:a0109c3cf3d379bde05940025662aca508479a28"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/run_arms.sh"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:65f1651966d680b26785ca8ea5ac6bf8ffe35240"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/Observation.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:c3d08eb41b2e5c793c78ca0a44a89e7d9ef206c4"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/diagnose.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:2800e32d0e0cdd41b9e7c4fa4a25b69a73a089c5"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/reports/diagnostics.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:3dc26135eb8509161108d44a79bbfcc1638b9ada"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/reports/cit294.test.xml"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:fedcfbd74a895d23448411ec9845655f8c6fa27d"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:16784c3297c6b7654a681850596b652b808ed2a3"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/mat-unblocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:fcd25a065693102a979e159e753163348a7aa31d"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/mat-blocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:e790ca96d151f6a4ddcb475ac1e1240168d115f1"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/png-unblocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:c834d447ff8b000f9cebd1cba5cf2cacb29bf60c"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/observations/png-blocked.json"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:6d4e507d450ac6ff1531dd4d7e8a6fda5dfb7548"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-probe-reproduction-v1/inputs/S2/Claims.pkl"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:44d3e6d5deaef5e6988ea684ed3f5a938774b0dc"
+                reason = null
+              }
+              new {
+                uri = "evidence/cit-294-probe-reproduction-v1/inputs/S2/cit294.test.pkl-expected.pcf"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "git-blob:e24e660619ab051753fd6339d82ade2626ad536b"
+                reason = null
+              }
+            }
+            image {
+              uri = "S2/image"
+              origin = "historical"
+              availability = "missing"
+              immutableId = null
+              reason = "No image digest was recorded for this checker revision."
+            }
+            snapshot {
+              uri = "S2/snapshot"
+              origin = "historical"
+              availability = "missing"
+              immutableId = null
+              reason = "No container snapshot was taken; only the checker inputs were retained."
+            }
+            limitations {
+              "The application and its runtime state are not captured, only the checker inputs."
+            }
+          }
+          mutation {
+            action = "Remove the retained trace from a copy of the pinned inputs"
+            affects {
+              "evidence/cit-294-review-history-v1/files/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/canary-reads.txt"
+            }
+            evidence {
+              new {
+                uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/mutation.txt"
+                origin = "reproduced"
+                availability = "retained"
+                immutableId = "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+                reason = null
+              }
+            }
+          }
+          delivery {
+            feature = "cve-2026-66066"
+            version = null
+            status = "planned"
+            finding = "review-2.gap-1"
+            scenario = "test/_global/cve-2026-66066-forensics"
+            evidence = null
+          }
+          declarations {
+            new {
+              text = "- [x] `pkl test --junit-reports reports cit294.test.pkl`: 18 facts / 56 asserts / 4 examples, 100% pass"
+              evidence {
+                uri = "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md"
+                origin = "historical"
+                availability = "retained"
+                immutableId = "sha256:5285efd972ebfe32c1daf0d642569694592a0a2080347ff66cceed115414e061"
+                reason = null
+              }
+              property = "assertsTotal"
+              declared = 56
+              observed = 56
+              observedFrom {
+                uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S2/runs/baseline/result.txt"
+                origin = "reproduced"
+                availability = "retained"
+                immutableId = "sha256:3ed963ce11c1b42466e56fb4b6a51de9c453bdd28da07f2f5dd54edb950750ee"
+                reason = null
+              }
+            }
+          }
+          forecast = null
+          answer {
+            exitCode = 0
+            testsPassed = 22
+            testsTotal = 22
+            assertsPassed = 56
+            assertsTotal = 56
+          }
+          observations {
+            new {
+              uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/answer.json"
+              origin = "reproduced"
+              availability = "retained"
+              immutableId = "sha256:aba1b6a87455651347a940d2b46bb905dc84c38544e9fdb9ef5a108eb1046608"
+              reason = null
+            }
+            new {
+              uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/result.txt"
+              origin = "reproduced"
+              availability = "retained"
+              immutableId = "sha256:1a04b4cd5558c8250fac1560ab5eb883f3455679fb4a628024c7edb9397efde7"
+              reason = null
+            }
+            new {
+              uri = "evidence/cit-294-probe-reproduction-v1/reproduction/S2/runs/baseline/result.txt"
+              origin = "reproduced"
+              availability = "retained"
+              immutableId = "sha256:3ed963ce11c1b42466e56fb4b6a51de9c453bdd28da07f2f5dd54edb950750ee"
+              reason = null
+            }
+            new {
+              uri = "S2/original-mutation-output"
+              origin = "historical"
+              availability = "missing"
+              immutableId = null
+              reason = "The reviewer's own deleted-trace output was not retained."
+            }
+          }
+          outcome = "out-of-range"
+        }
+      }
+      transitions {
+        new {
+          from = "S1-pinned"
+          to = "S2-pinned"
+          action = "PR 118 revises the checker in answer to review 1"
+          finding = "review-1.finding-1"
+          evidence {
+            new {
+              uri = "evidence/cit-294-review-history-v1/captures/linear-CIT-294-comment-97e70a90.md"
+              origin = "historical"
+              availability = "retained"
+              immutableId = "sha256:2fa2c33ed8fa9468afdba02e9fb3b015e3e60508e4bf51c43d4845a7bb28e6f1"
+              reason = null
+            }
+            new {
+              uri = "evidence/cit-294-review-history-v1/captures/github-pr-118-body.md"
+              origin = "historical"
+              availability = "retained"
+              immutableId = "sha256:5285efd972ebfe32c1daf0d642569694592a0a2080347ff66cceed115414e061"
+              reason = null
+            }
+          }
+        }
+      }
+    }
+  }
+}
