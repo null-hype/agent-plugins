@@ -238,3 +238,21 @@ export const emptiedBytes = (pinned: Map<string, Buffer>) =>
 /** Probe 5: the blocked PNG control's pixels are corrupted to ffffffff (review 1, point 3). */
 export const corruptedPixels = (pinned: Map<string, Buffer>) =>
   editObservation(pinned, 'png-blocked', [['"returned_bytes_hex": "00000000"', '"returned_bytes_hex": "ffffffff"']]);
+
+/** The sha256 of empty input: a valid sha256, and not the blocked arm's upload. */
+export const OTHER_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+/** Probe 6: the blocked arm records a different upload: its source sha256 is another valid one (review 2, gap 2). */
+export const swappedSource = (pinned: Map<string, Buffer>) => {
+  const text = pinned.get('observations/mat-blocked.json')!.toString('utf8');
+  const sha = text.match(/"independent_source_sha256": "([0-9a-f]{64})"/)?.[1];
+  if (!sha) throw new Error('observations/mat-blocked.json: no independent_source_sha256 to swap');
+  return editObservation(pinned, 'mat-blocked', [[`"independent_source_sha256": "${sha}"`, `"independent_source_sha256": "${OTHER_SHA256}"`]]);
+};
+
+/** Probe 7: the blocked arm records a different configuration: Rails defaults 6.1, processor mini_magick (review 2, gap 2). */
+export const changedConfig = (pinned: Map<string, Buffer>) =>
+  editObservation(pinned, 'mat-blocked', [
+    ['"independent_rails_load_defaults": "7.0"', '"independent_rails_load_defaults": "6.1"'],
+    ['"independent_active_storage_variant_processor": "vips"', '"independent_active_storage_variant_processor": "mini_magick"'],
+  ]);
