@@ -65,20 +65,20 @@ class CheckerAnswer {
 }
 
 /// The checker noticed: it failed, or not every assertion passed.
-function noticed(a: CheckerAnswer): Boolean = a.exitCode != 0 || a.assertsPassed != a.assertsTotal
+const function noticed(a: CheckerAnswer): Boolean = a.exitCode != 0 || a.assertsPassed != a.assertsTotal
 
 /// An answer on the scale `expected` is written on: a Jev probability as is,
 /// a checker answer as 1 when it noticed and 0 when it did not.
-function value(answer: Number|CheckerAnswer): Number =
+const function value(answer: Number|CheckerAnswer): Number =
   if (answer is CheckerAnswer) (if (noticed(answer)) 1 else 0) else answer as Number
 
-function inRange(expected: Expectation, value: Number): Boolean =
+const function inRange(expected: Expectation, value: Number): Boolean =
   value >= expected.min && value <= expected.max
 
 /// Where an answer stands. A missing answer (`null`) could not be collected.
 typealias Outcome = "in-range"|"out-of-range"|"not-collected"
 
-function outcome(q: Question, answer: (Number|CheckerAnswer)?): Outcome =
+const function outcome(q: Question, answer: (Number|CheckerAnswer)?): Outcome =
   if (answer == null) "not-collected"
   else if (inRange(q.expected, value(answer))) "in-range"
   else "out-of-range"
@@ -95,3 +95,85 @@ local function visit(questions: Mapping<Id, Question>, id: String, trail: List<S
   if (!questions.keys.contains(id)) throw("Unknown question dependency: \(id)")
   else if (trail.contains(id)) throw("Question dependency cycle at \(id)")
   else questions[id].dependencies.toList().every((dep) -> visit(questions, dep, trail + List(id)))
+
+/// A retained resource or an explicit gap. A trace URI is provenance, never a
+/// promise that the workspace can be restored from it.
+class Evidence {
+  uri: String(!isEmpty)
+  origin: "historical"|"reproduced"
+  availability: "retained"|"missing"
+  immutableId: String(!isEmpty)?
+  reason: String(!isEmpty)?
+}
+
+function validEvidence(e: Evidence): Boolean =
+  if (e.availability == "retained") e.immutableId != null && e.reason == null
+  else e.immutableId == null && e.reason != null
+
+/// Only the named scope was captured. No full-container backup is implied.
+class WorkspaceState {
+  id: String(!isEmpty)
+  source: Evidence
+  scope: Listing<String(!isEmpty)>(!isEmpty)
+  inputs: Listing<Evidence> = new {}
+  image: Evidence?
+  snapshot: Evidence?
+  limitations: Listing<String(!isEmpty)> = new {}
+}
+
+class Transition {
+  from: String(!isEmpty)
+  to: String(!isEmpty)
+  action: String(!isEmpty)
+  evidence: Listing<Evidence>(!isEmpty)
+}
+
+/// A delivery plan is distinct from evidence of an installed feature version.
+class Delivery {
+  feature: String(!isEmpty)
+  version: String(matches(Regex("[0-9]{8}\\.[0-9]{4}")))
+  status: "planned"|"captured"
+  finding: String(!isEmpty)
+  scenario: String(!isEmpty)
+  evidence: Evidence?
+}
+
+class Declaration {
+  text: String(!isEmpty)
+  evidence: Evidence
+}
+
+/// The shared Question still defines the collector, judge and expectation.
+/// A forecast is a probability, not an expectation or an observed answer.
+class EvaluationRecord {
+  id: String(!isEmpty)
+  questionId: Id
+  question: Question
+  before: WorkspaceState
+  after: WorkspaceState
+  transition: Transition
+  delivery: Delivery
+  declarations: Listing<Declaration> = new {}
+  forecast: Number(isFinite, isBetween(0, 1))?
+  answer: (Number(isFinite, isBetween(0, 1))|CheckerAnswer)?
+  observations: Listing<Evidence>(!isEmpty)
+  /// Derived assessment; callers cannot replace a missing answer with success.
+  fixed outcome: Outcome = module.outcome(question, answer)
+}
+
+function validRecord(r: EvaluationRecord): Boolean =
+  r.before.id != r.after.id &&
+  r.transition.from == r.before.id && r.transition.to == r.after.id &&
+  validEvidence(r.before.source) && validEvidence(r.after.source) &&
+  List(r.before, r.after).every((s) ->
+    s.inputs.toList().every((e) -> validEvidence(e)) &&
+    (s.image == null || validEvidence(s.image!!)) &&
+    (s.snapshot == null || validEvidence(s.snapshot!!))) &&
+  r.transition.evidence.toList().every((e) -> validEvidence(e)) &&
+  r.declarations.toList().every((d) -> validEvidence(d.evidence)) &&
+  r.observations.toList().every((e) -> validEvidence(e)) &&
+  (r.answer == null || (if (r.question.judge is Checker) r.answer is CheckerAnswer else r.answer is Number)) &&
+  (r.answer == null || r.observations.toList().any((e) -> e.availability == "retained")) &&
+  (if (r.delivery.status == "captured")
+    r.delivery.evidence != null && validEvidence(r.delivery.evidence!!) && r.delivery.evidence!!.availability == "retained"
+   else r.delivery.evidence == null)
