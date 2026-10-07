@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const LANDING = '/part-0/overview/start';
-const DEMO = '/part-5/private-document/1-is-the-private-document-private';
+const DEMO = '/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one';
 const EVIDENCE = 'https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md';
 const CONTACT = 'https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml';
 
@@ -16,7 +16,7 @@ test('logged-out journey: root → explanation → demo → evidence → contact
   await expect(page.getByRole('link', { name: 'Open an issue', exact: true })).toHaveAttribute('href', CONTACT);
   await page.getByRole('link', { name: /Start the review/ }).first().click();
   await expect(page).toHaveURL(new RegExp(`${DEMO}/?$`));
-  await expect(page.getByRole('heading', { name: 'Is the private document private?', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Can the check tell a real read of the private file from a forged one?', exact: true })).toBeVisible();
 
   const evidence = page.locator('#gap-footer-band').getByRole('link', { name: 'Inspect the evidence', exact: true });
   await expect(evidence).toHaveAttribute('href', EVIDENCE);
