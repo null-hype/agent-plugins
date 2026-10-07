@@ -16,6 +16,8 @@ abstract class Frame {
 
 class ClientFrame extends Frame {
   actor = "client"
+  /// Who sent the prompt, when it is someone other than the viewer.
+  speaker: String?
   envelope: PromptEnvelope
   provenance: Provenance
 }
@@ -187,5 +189,7 @@ renderer: JsonRenderer = new {
   converters {
     [Row] = (row) -> row.toMap().filter((_, value) -> value != null)
     [Commit] = (commit) -> commit.toMap().filter((_, value) -> value != null)
+    // A prompt names its sender only when it is someone other than the viewer.
+    [ClientFrame] = (frame) -> frame.toMap().filter((key, value) -> key != "speaker" || value != null)
   }
 }
