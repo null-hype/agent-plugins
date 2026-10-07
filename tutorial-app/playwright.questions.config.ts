@@ -66,6 +66,14 @@ const PARTS: { name: string; module: string; outDir?: string; chapter?: { title:
     outDir: './src/content/tutorial/part-5',
     projects: [{ name: 'lesson', testMatch: 'jev/jev.tutorial.spec.ts' }],
   },
+  {
+    // The shared model: one Pkl module several people revise, each revision a
+    // lesson of part 5's "Shared model" chapter. Pkl answers; needs only `pkl`.
+    name: 'shared-model',
+    module: 'tests/shared-model/SharedModel.pkl',
+    outDir: './src/content/tutorial/part-5',
+    projects: [{ name: 'lesson', testMatch: 'shared-model/shared-model.tutorial.spec.ts' }],
+  },
 ];
 
 // The main process reads the Questions and makes the run directory once; workers

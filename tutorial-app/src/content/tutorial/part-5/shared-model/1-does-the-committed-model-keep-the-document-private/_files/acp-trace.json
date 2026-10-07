@@ -1,0 +1,33 @@
+{
+  "scenario": "cit294-review-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "shared-model",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Does the committed model keep the document private?\n\nThe model as committed.\nThe shared model is revisions/baseline/PrivateDocument.pkl."
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "shared-model#baseline",
+        "capturedAt": "generated",
+        "scripted": "The subject question and the change are authored in SharedModel.pkl; the file is the committed revision."
+      }
+    }
+  ],
+  "nextTurn": {
+    "actor": "agent",
+    "speaker": "pkl",
+    "action": "evaluate the baseline revision"
+  }
+}

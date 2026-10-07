@@ -112,6 +112,7 @@ export function deriveAcpTraceState(
 		revision: 1,
 		fixture: resolveAcpTraceFixture(ref, loadFrame, options),
 		scenario: config.scenario,
+		readFile: (path) => files[path],
 	});
 }
 
