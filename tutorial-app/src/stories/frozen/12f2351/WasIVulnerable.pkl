@@ -1,0 +1,114 @@
+/// CIT-326: the question tree that grows the Rails forensics write-up
+/// (`../vendor/README.md`) from a detector into a predictor.
+///
+/// Each node is a question with a forecast, the probability it resolves "yes",
+/// set before anything answers it. A check resolves a leaf to yes or no, and the
+/// forecast is scored against that resolution (Brier score), not against a range.
+/// `notebook.py` grows the tree a round at a time and registers each question in
+/// pass-cli as part of the round.
+///
+/// A round splits one question in two and runs `pkl test`. The reading puts each
+/// split question's own forecast beside the one its children imply. The
+/// difference must be accounted for in the tree (`account`) before the round is
+/// accepted (`pkl test --overwrite`) and frozen (a commit of the expected file).
+///
+/// The subject is the write-up's worked example, Meridian, whose conclusion
+/// ("Exposed: yes") is in the repo. Whoever sets a forecast here could have read
+/// it. That is acceptable at the detector stage, and the article says so.
+module WasIVulnerable
+
+import "../../jev/pkl/Question.pkl"
+
+typealias Probability = Number(isFinite, isBetween(0, 1))
+
+class Account {
+  /// The difference being accepted, exactly as the reading shows it.
+  difference: Number
+  /// Why the split moved the forecast by that much.
+  why: String(!isEmpty)
+}
+
+class Node {
+  /// The question, in the write-up's words.
+  ask: String(!isEmpty)
+  /// The probability it resolves "yes", set before it is answered.
+  forecast: Probability
+  /// Exposure is a conjunction (`kr2s-was-i-vulnerable/references/guide.md`,
+  /// "What you are actually determining"): a question holds only if all of
+  /// these do.
+  all: Listing<Question.Id> = new {}
+  /// For a split question: the difference its children made, accounted for.
+  account: Account?
+  /// Set when a check answers the question.
+  resolution: Boolean?
+}
+
+/// What a split question's children imply for it, read as independent: the
+/// product of their forecasts.
+class Reading {
+  forecast: Probability
+  implied: Probability
+  difference: Number = ((implied - forecast) * 1000).round() / 1000
+  /// The tree accounts for exactly this difference. A round is not accepted
+  /// while any reading is unaccounted.
+  accounted: Boolean
+}
+
+/// How a resolved forecast scored: the squared distance from what happened.
+/// 0 is a perfect forecast; 0.25 is what always saying 0.5 earns.
+class Score {
+  forecast: Probability
+  resolution: Boolean
+  brier: Number = let (d = forecast - (if (resolution) 1 else 0)) d * d
+}
+
+subject: String = "Meridian (kr2s-was-i-vulnerable/references/assessment-example.md)"
+
+nodes: Mapping<Question.Id, Node> = new {
+  ["was-i-vulnerable"] {
+    ask = "Was Meridian ever exposed to CVE-2026-66066?"
+    forecast = 0.5
+    all { "file-reaches-matload"; "attacker-reaches-it" }
+    account {
+      difference = -0.18
+      why = "0.5 was a guess at the whole conjunction. Split along the guide's conditions, the processing path (0.4, since many libvips builds lack matload) bounds it, and two independent conditions at 0.4 and 0.8 can only reach 0.32."
+    }
+  }
+  // Round 1 splits the root along the guide's six conditions.
+  ["file-reaches-matload"] {
+    ask = "Would an uploaded file reach libvips' matload? Active Storage makes variants, the variant processor is :vips, and the deployed libvips has matload (conditions 1 to 3)."
+    forecast = 0.4
+  }
+  ["attacker-reaches-it"] {
+    ask = "Could an attacker get a crafted upload rendered? The direct uploads endpoint is reachable, a variation key is scrapeable, and Rails predates the fix (conditions 4 to 6)."
+    forecast = 0.8
+  }
+}
+
+/// One reading per split question.
+readings: Mapping<Question.Id, Reading> = new {
+  for (id, n in nodes) {
+    when (!n.all.isEmpty) {
+      [id] = let (product = n.all.toList().fold(1.0, (p, c) -> p * nodes[c].forecast))
+        new Reading {
+          forecast = n.forecast
+          implied = (product * 1000).round() / 1000
+          accounted = n.account?.difference == difference
+        }
+    }
+  }
+}
+
+/// One score per resolved question.
+scores: Mapping<Question.Id, Score> = new {
+  for (id, n in nodes) {
+    when (n.resolution != null) {
+      [id] { forecast = n.forecast; resolution = n.resolution!! }
+    }
+  }
+}
+
+/// For `notebook.py`: one tab-separated line per question (id, forecast, ask).
+register: String = nodes.toMap().entries
+  .map((e) -> "\(e.key)\t\(e.value.forecast)\t\(e.value.ask)")
+  .join("\n") + "\n"

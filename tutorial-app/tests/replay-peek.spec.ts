@@ -33,23 +33,30 @@ test('Tab unfolds the root into a heading and its questions; the split shows onc
   await expect.poll(() => modelText(c)).toMatch(/\n# Was Meridian ever exposed to CVE-2026-66066\? Forecast: 50% yes\.\n$/);
   await expect(c.locator('.acp-heading').first()).toBeVisible();
   await expect(c.locator('.ghost-text-decoration').first()).toContainText('Would an uploaded file');
-  // The root's own Peek: the reading frozen before the split, and the one the
-  // split froze, both Pkl's static expected file, at their two revisions.
+  // The root's finding is the split: two versions of the tree and of Pkl's
+  // frozen reading, base (5282c7e) then head (12f2351), nothing else.
   const evidence = async () => c.locator('.peekview-widget .monaco-editor').evaluate((element) => {
     const monaco = (element.ownerDocument.defaultView as any).monaco;
     const editor = monaco.editor.getEditors().find((e: any) => e.getDomNode() === element);
     return { text: editor.getModel().getValue(), readOnly: editor.getOption(monaco.editor.EditorOption.readOnly) };
   });
   const peek = c.locator('.peekview-widget');
-  await c.getByRole('button', { name: /forecast\.registered/ }).first().click();
+  await c.getByRole('button', { name: /question\.split\W+5 related/ }).click();
   await expect(peek).toBeVisible();
-  for (const [revision, file] of [['5282c7e', new URL('../src/stories/frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf', import.meta.url)],
-    ['12f2351', new URL(tree + 'WasIVulnerable.test.pkl-expected.pcf', import.meta.url)]] as const) {
-    const group = peek.getByRole('treeitem', { name: new RegExp(`expected@${revision}/`) });
+  const groups = await peek.locator('[aria-level="1"]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!.replace(/.*full path \/captured\/([^/]+)\/.*\/(\S+)$/, '$1 $2')));
+  expect(groups).toEqual(['split-base@5282c7e WasIVulnerable.pkl', 'split-base@5282c7e WasIVulnerable.test.pkl-expected.pcf',
+    'split-head@12f2351 WasIVulnerable.pkl', 'split-head@12f2351 WasIVulnerable.test.pkl-expected.pcf']);
+  const frozen = (commit: string, file: string) => readFileSync(new URL(`../src/stories/frozen/${commit}/${file}`, import.meta.url), 'utf8');
+  for (const [side, file, text] of [
+    ['split-base@5282c7e', 'WasIVulnerable.test.pkl-expected.pcf', /new \{\}\s*\}$/],
+    ['split-head@12f2351', 'WasIVulnerable.pkl', /Round 1 splits the root/],
+    ['split-head@12f2351', 'WasIVulnerable.test.pkl-expected.pcf', /implied = 0\.32/],
+  ] as const) {
+    const group = peek.getByRole('treeitem', { name: new RegExp(`${side}/.*/${file.replace(/\./g, '\\.')}$`) });
     if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
-    await peek.getByRole('treeitem', { name: /\["readings"\].* in WasIVulnerable\.test\.pkl-expected\.pcf on line 2 /, expanded: undefined })
-      .and(peek.locator(`[aria-level="2"]`)).filter({ hasText: revision === '5282c7e' ? /new \{\}\s*\}$/ : /implied = 0\.32/ }).click();
-    await expect.poll(evidence).toEqual({ text: readFileSync(file, 'utf8'), readOnly: true });
+    // The location itself, under its side's group (both sides hold this file).
+    await peek.locator(`[aria-level="2"][aria-label*="${file} on line"]`).filter({ hasText: text }).click();
+    await expect.poll(evidence).toEqual({ text: frozen(side.split('@')[1], file), readOnly: true });
   }
   await page.keyboard.press('Escape');
   await expect(peek).toHaveCount(0);
@@ -63,7 +70,8 @@ test('Tab unfolds the root into a heading and its questions; the split shows onc
   await box.press('Tab');
   await expect(c.locator('.ghost-text-decoration').first()).toContainText('Could an attacker');
   // One of the two questions is not enough to combine them.
-  await expect(c.getByRole('button', { name: /forecast\.registered/ })).toHaveCount(2);
+  await expect(c.getByRole('button', { name: /question\.split/ })).toHaveCount(1);
+  await expect(c.getByRole('button', { name: /forecast\.registered/ })).toHaveCount(1);
   await expect(c.getByRole('button', { name: /forecast\.split/ })).toHaveCount(0);
 
   await box.press('Tab');

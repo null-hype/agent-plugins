@@ -49,25 +49,52 @@ local function objectRange(text: List<String>, start: Int): Pair<Int, Int> =
 local entryStarts: List<Int> = monitorLines.toList().mapIndexed((i, l) -> if (l == "  {") i + 1 else 0).filter((n) -> n > 0)
 local entries = log.mapIndexed((i, e) -> Pair(e, objectRange(monitorLines, entryStarts[i])))
 
-/// The split, as `pkl test` keeps it: the reading frozen before the root was
-/// split (5282c7e, which froze the root alone) and the one the split froze
-/// (12f2351). Same file, two revisions, both static. The earlier one is
-/// retained under `frozen/` (forecastReplay.spec.ts checks it against git);
-/// the later one is the tree's own expected file, unchanged since.
-const frozenBefore = "5282c7e"
-const frozenAfter = "12f2351"
+/// The split as two versions of the tree, the way a merge front end sets two
+/// environments' work side by side: 5282c7e froze the root alone (the base),
+/// 12f2351 split it (the head). For each, the tree's question and the reading
+/// `pkl test` froze, both static files, retained under `frozen/<commit>/` as
+/// git holds them (forecastReplay.spec.ts checks). Peek lists the two sides
+/// together, base first, because their roles sort that way.
+const splitBase = "5282c7e"
+const splitHead = "12f2351"
+local treeFile = "WasIVulnerable.pkl"
 local expectedFile = "WasIVulnerable.test.pkl-expected.pcf"
+
+local function frozenLines(commit: String, file: String): List<String> =
+  read("frozen/\(commit)/\(file)").text.split("\n")
 
 local function readings(text: List<String>): Pair<Int, Int> =
   objectRange(text, find(text, 1, (l) -> l == "  [\"readings\"] {"))
 
+local function nodeAt(text: List<String>, id: String): Pair<Int, Int> =
+  objectRange(text, find(text, 1, (l) -> l.contains("[\"\(id)\"] {")))
+
+/// The nodes a question rests on, from the first through the last, with any
+/// comment the commit put above them.
+local function premisesAt(text: List<String>, id: String): Pair<Int, Int> =
+  let (ids = tree.nodes[id].all.toList())
+    Pair(nodeAt(text, ids.first).first - (if (text[nodeAt(text, ids.first).first - 2].trim().startsWith("//")) 1 else 0),
+      nodeAt(text, ids.last).second)
+
+local function side(role: String, commit: String, file: String, range: Pair<Int, Int>, text: String): Location =
+  (at(role, file, range, text)) { revision = commit }
+
 local function frozen(id: String): List<Location> =
-  if (tree.nodes[id].all.isEmpty) List() else List(
-    (at("expected", expectedFile, readings(read("frozen/\(frozenBefore)/\(expectedFile)").text.split("\n")),
-      "The reading frozen at \(frozenBefore), before the split: \(id) alone, nothing implied.")) { revision = frozenBefore },
-    (at("expected", expectedFile, readings(lines(expectedFile)),
-      "The reading the split froze at \(frozenAfter): \(tree.readings[id].forecast) against the \(tree.readings[id].implied) its questions imply.")) { revision = frozenAfter }
-  ) + tree.nodes[id].all.toList().map((child) -> node(child))
+  if (tree.nodes[id].all.isEmpty) List() else
+    let (base = frozenLines(splitBase, treeFile))
+    let (head = frozenLines(splitHead, treeFile))
+    List(
+      side("split-base", splitBase, treeFile, nodeAt(base, id),
+        "\(splitBase) froze \(id) alone, at \(tree.nodes[id].forecast), resting on nothing."),
+      side("split-base", splitBase, expectedFile, readings(frozenLines(splitBase, expectedFile)),
+        "The reading \(splitBase) froze: none, since nothing is split."),
+      side("split-head", splitHead, treeFile, nodeAt(head, id),
+        "\(splitHead) gives \(id) the questions it rests on and accounts for the difference they make."),
+      side("split-head", splitHead, treeFile, premisesAt(head, id),
+        "The questions \(splitHead) added, each with its own forecast."),
+      side("split-head", splitHead, expectedFile, readings(frozenLines(splitHead, expectedFile)),
+        "The reading \(splitHead) froze: \(tree.readings[id].forecast) against the \(tree.readings[id].implied) its questions imply.")
+    )
 
 local function percent(p: Number): String = "\((p * 100).round().toInt())%"
 
@@ -139,7 +166,14 @@ local function probe(id: String, depth: Int): Dynamic =
   new Dynamic {
     question = "\(n.ask) Forecast: \(percent(n.forecast)) yes."
     action = "inspect the recorded registration and read-back"
-    diagnostic = diagnostic(id, "forecast.registered", registered(id), frozen(id) + List(node(id)) + registration(id))
+    // A split question's first finding is the split itself, its two sides
+    // alone; its registration joins the finding that combines its questions.
+    diagnostic = if (n.all.isEmpty)
+        diagnostic(id, "forecast.registered", registered(id), List(node(id)) + registration(id))
+      else
+        diagnostic(id, "question.split",
+          "\(splitHead) split it into the \(n.all.length) questions it rests on (\(n.all.toList().map((c) -> percent(tree.nodes[c].forecast)).join(", "))); \(splitBase) froze it alone at \(percent(n.forecast)).",
+          frozen(id))
     when (!n.all.isEmpty) {
       children { for (child in n.all) { probe(child, depth + 1) } }
       // Shown once every question it rests on has been accepted.
