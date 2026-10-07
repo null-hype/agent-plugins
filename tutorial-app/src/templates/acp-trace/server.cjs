@@ -325,7 +325,8 @@ function renderClientPage() {
           let evidenceModel = peekModels.get(identity);
           if (!evidenceModel) {
             const uri = monaco.Uri.from({ scheme: 'evidence',
-              path: '/' + (isSource ? 'captured' : 'summary') + '/' + entry.role + '/' + path,
+              // The revision leads the path, where Peek's list and title show it.
+              path: '/' + (isSource ? 'captured' : 'summary') + '/' + entry.role + (entry.revision ? '@' + entry.revision : '') + '/' + path,
               query: 'rev=' + encodeURIComponent(entry.revision || '') +
                 (isSource ? '' : '&entry=' + peekModels.size),
             });
@@ -499,12 +500,20 @@ function renderClientPage() {
         // taken back.
         editor.onDidChangeModelContent(() => {
           if (!suggestion || !suggestion.prefix || !lastState) return;
-          const next = acceptedFromText(model.getValue()) || [];
-          const unchanged = next.length === acceptedOrder.length && next.every((index, at) => index === acceptedOrder[at]);
-          const valid = acceptedFromText(model.getValue()) !== null;
-          if (valid && unchanged) return;
-          acceptedOrder = next;
+          const next = acceptedFromText(model.getValue());
+          const unchanged = next !== null && next.length === acceptedOrder.length && next.every((index, at) => index === acceptedOrder[at]);
+          if (unchanged) return;
+          // A stray edit (a Tab with no suggestion showing, say) is taken back
+          // and keeps what was accepted; removing an accepted line un-accepts it.
+          if (next !== null) acceptedOrder = next;
           setTimeout(() => renderIntoEditor(renderReviewRecords(lastState)).catch(() => {}), 0);
+        });
+        // The suggestion is offered on its line whenever the cursor returns
+        // there, e.g. after a Peek closes and leaves it on the line it opened from.
+        editor.onDidChangeCursorPosition((event) => {
+          if (!suggestion || !model || event.position.lineNumber !== model.getLineCount()) return;
+          if (model.getLineContent(event.position.lineNumber) !== '' || !probeOffers(suggestion.nodes, acceptedOrder).length) return;
+          editor.trigger('acp-trace', 'editor.action.inlineSuggest.trigger', {});
         });
         editor.onMouseDown((e) => {
           if (e.target.type !== window.monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
