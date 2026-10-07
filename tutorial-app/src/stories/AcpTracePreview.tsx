@@ -8,6 +8,8 @@ type Props = {
 	height?: number;
 	/** False for lessons that run the Client alone (part 5: agent activity is a terminal). */
 	agent?: boolean;
+	/** A working copy saved from the Client's Peek (Ctrl+S): its location and text. */
+	onSaved?: (saved: { uri: string; revision: string; text: string }) => void;
 };
 
 // Mirrors OtelWarmLogPreview's shape (payload -> postMessage once each iframe
@@ -21,16 +23,20 @@ function Pane({
 	height,
 	label,
 	onAccepted,
+	onSaved,
 }: {
 	html: string;
 	payload?: AcpTraceState;
 	height: number;
 	label: string;
 	onAccepted?: (accepted: boolean, recordingId: unknown, order: unknown) => void;
+	onSaved?: Props['onSaved'];
 }) {
 	const frameRef = useRef<HTMLIFrameElement>(null);
 	const readyRef = useRef(false);
 	const revisionRef = useRef(0);
+	const onSavedRef = useRef(onSaved);
+	onSavedRef.current = onSaved;
 
 	const send = () => {
 		if (!payload || !readyRef.current) return;
@@ -50,6 +56,9 @@ function Pane({
 				send();
 			} else if (event.data?.type === 'acp-trace-suggestion-accepted') {
 				onAccepted?.(Boolean(event.data.accepted), event.data.recordingId, event.data.order);
+			} else if (event.data?.type === 'acp-trace-working-saved') {
+				const { uri, revision, text } = event.data;
+				if (typeof uri === 'string' && typeof revision === 'string' && typeof text === 'string') onSavedRef.current?.({ uri, revision, text });
 			}
 		};
 		window.addEventListener('message', onMessage);
@@ -68,7 +77,7 @@ function Pane({
 	);
 }
 
-export default function AcpTracePreview({ payload, height = 360, agent = true }: Props) {
+export default function AcpTracePreview({ payload, height = 360, agent = true, onSaved }: Props) {
 	// As AcpTraceBridge does: the Client reports which suggestions the viewer
 	// accepted, per recording and in order, and both panes get that back. The
 	// coarse flag alone let one accepted question reveal every finding.
@@ -96,7 +105,7 @@ export default function AcpTracePreview({ payload, height = 360, agent = true }:
 		<div style={{ display: 'grid', gridTemplateColumns: agent ? '1fr 1fr' : '1fr', gap: 12 }}>
 			<div>
 				<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Client</div>
-				<Pane html={clientPageHtml} payload={clientPayload} height={height} label="acp-trace client preview" onAccepted={onAccepted} />
+				<Pane html={clientPageHtml} payload={clientPayload} height={height} label="acp-trace client preview" onAccepted={onAccepted} onSaved={onSaved} />
 			</div>
 			{agent && (
 				<div>

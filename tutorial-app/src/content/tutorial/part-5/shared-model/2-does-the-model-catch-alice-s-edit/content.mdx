@@ -1,0 +1,38 @@
+---
+type: lesson
+title: Does the model catch Alice's edit
+template: acp-trace
+focus: /acp-trace.json
+terminal:
+  open: true
+  panels:
+    - - output
+      - Agent
+editor: false
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+# Does the model catch Alice's edit?
+
+The review goes on from where the first lesson left it. Alice has revised the
+shared model: her commit, below the first, raises `aliceReads` from 0.05 to 0.8.
+Nothing else changes.
+
+Select **Solve** to have Pkl review her revision, with the same two questions.
+Accept "Can Alice read Bob's private document?": Pkl refuses her value, in its own words, because it
+breaks the `NotOwner` type. Open its lens: Peek holds the committed file and
+Alice's revision together, at the value each holds, with the constraint her
+value broke.
+
+Because Pkl refused it, the model lets nothing through for Alice: the answer is
+within range. The type caught the edit. Whether a type can always be trusted to
+is the next lesson's question.

@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test';
 import { jev } from '../jev/collectors';
 import { railsProbes } from '../rails-probes/collectors';
+import { sharedModel } from '../shared-model/collectors';
 
 // CIT-317: every collector a Question can name, by that name. A collector gathers
 // one Question's evidence into the part's run directory and returns each answer
@@ -12,4 +13,4 @@ export type Collected = { at: string; answer: unknown; evidence?: object };
 export type Asked = { id: string; question: any; request: APIRequestContext };
 export type Collector = (partDir: string, asked: Asked) => Collected[] | Promise<Collected[]>;
 
-export const collectors: Record<string, Collector> = { ...railsProbes, ...jev };
+export const collectors: Record<string, Collector> = { ...railsProbes, ...jev, ...sharedModel };
