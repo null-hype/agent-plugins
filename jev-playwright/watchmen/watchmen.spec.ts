@@ -14,9 +14,10 @@ import { checkConsistency } from '../consistency.mjs';
 const { questions } = JSON.parse(readFileSync(process.env.WATCHMEN_SNAPSHOT!, 'utf8'));
 const out = process.env.WATCHMEN_OUT!;
 const here = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const first = 'vulnerability-reproduced';
-const second = 'exploit-prevented';
-const good = { [first]: 0.95, [second]: 0.95, 'legitimate-access-preserved': 0.95 };
+// `first` is answered in range on the canned answers; `second` was denied (403).
+const first = 'baseline-bob-reads';
+const second = 'patched-alice-reads';
+const good = JSON.parse(readFileSync(path.join(here, 'fixtures/answers.json'), 'utf8'));
 
 const edit = (file: string, change: (value: any) => void) => {
   const value = JSON.parse(readFileSync(file, 'utf8'));

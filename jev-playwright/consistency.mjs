@@ -88,10 +88,12 @@ export function facts(runDir, backend) {
       skipped,
       value: collected ? score.probability : null,
       expected: question.expected,
-      // The collector's deterministic verify ran, and passed, before Jev was
-      // asked: an answer means the evidence supports the claim. A score below
-      // one half says it does not. A row, not a failure.
-      disagreement: collected && score.probability < 0.5,
+      // Each Question asks whether its reader got the document, and the
+      // recorded response says so deterministically: 200 with the document is
+      // yes, 403 is no. A score pointing the other way (at or above one half
+      // for no, below it for yes) disagrees with that anchor. A row, not a failure.
+      disagreement: collected && evidence[id]?.length === 1 &&
+        (score.probability >= 0.5) !== (evidence[id][0].state.http?.response?.status === 200),
       rules,
     };
   }

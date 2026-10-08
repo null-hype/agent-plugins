@@ -28,6 +28,9 @@ type LessonRecord = {
 
 const DEFAULT_TRACE_FILE = '/acp-trace.json';
 const DEFAULT_SCENARIO = 'ghost-trace-diagnostic-v1';
+const REVIEW_STORAGE = 'acp-trace-accepted-reviews-v1';
+// Keep delivery identities distinct when navigation remounts the bridge.
+let deliveryRevision = 0;
 const READY_SOURCES = new Set(['tk-acp-trace-client-preview', 'tk-acp-trace-agent-preview']);
 
 interface Props {
@@ -53,6 +56,14 @@ export default function AcpTraceBridge({
   // cit294-review-v1: the Client reports whether the viewer has accepted a
   // suggestion; null until it has ever reported (every other scenario).
   const [accepted, setAccepted] = useState<boolean | null>(null);
+  const [acceptedReviews, setAcceptedReviews] = useState<Record<string, number[]>>(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(REVIEW_STORAGE) || '{}');
+      if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
+      return Object.fromEntries(Object.entries(stored).filter(([, order]) =>
+        Array.isArray(order) && order.every((index) => Number.isInteger(index) && index >= 0)));
+    } catch { return {}; }
+  });
   const agentWindows = useRef(new Set<Window>());
   const lesson = tutorialStore.lesson as LessonRecord | undefined;
 
@@ -96,15 +107,13 @@ export default function AcpTraceBridge({
   // sent immediately to every frame already in the DOM; both pages guard on
   // `revision`, so any message that arrives out of order or twice is a no-op.
   useEffect(() => {
-    const clientMessage = { payload: traceState, source: 'tk-acp-trace-bridge', type: 'lesson-state' };
-    // Only the Agent pane is told about acceptance: it holds back its diagnosis
-    // until the viewer has taken a suggestion in the Client.
-    // The pane ignores a revision it has already seen, and acceptance changes
-    // without the trace changing, so each (trace, acceptance) pair gets its own
-    // revision for the Agent: 4r, 4r+1 (not accepted), 4r+2 (accepted).
+    const delivery = ++deliveryRevision;
+    const clientMessage = { payload: { ...traceState, acceptedReviews, revision: delivery }, source: 'tk-acp-trace-bridge', type: 'lesson-state' };
+    // Each delivery gets a revision so accepting a second probe updates both panes.
+    // Legacy hosts can still send the coarse acceptance flag to the Agent.
     const agentMessage = {
       ...clientMessage,
-      payload: accepted === null ? { ...traceState, revision: traceState.revision * 4 } : { ...traceState, accepted, revision: traceState.revision * 4 + (accepted ? 2 : 1) },
+      payload: { ...clientMessage.payload, ...(accepted === null ? {} : { accepted }) },
     };
     const send = (frame: HTMLIFrameElement) =>
       frame.contentWindow?.postMessage(
@@ -113,7 +122,17 @@ export default function AcpTraceBridge({
       );
     const onMessage = (event: MessageEvent) => {
       if (event.data?.type === 'acp-trace-suggestion-accepted') {
-        if (event.data?.source === 'tk-acp-trace-client-preview') setAccepted(Boolean(event.data.accepted));
+        if (event.data?.source !== 'tk-acp-trace-client-preview' ||
+            !getPreviewFrames().some((frame) => frame.contentWindow === event.source)) return;
+        setAccepted(Boolean(event.data.accepted));
+        const { recordingId, order } = event.data;
+        if (typeof recordingId === 'string' && Array.isArray(order) && order.every((index) => Number.isInteger(index) && index >= 0)) {
+          setAcceptedReviews((previous) => {
+            const next = { ...previous, [recordingId]: order };
+            try { sessionStorage.setItem(REVIEW_STORAGE, JSON.stringify(next)); } catch {}
+            return next;
+          });
+        }
         return;
       }
       if (event.data?.type !== 'lesson-preview-ready' || !READY_SOURCES.has(event.data?.source)) {
@@ -134,7 +153,7 @@ export default function AcpTraceBridge({
     return () => {
       window.removeEventListener('message', onMessage);
     };
-  }, [traceState, accepted]);
+  }, [traceState, accepted, acceptedReviews]);
 
   return null;
 }

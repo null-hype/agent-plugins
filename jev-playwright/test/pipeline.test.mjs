@@ -9,11 +9,11 @@ import * as pkl from '../pkl.mjs';
 import { reconcile } from '../reconcile.mjs';
 
 const here = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const id = 'vulnerability-reproduced';
-const second = 'exploit-prevented';
-const third = 'legitimate-access-preserved';
-const good = { [id]: 0.95, [second]: 0.95, [third]: 0.95 };
 const read = file => JSON.parse(readFileSync(file, 'utf8'));
+const id = 'baseline-alice-reads';
+const second = 'patched-alice-reads';
+const third = 'patched-bob-reads';
+const good = read(path.join(here, 'fixtures/answers.json'));
 const expected = pkl.load(path.join(here, 'report-expected.pcf'));
 
 function run(answers, extraArgs = []) {
@@ -43,11 +43,16 @@ test('Pkl → Playwright → Jev → JSON reconciliation passes without leaking 
   assert.equal(request.state.http.response.status, 200);
   assert.equal(request.state.http.response.body.owner, 'bob');
   const patched = read(path.join(result.runDir, 'questions', second, 'request.json'));
+  assert.deepEqual(request.questions[id], patched.questions[second], 'the same Question, word for word, at both revisions');
+  assert.equal(patched.state.revision, 'patched');
   assert.equal(patched.state.http.response.status, 403);
   assert.deepEqual(patched.state.prerequisites[id], request.state);
   const owner = read(path.join(result.runDir, 'questions', third, 'request.json'));
   assert.equal(owner.state.http.request.actor, 'bob');
   assert.equal(owner.state.http.response.status, 200);
+  // Alice reading Bob's document at the baseline is the finding: out of range, and recorded.
+  assert.equal(result.comparison.questions[id].outcome, 'out-of-range');
+  for (const other of [second, third]) assert.equal(result.comparison.questions[other].outcome, 'in-range');
   assert.equal(result.comparison.graphConsistent, true);
 
   // Comparison really consumes the native report, not just the reporter ledger.
@@ -59,17 +64,16 @@ test('Pkl → Playwright → Jev → JSON reconciliation passes without leaking 
 });
 
 test('a valid low score is an out-of-range answer: recorded, and its dependents still run', () => {
-  const result = run({ ...good, [id]: 0.2 });
+  const prerequisite = 'baseline-bob-reads';
+  const result = run({ ...good, [prerequisite]: 0.2 });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.equal(result.comparison.passed, true);
-  assert.equal(result.comparison.questions[id].executionPassed, true);
-  assert.equal(result.comparison.questions[id].expectationPassed, false);
-  assert.equal(result.comparison.questions[id].outcome, 'out-of-range');
+  assert.equal(result.comparison.questions[prerequisite].executionPassed, true);
+  assert.equal(result.comparison.questions[prerequisite].expectationPassed, false);
+  assert.equal(result.comparison.questions[prerequisite].outcome, 'out-of-range');
   assert.equal(result.comparison.graphConsistent, true);
-  for (const downstream of [second, third]) {
-    assert.equal(result.comparison.questions[downstream].outcome, 'in-range');
-    assert.deepEqual(result.comparison.questions[downstream].blockedBy, []);
-  }
+  assert.equal(result.comparison.questions[third].outcome, 'in-range');
+  assert.deepEqual(result.comparison.questions[third].blockedBy, []);
 });
 
 test('adding a question only in Pkl registers and scores another test', () => {
@@ -80,7 +84,7 @@ test('adding a question only in Pkl registers and scores another test', () => {
     writeFileSync(contract, `amends "${base}"\nimport "${base}" as Base\nquestions { ["another-question"] = Base.questions["${id}"] }`);
     const result = run({ ...good, 'another-question': 0.85 }, ['--contract', contract]);
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.deepEqual(Object.keys(result.comparison.questions).sort(), ['another-question', id, second, third].sort());
+    assert.deepEqual(Object.keys(result.comparison.questions).sort(), ['another-question', ...Object.keys(good)].sort());
     assert.equal(result.comparison.questions['another-question'].probability, 0.85);
   } finally {
     rmSync(temp, { recursive: true, force: true });
@@ -131,7 +135,7 @@ for (const [name, change] of [
   ['skipped test', o => { o.executions[0].status = 'skipped'; o.executions[0].attachmentCount = 0; }],
   ['mismatched attachment', o => { o.executions[0].evidenceId = 'other'; }],
   ['runner error', o => { o.runnerErrors = 1; }],
-  ['premature dependent execution', o => { o.executions[1].startedAt = 0; }],
+  ['premature dependent execution', o => { o.executions.find(e => e.questionId === second).startedAt = 0; }],
   ['wrong project test', o => { o.executions[0].testTitle = 'other'; }],
   ['dependent executed after failed prerequisite', o => { o.scores[id].probability = 0.2; o.executions[0].status = 'failed'; }],
 ]) {
@@ -155,7 +159,7 @@ test('Pkl rejects reversed expected ranges before execution', () => {
 
 for (const [name, dependency, message] of [
   ['unknown dependency', 'not-declared', 'Unknown question dependency'],
-  ['cycle', third, 'Question dependency cycle'],
+  ['cycle', second, 'Question dependency cycle'],
 ]) {
   test(`Pkl rejects ${name} before executing the graph`, () => {
     const temp = mkdtempSync(path.join(tmpdir(), 'jev-invalid-graph-'));

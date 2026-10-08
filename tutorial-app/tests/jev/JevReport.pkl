@@ -1,115 +1,136 @@
-/// CIT-318: a part-5 Jev report lesson, authored once (the CIT-312 pattern).
+/// CIT-328: a part-5 lesson, one per revision of the document app, told as a
+/// review in the same form as part 4's (`cit294-review-v1`, `CheckerProbes.pkl`).
 ///
-/// What is CLAIMED lives here: the trace's structure, its labels and wording.
-/// What the run DID is not: every score, state and time is read from the part's
-/// run directory, where the `jev/<id>` Question projects' collectors wrote them.
-/// A lesson's title, place and prose are its Question's (`report-expected.pcf`);
-/// where its answer stands is the shared Question module's call.
+/// The Client holds the revision as a commit whose subject is its question and
+/// whose body is the authorization policy the run recorded. Jev is the reviewer:
+/// the Questions asked of that revision come back as suggestions, the same words
+/// at every revision, and each accepted line carries Jev's answer and the
+/// evidence it judged.
 ///
-///   pkl eval JevReport.pkl -p run=<part run dir> -p lesson=<question id>
+/// The chapter is one ACP session, stepped through a turn at a time: a lesson
+/// starts from the previous lesson's solved trace with its own revision's
+/// prompt added, and Solve adds the reviewer's reply.
 ///
-/// prints the lesson as the tutorial reporter takes it: the files it starts from
-/// (`before`), those that changed since the previous lesson's solution
-/// (`incoming`), those Solve changes (`files`), its `prose` and its `meta`.
+/// What is CLAIMED lives here and in `report-expected.pcf`: the structure, the
+/// labels, the questions and the lesson text. What the run DID is not: every
+/// score, policy, HTTP exchange and time is read from the part's run directory,
+/// where the `jev/<id>` Question projects' collectors wrote them.
+///
+///   pkl eval JevReport.pkl -p run=<part run dir> -p revision=<revision>
+///
+/// prints `starter` and `solved` (the two traces, each holding every earlier
+/// revision's turns), `prose`, and `ids`, the Questions asked of the revision,
+/// whose collected files the lesson reveals.
 module JevReport
 
 import "pkl:json"
 
 import "../../../src/jev/pkl/Question.pkl"
+import "../../../jev-playwright/pkl/Experiment.pkl"
 import "../../../jev-playwright/report-expected.pcf" as contract
 import "../rails-probes/traces/AcpTrace.pkl"
 
 /// The part's run directory.
 run: String = read("prop:run")
-/// The Question this lesson tells.
-lesson: String = read("prop:lesson")
+/// The revision this lesson reviews.
+revision: String = read("prop:revision")
 
 local parser = new json.Parser { useMapping = true }
 local function load(file: String): Mapping = parser.parse(read("\(run)/\(file)")) as Mapping
 
 local contractDigest = read("../../../jev-playwright/report-expected.pcf").text.sha256
-local function question(id: String): Question.Question = contract.questions[id]
-/// The Questions told as lessons, in lesson order, which must count 1, 2, ...
-local ids: List<String> =
-  let (told = contract.questions.keys.toList().filter((id) -> question(id).lesson != null)
-    .sortBy((id) -> question(id).lesson!!.order))
-    if (told.mapIndexed((i, id) -> question(id).lesson!!.order == i + 1).every((it) -> it)) told
-    else throw("lesson orders in report-expected.pcf must count 1 to \(told.length)")
+/// The revisions in lesson order, up to and including this lesson's.
+local chapter: List<String> = contract.revisions.keys.toList().sortBy((r) -> contract.revisions[r].lesson.order)
+local told: Experiment.Revision = contract.revisions.getOrNull(revision)
+  ?? throw("no revision \(revision) in report-expected.pcf")
+local turns: List<String> = chapter.take(chapter.indexOf(revision) + 1)
+/// The Questions asked of a revision, in contract order.
+local function idsOf(rev: String): List<String> = contract.questions.keys.toList().filter((id) -> contract.questions[id].revision == rev)
+ids: List<String> = idsOf(revision)
+local function question(id: String): Experiment.Asked = contract.questions[id]
+
 local function state(id: String): Mapping = load("questions/\(id)/state.json")["state"]
-/// Who scored it, and when: the collector's record.
-local function score(id: String): Mapping = load("questions/\(id)/answer.json")
-local runId: String = score(ids.first)["runId"]
-local function result(id: String): Mapping =
-  let (q = question(id))
-  let (outcome = Question.outcome(q, score(id)["probability"] as Number))
-    new {
-      ["dependencies"] = q.dependencies
-      ["probability"] = score(id)["probability"]
-      ["expected"] = new Mapping { ["min"] = q.expected.min; ["max"] = q.expected.max }
-      ["outcome"] = outcome
-      ["accepted"] = outcome == "in-range"
-      ["finishedAt"] = score(id)["finishedAt"]
-    }
-/// A Question as the contract states it, without its lesson: the lesson tells it, the trace does not repeat it.
-local function definition(id: String): Map = question(id).toMap().remove("lesson")
-local function instructions(id: String): String = question(id).judge.instructions
+/// Who answered, and when: the collector's record.
+local function answer(id: String): Mapping = load("questions/\(id)/answer.json")
+local runId: String = answer(ids.first)["runId"]
+local function outcome(id: String): Question.Outcome = Question.outcome(question(id), answer(id)["probability"] as Number)
+local function policy(rev: String): String = state(idsOf(rev).first)["authorizationPolicy"]
 
 /// A canned answer is never presented as a Jev judgement (CIT-320 `backend-labelled`).
-local function mock(id: String): Boolean = score(id)["backend"] == "mock"
-local function scorer(id: String): String = if (mock(id)) "mock" else "jev"
-local function scorerLabel(id: String): String = if (mock(id)) "mock" else "Jev"
-local function evaluationNoun(id: String): String = if (mock(id)) "canned mock answer" else "Jev evaluation"
+local function mock(id: String): Boolean = answer(id)["backend"] == "mock"
+local reviewer: String = if (turns.flatMap((r) -> idsOf(r)).every((id) -> mock(id))) "mock" else "jev"
+local function scorer(id: String): String = if (mock(id)) "Mock" else "Jev"
+local function mockNote(id: String): String = if (mock(id)) " A canned mock answer, not a Jev judgement." else ""
 
 local function percent(x: Number): String =
   let (p = x * 100) if (p.round() == p) p.round().toInt().toString() else p.toString()
-local function pretty(value: Any): String = new JsonRenderer { indent = "  " }.renderValue(value).trimEnd()
+local function pct(id: String): String = "\(percent(answer(id)["probability"]))%"
+local function range(id: String): String = "\(percent(question(id).expected.min))–\(percent(question(id).expected.max))%"
+local function exchange(id: String): String =
+  let (http = state(id)["http"])
+    "\(http["request"]["method"]) \(http["request"]["path"]) as \(http["request"]["actor"]): \(http["response"]["status"])"
 
-local function diagnostic(id: String): AcpTrace.ReportDiagnostic =
-  let (r = result(id))
-  let (s = state(id))
-  let (pct = "\(percent(r["probability"]))%")
-  let (range = "\(percent(r["expected"]["min"]))–\(percent(r["expected"]["max"]))%")
+/// What the answerer said, against the range a sound policy answers in. Either outcome is data.
+local function answerText(id: String): String =
+  "\(scorer(id)) answered \(pct(id)); expected \(range(id)): \(outcome(id)).\(mockNote(id))"
+
+/// Compare each repeated request to the prerequisite observation it follows.
+local function comparison(id: String): String =
+  if (question(id).dependencies.isEmpty) "" else
+    let (prior = question(id).dependencies.first)
+    let (before = state(prior)["http"]["response"]["status"])
+    let (after = state(id)["http"]["response"]["status"])
+      " Same request as \(prior): HTTP \(before) → \(after). \(if (before == after) "Owner access is preserved." else "The owner check denies the previously exposed document.")"
+
+local function change(rev: String): String =
+  if (rev == chapter.first) "" else
+    let (prior = chapter[chapter.indexOf(rev) - 1])
+    "\n\nWhy this change: the baseline returned Bob's private document to Alice (\(exchange(idsOf(prior).first))). Signing in alone did not enforce ownership.\nReplace the baseline policy:\n\(policy(prior))\nwith the owner check above. Review the same Alice and Bob requests again: does it close the leak while preserving the owner's access?"
+
+/// The rows the lens opens: the answer, what it was asked, and the evidence it judged.
+local function rows(id: String): Listing<AcpTrace.Row> = new {
+  new {
+    role = "observation"
+    uri = "questions/\(id)/response.json"
+    detail = "\(answerText(id))\(comparison(id)) Run \(runId); model \(answer(id)["model"])."
+  }
+  new {
+    role = "axiom"
+    uri = "report-expected.pcf"
+    detail = "\(question(id).judge.instructions)\nExpected \(range(id)); contract \(contractDigest)"
+  }
+  new {
+    role = "observation"
+    uri = "questions/\(id)/state.json"
+    revision = question(id).revision
+    detail = "\(exchange(id))\n\(new JsonRenderer { indent = "  " }.renderValue(state(id)["http"]["response"]["body"]).trimEnd())"
+  }
+  new {
+    role = "observation"
+    uri = "questions/\(id)/request.json"
+    detail = "What \(if (mock(id)) "the mock backend" else "Jev") was sent: this state and the question, without its expected range."
+  }
+  for (prior in question(id).dependencies) {
     new {
-      severity = if (r["accepted"]) "info" else "error"
-      code = "\(scorerLabel(id).capitalize()) \(pct) · \(id)"
-      message = "\(instructions(id))\nRecorded \(pct); expected \(range). \(r["outcome"]).\(if (mock(id)) " A canned mock answer, not a Jev judgement." else "")"
-      evaluationId = "\(runId):\(contractDigest):\(id)"
-      related {
-        new { role = "axiom"; uri = "report-expected.pcf"; detail = "\(instructions(id))\nExpected \(range); contract \(contractDigest)" }
-        new { role = "fact"; uri = "questions/\(id)/state.json#/state/authorizationPolicy"; revision = s["revision"]; detail = s["authorizationPolicy"] }
-        new { role = "observation"; uri = "questions/\(id)/state.json#/state/http"; revision = s["revision"]; detail = pretty(s["http"]) }
-        new { role = "observation"; uri = "questions/\(id)/state.json#/state/prerequisites"; detail = pretty(s["prerequisites"]) }
-        new { role = "observation"; uri = "questions/\(id)/answer.json"; detail = "Run \(runId); \(score(id)["backend"]); \(score(id)["model"]); score \(r["probability"])" }
-      }
+      role = "observation"
+      uri = "questions/\(prior)/state.json"
+      revision = question(prior).revision
+      detail = "Baseline: \(exchange(prior))\n\(policy(question(prior).revision))"
     }
-
-local function commit(id: String): AcpTrace.Commit = new {
-  sha = "snapshot:\(state(id)["revision"])"
-  subject = id
-  diagnostic = diagnostic(id)
+  }
 }
 
-/// The run's records up to the question at `index`; its evaluation hidden until `evaluated`.
-local function reportView(index: Int, evaluated: Boolean): Mapping<String, Any> =
-  let (shown = ids.take(index + 1))
-  let (selected = ids[index])
-    new {
-      ["selected"] = selected
-      ["comparison"] = new Mapping {
-        ["runId"] = runId
-        ["questions"] = new Mapping {
-          for (id in shown) {
-            [id] =
-              if (id == selected && !evaluated)
-                new Mapping { ["expected"] = result(id)["expected"]; ["outcome"] = "pending"; ["dependencies"] = result(id)["dependencies"] }
-              else result(id)
-          }
-        }
-      }
-      ["states"] = new Mapping { for (id in shown) { [id] = state(id) } }
-      ["expected"] = new Mapping { ["questions"] = new Mapping { for (id in shown) { [id] = definition(id) } } }
-      ["ledger"] = new Mapping { ["scores"] = new Mapping { for (id in shown) { when (evaluated || id != selected) { [id] = score(id) } } } }
-    }
+local function probe(id: String): AcpTrace.Probe = new {
+  action = exchange(id)
+  question = question(id).ask
+  diagnostic {
+    severity = if (outcome(id) == "in-range") "info" else "error"
+    code = id
+    message = "\(code): \(answerText(id))\(comparison(id))"
+    evaluationId = "\(runId):\(contractDigest):\(id)"
+    related = rows(id)
+  }
+}
 
 /// Epoch milliseconds (after 1970) as `Date.prototype.toISOString` writes them (UTC).
 local function iso(ms: Int): String =
@@ -128,120 +149,92 @@ local function iso(ms: Int): String =
   let (pad = (n: Int, w: Int) -> n.toString().padStart(w, "0"))
     "\(pad.apply(y, 4))-\(pad.apply(m, 2))-\(pad.apply(d, 2))T\(pad.apply(rest ~/ 3600000, 2)):\(pad.apply(rest ~/ 60000 % 60, 2)):\(pad.apply(rest ~/ 1000 % 60, 2)).\(pad.apply(rest % 1000, 3))Z"
 
-local function provenance(id: String): AcpTrace.RecordedProvenance = new {
-  recordingId = runId
-  capturedAt = iso(result(id)["finishedAt"])
+local function finishedAt(rev: String): List<Int> = idsOf(rev).map((id) -> answer(id)["finishedAt"] as Int)
+
+/// One revision's turn: its commit sent as a prompt, then the reviewer's reply.
+/// The turn's number is its JSON-RPC id, so a reply answers its own prompt.
+local function ask(rev: String): AcpTrace.ClientFrame = new {
+  action = "send prompt"
+  envelope {
+    id = chapter.indexOf(rev) + 1
+    params {
+      sessionId = runId
+      prompt { new { text = "\(contract.revisions[rev].subject)\n\nThe document route's authorization policy, as the run recorded it:\n\(policy(rev))\(change(rev))" } }
+    }
+  }
+  provenance {
+    recordingId = "\(runId)#\(rev)"
+    capturedAt = iso(finishedAt(rev).min)
+    scripted = "The subject question is authored in report-expected.pcf; the body is the policy the run recorded at this revision."
+  }
 }
 
-/// The two frames for the question at `index`: its evidence, then its evaluation.
-local function evidence(index: Int): AcpTrace.ReportFrame =
-  let (id = ids[index])
-  let (s = state(id))
-    new {
-      provenance = provenance(id)
-      reportView = reportView(index, false)
-      speaker = "playwright"
-      action = "inspect recorded evidence"
-      envelope {
-        id = index * 2
-        result {
-          _meta {
-            pins {
-              new { id = "\(ids[index]):question"; label = "Question"; text = instructions(ids[index]) }
-              new { id = "\(ids[index]):policy"; label = "Policy · \(s["revision"])"; text = s["authorizationPolicy"] }
-              new { id = "\(ids[index]):http"; label = "Recorded HTTP observations"; text = pretty(s["http"]) }
-            }
-            verdict { channel = "review"; status = "pending"; text = "Evidence collected. Solve reveals the recorded \(evaluationNoun(ids[index]))." }
+local function reply(rev: String): AcpTrace.AgentFrame = new {
+  action = "reply with finding"
+  speaker = reviewer
+  envelope {
+    id = chapter.indexOf(rev) + 1
+    result {
+      _meta {
+        diagnostic {
+          severity = if (idsOf(rev).every((id) -> outcome(id) == "in-range")) "info" else "error"
+          code = "jev.\(rev)"
+          message = "\(code): \(idsOf(rev).map((id) -> "\(question(id).ask) \(answerText(id))").join(" "))"
+          subject {
+            role = "fact"
+            uri = "questions/\(idsOf(rev).first)/state.json#/state/authorizationPolicy"
+            revision = rev
+            detail = policy(rev)
           }
+          related { for (id in idsOf(rev)) { for (row in rows(id)) { row } } }
+          evaluationId = "\(runId):\(contractDigest):\(rev)"
         }
-      }
-      rebaseTodo {
-        commits {
-          for (earlier in ids.take(index)) { commit(earlier) }
-          new { sha = "snapshot:\(s["revision"])"; subject = ids[index] }
-        }
-        comment = "Fixture snapshots; no Git commit hashes were recorded."
+        probes { for (id in idsOf(rev)) { probe(id) } }
       }
     }
-
-local function evaluation(index: Int): AcpTrace.ReportFrame =
-  let (id = ids[index])
-    new {
-      provenance = provenance(id)
-      reportView = reportView(index, true)
-      speaker = scorer(id)
-      action = "reveal recorded evaluation"
-      envelope {
-        id = index * 2 + 1
-        result {
-          _meta {
-            pins { new { id = "\(ids[index]):run"; label = "Recorded \(scorerLabel(ids[index])) run"; text = runId } }
-            verdict {
-              channel = "experiment"
-              status = if (result(ids[index])["accepted"]) "pass" else "fail"
-              text = diagnostic(ids[index]).message
-            }
-          }
-        }
-      }
-      rebaseTodo {
-        commits { for (earlier in ids.take(index + 1)) { commit(earlier) } }
-        comment = "Select a Jev diagnostic to inspect its evidence and Pkl expectation."
-      }
-    }
-
-/// Every frame up to and including the question at `index`, by frame id.
-local function frames(index: Int): Map<String, AcpTrace.ReportFrame> =
-  IntSeq(0, index).toList().flatMap((i) -> List(
-    Pair("\(ids[i]):evidence", evidence(i)),
-    Pair("\(ids[i]):evaluation", evaluation(i))
-  )).toMap((it) -> it.first, (it) -> it.second)
-
-local function index(listed: List<String>, solved: Boolean, scoredBy: String): AcpTrace.FrameIndex = new {
-  scenario = "jev-report-v1"
-  frameIds { for (f in listed) { f } }
-  nextTurn = if (solved) null else new AcpTrace.NextTurn { actor = "agent"; speaker = scorer(scoredBy); action = "reveal recorded evaluation" }
+  }
+  provenance {
+    recordingId = "\(runId)#\(rev)/reply"
+    capturedAt = iso(finishedAt(rev).max)
+    scripted = "ACP framing authored; every answer, policy and exchange is read from the run\(if (reviewer == "mock") ", whose answers are canned mock answers, not Jev judgements" else "")."
+  }
 }
 
-/// The lesson at `at` as files: the starter holds back its question's evaluation; Solve reveals it.
-local function tree(at: Int, solved: Boolean): Map<String, String> =
-  let (all = frames(at))
-  let (shown = if (solved) all.keys.toList() else all.keys.toList().dropLast(1))
-    Map("acp-trace.json", AcpTrace.renderer.renderDocument(index(shown, solved, ids[at])))
-      + shown.toMap((f) -> "frame-\(f).json", (f) -> AcpTrace.renderer.renderDocument(all[f]))
+starter: AcpTrace.Trace = new {
+  scenario = "cit294-review-v1"
+  frames {
+    for (rev in turns.dropLast(1)) { ask(rev); reply(rev) }
+    ask(revision)
+  }
+  nextTurn {
+    actor = "agent"
+    speaker = reviewer
+    action = "review the \(revision) revision"
+  }
+}
 
-local at = ids.indexOf(lesson)
-local told = question(lesson).lesson ?? throw("\(lesson) is not a Question with a lesson in report-expected.pcf")
-local before = tree(at, false)
-local after = tree(at, true)
-local previous: Map<String, String> = if (at == 0) Map() else tree(at - 1, true)
-
-/// The lesson's runtime and display settings (the reporter's `meta`).
-local lessonMeta: Mapping<String, Any> = new {
-  ["template"] = "acp-trace"
-  ["prepareCommands"] = new Listing { "npm install" }
-  ["mainCommand"] = "npm run dev"
-  ["previews"] = new Listing { new Listing { 4173; "Client" } new Listing { 4174; "Agent" } }
-  ["editor"] = true
-  ["terminal"] = false
-  ["custom"] = new Mapping { ["acpTrace"] = new Mapping { ["traceFile"] = "/acp-trace.json"; ["scenario"] = "jev-report-v1" } }
+solved: AcpTrace.Trace = new {
+  scenario = "cit294-review-v1"
+  frames {
+    for (rev in turns) { ask(rev); reply(rev) }
+  }
+  nextTurn = null
 }
 
 local bridge =
   """
   import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
 
-  <AcpTraceBridge client:load />
+  <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 
   """
 
 output {
   value = new Mapping {
-    ["before"] = before
-    ["incoming"] = before.filter((path, text) -> previous.getOrNull(path) != text)
-    ["files"] = after.filter((path, text) -> before.getOrNull(path) != text)
-    ["prose"] = "\(bridge)\n\(told.prose)"
-    ["meta"] = lessonMeta
+    ["ids"] = ids
+    ["starter"] = AcpTrace.renderer.renderDocument(starter)
+    ["solved"] = AcpTrace.renderer.renderDocument(solved)
+    ["prose"] = "\(bridge)\n\(told.lesson.prose)\n"
   }
   renderer = new JsonRenderer {}
 }

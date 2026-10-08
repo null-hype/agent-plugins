@@ -1,0 +1,50 @@
+---
+type: lesson
+title: Is the private document private
+template: acp-trace
+focus: /acp-trace.json
+terminal:
+  open: true
+  panels:
+    - - output
+      - Agent
+editor: false
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+# Is the private document private?
+
+The **Client** holds the commit under review, in the form this case gives every
+change: a message whose subject line is a question. Its body is the authorization
+policy the document route runs at this revision. Unfold it to read it.
+
+Select **Solve** in the top bar to ask the reviewer, Jev. Grey suggested lines
+appear below the commit: the two questions it asks of this revision,
+"Can Alice read Bob's private document?" and "Can Bob read it?". Click the commit, then press **Tab** to
+accept the one shown, or **Alt+]** to switch to the other first. You can take
+either, or both. The **Agent** terminal below prints what Jev was deciding to
+check, and its finding for each question only after you accept it.
+
+Click the lens above an accepted line to open the evidence behind it: Jev's score
+against the range the Question expects, and the HTTP exchange it judged. A canned
+mock answer is labelled as one; it is not a Jev judgement. The terminal names the
+collected files behind each answer: its `state.json`, and the request and
+response Jev saw.
+
+Accept both questions before continuing. Alice's HTTP 200 exposes Bob's private
+document; Bob's HTTP 200 establishes the access we must preserve. Signing in
+alone is not enough. In the next lesson, introduce an owner check and repeat
+these same two requests to see whether it fixes the leak without locking Bob out.
+Your accepted lines carry forward in this browser tab, in the order you chose.
+
+The app is a local synthetic fixture with two signed-in accounts. Solve replays a
+recorded run; it does not run tests or call Jev.

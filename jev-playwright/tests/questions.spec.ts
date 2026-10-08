@@ -19,7 +19,7 @@ for (const [id, question] of Object.entries(experiment.questions) as [string, an
       if (!collector) throw new Error(`Unknown evidence collector: ${question.collector}`);
       const prerequisites = Object.fromEntries(question.dependencies.map((dependency: string) => [dependency,
         JSON.parse(readFileSync(path.join(runDir, 'questions', dependency, 'state.json'), 'utf8')).state]));
-      const state = { ...(await collector.collect(request)), prerequisites };
+      const state = { ...(await collector.collect(request, question)), prerequisites };
       await attach('jev-evidence', { questionId: id, state });
       for (const key of question.requiredEvidence) expect(Object.hasOwn(state, key)).toBe(true);
       collector.verify(state, expect);
