@@ -1,0 +1,115 @@
+/* Cut-out letters from the Stitch "Tidelands Ransom Note Portfolio" project
+   (screen "TIDELANDS.DEV | DECRYPTED"). */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;800&family=Noto+Serif:ital,wght@0,700;1,400&family=Space+Grotesk:wght@500&display=swap');
+
+.ransom-note {
+  --rn-ink: #000;
+  --rn-cream: #e5e2da;
+  --rn-paper: #141313;
+  --rn-slate: #3e4949;
+  --rn-mist: #404b4b;
+  --rn-moss: #65655e;
+  --rn-white: #fff;
+  --rn-flag: #ffb4ab;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.4em;
+  row-gap: 0.25em;
+  margin: 0;
+  font-size: var(--rn-size, 48px);
+  line-height: 1;
+}
+
+.ransom-note .rn-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ransom-note .rn-letter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.9em;
+  padding: 0.12em 0.22em;
+  border: 2px solid var(--rn-ink);
+  transform: rotate(var(--rn-tilt, 0deg));
+  transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.ransom-note .rn-letter:hover {
+  transform: rotate(calc(var(--rn-tilt, 0deg) * -2)) scale(1.08);
+}
+
+/* Eight clippings, cycled by letter index. */
+.ransom-note .rn-0 {
+  background: var(--rn-cream);
+  color: #1c1c17;
+  font: 700 1em 'Noto Serif', serif;
+  box-shadow: 4px 4px 0 var(--rn-ink);
+}
+
+.ransom-note .rn-1 {
+  background: var(--rn-paper);
+  color: var(--rn-white);
+  border-color: var(--rn-white);
+  font: italic 400 0.55em 'Noto Serif', serif;
+}
+
+.ransom-note .rn-2 {
+  background: var(--rn-slate);
+  color: var(--rn-cream);
+  font: 800 0.55em 'Manrope', sans-serif;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 var(--rn-ink);
+}
+
+.ransom-note .rn-3 {
+  background: var(--rn-white);
+  color: var(--rn-ink);
+  font: 700 1em 'Noto Serif', serif;
+}
+
+.ransom-note .rn-4 {
+  background: var(--rn-mist);
+  color: #bdc9c8;
+  border-width: 0 0 4px;
+  border-color: var(--rn-white);
+  font: 500 0.5em 'Space Grotesk', monospace;
+}
+
+.ransom-note .rn-5 {
+  background: var(--rn-cream);
+  color: #1c1c17;
+  font: 800 0.7em 'Manrope', sans-serif;
+  box-shadow: 4px 4px 0 var(--rn-ink);
+}
+
+.ransom-note .rn-5::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 0.3em;
+  height: 0.3em;
+  background: var(--rn-flag);
+  border: 1px solid var(--rn-ink);
+  transform: rotate(45deg);
+}
+
+.ransom-note .rn-6 {
+  background: var(--rn-paper);
+  color: #e5e2e0;
+  border: 2px dashed #929188;
+  font: 700 1em 'Noto Serif', serif;
+}
+
+.ransom-note .rn-7 {
+  background: var(--rn-moss);
+  color: var(--rn-white);
+  font: 400 0.55em 'Noto Serif', serif;
+  box-shadow: 4px 4px 0 var(--rn-cream);
+}
