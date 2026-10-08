@@ -121,12 +121,18 @@ const LESSON_1 = '/iframe.html?id=lessons-private-file--pr-117&viewMode=story&ar
 const FORGED = 'Does the check fail when a read of the private file is forged?';
 const DELETED = 'Does the check fail when the trace is deleted?';
 
+// #117's review, continued (CIT-357): it opens with the forged read accepted.
+const LESSON_2 = '/iframe.html?id=lessons-private-file--pr-117-continued&viewMode=story&args=solved:!true';
+const GENERIC = 'Does the check fail when the block is a generic crash?';
+
 test('review without captured source exposes an explicit summary in native Peek', async ({ page }) => {
-  await page.goto(LESSON_1);
+  await page.goto(LESSON_2);
   const c = client(page);
   await c.locator('.ghost-text-decoration').first().waitFor();
   const box = c.getByRole('textbox', { name: 'Editor content', exact: true });
   await box.press('Tab');
+  await expect(c.getByRole('button', { name: /review-1\.finding-2\.generic-crash/ })).toBeVisible();
+  // The finding inherited from lesson 1 is still there to inspect.
   await c.getByRole('button', { name: /review-1\.finding-1\.forged-read/ }).click();
   const peek = c.locator('.peekview-widget');
   await expect(peek).toBeVisible();
@@ -144,7 +150,8 @@ test('review without captured source exposes an explicit summary in native Peek'
   await expect.poll(async () => (await c.locator('.view-lines').first().innerText()).replace(/\u00a0/g, ' ')).toContain(DELETED);
   await box.press('Tab');
   await expect(c.getByRole('button', { name: /review-1\.finding-1\.deleted-trace/ })).toBeVisible();
-  await expect.poll(() => modelText(c)).toMatch(new RegExp(`\\n${FORGED.replace(/[?.]/g, '\\$&')}\\n${DELETED.replace(/[?.]/g, '\\$&')}\\n$`));
+  const line = (text: string) => text.replace(/[?.]/g, '\\$&');
+  await expect.poll(() => modelText(c)).toMatch(new RegExp(`\\n${line(FORGED)}\\n${line(GENERIC)}\\n${line(DELETED)}\\n$`));
 });
 
 test('accepting one question reports only that question to the host', async ({ page }) => {

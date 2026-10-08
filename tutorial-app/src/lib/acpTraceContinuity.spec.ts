@@ -103,3 +103,25 @@ describe('withAcceptedAtStart', () => {
     expect(withAcceptedAtStart(undefined, { other: [1] })).toEqual({ other: [1] });
   });
 });
+
+// CIT-362: the Client's own rule for what a lesson may change of a shared review's choices.
+describe('retainedOrder', () => {
+  const server = new URL('../templates/acp-trace/server.cjs', import.meta.url);
+  const source = readFileSync(server, 'utf8');
+  const retainedOrder = new Function(
+    source.slice(source.indexOf('function retainedOrder'), source.indexOf('const probeHelpers')) + '\nreturn retainedOrder;',
+  )() as (stored: number[], shown: number[], visible: number) => number[];
+
+  it('an unsolved earlier lesson, which shows no probe, keeps every accept', () => {
+    expect(retainedOrder([0, 1], [], 0)).toEqual([0, 1]);
+  });
+  it('a solved earlier lesson decides only the probes it shows', () => {
+    expect(retainedOrder([0, 1, 3], [0], 1)).toEqual([0, 1, 3]);
+  });
+  it('removing an accepted line where it shows un-accepts it, and only it', () => {
+    expect(retainedOrder([0, 1], [], 1)).toEqual([1]);
+  });
+  it("the lesson that shows every probe takes the learner's order", () => {
+    expect(retainedOrder([0, 1], [0, 2, 1], 5)).toEqual([0, 2, 1]);
+  });
+});
