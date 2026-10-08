@@ -70,30 +70,26 @@ func (m *AgentPlugins) CveCheckerReplayImage(
 	state string,
 ) (*dagger.Container, error) {
 	feature := source.Directory("src/cve-2026-66066")
-	raw, err := feature.File("delivery.json").Contents(ctx)
-	if err != nil { return nil, err }
-	var delivery map[string]string
-	if err := json.Unmarshal([]byte(raw), &delivery); err != nil { return nil, err }
-    if state == "S1" || state == "Vaults" {
-        raw, err := feature.File("deliveries.json").Contents(ctx)
-        if err != nil { return nil, err }
-        var deliveries []map[string]string
-        if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
-        for _, candidate := range deliveries {
-            if candidate["state"] == state && ((state == "S1" && candidate["version"] == "20261008.0811") || (state == "Vaults" && candidate["case"] == "vaults")) { delivery = candidate }
-        }
-        if delivery["state"] != state { return nil, fmt.Errorf("missing selected delivery") }
-        metadataRaw, err := feature.File("devcontainer-feature.json").Contents(ctx)
-        if err != nil { return nil, err }
-        var metadata map[string]interface{}
-        if err := json.Unmarshal([]byte(metadataRaw), &metadata); err != nil { return nil, err }
-        metadata["version"] = delivery["packageVersion"]
-        deliveryJSON, _ := json.MarshalIndent(delivery, "", "  ")
-        metadataJSON, _ := json.MarshalIndent(metadata, "", "  ")
-        feature = feature.WithNewFile("delivery.json", string(deliveryJSON)).WithNewFile("devcontainer-feature.json", string(metadataJSON))
-    } else if state != "S2" || delivery["version"] != "20261008.0812" || delivery["packageVersion"] != "0.3.0" || delivery["state"] != "S2" {
-        return nil, fmt.Errorf("unexpected retention delivery")
+    raw, err := feature.File("deliveries.json").Contents(ctx)
+    if err != nil { return nil, err }
+    var deliveries []map[string]string
+    if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
+    version := "20261008.0812"
+    if state == "S1" { version = "20261008.0811" } else if state == "Vaults" { version = "20261008.0744" } else if state != "S2" { return nil, fmt.Errorf("unknown checker state") }
+    var delivery map[string]string
+    for _, candidate := range deliveries {
+        if candidate["state"] == state && candidate["version"] == version { delivery = candidate }
     }
+    if delivery == nil { return nil, fmt.Errorf("missing pinned checker delivery") }
+    metadataRaw, err := feature.File("devcontainer-feature.json").Contents(ctx)
+    if err != nil { return nil, err }
+    var metadata map[string]interface{}
+    if err := json.Unmarshal([]byte(metadataRaw), &metadata); err != nil { return nil, err }
+    metadata["version"] = delivery["packageVersion"]
+    deliveryJSON, _ := json.MarshalIndent(delivery, "", "  ")
+    metadataJSON, _ := json.MarshalIndent(metadata, "", "  ")
+    feature = feature.WithNewFile("delivery.json", string(deliveryJSON)).WithNewFile("devcontainer-feature.json", string(metadataJSON))
+
 	target := "checker-runtime"
 	if state == "Vaults" { target = "vaults-runtime" }
 	return source.Directory("test/_global/cve-2026-66066-forensics").
@@ -101,4 +97,16 @@ func (m *AgentPlugins) CveCheckerReplayImage(
 		WithDirectory("/feature", feature).
 		WithExec([]string{"sh", "/feature/install.sh"}).
 		WithoutDirectory("/feature"), nil
+}
+
+// CveForecastReplayImage retains the newly installed forecast adapter/runtime.
+// Historical round inputs are supplied separately; no historical image is claimed.
+func (m *AgentPlugins) CveForecastReplayImage(
+    ctx context.Context,
+    // +defaultPath="/"
+    // +ignore=["**/node_modules", "**/.venv", "**/.worktrees", ".git"]
+    source *dagger.Directory,
+) *dagger.Container {
+    return source.DockerBuild(dagger.DirectoryDockerBuildOpts{Dockerfile: "test/_global/cve-forecast-replay/Dockerfile", Target: "installed"}).
+        WithoutDirectory("/forecast-input").WithoutDirectory("/feature")
 }
