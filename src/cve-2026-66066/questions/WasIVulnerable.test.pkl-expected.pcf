@@ -1,0 +1,15 @@
+examples {
+  ["readings"] {
+    new {
+      ["was-i-vulnerable"] {
+        forecast = 0.5
+        implied = 0.32
+        difference = -0.18
+        accounted = true
+      }
+    }
+  }
+  ["scores"] {
+    new {}
+  }
+}

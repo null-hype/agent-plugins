@@ -59,12 +59,12 @@ const PARTS: { name: string; module: string; outDir?: string; chapter?: { title:
   {
     // CIT-318: the jev-playwright Questions, scored by a canned mock answer unless
     // JEV_BACKEND=real (see jev-playwright's README). Needs jev-playwright's
-    // `npm ci` and `.venv`; no server. Their lessons are part 5's "Private document".
+    // `npm ci` and `.venv`; no server. CIT-328: their lesson project tells each
+    // revision they were asked of as one lesson of part 5's "Private document".
     name: 'jev',
     module: '../jev-playwright/report-expected.pcf',
     outDir: './src/content/tutorial/part-5',
-    chapter: { title: 'Private document', lessonModule: path.resolve('tests/jev/JevReport.pkl') },
-    projects: [],
+    projects: [{ name: 'lesson', testMatch: 'jev/jev.tutorial.spec.ts' }],
   },
 ];
 

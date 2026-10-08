@@ -212,14 +212,20 @@ function renderClientPage() {
       let suggestion = null;
       // cit294-review-v1: the commit message (subject + body) spans lines
       // 1..commitEnd and is folded under its subject; the suggestion lands below it.
+      // A trace may hold several review turns (CIT-328): each earlier turn's
+      // commit, then its probes as already accepted, then the current commit.
+      // \`commitRanges\` holds each commit's [first, last] line, all folded.
       let commitEnd = 0;
+      let commitRanges = [];
       let commitFolded = false;
       // Each probe is its own suggestion. Accepting one (Tab) is what applies its
       // diagnostics; \`acceptedOrder\` holds the probe indexes accepted so far, in
       // the order they sit in the editor, and is always derived from its text.
       let acceptedOrder = [];
+      let acceptedReviews = {};
+      let currentReview = null;
       let lastState = null;
-      let reportedAccepted = null;
+      let reportedOrder = null;
       const RUN_GATE_COMMAND = 'acp-trace.runGate';
       const gateKey = (diagnostic) => diagnostic.evaluationId || diagnostic.code;
 
@@ -260,10 +266,58 @@ function renderClientPage() {
         evidenceWidgetLine = lineNumber;
       }
 
+      // CIT-329: review evidence uses Monaco's native inline Peek. Other
+      // trace scenarios retain their existing content-widget presentation.
+      // Captured artifacts are keyed by their source URI and revision. A detail
+      // fallback is explicitly a summary, never impersonating the source file.
+      const peekModels = new Map();
+      function evidenceLocations(monaco, related) {
+        return related.map((entry) => {
+          const key = entry.uri + '@' + (entry.revision || '');
+          const captured = lastState && lastState.evidenceFiles && lastState.evidenceFiles[key];
+          const isSource = typeof captured === 'string';
+          const text = isSource ? captured :
+            'Evidence summary (' + entry.role + ')\\nSource: ' + key +
+            (entry.line ? ':' + entry.line : '') + '\\n\\n' + entry.detail;
+          const path = entry.uri.replace(/^[a-z]+:\\/\\/[^/]*\\//i, '').replace(/^\\/+/, '');
+          // Summaries may cite the same source but describe different ranges.
+          // Preserve that distinction without creating models on every render.
+          const identity = key + (isSource ? '' : ':' + entry.role + ':' + entry.line + ':' + entry.detail);
+          let evidenceModel = peekModels.get(identity);
+          if (!evidenceModel) {
+            const uri = monaco.Uri.from({ scheme: 'evidence',
+              path: '/' + (isSource ? 'captured' : 'summary') + '/' + entry.role + '/' + path,
+              query: 'rev=' + encodeURIComponent(entry.revision || '') +
+                (isSource ? '' : '&entry=' + peekModels.size),
+            });
+            evidenceModel = monaco.editor.getModel(uri) || monaco.editor.createModel(text,
+              isSource && /\\.json(?:#.*)?$/.test(entry.uri) ? 'json' : 'plaintext', uri);
+            peekModels.set(identity, evidenceModel);
+          } else if (evidenceModel.getValue() !== text) {
+            evidenceModel.setValue(text);
+          }
+          const line = isSource ? Math.min(Math.max(1, entry.line || 1), evidenceModel.getLineCount()) : Math.min(4, evidenceModel.getLineCount());
+          return { uri: evidenceModel.uri,
+            range: new monaco.Range(line, 1, line, evidenceModel.getLineMaxColumn(line)) };
+        });
+      }
+
       function configureLanguage(monaco) {
         const languageId = 'acp-warm-log';
         if (monaco.languages.getLanguages().some((l) => l.id === languageId)) return;
         monaco.languages.register({ id: languageId });
+        // Peek inherits the editable log's options. Lock retained evidence via
+        // public editor lifecycle APIs when its model is attached or switched.
+        monaco.editor.onDidCreateEditor((created) => {
+          const lockEvidence = () => {
+            if (created.getModel()?.uri.scheme === 'evidence') {
+              created.updateOptions({ readOnly: true, domReadOnly: true });
+            }
+          };
+          const listener = created.onDidChangeModel(lockEvidence);
+          created.onDidDispose(() => listener.dispose());
+          lockEvidence();
+        });
         monaco.languages.setLanguageConfiguration(languageId, { comments: { lineComment: '#' } });
         monaco.languages.setMonarchTokensProvider(languageId, {
           tokenizer: {
@@ -277,6 +331,7 @@ function renderClientPage() {
 
         monaco.languages.registerHoverProvider(languageId, {
           provideHover(hoverModel, position) {
+            if (hoverModel !== model) return null;
             const diagnostic = diagnosticsByLine[position.lineNumber];
             if (!diagnostic) return null;
             const related = relatedByLine[position.lineNumber] || [];
@@ -325,7 +380,7 @@ function renderClientPage() {
 
         monaco.languages.registerFoldingRangeProvider(languageId, {
           provideFoldingRanges() {
-            return commitEnd > 1 ? [{ start: 1, end: commitEnd }] : [];
+            return commitRanges.filter(([start, end]) => end > start).map(([start, end]) => ({ start, end }));
           },
         });
 
@@ -337,6 +392,7 @@ function renderClientPage() {
         monaco.languages.registerCodeLensProvider(languageId, {
           onDidChange: lensChanged.event,
           provideCodeLenses(lensModel) {
+            if (lensModel !== model) return { lenses: [], dispose() {} };
             const lenses = [];
             for (let lineNumber = 1; lineNumber <= lensModel.getLineCount(); lineNumber += 1) {
               const diagnostic = diagnosticsByLine[lineNumber];
@@ -354,7 +410,10 @@ function renderClientPage() {
               const prefix = diagnostic.severity === 'warning' ? '⚠ ' : diagnostic.severity === 'info' ? 'ℹ ' : '✗ ';
               lenses.push({
                 range: new monaco.Range(lineNumber, 1, lineNumber, 1),
-                command: { id: PEEK_EVIDENCE_COMMAND, title: prefix + diagnostic.code + ' · ' + relatedCount + ' related', arguments: [lineNumber] },
+                command: lastState && lastState.scenario === 'cit294-review-v1'
+                  ? { id: 'editor.action.peekLocations', title: prefix + diagnostic.code + ' · ' + relatedCount + ' related',
+                      arguments: [lensModel.uri, { lineNumber, column: 1 }, evidenceLocations(monaco, relatedByLine[lineNumber] || []), 'peek'] }
+                  : { id: PEEK_EVIDENCE_COMMAND, title: prefix + diagnostic.code + ' · ' + relatedCount + ' related', arguments: [lineNumber] },
               });
             }
             return { lenses, dispose() {} };
@@ -472,13 +531,33 @@ function renderClientPage() {
       // evidence lens) rather than a reply line below it.
       function renderReviewRecords(state) {
         const records = [];
-        for (const frame of state.frames || []) {
-          const promptText = frame.actor === 'client' ? extractPromptText((frame.envelope || {}).params) : null;
-          if (promptText) promptText.split('\\n').forEach((line) => records.push({ raw: line, diagnostic: null, related: [] }));
-        }
+        commitRanges = [];
+        const frames = state.frames || [];
+        const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
+        let review = null;
+        frames.forEach((frame, index) => {
+          if (frame.actor === 'client') {
+            review = frame.provenance && frame.provenance.recordingId;
+            const promptText = extractPromptText((frame.envelope || {}).params);
+            if (!promptText) return;
+            const start = records.length + 1;
+            promptText.split('\\n').forEach((line) => records.push({ raw: line, diagnostic: null, related: [] }));
+            commitRanges.push([start, records.length]);
+            return;
+          }
+          // Earlier turns show only the choices the host persisted.
+          const meta = index < lastPrompt ? metaOf(frame.envelope || {}) : null;
+          if (meta && meta.diagnostic) {
+            (acceptedReviews[review] || []).forEach((probeIndex) => {
+              const probe = (meta.probes || [])[probeIndex];
+              if (!probe) return;
+              records.push({ raw: probe.question, diagnostic: probe.diagnostic || null, related: (probe.diagnostic && probe.diagnostic.related) || [] });
+            });
+          }
+        });
         if (records.length === 0) return renderRecords(null);
-        // The commit ends here. Below it is where suggestions go: an empty line
-        // until they are accepted, then the accepted lines, each diagnosed.
+        // The current commit ends here. Below it is where suggestions go: an empty
+        // line until they are accepted, then the accepted lines, each diagnosed.
         commitEnd = records.length;
         const probes = reviewProbes(state);
         acceptedOrder.filter((index) => index < probes.length).forEach((index) => {
@@ -489,9 +568,12 @@ function renderClientPage() {
         return records;
       }
 
-      // The probes the agent ran to split the question (agent frame _meta).
+      // The probes the agent ran to split the current question: the reply to the
+      // last prompt (agent frame _meta), if it has come.
       function reviewProbes(state) {
-        for (const frame of state.frames || []) {
+        const frames = state.frames || [];
+        const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
+        for (const frame of frames.slice(lastPrompt + 1)) {
           const meta = frame.actor === 'agent' ? metaOf(frame.envelope || {}) : null;
           if (meta && meta.diagnostic) return (meta.probes || []).slice(0, 2);
         }
@@ -577,9 +659,11 @@ function renderClientPage() {
       function foldCommit() {
         let tries = 0;
         const attempt = () => {
-          editor.trigger('acp-trace', 'editor.fold', { levels: 1, selectionLines: [0] });
-          const visible = editor.getVisibleRanges()[0];
-          if (visible && visible.startLineNumber === 1 && model.getLineCount() > commitEnd && visible.endLineNumber <= 1 + (model.getLineCount() - commitEnd)) return;
+          const ranges = commitRanges.filter(([start, end]) => end > start);
+          editor.trigger('acp-trace', 'editor.fold', { levels: 1, selectionLines: ranges.map(([start]) => start - 1) });
+          const hidden = ranges.reduce((sum, [start, end]) => sum + (end - start), 0);
+          const shown = editor.getVisibleRanges().reduce((sum, range) => sum + range.endLineNumber - range.startLineNumber + 1, 0);
+          if (shown <= model.getLineCount() - hidden) return;
           if ((tries += 1) < 40) setTimeout(attempt, 50);
         };
         attempt();
@@ -659,7 +743,7 @@ function renderClientPage() {
         }
         window.monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
         if (lensChanged) lensChanged.fire(undefined);
-        if (commitEnd > 1 && !commitFolded && model.getLineCount() > commitEnd) {
+        if (commitRanges.some(([start, end]) => end > start) && !commitFolded && model.getLineCount() > commitEnd) {
           commitFolded = true;
           foldCommit();
         }
@@ -673,11 +757,14 @@ function renderClientPage() {
         }
         gateDecorationIds = editor.deltaDecorations(gateDecorationIds, glyphDecorations);
         revealNewest();
-        // The Agent pane shows the finding only once the suggestion is accepted;
-        // the host relays this to it.
-        if (lastState && lastState.scenario === 'cit294-review-v1' && reportedAccepted !== (acceptedOrder.length > 0)) {
-          reportedAccepted = acceptedOrder.length > 0;
-          window.parent.postMessage({ type: 'acp-trace-suggestion-accepted', source: 'tk-acp-trace-client-preview', accepted: reportedAccepted }, '*');
+        // Persist actual choices on the host, whose origin survives lesson iframe changes.
+        if (currentReview) acceptedReviews[currentReview] = acceptedOrder;
+        const order = JSON.stringify({ recordingId: currentReview, order: acceptedOrder, reviews: acceptedReviews });
+        if (order !== reportedOrder) {
+          reportedOrder = order;
+          window.parent.postMessage({ type: 'acp-trace-suggestion-accepted', source: 'tk-acp-trace-client-preview',
+            accepted: acceptedOrder.length > 0, recordingId: currentReview, order: acceptedOrder }, '*');
+          fetch('/agent-activity', { method: 'POST', body: order }).catch(() => {});
         }
       }
 
@@ -686,9 +773,20 @@ function renderClientPage() {
         currentRevision = payload.revision;
         renderScripted(payload);
         lastState = payload;
+        const prompt = [...(payload.frames || [])].reverse().find((frame) => frame.actor === 'client');
+        const review = prompt && prompt.provenance && prompt.provenance.recordingId;
+        acceptedReviews = { ...(payload.acceptedReviews || {}), ...acceptedReviews };
+        if (review !== currentReview) {
+          currentReview = review;
+          acceptedOrder = acceptedReviews[review] || [];
+          reportedOrder = null;
+        }
         suggestion = payload.scenario === 'cit294-review-v1' ? reviewCompletion(payload) : null;
         if (!suggestion) acceptedOrder = [];
-        if (payload.scenario !== 'cit294-review-v1') commitEnd = 0;
+        if (payload.scenario !== 'cit294-review-v1') {
+          commitEnd = 0;
+          commitRanges = [];
+        }
         const records = ['smuggling-v1', 'jev-report-v1'].includes(payload.scenario)
           ? renderRebaseTodoRecords(payload)
           : payload.scenario === 'cit294-review-v1'
@@ -868,18 +966,28 @@ function renderAgentPage() {
         root.hidden = !active;
         root.replaceChildren();
         if (!active) return false;
+        let review = null;
         for (const frame of state.frames || []) {
           const envelope = frame.envelope || {};
+          if (frame.actor === 'client') review = frame.provenance && frame.provenance.recordingId;
           const fromClient = frame.actor === 'client';
           const message = el('article', 'msg ' + (fromClient ? 'from-client' : 'from-agent'));
           const who = el('div', 'who', fromClient ? 'You' : frame.speaker || 'Agent');
           who.appendChild(el('span', 'method', envelope.method || (envelope.result && envelope.result.stopReason) || ''));
           message.appendChild(who);
-          const diagnostic = (metaOf(envelope) || {}).diagnostic;
+          const meta = metaOf(envelope) || {};
+          const chosen = state.acceptedReviews ? (state.acceptedReviews[review] || []) : null;
+          const selected = chosen === null ? (meta.probes || []) : chosen.map((index) => (meta.probes || [])[index]).filter(Boolean);
+          const diagnostic = meta.diagnostic && chosen !== null
+            ? (selected.length ? { ...meta.diagnostic,
+                message: selected.map((probe) => probe.diagnostic.message).join(' '),
+                severity: selected.some((probe) => probe.diagnostic.severity === 'error') ? 'error' : 'info',
+                related: selected.flatMap((probe) => probe.diagnostic.related || []) } : null)
+            : meta.diagnostic;
           // Until the client accepts the suggestion the agent has only decided its
           // questions: it shows them as thinking, with no verdict. Hosts that never
           // send \`accepted\` (undefined) show the finding straight away.
-          if (diagnostic && state.accepted === false) {
+          if (meta.diagnostic && (chosen !== null ? selected.length === 0 : state.accepted === false)) {
             message.className = 'msg from-agent waiting';
             message.replaceChildren(el('div', 'who', frame.speaker || 'Agent'));
             message.appendChild(el('div', 'text', 'Deciding what to check\u2026'));
@@ -902,7 +1010,7 @@ function renderAgentPage() {
             const prefix = diagnostic.code + ': ';
             const text = diagnostic.message.startsWith(prefix) ? diagnostic.message.slice(prefix.length) : diagnostic.message;
             message.appendChild(el('div', 'text', text));
-            const probes = (metaOf(envelope) || {}).probes;
+            const probes = selected;
             if (probes && probes.length) {
               const list = el('ul', 'divergence');
               probes.slice(0, 2).forEach((probe, index) => {
@@ -1029,9 +1137,115 @@ function serveMonacoAssets(request, response, url) {
   return true;
 }
 
+// CIT-328: the agent's activity, printed to the terminal (the lesson's
+// `output` panel shows this process's stdout). The trace file is the lesson's
+// own, so Solve and Reset, which rewrite it, change what is printed; a review
+// trace's findings print only for the probes the Client has accepted.
+const traceFile = resolve(process.cwd(), 'acp-trace.json');
+let acceptedProbes = [];
+let acceptedReviews = {};
+let printed = [];
+let printedHint = null;
+
+async function readTrace() {
+  try {
+    const trace = JSON.parse(await readFile(traceFile, 'utf8'));
+    if (Array.isArray(trace.frames) || !Array.isArray(trace.frameIds)) return trace;
+    const frames = [];
+    for (const id of trace.frameIds) {
+      try {
+        frames.push(JSON.parse(await readFile(resolve(process.cwd(), 'frame-' + id + '.json'), 'utf8')));
+      } catch {}
+    }
+    return { ...trace, frames };
+  } catch {
+    return null;
+  }
+}
+
+// What has happened, in order, and a hint for what waits on the viewer next.
+// Only the former is a log: Solve and accepting a probe extend it.
+function activity(trace) {
+  if (!trace) return { lines: [], hint: null };
+  const lines = [];
+  let hint = null;
+  const indent = (text) => String(text).split('\n').map((line) => '    ' + line);
+  const frames = trace.frames || [];
+  const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
+  let review = null;
+  frames.forEach((frame, frameIndex) => {
+    const envelope = frame.envelope || {};
+    if (frame.actor === 'client') {
+      review = frame.provenance && frame.provenance.recordingId;
+      const prompt = ((envelope.params && envelope.params.prompt) || []).map((block) => block.text || '').join('\n');
+      lines.push('you: ' + (prompt.split('\n')[0] || frame.action || ''));
+      return;
+    }
+    const who = frame.speaker || 'agent';
+    const meta = (envelope.result && envelope.result._meta) || {};
+    const probes = meta.probes || [];
+    if (trace.scenario === 'cit294-review-v1' && probes.length) {
+      lines.push(who + ': deciding what to check');
+      probes.forEach((probe, index) => lines.push('  probe ' + (index + 1) + ' (' + probe.action + '): ' + probe.question));
+      // Earlier findings come from persisted choices; current ones wait for the Client.
+      const accepted = frameIndex < lastPrompt ? (acceptedReviews[review] || []) : acceptedProbes;
+      if (accepted.length === 0) {
+        hint = who + ': its findings wait until you accept a probe in the Client (Tab)';
+        return;
+      }
+
+      for (const index of accepted) {
+        const probe = probes[index];
+        if (!probe || !probe.diagnostic) continue;
+        lines.push('  accepted: ' + probe.question);
+        lines.push(...indent(probe.diagnostic.severity + ' ' + probe.diagnostic.message));
+        for (const row of probe.diagnostic.related || []) lines.push('      ' + row.role + ' ' + row.uri);
+      }
+      return;
+    }
+    lines.push(who + ': ' + (frame.action || ''));
+    const diagnostic = meta.diagnostic;
+    if (diagnostic) lines.push(...indent(diagnostic.severity + ' ' + diagnostic.message));
+    if (meta.verdict && meta.verdict.text) lines.push(...indent(meta.verdict.status + ' ' + meta.verdict.text));
+  });
+  if (trace.nextTurn) hint = (trace.nextTurn.speaker || trace.nextTurn.actor) + ': will ' + trace.nextTurn.action + ' when you select Solve';
+  return { lines, hint };
+}
+
+async function printActivity() {
+  const { lines, hint } = activity(await readTrace());
+  const continues = printed.length <= lines.length && printed.every((line, index) => line === lines[index]);
+  if (!continues) console.log('\n-- replayed (Reset, or a probe you accepted was removed) --');
+  for (const line of continues ? lines.slice(printed.length) : lines) console.log(line);
+  if (hint && (hint !== printedHint || !continues || lines.length !== printed.length)) console.log('(' + hint + ')');
+  printed = lines;
+  printedHint = hint;
+}
+
+setInterval(() => printActivity().catch(() => {}), 500);
+
 const clientServer = createServer((request, response) => {
   const url = new URL(request.url || '/', 'http://localhost');
   if (serveMonacoAssets(request, response, url)) return;
+  if (url.pathname === '/agent-activity' && request.method === 'POST') {
+    let body = '';
+    request.on('data', (chunk) => (body += chunk));
+    request.on('end', () => {
+      try {
+        const order = JSON.parse(body);
+        if (Array.isArray(order)) acceptedProbes = order.filter((index) => Number.isInteger(index));
+        else if (order && Array.isArray(order.order) && order.reviews && typeof order.reviews === 'object') {
+          acceptedProbes = order.order.filter((index) => Number.isInteger(index) && index >= 0);
+          acceptedReviews = Object.fromEntries(Object.entries(order.reviews)
+            .filter(([, indexes]) => Array.isArray(indexes))
+            .map(([key, indexes]) => [key, indexes.filter((index) => Number.isInteger(index) && index >= 0)]));
+        }
+      } catch {}
+      printActivity().catch(() => {});
+      sendText(response, '', 204);
+    });
+    return;
+  }
   sendText(response, renderClientPage(), 200, 'text/html; charset=utf-8');
 });
 
