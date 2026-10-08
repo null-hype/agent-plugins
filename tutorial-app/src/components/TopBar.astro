@@ -6,7 +6,7 @@ import TopBarSolveButton from './TopBarSolveButton';
 <nav
   class="bg-tk-elements-topBar-backgroundColor transition-theme border-b border-tk-elements-app-borderColor flex max-w-full items-center p-3 px-4 min-h-[56px]"
 >
-  <div class="flex flex-1">
+  <div class="topbar-logo flex flex-1">
     <slot name="logo" />
   </div>
 
@@ -28,6 +28,12 @@ import TopBarSolveButton from './TopBarSolveButton';
 </nav>
 
 <style is:global>
+  /* TutorialKit sizes public/logo.svg at h-5 (20px), too small for the
+     circled mark's inner strokes to read; give it most of the 56px bar. */
+  .topbar-logo img {
+    height: 2rem;
+  }
+
   /* With `editor: false` TutorialKit collapses the editor panel to zero size
      but leaves its Solve button in the DOM. The top bar's Solve replaces it,
      so take the hidden one out of the accessibility tree too. */
