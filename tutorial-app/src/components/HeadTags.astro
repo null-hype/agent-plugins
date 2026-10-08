@@ -1,5 +1,7 @@
 ---
-const title = 'Agent decisions, checked against evidence';
+import '../styles/prose.css';
+
+const title ='Agent decisions, checked against evidence';
 const description = 'Follow an agent proposal from confident answer to failed check and scoped approval. Inspect the evidence behind each verdict.';
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://null-hype.tidelands.dev');
 const image = new URL('/social-preview.png', canonical.origin);
@@ -39,7 +41,7 @@ const image = new URL('/social-preview.png', canonical.origin);
     align-items: center;
     justify-content: center;
     gap: 20px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: Inter, system-ui, sans-serif;
     background-color: var(--tk-background-secondary, #f6f8f9);
     border-top: 1px solid var(--tk-elements-app-borderColor, #e4e6e9);
@@ -50,17 +52,16 @@ const image = new URL('/social-preview.png', canonical.origin);
   [data-theme='dark'] #gap-footer-band {
     background-color: var(--tk-background-secondary, #2b2d35);
     border-color: rgba(255, 255, 255, 0.08);
-    color: rgba(255,255,255,0.45);
+    color: rgba(255,255,255,0.7);
   }
 
   #gap-footer-band a {
     color: inherit;
     text-decoration: none;
-    opacity: 0.8;
   }
 
   #gap-footer-band a:hover {
-    opacity: 1;
+    color: var(--tk-text-primary, #31343b);
     text-decoration: underline;
   }
 
@@ -75,7 +76,6 @@ const image = new URL('/social-preview.png', canonical.origin);
     var footer = document.createElement('div');
     footer.id = 'gap-footer-band';
     footer.innerHTML = [
-      '<span class="gap-footer-sep">·</span>',
       // TODO: replace href with live article URL once PLAN-326 publishes on tidelands.dev
       '<a href="https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md" target="_blank" rel="noopener">Inspect the evidence</a>',
       '<span class="gap-footer-sep">·</span>',

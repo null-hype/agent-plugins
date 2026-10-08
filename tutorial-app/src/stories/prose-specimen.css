@@ -1,0 +1,92 @@
+/* Storybook can't compile TutorialKit's UnoCSS theme, so this shim carries the
+   computed tokens (read from the running app) and the few TutorialKit
+   markdown.css rules the specimen leans on. src/styles/prose.css layers on top,
+   exactly as it does in the app. */
+
+.prose-specimen[data-theme='light'] {
+  --tk-background-primary: #ffffff;
+  --tk-background-secondary: #f6f8f9;
+  --tk-text-primary: #31343b;
+  --tk-text-secondary: #565a64;
+  --tk-border-primary: #e4e6e9;
+  --tk-elements-content-textColor: #414349;
+  --tk-elements-content-headingTextColor: #31343b;
+  --tk-elements-link-primaryColor: #008ed4;
+  --callout-bg: #e5f6ff;
+  --callout-border: #008ed4;
+  --callout-title: #005f8d;
+}
+
+.prose-specimen[data-theme='dark'] {
+  --tk-background-primary: #232429;
+  --tk-background-secondary: #2b2d35;
+  --tk-text-primary: #e4e6e9;
+  --tk-text-secondary: #aaafb6;
+  --tk-border-primary: #31343b;
+  --tk-elements-content-textColor: #d2d5d9;
+  --tk-elements-content-headingTextColor: #e4e6e9;
+  --tk-elements-link-primaryColor: #00aef2;
+  --callout-bg: #17374a;
+  --callout-border: #2cc8ff;
+  --callout-title: #75daff;
+}
+
+.prose-specimen {
+  background: var(--tk-background-primary);
+  padding: 32px;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.prose-specimen .markdown-content {
+  color: var(--tk-elements-content-textColor);
+  font-size: 16px;
+  line-height: 28px;
+}
+
+.prose-specimen .markdown-content :is(h1, h2, h3, h4) {
+  color: var(--tk-elements-content-headingTextColor);
+  margin-block: 32px 16px;
+  font-weight: var(--heading-font-weight);
+  line-height: 1.15;
+}
+
+.prose-specimen .markdown-content :first-child {
+  margin-block-start: 0;
+}
+
+.prose-specimen .markdown-content p {
+  margin-block: 0 16px;
+}
+
+.prose-specimen .markdown-content a:not(.cta) {
+  color: var(--tk-elements-link-primaryColor);
+}
+
+.prose-specimen .markdown-content code {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+  padding: 2px 6px;
+  border: 1px solid var(--tk-border-primary);
+  border-radius: 4px;
+  background: var(--tk-background-secondary);
+}
+
+.prose-specimen .markdown-content :is(th, td) {
+  border: 1px solid var(--tk-border-primary);
+}
+
+.prose-specimen .markdown-content th {
+  background: var(--tk-background-secondary);
+}
+
+.prose-specimen .markdown-content .callout {
+  margin-block: 16px;
+  padding: 12px;
+  border-left: 3px solid var(--callout-border);
+  background: var(--callout-bg);
+}
+
+.prose-specimen .markdown-content .callout-title {
+  color: var(--callout-title);
+  font-weight: 600;
+}
