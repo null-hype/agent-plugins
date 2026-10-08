@@ -82,3 +82,8 @@
   text-transform: uppercase;
   color: var(--tk-text-secondary);
 }
+
+/* The ransom-note wordmark above the landing page title. */
+.markdown-content .landing-mark {
+  margin-block-end: 28px;
+}
