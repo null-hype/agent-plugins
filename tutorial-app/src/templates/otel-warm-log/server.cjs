@@ -302,7 +302,7 @@ function renderPage() {
           }
 
           const script = document.createElement('script');
-          script.src = '/monaco/vs/loader.js';
+          script.src = new URL('monaco/vs/loader.js', document.baseURI).href;
           script.onload = () => configureMonaco(window.require, resolve, reject);
           script.onerror = () => reject(new Error('Failed to load Monaco assets'));
           document.head.appendChild(script);
@@ -312,7 +312,7 @@ function renderPage() {
       }
 
       function configureMonaco(requireFn, resolve, reject) {
-        requireFn.config({ paths: { vs: '/monaco/vs' } });
+        requireFn.config({ paths: { vs: new URL('monaco/vs', document.baseURI).href } });
         requireFn(['vs/editor/editor.main'], () => {
           const monaco = window.monaco;
           const languageId = 'otel-warm-log';
