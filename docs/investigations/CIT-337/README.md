@@ -26,7 +26,7 @@ npm run build
 
 Build, dev, test and Storybook entry points generate the selected presentation before consuming it. Rendering does not run the experiment again. The question acceptance pipeline independently reruns the pinned checkers and compares their selected answers and files with the retained capture, then uses the capture for the selected rendered finding. Existing counterfactual controls still run.
 
-Before removal, generation reproduced the four S1/S2 Storybook fixtures, four lesson traces and six selected reproduction files byte for byte. Those 14 replaceable outputs are ignored after removal from source control. Historical copies remain retained in the archive. Existing source-controlled lesson solution files are retained because the tutorial reporter's continuity contract includes them; their values are regenerated from captured data.
+Before removal, generation reproduced the four S1/S2 Storybook fixtures, four lesson traces and six selected reproduction files byte for byte. Those 14 replaceable outputs and 36 lesson copies of the selected evidence are ignored after removal from source control. Generation restores both the lesson introducing a state and the following lessons that carry it forward, preserving the tutorial reporter\'s continuity contract. Historical copies remain retained in the archive.
 
 No UI component or story interaction changes, and no new ontology fields or hand-authored result definitions are introduced. The archive intentionally retains original raw answers beside typed evidence; that redundancy serves replay integrity rather than defining independent expectations.
 
