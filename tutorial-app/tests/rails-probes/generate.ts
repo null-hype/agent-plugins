@@ -33,9 +33,16 @@ export function generateReplay(checkExisting = false) {
     const dir = path.join(CHAPTER, lesson);
     same(path.join(dir, '_files/acp-trace.json'), traces.starter, checkExisting);
     same(path.join(dir, '_solution/acp-trace.json'), traces.solved, checkExisting);
-    for (const [rel, body] of selected) {
-      if (rel.endsWith('/answer.json')) continue;
-      same(path.join(dir, '_solution/reproduction', key, rel), body, checkExisting);
+    // The introducing lesson reveals these files; later lessons carry them
+    // in both their incoming and solved state. Generate every continuity copy.
+    for (const name of readdirSync(CHAPTER)) {
+      const number = Number(name.split('-')[0]);
+      if (!Number.isFinite(number) || number < index + 1) continue;
+      const states = number === index + 1 ? ['_solution'] : ['_files', '_solution'];
+      for (const state of states) for (const [rel, body] of selected) {
+        if (rel.endsWith('/answer.json')) continue;
+        same(path.join(CHAPTER, name, state, 'reproduction', key, rel), body, checkExisting);
+      }
     }
   }
   return capture;
