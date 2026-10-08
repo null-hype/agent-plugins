@@ -1,0 +1,60 @@
+---
+type: lesson
+title: Can the check tell a real read of the private file from a forged one
+template: acp-trace
+focus: /acp-trace.json
+terminal:
+  open: true
+  panels:
+    - - output
+      - Agent
+editor: false
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+# Can the check tell a real read of the private file from a forged one?
+
+A Rails app keeps a private file on its server, `/work/dummy-canary.txt`. Nobody
+should be able to read it through an upload. A crafted MATLAB file can: uploaded
+with a declared content type of `image/png`, which Rails keeps without looking,
+it reaches libvips' `matload`, whose HDF5 storage points at the private file.
+The resized "image" that comes back holds the file's bytes.
+
+The case began as a question, CIT-294: run one pinned Rails/libvips/libmatio/HDF5
+configuration against three arms. The unblocked MATLAB canary discloses the
+private file. The blocked one refuses the path, and *a generic crash alone is
+insufficient*. An ordinary PNG control keeps working. That is historical issue
+text, not a sealed declaration: nothing was registered before the run.
+
+| Arm | `VIPS_BLOCK_UNTRUSTED` | Loader | Private file opened | Bytes returned |
+| --- | --- | --- | --- | --- |
+| MAT canary | unset | `matload` | **yes** | the file, byte-exact |
+| MAT canary | `1` | refused, `matload: operation is blocked` | **no** | none |
+| PNG control | unset | `pngload` | n/a | unchanged |
+| PNG control | `1` | `pngload` | n/a | unchanged |
+
+Alice ran the four arms live under `strace` and wrote a Pkl checker over what
+they recorded. Her pull request, #117, is the commit in the **Client**: its
+subject is the question this lesson asks, and its body is her description,
+quoted. Her checker passes.
+
+Select **Solve** for Bob's review. Each grey line is a question he answered by
+editing the recorded evidence in a copy and running Alice's checker again: a
+forged read of the private file, a deleted trace, a generic crash in place of
+the block, emptied bytes, corrupted control pixels. Press **Tab** to accept the
+one shown, or **Alt+]** to switch first.
+
+Open the lens above an accepted line. Peek opens the edit itself, the record as
+Bob left it, beside the review's own words and the checker's result. Each
+result is a **reproduction**: Bob's edit, run again for real against Alice's
+checker as submitted, because the review's own runs were not kept. It shows
+the checker still passing all 28 assertions, whichever edit Bob made.

@@ -171,6 +171,8 @@ export type AcpTraceConfig = {
 };
 
 export type AcpTraceState = {
+  /** Retained source text keyed by evidence URI + "@" + revision (empty if absent). */
+  evidenceFiles?: Record<string, string>;
   revision: number;
   scenario: string;
   frames: AcpFrame[];
@@ -333,8 +335,10 @@ export function buildAcpTraceState(options: {
   revision: number;
   fixture: AcpTraceFixture;
   scenario?: string;
+  /** Reads a lesson file by its path (`/` + the location's uri), if the lesson holds it. */
+  readFile?: (path: string) => string | Uint8Array | undefined;
 }): AcpTraceState {
-  const { revision, fixture, scenario } = options;
+  const { revision, fixture, scenario, readFile } = options;
 
   return {
     revision,
@@ -342,7 +346,30 @@ export function buildAcpTraceState(options: {
     frames: fixture.frames,
     solved: fixture.nextTurn === null && fixture.frames.length > 0,
     nextTurn: fixture.nextTurn,
+    ...(readFile ? { evidenceFiles: evidenceFilesOf(fixture.frames, readFile) } : {}),
   };
+}
+
+/**
+ * The lesson files the trace's evidence names. A location (any `{ uri, role }`
+ * in a frame's `_meta`) whose uri, without its `#fragment`, is a file the
+ * lesson holds is shown as that file, under the key Peek looks it up by
+ * (`uri@revision`); a location naming no lesson file stays a summary.
+ */
+export function evidenceFilesOf(frames: readonly AcpFrame[], readFile: (path: string) => string | Uint8Array | undefined) {
+  const files: Record<string, string> = {};
+  const visit = (value: unknown): void => {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) return value.forEach(visit);
+    const record = value as Record<string, unknown>;
+    if (typeof record.uri === 'string' && typeof record.role === 'string') {
+      const text = valueToText(readFile('/' + record.uri.replace(/#.*$/, '').replace(/^\/+/, '')));
+      if (text) files[`${record.uri}@${typeof record.revision === 'string' ? record.revision : ''}`] = text;
+    }
+    Object.values(record).forEach(visit);
+  };
+  frames.forEach((frame) => visit(metaOf(frame.envelope)));
+  return files;
 }
 
 /** The frame a diagnostic actually lives on, if any -- read by both previews. */

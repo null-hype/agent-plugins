@@ -1,0 +1,47 @@
+import { Controls, Markdown, Meta, Story } from '@storybook/addon-docs/blocks';
+import * as Lessons from './PrivateFileLessons.stories';
+import one from '../content/tutorial/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/content.mdx?raw';
+import two from '../content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/content.mdx?raw';
+import three from '../content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/content.mdx?raw';
+import four from '../content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/content.mdx?raw';
+
+export const prose = (lesson) => {
+  const body = lesson.slice(lesson.indexOf('\n# ') + 1);
+  return body.slice(body.indexOf('\n') + 1);
+};
+
+<Meta of={Lessons} />
+
+# Can an upload read a private file?
+
+Part 5, as its lessons tell it: each section is one lesson, its text as the tutorial
+reporter generated it, and its story is the lesson's Client. Alice authors each pull
+request; Bob's review is Solve. Set **solved** to see the review.
+
+## 1. Can the check tell a real read of the private file from a forged one?
+
+<Markdown>{prose(one)}</Markdown>
+
+<Story of={Lessons.PR117} />
+<Controls of={Lessons.PR117} include={['solved']} />
+
+## 2. Can the strengthened check tell a real read of the private file from a forged one?
+
+<Markdown>{prose(two)}</Markdown>
+
+<Story of={Lessons.PR118} />
+<Controls of={Lessons.PR118} include={['solved']} />
+
+## 3. Can the check tell a real read of the private file from a mention of one?
+
+<Markdown>{prose(three)}</Markdown>
+
+<Story of={Lessons.PR120} />
+<Controls of={Lessons.PR120} include={['solved']} />
+
+## 4. Does the check require a real read of the private file?
+
+<Markdown>{prose(four)}</Markdown>
+
+<Story of={Lessons.CC23E89} />
+<Controls of={Lessons.CC23E89} include={['solved']} />

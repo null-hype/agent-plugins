@@ -1,0 +1,17 @@
+Follow-up review of [PR #118](https://github.com/null-hype/agent-plugins/pull/118), commit `8d097c8e16bd1db44d5d4f558ad99938585e1001`, against the four findings on #117.
+
+**Recommendation: keep changes requested.** The byte-validation and generic-crash findings are fixed. The unchanged suite passes 18 facts / 4 examples / 56 assertions, and independent mutations confirm that a generic variant crash, empty canary bytes, and corrupted PNG control pixels now fail with appropriate diagnostics. Changing the independently recorded open count to zero also fails as intended.
+
+Three gaps remain:
+
+1. **The trace negative controls mutate the derived count, not the retained trace.** [cit294.test.pkl:98–104](https://github.com/null-hype/agent-plugins/blob/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/cit294.test.pkl#L98-L104) changes `independent_dummy_file_openat_count`. That improves validation of the structured observation, but does not reproduce the original raw-trace mutations. In separate temporary copies, deleting `canary-reads.txt` entirely or replacing it with a blocked-arm dummy-file read still passes all 56 assertions and produces empty diagnostics for every arm. The PR's claim that all five exact mutations are fixed is therefore inaccurate. Retain and validate the per-arm trace evidence against the recorded counts, with negative controls that actually delete or alter that evidence.
+
+2. **Input/configuration identity is recorded but incompletely checked.** The source SHA is only constrained to a valid shape, and [the configuration fact](https://github.com/null-hype/agent-plugins/blob/8d097c8e16bd1db44d5d4f558ad99938585e1001/docs/investigations/CIT-265/cit-294/cit294.test.pkl#L55-L63) checks only the unblocked MAT arm. Replacing the blocked MAT arm's source SHA with a different valid SHA still passes everything; changing its Rails defaults to `6.1` and processor to `mini_magick` also passes, with empty diagnostics. Require matching input hashes between each blocked/unblocked pair and validate the configuration for every arm. These conditions establish that the blocking comparison really concerns the same input and configuration.
+
+3. **The tutorial/report acceptance requirement remains open.** Committed `reports/diagnostics.json` and JUnit results are a useful improvement: checker output and authoritative test results are now retained. However, no changes connect this real run to the existing TutorialKit/report surface. Finish that integration, label the execution as recorded, and make its observations and verdicts inspectable there before declaring all four original findings resolved.
+
+**Verification:** Ran the unchanged Pkl suite and regenerated diagnostics, then independently tested mutations in temporary copies. Generic crash, empty canary bytes, corrupted PNG pixels, and zeroed independent read count fail. Deleted/forged retained traces, a mismatched blocked-arm source SHA, and mismatched blocked-arm configuration still pass with empty diagnostics. The PR working tree was unchanged.
+
+Docker remains unavailable in the review environment, so this review covers source, recorded evidence, and adversarial Pkl checks rather than an independent native Rails/libvips rerun.
+
+The remaining work is bounded to evidence consistency and the existing report integration; blind discovery and Jev calibration stay outside this follow-up.

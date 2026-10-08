@@ -1,23 +1,22 @@
 import { expect, test } from '@playwright/test';
 
 const LANDING = '/part-0/overview/start';
-const DEMO = '/part-3/proposal-p-against-the-budget/1-jev-types-the-answer';
+const DEMO = '/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one';
 const EVIDENCE = 'https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md';
 const CONTACT = 'https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml';
 
 test('logged-out journey: root → explanation → demo → evidence → contact', async ({ page, context }) => {
   await page.goto('/');
   await expect(page).toHaveURL(new RegExp(`${LANDING}/?$`));
-  await expect(page.getByText('Which signal should the person approving the trip trust?', { exact: true })).toBeVisible();
+  await expect(page.getByText('What does the passing check actually tell you about the answer?', { exact: true })).toBeVisible();
 
   const email = page.getByRole('link', { name: 'public.rant@pm.me', exact: true });
   await expect(email).toBeVisible();
   await expect(email).toHaveAttribute('href', 'mailto:public.rant@pm.me');
   await expect(page.getByRole('link', { name: 'Open an issue', exact: true })).toHaveAttribute('href', CONTACT);
-  await page.getByRole('link', { name: /Start the budget walkthrough/ }).first().click();
+  await page.getByRole('link', { name: /Start the review/ }).first().click();
   await expect(page).toHaveURL(new RegExp(`${DEMO}/?$`));
-  await expect(page.getByRole('heading', { name: 'A confident answer', exact: true })).toBeVisible();
-  await expect(page.getByText('Evidence scope:', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Can the check tell a real read of the private file from a forged one?', exact: true })).toBeVisible();
 
   const evidence = page.locator('#gap-footer-band').getByRole('link', { name: 'Inspect the evidence', exact: true });
   await expect(evidence).toHaveAttribute('href', EVIDENCE);

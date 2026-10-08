@@ -1,0 +1,112 @@
+package main
+
+import (
+	"context"
+	"dagger/agent-plugins/internal/dagger"
+	"encoding/json"
+	"fmt"
+)
+
+// CveChecker installs both historical checker states into disposable instances of the
+// existing forensics scenario's checker target. Export the returned directory
+// to retain each run's inputs/output and the combined shared investigation.
+func (m *AgentPlugins) CveChecker(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/node_modules", "**/.venv", "**/.worktrees", ".git"]
+	source *dagger.Directory,
+) (*dagger.Directory, error) {
+	feature := source.Directory("src/cve-2026-66066")
+	raw, err := feature.File("deliveries.json").Contents(ctx)
+	if err != nil { return nil, err }
+	var deliveries []map[string]string
+	if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
+	var historical []map[string]string
+	for _, delivery := range deliveries {
+		if delivery["version"] == "20261008.0811" { historical = append(historical, delivery) }
+	}
+	deliveries = historical
+	if len(deliveries) != 2 { return nil, fmt.Errorf("this slice requires two checker states") }
+	meta, err := feature.File("devcontainer-feature.json").Contents(ctx)
+	if err != nil { return nil, err }
+	var metadata map[string]interface{}
+	if err := json.Unmarshal([]byte(meta), &metadata); err != nil { return nil, err }
+	base := source.Directory("test/_global/cve-2026-66066-forensics").DockerBuild(dagger.DirectoryDockerBuildOpts{Target: "checker"})
+	reports := dag.Directory()
+	states := []string{}
+	var last *dagger.Container
+	for _, delivery := range deliveries {
+		state := delivery["state"]
+		states = append(states, state)
+		metadata["version"] = delivery["packageVersion"]
+		deliveryJSON, err := json.MarshalIndent(delivery, "", "  ")
+		if err != nil { return nil, err }
+		metadataJSON, err := json.MarshalIndent(metadata, "", "  ")
+		if err != nil { return nil, err }
+		pkg := feature.WithNewFile("delivery.json", string(deliveryJSON)).WithNewFile("devcontainer-feature.json", string(metadataJSON))
+		last = base.WithDirectory("/feature", pkg).
+			WithFile("/test/cve-checker.sh", source.File("test/_global/cve-checker.sh")).
+			WithFile("/test/cve-checker-failures.ts", source.File("test/_global/cve-checker-failures.ts")).
+			WithExec([]string{"sh", "/feature/install.sh"}).
+			WithExec([]string{"bash", "/test/cve-checker.sh", "/report"})
+		reports = reports.WithDirectory(state, last.Directory("/report"))
+	}
+	last = last.WithDirectory("/all", reports).
+		WithEnvVariable("PATH", "/usr/local/share/cve-2026-66066/runtime/bin:$PATH", dagger.ContainerWithEnvVariableOpts{Expand: true}).
+		WithExec(append([]string{"deno", "run", "--no-check", "--allow-all", "/usr/local/share/cve-2026-66066/src/cve-2026-66066/questions/checker/combine.ts", "/all"}, states...))
+	return last.Directory("/all"), nil
+}
+
+// CveCheckerReplayImage exports the installed CIT-336 tooling as a retainable
+// image. Subject inputs are copied into each disposable instance by the host
+// capture command; none survive in this image. Restoration needs no checkout,
+// registry, installer download, Dagger cache, or original container.
+func (m *AgentPlugins) CveCheckerReplayImage(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/node_modules", "**/.venv", "**/.worktrees", ".git"]
+	source *dagger.Directory,
+	// +default="S2"
+	state string,
+) (*dagger.Container, error) {
+	feature := source.Directory("src/cve-2026-66066")
+    raw, err := feature.File("deliveries.json").Contents(ctx)
+    if err != nil { return nil, err }
+    var deliveries []map[string]string
+    if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
+    version := "20261008.0812"
+    if state == "S1" { version = "20261008.0811" } else if state == "Vaults" { version = "20261008.0744" } else if state != "S2" { return nil, fmt.Errorf("unknown checker state") }
+    var delivery map[string]string
+    for _, candidate := range deliveries {
+        if candidate["state"] == state && candidate["version"] == version { delivery = candidate }
+    }
+    if delivery == nil { return nil, fmt.Errorf("missing pinned checker delivery") }
+    metadataRaw, err := feature.File("devcontainer-feature.json").Contents(ctx)
+    if err != nil { return nil, err }
+    var metadata map[string]interface{}
+    if err := json.Unmarshal([]byte(metadataRaw), &metadata); err != nil { return nil, err }
+    metadata["version"] = delivery["packageVersion"]
+    deliveryJSON, _ := json.MarshalIndent(delivery, "", "  ")
+    metadataJSON, _ := json.MarshalIndent(metadata, "", "  ")
+    feature = feature.WithNewFile("delivery.json", string(deliveryJSON)).WithNewFile("devcontainer-feature.json", string(metadataJSON))
+
+	target := "checker-runtime"
+	if state == "Vaults" { target = "vaults-runtime" }
+	return source.Directory("test/_global/cve-2026-66066-forensics").
+		DockerBuild(dagger.DirectoryDockerBuildOpts{Target: target}).
+		WithDirectory("/feature", feature).
+		WithExec([]string{"sh", "/feature/install.sh"}).
+		WithoutDirectory("/feature"), nil
+}
+
+// CveForecastReplayImage retains the newly installed forecast adapter/runtime.
+// Historical round inputs are supplied separately; no historical image is claimed.
+func (m *AgentPlugins) CveForecastReplayImage(
+    ctx context.Context,
+    // +defaultPath="/"
+    // +ignore=["**/node_modules", "**/.venv", "**/.worktrees", ".git"]
+    source *dagger.Directory,
+) *dagger.Container {
+    return source.DockerBuild(dagger.DirectoryDockerBuildOpts{Dockerfile: "test/_global/cve-forecast-replay/Dockerfile", Target: "installed"}).
+        WithoutDirectory("/forecast-input").WithoutDirectory("/feature")
+}

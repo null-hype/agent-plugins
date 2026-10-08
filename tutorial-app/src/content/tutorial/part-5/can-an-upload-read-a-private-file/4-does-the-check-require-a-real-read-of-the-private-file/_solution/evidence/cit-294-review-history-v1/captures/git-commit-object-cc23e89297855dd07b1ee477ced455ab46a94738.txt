@@ -1,0 +1,37 @@
+tree 2baedb5250f139a4279c428268b77dd1b19d529c
+parent 296ca9f87ea04809b4d21da5bd4d617784856c27
+author Null Hype <public.rant@pm.me> 1791084445 +0000
+committer GitHub <noreply@github.com> 1791086238 +1100
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqwc6fCRC1aQ7uu5UhlAAAO+QQAJ6i1tz9Zxamlpjbjij0R1cM
+ Tuef2HqYHEMgs+lopMBduZ5Vrj+Ih15rgR6q6DTP80sg4M/O8aEMXdGuPsXuTffB
+ 2CnGWnZ7yqJNzDVhAJY8Av65/X5eo1tQTxL884N3YhldqqHAOLw9AuYQ5K1bHECa
+ nH5j7zvrYfA2gSYxW/rmII0jOk3K8+wL8sngB3TG8PLniKK2Vuq47ZvF6BOMSsha
+ 6hCE5+L50XTvfOWKGqnDzy/ELvnlTJ0l5w3O5KYvQgCrC+QLvj2BfzdfQU+KNATs
+ 3B/h96zUcyCONjqrp7DYhHholtUxU12O8NHa5bBn8JN+FY6sXBQ6DYX2AgG0G3AW
+ U63OWwuLbauaKDDg0O0jCm/25Ke2Fu0oVs1tUTsbqMN/ITR2JTPMDSTVxvR2E7Kt
+ rNDl3K8Sil5mccHV4nfonE9RTlPf43VXjZ/ilFAJlkQFXWYX65LT8IRBDMn37j1v
+ HmV0AV/IjNBbzvIhfETyD5Ht0yjN82tsa+O1lbTPZ5vejFjVgcW7cHPwwjq4WPOd
+ bsbqx8pXgQYmaIne3fgDcr2Yu1Hf6w7LkFEqgt4+dw8vOXSFcU359Gz8/FNtmAK3
+ 5wBcnMlc5UQT0n5y+jXv2XMXC6W0j50b2zg81U0JnvOCb0tKQM7fMD45G6oYainU
+ XG+Npav2xV5AXgZIz9rB
+ =82t0
+ -----END PGP SIGNATURE-----
+ 
+
+CIT-303 PR follow-up: parse trace evidence instead of substring-matching it
+
+Review of PR #120 found the independent-read check still only did a
+bare substring match on the retained trace text, and nothing required
+valid trace evidence to exist for an arm whose expected open-count was
+already zero -- so deleting a blocked arm's whole trace, or replacing
+real evidence with a prose mention/failed EACCES open/different-directory
+open, still passed with empty diagnostics. Reconcile.pkl now requires a
+parsed, successful openat of the exact path, plus proof-of-capture (a
+successful open of the arm's own source file) for every arm; run_arms.sh
+collects trace text under the same criterion and no longer merges
+strace's stderr with the script's own JSON stdout.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VA8fpXPX82YTYrxHFTxZzz

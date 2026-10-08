@@ -1,0 +1,208 @@
+{
+  "format": "cit338-viewer-export-v1",
+  "archive": "bundle.tar.gz",
+  "sha256": "sha256:702795bd732b3234d76135fa0164d9d817a585fccfee071b937b424c08087157",
+  "bytes": 14280,
+  "capturePinsSha256": "sha256:ec408329c1e3a491fc0f62686aecfce81c54161ac24527ef301cfe65bbefecd8",
+  "captures": [
+    {
+      "state": "forecast",
+      "source": {
+        "repository": "null-hype/agent-plugins",
+        "artifactId": 11535628610,
+        "artifactName": "cit338-forecast-c3ff942ae42d9d444f6c50ae6d6ff448173bdf58-37745970383-1",
+        "artifactSha256": "sha256:f9f96d797fc1d8a22c8e990ce3ca2b1484d61dc4d6680fd2e22c77c7012e6049",
+        "runId": 37745970383,
+        "sourceCommit": "c3ff942ae42d9d444f6c50ae6d6ff448173bdf58",
+        "expiresAt": "2027-01-06T07:50:49Z"
+      },
+      "snapshotId": "de1ac972d64c2b1dc8ef6aebe92eaf7ad93b2d44383e9c4e56d96a6591091e11",
+      "repositoryId": "252719ba7336187e242c3c7eb22a7a9f72b8562ddccc42ed122586d10c73f7f1",
+      "transportSha256": "sha256:2eab5ccaf6552f1a06d2a596b685824e7ca3f2b59c39f6ef513a503b127657cb",
+      "retentionSha256": "sha256:666de090beba8ae7af9ee9e62ceb4a8a8d4a44509aa4a9d63ba445984b909550",
+      "selectedFiles": [
+        {
+          "path": "bundle/capture.json",
+          "bytes": 33542,
+          "sha256": "sha256:984feb5ca9e991e7000422de2e82cf1fb09788a924eba68e9a9a79644b980f43"
+        },
+        {
+          "path": "bundle/input-pins.json",
+          "bytes": 2667,
+          "sha256": "sha256:ccb0831cd94f4cc65beba7150dd7e45049a6cea26b8cc4f91e77d467419d67d6"
+        },
+        {
+          "path": "bundle/inputs/WasIVulnerable.pkl",
+          "bytes": 4529,
+          "sha256": "sha256:ba28f1eb8d3aa0d4ecd74cd141bcae2c372af1c94f521d03262b93e06d980049"
+        },
+        {
+          "path": "bundle/inputs/frozen/12f2351/WasIVulnerable.pkl",
+          "bytes": 4512,
+          "sha256": "sha256:8adc1316ca479ef63402bb5be04dc51da4619e593752e13a2e49c4bfedbd75e1"
+        },
+        {
+          "path": "bundle/inputs/frozen/12f2351/WasIVulnerable.test.pkl-expected.pcf",
+          "bytes": 215,
+          "sha256": "sha256:0df4407be4b64050975004dd19ab5d52cd9c3625121cb401a23c7820791b866f"
+        },
+        {
+          "path": "bundle/inputs/frozen/5282c7e/WasIVulnerable.pkl",
+          "bytes": 3645,
+          "sha256": "sha256:99bccff150c3b39eb0767f69388bc88c10a9064d046683bfe0a475e59f8268ab"
+        },
+        {
+          "path": "bundle/inputs/frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf",
+          "bytes": 75,
+          "sha256": "sha256:cd55e76891e8e0ba893c47a3db0ede3d2580ca14eb190ae289076e04d58b5ab5"
+        },
+        {
+          "path": "bundle/inputs/rounds/20261006T065648Z-stub/monitor.json",
+          "bytes": 3033,
+          "sha256": "sha256:85ce087726b2d747fd020862a3b4d2f5fb6a5fdd6233be6bb0095ce9bafdedab"
+        },
+        {
+          "path": "bundle/inputs/rounds/20261006T065648Z-stub/reading.txt",
+          "bytes": 89,
+          "sha256": "sha256:974757769d4e8ab59ef2737903f137322a948902daf5b2236bc7ab218ff22d1e"
+        },
+        {
+          "path": "bundle/inputs/rounds/20261006T065648Z-stub/register.json",
+          "bytes": 418,
+          "sha256": "sha256:5a0cf5a33173e49e3116c4139941f41a783ef51a931fb75af5cf6b7e7006792a"
+        },
+        {
+          "path": "bundle/inputs/rounds/20261006T065648Z-stub/round.json",
+          "bytes": 64,
+          "sha256": "sha256:fd3fad8ba819aae78d00a7fd713b190da6bf674985c361de89d2724be10c09d0"
+        },
+        {
+          "path": "bundle/installed-feature.json",
+          "bytes": 401,
+          "sha256": "sha256:b01917284b75d1c3cf93ffb8c5d85a1ce378b5df547907dde0b6a37c80d263c8"
+        },
+        {
+          "path": "bundle/record.json",
+          "bytes": 29474,
+          "sha256": "sha256:1dfa08ee1ecf1421f29f63e54f883607e156fc97e9dca424dd53a62f0e341c72"
+        }
+      ],
+      "observationStartedAt": "2026-10-08T07:52:14.523195+00:00",
+      "image": {
+        "manifestDigest": "sha256:678ceff20054e91b8d4f7419df87f193daff697cfce202dad5c4a6f6329952b8",
+        "configDigest": "sha256:b56439f28414d8df518d227b83d953992a49151d241de0a3981dc3b06ededa57",
+        "archiveHash": "sha256:c348558b75856b160425c23fc83f458c2fdd403c9def39c1ec44748ef8b49020",
+        "platform": "linux/amd64"
+      },
+      "delivery": {
+        "feature": "cve-2026-66066",
+        "version": "20261008.0814",
+        "finding": "forecast.split",
+        "questionId": "was-i-vulnerable",
+        "scenario": "test/_global/cve-forecast-replay",
+        "packageVersion": "0.4.0",
+        "inputPins": "sha256:ccb0831cd94f4cc65beba7150dd7e45049a6cea26b8cc4f91e77d467419d67d6",
+        "capturedRound": "20261006T065648Z-stub",
+        "pkl": "Pkl 0.32.1 (Linux 6.17.0-1020-azure, native)"
+      },
+      "executionSource": {
+        "commit": "016c9f3966098f18f484591b1220af60e9ebf408",
+        "dirtyPaths": [],
+        "inventory": "source-inputs.json",
+        "inventorySha256": "sha256:2e35f93906a2ecc0a7d58e7f6ce4184b3b41ae8137f7cc318895ab84d54bce28"
+      },
+      "historicalInputs": {
+        "commit": "c897e8d41b633fc539b9bd558c7e7bd69f18d369",
+        "pinsSha256": "sha256:ccb0831cd94f4cc65beba7150dd7e45049a6cea26b8cc4f91e77d467419d67d6"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "capture.json",
+      "bytes": 33542,
+      "sha256": "sha256:984feb5ca9e991e7000422de2e82cf1fb09788a924eba68e9a9a79644b980f43"
+    },
+    {
+      "path": "container-execution.json",
+      "bytes": 269,
+      "sha256": "sha256:01b08b5055c443af664d2c485a1a4b252ca2c9da7ef65f80e580c993014ac006"
+    },
+    {
+      "path": "execution.json",
+      "bytes": 2071,
+      "sha256": "sha256:8293497ea842c033bd38ad4b5d8c5a1ce6c1a46be451bbfe42033a8dfc3f2566"
+    },
+    {
+      "path": "input-pins.json",
+      "bytes": 2667,
+      "sha256": "sha256:ccb0831cd94f4cc65beba7150dd7e45049a6cea26b8cc4f91e77d467419d67d6"
+    },
+    {
+      "path": "inputs/WasIVulnerable.pkl",
+      "bytes": 4529,
+      "sha256": "sha256:ba28f1eb8d3aa0d4ecd74cd141bcae2c372af1c94f521d03262b93e06d980049"
+    },
+    {
+      "path": "inputs/frozen/12f2351/WasIVulnerable.pkl",
+      "bytes": 4512,
+      "sha256": "sha256:8adc1316ca479ef63402bb5be04dc51da4619e593752e13a2e49c4bfedbd75e1"
+    },
+    {
+      "path": "inputs/frozen/12f2351/WasIVulnerable.test.pkl-expected.pcf",
+      "bytes": 215,
+      "sha256": "sha256:0df4407be4b64050975004dd19ab5d52cd9c3625121cb401a23c7820791b866f"
+    },
+    {
+      "path": "inputs/frozen/5282c7e/WasIVulnerable.pkl",
+      "bytes": 3645,
+      "sha256": "sha256:99bccff150c3b39eb0767f69388bc88c10a9064d046683bfe0a475e59f8268ab"
+    },
+    {
+      "path": "inputs/frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf",
+      "bytes": 75,
+      "sha256": "sha256:cd55e76891e8e0ba893c47a3db0ede3d2580ca14eb190ae289076e04d58b5ab5"
+    },
+    {
+      "path": "inputs/rounds/20261006T065648Z-stub/monitor.json",
+      "bytes": 3033,
+      "sha256": "sha256:85ce087726b2d747fd020862a3b4d2f5fb6a5fdd6233be6bb0095ce9bafdedab"
+    },
+    {
+      "path": "inputs/rounds/20261006T065648Z-stub/reading.txt",
+      "bytes": 89,
+      "sha256": "sha256:974757769d4e8ab59ef2737903f137322a948902daf5b2236bc7ab218ff22d1e"
+    },
+    {
+      "path": "inputs/rounds/20261006T065648Z-stub/register.json",
+      "bytes": 418,
+      "sha256": "sha256:5a0cf5a33173e49e3116c4139941f41a783ef51a931fb75af5cf6b7e7006792a"
+    },
+    {
+      "path": "inputs/rounds/20261006T065648Z-stub/round.json",
+      "bytes": 64,
+      "sha256": "sha256:fd3fad8ba819aae78d00a7fd713b190da6bf674985c361de89d2724be10c09d0"
+    },
+    {
+      "path": "installed-feature.json",
+      "bytes": 401,
+      "sha256": "sha256:b01917284b75d1c3cf93ffb8c5d85a1ce378b5df547907dde0b6a37c80d263c8"
+    },
+    {
+      "path": "record.json",
+      "bytes": 29474,
+      "sha256": "sha256:1dfa08ee1ecf1421f29f63e54f883607e156fc97e9dca424dd53a62f0e341c72"
+    },
+    {
+      "path": "retention.json",
+      "bytes": 7763,
+      "sha256": "sha256:666de090beba8ae7af9ee9e62ceb4a8a8d4a44509aa4a9d63ba445984b909550"
+    },
+    {
+      "path": "source-inputs.json",
+      "bytes": 17507,
+      "sha256": "sha256:2e35f93906a2ecc0a7d58e7f6ce4184b3b41ae8137f7cc318895ab84d54bce28"
+    }
+  ],
+  "scope": "Exact retained installed forecast execution, historical inputs and provenance. No capture or installation is executed while exporting or rendering."
+}

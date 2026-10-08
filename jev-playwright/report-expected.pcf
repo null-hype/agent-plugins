@@ -1,143 +1,126 @@
 amends "pkl/Experiment.pkl"
 
-questions {
-  ["vulnerability-reproduced"] {
-    judge {
-      type = "noul"
-      instructions = "Does this local reproduction demonstrate broken object-level authorization: signed-in Alice can read a private document owned by Bob? Judge only the supplied HTTP observations and fixture state."
-      criteria {
-        `true` = "The response to Alice contains Bob's private document, and fixture state identifies Bob as its owner."
-        `false` = "The request is denied, ownership or caller identity is unestablished, or no private content is returned."
-      }
-    }
-    collector = "reproduce-unauthorized-read"
-    requiredEvidence {
-      "http"
-      "fixtureState"
-      "authorizationPolicy"
-    }
-    expected {
-      min = 0.8
-      max = 1.0
-    }
+import "pkl/Experiment.pkl"
+
+// CIT-328: two revisions of the document app, each a lesson, each asked the
+// same two Questions word for word. `expected` is what a sound authorization
+// policy answers: Alice cannot read Bob's private document, and Bob can. An
+// answer outside it is the finding, recorded as data.
+revisions {
+  ["baseline"] {
+    subject = "\(lesson.title)?"
     lesson {
       order = 1
-      title = "Reproduce the flaw"
+      title = "Is the private document private"
       prose = """
-        # Can Alice read Bob’s private document?
+        # \(subject)
 
-        The baseline policy allows every request. Alice is signed in, but the private
-        document belongs to Bob. In the Agent pane, select **HTTP observation** and inspect
-        the request and response. Does this reproduce broken object-level authorization?
+        The **Client** holds the commit under review, in the form this case gives every
+        change: a message whose subject line is a question. Its body is the authorization
+        policy the document route runs at this revision. Unfold it to read it.
 
-        The Client editor identifies the captured snapshot and question. The Agent report
-        shows the evidence and the expected score range from the Pkl question contract.
-        **Not scored** means this replay has not revealed the recorded evaluation yet.
+        Select **Solve** in the top bar to ask the reviewer, Jev. Grey suggested lines
+        appear below the commit: the two questions it asks of this revision,
+        "\(aliceReads.ask)" and "\(bobReads.ask)". Click the commit, then press **Tab** to
+        accept the one shown, or **Alt+]** to switch to the other first. You can take
+        either, or both. The **Agent** terminal below prints what Jev was deciding to
+        check, and its finding for each question only after you accept it.
 
-        Press **Solve** to reveal the recorded score. Its diagnostic appears in the Client
-        editor, and the Agent report adds the result and who scored it: Jev and its model,
-        or a canned mock answer, which is not a Jev judgement.
-        Select the diagnostic to inspect the supporting evidence and expectation.
+        Click the lens above an accepted line to open the evidence behind it: Jev's score
+        against the range the Question expects, and the HTTP exchange it judged. A canned
+        mock answer is labelled as one; it is not a Jev judgement. The terminal names the
+        collected files behind each answer: its `state.json`, and the request and
+        response Jev saw.
 
-        This lesson was compiled from a run of these Questions on the local synthetic
-        document fixture: Playwright collected the evidence and the answer was scored.
-        Solve replays that run; it does not execute tests or call Jev. The snapshot labels
-        are fixture revisions, not Git commit hashes. A Jev score is an assessment of the
-        supplied evidence for this question, not proof of general application security.
+        Accept both questions before continuing. Alice's HTTP 200 exposes Bob's private
+        document; Bob's HTTP 200 establishes the access we must preserve. Signing in
+        alone is not enough. In the next lesson, introduce an owner check and repeat
+        these same two requests to see whether it fixes the leak without locking Bob out.
+        Your accepted lines carry forward in this browser tab, in the order you chose.
+
+        The app is a local synthetic fixture with two signed-in accounts. Solve replays a
+        recorded run; it does not run tests or call Jev.
         """
     }
   }
-  ["exploit-prevented"] {
-    dependencies { "vulnerability-reproduced" }
-    judge {
-      type = "noul"
-      instructions = "Does the patched ownership check prevent the specific unauthorized document read demonstrated in the prerequisite evidence? Compare Alice's request and the document identity before and after the patch."
-      criteria {
-        `true` = "The same unauthorized read is forbidden after the owner check is enabled, with no private document content in the response."
-        `false` = "Private content remains accessible, a different action was tested, or the evidence cannot establish prevention."
-      }
-    }
-    collector = "verify-unauthorized-read-denied"
-    requiredEvidence {
-      "http"
-      "fixtureState"
-      "authorizationPolicy"
-      "prerequisites"
-    }
-    expected {
-      min = 0.8
-      max = 1.0
-    }
+  ["patched"] {
+    subject = "\(lesson.title)?"
     lesson {
       order = 2
-      title = "Block unauthorized access"
+      title = "Does the owner check keep the document private"
       prose = """
-        # Does the ownership check block Alice?
+        # \(subject)
 
-        The earlier question established the unauthorized read. Its evaluation remains
-        attached to the baseline snapshot. Now the patched policy requires the signed-in
-        user to match the document owner.
+        The review goes on from where the first lesson left it: one session, a turn per
+        lesson. The baseline commit and the questions you accepted stay above in the
+        **Client**, and its findings in the **Agent** terminal. Only the questions you
+        actually accepted carry forward; opening this lesson directly does not accept
+        the baseline findings for you.
 
-        In the Agent pane, compare **Authorization policy** before and after the patch.
-        Switch to **HTTP observation**: Alice requests the same document, but receives
-        **403 Forbidden** instead of Bob’s private content.
+        Alice's baseline request returned Bob's private document. That finding motivates
+        the new commit below: replace unconditional access with `document.owner === user`.
+        Unfold it to read the previous policy, the proposed check and why it is needed.
+        The recorded patch is already applied to the fixture at this turn; **Solve**
+        reveals its review.
 
-        Press **Solve** to reveal the recorded assessment. The Pkl expectation is
-        **\((expected.min * 100).round().toInt())–\((expected.max * 100).round().toInt())%** for this question. The score and the expected range answer different
-        questions: what was judged, and whether that judgment met the declared contract.
-        A score outside the range is recorded as it is; it does not stop the lesson.
+        The questions are the ones asked of the baseline, word for word. Select **Solve**
+        to ask Jev, and take either suggestion with **Tab** (or **Alt+]** to switch first),
+        or both. The **Agent** terminal holds back each finding until you accept it.
 
-        Snapshot history lets you return to the baseline evidence. Reset returns this
-        lesson to the pending evaluation while keeping the earlier result visible.
-        This recorded check covers the demonstrated unauthorized read; it does not
-        establish that every route or access pattern is protected.
+        Accept both repeated questions. Each finding compares the same request before
+        and after the owner check: Alice changes from HTTP 200 to 403, while Bob stays
+        at HTTP 200. Open its lens to see the baseline observation beside the patched
+        exchange. The patch closes the observed leak and preserves the owner's access.
+        These answers cover this one route and these two readers, not every way a
+        document can be reached.
         """
     }
   }
-  ["legitimate-access-preserved"] {
-    dependencies { "exploit-prevented" }
-    judge {
-      type = "noul"
-      instructions = "Does the patched application still allow document owner Bob to read his own private document, while the prerequisite evidence shows unauthorized access is blocked? Limit the conclusion to this tested owner-read flow."
-      criteria {
-        `true` = "Bob receives his document from the patched application and the prior unauthorized-read test was forbidden."
-        `false` = "Bob cannot retrieve his document, receives incorrect content, or the evidence does not establish the tested legitimate flow."
-      }
-    }
-    collector = "verify-owner-read"
-    requiredEvidence {
-      "http"
-      "fixtureState"
-      "authorizationPolicy"
-      "prerequisites"
-    }
-    expected {
-      min = 0.8
-      max = 1.0
-    }
-    lesson {
-      order = 3
-      title = "Preserve owner access"
-      prose = """
-        # Can Bob still read his own document?
+}
 
-        Denying every request would block Alice too. The final question checks that the
-        owner’s legitimate access still works after the policy change.
+questions {
+  ["baseline-alice-reads"] = (aliceReads) { revision = "baseline" }
+  ["baseline-bob-reads"] = (bobReads) { revision = "baseline" }
+  // The patch is asked about once the baseline has been: its collector checks
+  // it sent the baseline's request again.
+  ["patched-alice-reads"] = (aliceReads) {
+    revision = "patched"
+    dependencies { "baseline-alice-reads" }
+    requiredEvidence { "prerequisites" }
+  }
+  ["patched-bob-reads"] = (bobReads) {
+    revision = "patched"
+    dependencies { "baseline-bob-reads" }
+    requiredEvidence { "prerequisites" }
+  }
+}
 
-        The Agent report starts on Bob’s recorded request. Select **HTTP observation**:
-        the request identifies Bob and the response is **200**, with his own document.
-        The Client editor retains the earlier reproduction and prevention diagnostics.
-
-        Press **Solve** to reveal the final score, then inspect its expected range
-        and evidence. All three questions now have recorded evaluations: reproduce the
-        flaw, prevent the demonstrated exploit, and preserve the tested owner-read flow.
-
-        The Pkl contract defines the questions, their dependencies, expected ranges and
-        these lessons. Playwright collects evidence in that order and each answer is scored;
-        the comparison checks the observed results against those expectations. This lesson
-        replays those artifacts. The results apply to these collected observations,
-        not every possible authorization behavior.
-        """
+local aliceReads: Experiment.Asked = new {
+  ask = "Can Alice read Bob's private document?"
+  judge {
+    type = "noul"
+    instructions = "\(ask) Alice is signed in; the document belongs to Bob. Judge only the supplied HTTP observation, authorization policy and fixture state."
+    criteria {
+      `true` = "The response to Alice contains Bob's private document, and fixture state identifies Bob as its owner."
+      `false` = "The request is denied, ownership or caller identity is unestablished, or no private content is returned."
     }
   }
+  collector = "read-as-alice"
+  requiredEvidence { "http"; "fixtureState"; "authorizationPolicy" }
+  expected { min = 0; max = 0.2 }
+}
+
+local bobReads: Experiment.Asked = new {
+  ask = "Can Bob read it?"
+  judge {
+    type = "noul"
+    instructions = "Can Bob read his own private document? Bob is signed in and owns it. Judge only the supplied HTTP observation, authorization policy and fixture state."
+    criteria {
+      `true` = "The response to Bob contains his private document, and fixture state identifies Bob as its owner."
+      `false` = "The request is denied, ownership or caller identity is unestablished, or other content is returned."
+    }
+  }
+  collector = "read-as-bob"
+  requiredEvidence { "http"; "fixtureState"; "authorizationPolicy" }
+  expected { min = 0.8; max = 1 }
 }

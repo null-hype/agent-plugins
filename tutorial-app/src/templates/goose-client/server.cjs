@@ -343,15 +343,15 @@ function renderPage() {
 
         monacoPromise = new Promise((resolve, reject) => {
           if (window.monaco && window.require) {
-            window.require.config({ paths: { vs: '/monaco/vs' } });
+            window.require.config({ paths: { vs: new URL('monaco/vs', document.baseURI).href } });
             window.require(['vs/editor/editor.main'], () => resolve(window.monaco), reject);
             return;
           }
 
           const script = document.createElement('script');
-          script.src = '/monaco/vs/loader.js';
+          script.src = new URL('monaco/vs/loader.js', document.baseURI).href;
           script.onload = () => {
-            window.require.config({ paths: { vs: '/monaco/vs' } });
+            window.require.config({ paths: { vs: new URL('monaco/vs', document.baseURI).href } });
             window.require(['vs/editor/editor.main'], () => resolve(window.monaco), reject);
           };
           script.onerror = () => reject(new Error('Failed to load Monaco assets'));

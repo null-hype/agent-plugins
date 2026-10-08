@@ -1,0 +1,82 @@
+{
+  "format": "vaults-fixture-accounting-v1",
+  "baseCommit": "dea80d7c9a01875bf644ae8fbbaf0ff14b24665b",
+  "replacement": "CIT-339 repeated historical input/captured trees and four derived answer presentations replaced by one CAS capsule and installed adapter. No PR152 fixture migration is claimed.",
+  "trackedResultFixtures": {
+    "before": {
+      "files": 4,
+      "uncompressedBytes": 49318
+    },
+    "after": {
+      "files": 0,
+      "uncompressedBytes": 0
+    }
+  },
+  "independentlyMaintainedResultDefinitions": {
+    "before": 2,
+    "after": 1,
+    "scope": "Executable result expectations: original Question.pkl range plus replay.test.ts authored state/outcome matrix; now only the installed Question.pkl range. Replay expectations derive from retained raw outputs; documentation and generated evidence are not executable definitions."
+  },
+  "trackedInputPaths": {
+    "before": {
+      "files": 76,
+      "uncompressedBytes": 106808,
+      "uniqueContents": 22,
+      "uniqueContentBytes": 30576,
+      "duplicateFiles": 54,
+      "duplicateContentBytes": 76232
+    },
+    "after": {
+      "materializedPaths": 0,
+      "revisionPathReferences": 38,
+      "uniqueInputBlobs": 22,
+      "envPathReferences": 26
+    }
+  },
+  "retainedEvidence": {
+    "before": {
+      "files": 93,
+      "uncompressedBytes": 193001,
+      "uniqueContents": 35,
+      "uniqueContentBytes": 101413,
+      "duplicateFiles": 58,
+      "duplicateContentBytes": 91588
+    },
+    "after": {
+      "trackedStorageFiles": 2,
+      "trackedStorageBytes": 38800,
+      "capsule": {
+        "files": 46,
+        "uncompressedBytes": 180650,
+        "uniqueContents": 46,
+        "uniqueContentBytes": 180650,
+        "duplicateFiles": 0,
+        "duplicateContentBytes": 0
+      },
+      "contentAddressedBlobs": {
+        "files": 40,
+        "uncompressedBytes": 107643,
+        "uniqueContents": 40,
+        "uniqueContentBytes": 107643,
+        "duplicateFiles": 0,
+        "duplicateContentBytes": 0
+      },
+      "note": "Retired answer JSONs remain immutable legacy evidence, not active result definitions. Both historical and newly reproduced outputs remain retained; identical bytes share one blob regardless of origin. Tar/gzip overhead and the descriptor are included in trackedStorageBytes."
+    }
+  },
+  "runtimeRetention": {
+    "snapshotId": "67aeba364fd287cfb234e54753923d16835305614701db4b221d07e971c9d025",
+    "image": {
+      "manifestDigest": "sha256:7c2cff1d4f0f860be51305a7d731e26f9de932826ceab939abace968ac047449",
+      "configDigest": "sha256:371bfe9dfc7f58f35b5fb07f0cc8f5a2f9ff1fef57d1485871ac0fd7a3f9f11d",
+      "archiveHash": "sha256:33a281f51aab8f53cd1a08c4a9bf6b1ccbcb1022f46378e9f43e286cc63b222d",
+      "platform": "linux/amd64"
+    },
+    "imageArchiveBytes": 177987072,
+    "payloadFiles": 42,
+    "payloadBytes": 178100492,
+    "payloadDuplicateContentBytes": 0,
+    "note": "Full runtime and original execution are retained separately in the exact local restic snapshot; excluded from fixture/capsule counts. Snapshot also contains a derived record presentation and orchestration logs. CI uploads each new full snapshot separately for 90 days."
+  },
+  "originalEvidenceVerified": 92
+}

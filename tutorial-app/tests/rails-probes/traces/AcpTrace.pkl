@@ -16,6 +16,8 @@ abstract class Frame {
 
 class ClientFrame extends Frame {
   actor = "client"
+  /// Who sent the prompt, when it is someone other than the viewer.
+  speaker: String?
   envelope: PromptEnvelope
   provenance: Provenance
 }
@@ -83,12 +85,16 @@ class ProbeDiagnostic {
   related: Listing<Row>
 }
 
-/// One evidence row. `revision` and `line` are left out of the JSON when unset.
+/// One evidence row. `revision` and the range are left out of the JSON when unset.
 class Row {
   role: String
   uri: String
   revision: String?
   line: Int?
+  /// Where a range ends, and the columns it spans (a Pkl error's carets).
+  endLine: Int?
+  column: Int?
+  endColumn: Int?
   detail: String
 }
 
@@ -183,5 +189,7 @@ renderer: JsonRenderer = new {
   converters {
     [Row] = (row) -> row.toMap().filter((_, value) -> value != null)
     [Commit] = (commit) -> commit.toMap().filter((_, value) -> value != null)
+    // A prompt names its sender only when it is someone other than the viewer.
+    [ClientFrame] = (frame) -> frame.toMap().filter((key, value) -> key != "speaker" || value != null)
   }
 }

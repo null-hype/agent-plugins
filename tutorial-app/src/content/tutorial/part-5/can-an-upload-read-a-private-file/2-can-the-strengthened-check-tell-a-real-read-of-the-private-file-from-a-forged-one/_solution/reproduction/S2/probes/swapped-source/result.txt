@@ -1,0 +1,28 @@
+reproduction: cit-294-checker-probes-reproduction-v1
+probe: swapped-source
+checker: PR 118 at 8d097c8e (same cit-294 tree as 9739b539 on main)
+mutation: the blocked MAT arm's source sha256 replaced with another valid one
+exit code: 0
+100.0% tests pass [22 passed], 100.0% asserts pass [56 passed]
+✔ unblocked MAT canary: content type retained as declared, despite the real bytes being the MAT/HDF5 payload
+✔ unblocked MAT canary: matload is the loader libvips actually selected
+✔ unblocked MAT canary: the dummy file's exact bytes and count are recoverable from the returned variant -- not just a trusted boolean
+✔ unblocked MAT canary: independently (via strace, outside the Ruby process) confirmed open of the dummy file
+✔ blocked MAT canary: no loader ran and the *actual variant call* raised the specific block error -- a generic crash does not satisfy this
+✔ blocked MAT canary: no disclosure field claims a match, and no returned bytes are present at all (refusal, not a silent empty read)
+✔ blocked MAT canary: independently (via strace) confirmed the dummy file was never opened -- not merely that the script didn't report it
+✔ PNG control processes normally whether or not untrusted loaders are blocked, with byte-exact pixel data in both cases
+✔ all four arms ran against the identical pinned image -- the verdict is about one configuration, not a drifting rebuild
+✔ the runtime configuration each verdict is bound to is recorded, not assumed
+✔ reconciling each observation against its declared claim raises no flags
+✔ a claim that disagrees with reality is exactly what gets flagged
+✔ negative control: a generic crash does not pass as a successful block, even with the blocking env var and no loader selected
+✔ negative control: the right error class with an unrelated message does not pass either
+✔ negative control: emptying the returned bytes/count is caught even though matches_dummy_file still says true
+✔ negative control: corrupting the blocked PNG control's pixels is caught, independent of the MAT canary's own checks
+✔ negative control: a deleted/zeroed independent trace for the unblocked MAT arm is caught -- this is the exact CIT-297 finding (an empty or falsified strace trace previously still passed all 28 assertions)
+✔ negative control: a trace falsely reporting a dummy-file read during the blocked arm is caught -- the other half of the same CIT-297 finding
+✔ mat-unblocked
+✔ mat-blocked
+✔ png-unblocked
+✔ png-blocked

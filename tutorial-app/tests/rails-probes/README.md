@@ -20,9 +20,43 @@ CIT-317: the two probes are Questions in `traces/CheckerProbes.pkl`
 
 The Question and lesson projects need only `pkl` on PATH (the config reads the
 Questions with it): no browser, no Docker, no credentials. The `@tutorial` test compiles the lesson into
-`src/content/tutorial/part-4/can-the-checker-be-trusted` (the chapter
-directory is rewritten on every run; the chapter is listed in part 4's `meta.md`).
+`src/content/tutorial/part-5/can-an-upload-read-a-private-file` (the chapter
+directory is rewritten on every run; the chapter is listed in part 5's `meta.md`).
 Commit what it produces.
+
+## Part 5: Alice's pull requests, Bob's reviews (CIT-328)
+
+The chapter is the whole 117 -> 118 -> 120 history, one lesson per checker
+state. Alice authors: each lesson's commit quotes her pull request, and the
+probes her PR claims to flag are her forecast for each (`claimed` per revision
+in `traces/CheckerProbes.pkl`). Bob reviews: Solve brings back his questions,
+each an edit to the recorded evidence run again against the pinned checker. A
+probe is asked from the review that raised it (`from`), word for word after,
+never before. The private file is the case's own, `/work/dummy-canary.txt`.
+
+From S3 the checker reads each arm's embedded trace (`independent_trace_text`),
+so the two trace probes edit that; `canary-reads.txt` stays committed and no
+version of the checker reads it. Review 3's text is lost; its words are the
+second-hand account in cc23e89's message, labelled. Nobody reviewed S4, so its
+reply is the checker's (speaker `pkl`), with the merge note.
+
+| Probe (raised by) | S1 #117 | S2 #118 | S3 #120 | S4 cc23e89 |
+| --- | --- | --- | --- | --- |
+| forged read (review 1) | passes 28/28 | passes 56/56 (claimed) | fails (claimed) | fails |
+| deleted trace (review 1) | passes | passes (claimed) | passes 71/71 (claimed) | fails (claimed) |
+| generic crash (review 1) | passes | fails (claimed) | fails | fails |
+| emptied bytes (review 1) | passes | fails (claimed) | fails | fails |
+| corrupted pixels (review 1) | passes | fails (claimed) | fails | fails |
+| swapped sha256 (review 2) | | passes 56/56 | fails (claimed) | fails |
+| changed config (review 2) | | passes 56/56 | fails (claimed) | fails |
+| prose mention (review 3) | | | passes 71/71 | fails (claimed) |
+| failed EACCES open (review 3) | | | passes 71/71 | fails (claimed) |
+| same-named file elsewhere (review 3) | | | passes 71/71 | fails (claimed) |
+
+"Passes" is the check certifying an edited record: the reviewer's finding.
+Every row agrees with the review that raised it. The consistency pass re-applies
+each recorded edit from the record, checks it changes only the fields the review
+names, and re-runs it.
 
 ## One spec, the revision as input (CIT-309)
 
@@ -211,12 +245,8 @@ editor is focused again. The test accepts both probes before opening evidence.
 
 ## Not done here
 
-* **Opening the retained bytes from a row.** The rows name the committed
-  files, but the Client widget only shows the row text; making a row open the
-  artifact is the evidence-inspector work in PR 125. The reporter lessons here
-  show files only, and Storybook does not yet read them in place of the fixture.
-* **Jev.** The part-5 lessons now come from the reporter too (CIT-318): each
-  jev Question is a `jev/<id>` project whose lesson the reporter compiles.
-* **PR 118 and 120 lessons**, and the native Rails/libvips/strace chain itself
-  (needs Docker). The observations and transcript here are the retained ones,
-  not re-captured.
+* **The native Rails/libvips/strace chain itself** (needs Docker). The
+  observations and transcripts here are the retained ones, not re-captured.
+* **#118's two direct `Reconcile.check` attacks** (a crash with no error info;
+  stripped bytes with the boolean left `true`) are claimed in its PR but not
+  probed: no review raised them.
