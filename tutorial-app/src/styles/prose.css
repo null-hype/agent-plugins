@@ -1,19 +1,50 @@
-/* Lesson prose, layered over TutorialKit's markdown.css (.markdown-content).
+/* Lesson prose, layered over TutorialKit's markdown.css (.markdown-content),
+   in the Stitch "Tidelands Ransom Note Portfolio" theme: Noto Serif newsprint,
+   Manrope labels, clippings with hard shadows and square corners.
    Imported by HeadTags.astro for the app and by Prose.stories.tsx. */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap');
 
 .markdown-content {
-  --content-measure: 70ch;
-  --heading-font-weight: 650;
+  --content-measure: 68ch;
+  --heading-font-weight: 700;
+  --rn-ink: #000;
+  --rn-cream: #e5e2da;
+  --rn-flag: #ffb4ab;
   width: 100%;
   max-width: var(--content-measure);
   margin-inline: auto;
+  font-family: 'Noto Serif', Georgia, serif;
+  font-size: 17px;
+  line-height: 30px;
 }
 
-/* TutorialKit's scale (38/32/28) leaves an h3 bigger than most page titles. */
-.markdown-content h1,
-.markdown-content h1 :is(code, a) {
-  font-size: 32px;
-  letter-spacing: -0.5px;
+/* Lesson titles: per-letter clippings from rehypeRansomTitles. */
+.markdown-content h1.ransom-note {
+  --rn-size: 34px;
+  font-size: var(--rn-size);
+  display: flex;
+  margin-block-end: 28px;
+  letter-spacing: 0;
+}
+
+/* Section headings: one pasted-on clipping each. */
+.markdown-content :is(h2, h3) {
+  display: table;
+  padding: 0.15em 0.45em;
+  border: 2px solid var(--rn-ink);
+  background: var(--rn-cream);
+  color: #1c1c17;
+  font-family: 'Noto Serif', Georgia, serif;
+  box-shadow: 4px 4px 0 var(--rn-ink);
+  transform: rotate(-1deg);
+}
+
+.markdown-content h3 {
+  background: #1c1c17;
+  color: var(--rn-cream);
+  border-color: #1c1c17;
+  box-shadow: 4px 4px 0 var(--rn-cream);
+  transform: rotate(0.8deg);
 }
 
 .markdown-content h2,
@@ -23,46 +54,99 @@
 
 .markdown-content h3,
 .markdown-content h3 :is(code, a) {
-  font-size: 20px;
+  font-size: 19px;
 }
 
 .markdown-content h4,
 .markdown-content h4 :is(code, a) {
-  font-size: 17px;
+  font: 800 13px/1.2 'Manrope', sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .markdown-content h1 + p {
-  font-size: 18px;
-  line-height: 30px;
+  font-size: 19px;
+  line-height: 32px;
 }
 
-/* Primary call to action: <a className="cta" href="…">…</a> in MDX. */
+/* Labels and metadata in Manrope caps, per the Stitch theme. */
+.markdown-content :is(th, .callout-title-tag) {
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Primary call to action: <a className="cta" href="…">…</a> in MDX.
+   A black clipping with a cream hard shadow that presses in on hover. */
 .markdown-content a.cta {
   display: inline-flex;
   align-items: center;
-  gap: 0.5em;
-  margin-block: 8px 4px;
-  padding: 10px 18px;
-  border-radius: 8px;
-  background: var(--tk-elements-link-primaryColor);
-  color: #fff;
-  font-weight: 600;
-  line-height: 1.2;
+  gap: 0.6em;
+  margin-block: 8px 12px;
+  padding: 14px 22px;
+  border: 2px solid var(--rn-ink);
+  background: var(--rn-ink);
+  color: var(--rn-cream);
+  font: 800 13px/1 'Manrope', sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
-  transition: filter 0.15s;
+  box-shadow: 5px 5px 0 var(--rn-flag);
+  transform: rotate(-1deg);
+  transition: transform 0.1s, box-shadow 0.1s;
 }
 
-/* TutorialKit leaves link-primaryColorHover empty, so darken instead. */
 .markdown-content a.cta:hover {
-  color: #fff;
-  filter: brightness(0.9);
+  color: var(--rn-cream);
+  box-shadow: 0 0 0 var(--rn-flag);
+  transform: rotate(-1deg) translate(5px, 5px);
 }
 
 .markdown-content a.cta::after {
   content: '→';
+  font-size: 16px;
 }
 
-/* Tables: room to breathe, full measure, quieter header. */
+/* Callouts: a paper note pasted onto the page, title on a black tag. */
+.markdown-content .callout {
+  position: relative;
+  margin-block: 28px;
+  padding: 26px 22px 18px !important;
+  border: 2px solid var(--rn-ink) !important;
+  background: var(--rn-cream) !important;
+  color: #1c1c17 !important;
+  box-shadow: 5px 5px 0 var(--rn-ink);
+  transform: rotate(0.4deg);
+}
+
+.markdown-content .callout > div:first-child {
+  position: absolute;
+  top: -14px;
+  left: 16px;
+  width: auto !important;
+  padding: 5px 10px;
+  background: var(--rn-ink);
+  color: var(--rn-cream) !important;
+  transform: rotate(-2deg);
+}
+
+.markdown-content .callout > div:first-child > span:first-child {
+  display: none;
+}
+
+.markdown-content .callout > div:first-child > span:last-child {
+  font: 800 12px/1 'Manrope', sans-serif !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.markdown-content .callout .callout-content {
+  margin-top: 0;
+}
+
+.markdown-content .callout strong {
+  color: #000;
+}
+
+/* Tables: room to breathe, full measure, label-caps header. */
 .markdown-content table {
   width: 100%;
   border-collapse: collapse;
@@ -76,14 +160,21 @@
 }
 
 .markdown-content th {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--tk-text-secondary);
 }
 
-/* The ransom-note wordmark above the landing page title. */
-.markdown-content .landing-mark {
-  margin-block-end: 28px;
+/* Links stay in ink; the Stitch crimson only underlines them. */
+.markdown-content a:not(.cta) {
+  color: inherit;
+  text-decoration-color: #bb152c;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.markdown-content a:not(.cta):hover {
+  color: #bb152c;
 }
