@@ -25,3 +25,5 @@ test-results/budget-authority/.last-run.json
 /tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/[12]-*/_files/acp-trace.json
 /tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/[12]-*/_solution/acp-trace.json
 /tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S[12]/probes/deleted-trace/
+
+/tutorial-app/node_modules

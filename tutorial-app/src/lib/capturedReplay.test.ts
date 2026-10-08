@@ -13,6 +13,7 @@ function isolatedPin() {
   directories.push(dir);
   const pin = path.join(dir, 'bundle.json');
   copyFileSync(CAPTURE_PIN, pin);
+  copyFileSync(path.join(path.dirname(CAPTURE_PIN), 'capture-pins.json'), path.join(dir, 'capture-pins.json'));
   copyFileSync(path.join(path.dirname(CAPTURE_PIN), 'bundle.tar.gz'), path.join(dir, 'bundle.tar.gz'));
   return { dir, pin };
 }
@@ -30,10 +31,11 @@ describe('retained installed-scenario replay', () => {
       expect(record.observations.some((e: any) => e.availability === 'retained' && e.origin === 'reproduced')).toBe(true);
       expect(capture.files.has(key + '/runs/deleted-trace/inputs/canary-reads.txt')).toBe(false);
       const presentation = capturedPresentation(capture, key);
-      for (const file of ['answer.json', 'result.txt', 'mutation.txt']) {
-        expect(Buffer.from(presentation.get('probes/deleted-trace/' + file)!))
-          .toEqual(capture.files.get('historical/' + key + '/probes/deleted-trace/' + file));
-      }
+      expect(presentation.get('probes/deleted-trace/result.txt')).toContain('exit code: ' + record.answer.exitCode);
+      expect(JSON.parse(presentation.get('probes/deleted-trace/answer.json')!)).toEqual(record.answer);
+      expect(record.observations.some((e: any) => e.origin === 'historical' && e.availability === 'missing' && e.reason.includes("reviewer's own"))).toBe(true);
+      expect(capture.pin.captures.find((c: any) => c.state === key).snapshotId).toMatch(/^[0-9a-f]{64}$/);
+
     }
   }, 15_000);
 
@@ -59,4 +61,12 @@ describe('retained installed-scenario replay', () => {
     writeFileSync(pin, JSON.stringify(data));
     expect(() => loadCapturedReplay(pin)).toThrow('Restored replay inventory changed');
   });
+  it('rejects a cache detached from its canonical snapshot selection', () => {
+    const { pin } = isolatedPin();
+    const data = JSON.parse(readFileSync(pin, 'utf8'));
+    data.captures[0].snapshotId = '0'.repeat(64);
+    writeFileSync(pin, JSON.stringify(data));
+    expect(() => loadCapturedReplay(pin)).toThrow('Canonical capture pins changed');
+  });
+
 });

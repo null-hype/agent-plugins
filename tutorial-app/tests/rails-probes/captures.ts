@@ -22,14 +22,21 @@ export type CapturedReplay = { investigation: any; files: Map<string, Buffer>; p
 /** Verify the archive, complete inventory, shared Pkl record and every evidence reference. */
 export function loadCapturedReplay(pinFile = CAPTURE_PIN): CapturedReplay {
   const pin = JSON.parse(readFileSync(pinFile, 'utf8'));
-  if (pin.format !== 'cit337-viewer-capture-v1' || pin.archive !== 'bundle.tar.gz') throw new Error('Unsupported replay capture');
+  if (pin.format !== 'cit337-viewer-export-v2' || pin.archive !== 'bundle.tar.gz') throw new Error('Unsupported replay capture');
   const archive = readFileSync(path.join(path.dirname(pinFile), pin.archive));
   if (hash(archive) !== pin.sha256 || archive.length !== pin.bytes) throw new Error('Pinned replay archive changed');
+  const sourcesFile = path.join(path.dirname(pinFile), 'capture-pins.json');
+  const sourceBytes = readFileSync(sourcesFile);
+  const sources = JSON.parse(sourceBytes.toString());
+  if (hash(sourceBytes) !== pin.capturePinsSha256 || canonical(sources.captures) !== canonical(pin.captures)) throw new Error('Canonical capture pins changed');
+  if (canonical(pin.captures.map((c: any) => c.state)) !== canonical(['S1', 'S2']) || pin.captures.some((c: any) => !/^[0-9a-f]{64}$/.test(c.snapshotId) || !c.repositoryId || !c.source.artifactId)) throw new Error('Missing canonical capture identity');
   const dir = mkdtempSync(path.join(tmpdir(), 'cit337-restore-'));
   try {
     const archiveFile = path.join(path.dirname(pinFile), pin.archive);
     const names = execFileSync('tar', ['-tzf', archiveFile], { encoding: 'utf8' }).trim().split('\n');
     if (names.some((name) => !/^(S[12]\/|historical\/S[12]\/|capture\.json$|record\.json$)/.test(name) || name.split('/').some((p) => p === '..' || p === '') || name.startsWith('/'))) throw new Error('Unsafe replay archive path');
+    const types = execFileSync('tar', ['-tvzf', archiveFile], { encoding: 'utf8' }).trim().split('\n');
+    if (types.some((entry) => entry[0] !== '-')) throw new Error('Replay export must contain only regular files');
     execFileSync('tar', ['-xzf', archiveFile, '--no-same-owner', '--no-same-permissions', '-C', dir]);
     const files = new Map<string, Buffer>();
     const walk = (root: string) => {
@@ -44,6 +51,11 @@ export function loadCapturedReplay(pinFile = CAPTURE_PIN): CapturedReplay {
     walk(dir);
     const inventory = [...files].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([name, bytes]) => ({ path: name, bytes: bytes.length, sha256: hash(bytes) }));
     if (canonical(inventory) !== canonical(pin.files)) throw new Error('Restored replay inventory changed');
+    for (const capture of pin.captures) for (const entry of capture.selectedFiles) {
+      const uri = capture.state + '/' + entry.path.slice('bundle/'.length);
+      const bytes = files.get(uri);
+      if (!entry.path.startsWith('bundle/') || !bytes || bytes.length !== entry.bytes || hash(bytes) !== entry.sha256) throw new Error('Export differs from canonical capture: ' + uri);
+    }
     const decoded = JSON.parse(execFileSync('pkl', ['eval', DECODER, '-p', 'capture=' + path.join(dir, 'capture.json')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
     if (canonical(decoded) !== canonical(JSON.parse(files.get('record.json')!.toString()))) throw new Error('Captured record differs from the shared Pkl evaluation');
     if (decoded.questionId !== 'deleted-trace' || canonical(decoded.records.map((r: any) => r.state.id)) !== canonical(['S1-pinned', 'S2-pinned'])) throw new Error('Replay capture must contain S1 and S2 in order');
