@@ -1,0 +1,28 @@
+.holo-sticker {
+  overflow: visible;
+  transform: rotate(var(--hs-tilt, -8deg));
+  filter: drop-shadow(4px 5px 0 rgba(0, 0, 0, 0.85));
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.holo-sticker .hs-foil {
+  transition: filter 0.6s;
+}
+
+.holo-sticker .hs-sheen {
+  transform: rotate(20deg);
+  transition: transform 0.7s ease;
+}
+
+/* Tilt it toward the light: the foil shifts hue and the sheen sweeps across. */
+.holo-sticker:hover {
+  transform: rotate(calc(var(--hs-tilt, -8deg) * -0.5)) scale(1.04);
+}
+
+.holo-sticker:hover .hs-foil {
+  filter: hue-rotate(70deg) saturate(1.2);
+}
+
+.holo-sticker:hover .hs-sheen {
+  transform: translateX(90px) rotate(20deg);
+}
