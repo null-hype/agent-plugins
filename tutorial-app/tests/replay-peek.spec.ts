@@ -1,10 +1,20 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const client = (page: import('@playwright/test').Page) => page.frameLocator('iframe[title="acp-trace client preview"]');
 const round = '../../src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/';
 
 const tree = '../../src/cve-2026-66066/questions/';
+// Viewer acceptance and Peek must leave the executable round boundary untouched.
+const originalRound = ['monitor.json', 'register.json', 'reading.txt', 'round.json'].map((name) =>
+  [name, readFileSync(new URL(round + name, import.meta.url), 'utf8')] as const);
+const rounds = new URL(tree + 'rounds/', import.meta.url);
+const originalRounds = readdirSync(rounds).sort();
+test.afterAll(() => {
+  expect(readdirSync(rounds).sort()).toEqual(originalRounds);
+  for (const [name, bytes] of originalRound) expect(readFileSync(new URL(round + name, import.meta.url), 'utf8')).toBe(bytes);
+});
+
 const modelText = (c: ReturnType<typeof client>) => c.locator('body').evaluate((el) =>
   (el.ownerDocument.defaultView as any).monaco.editor.getModels()[0].getValue() as string);
 
