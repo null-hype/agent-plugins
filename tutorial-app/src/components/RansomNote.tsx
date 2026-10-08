@@ -31,7 +31,6 @@ export interface RansomNoteProps {
   mark?: boolean;
 }
 
-// Lesson h1s get the same markup from src/lib/rehypeRansomTitles.mjs.
 export function RansomNote({ text, size = 48, seed = 0, as: Tag = 'span', mark = true }: RansomNoteProps) {
   return (
     <Tag className="ransom-note" aria-label={text} style={{ '--rn-size': `${size}px` } as React.CSSProperties}>

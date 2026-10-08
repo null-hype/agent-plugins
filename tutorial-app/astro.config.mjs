@@ -1,6 +1,5 @@
 import { defineConfig } from 'astro/config';
 import tutorialkit from '@tutorialkit/astro';
-import rehypeRansomTitles from './src/lib/rehypeRansomTitles.mjs';
 
 // tidelands.dev is the one public home of the tutorial (served by Netlify).
 // Deploy previews override it via Netlify's URL so their links stay on the preview.
@@ -10,9 +9,6 @@ const site = (isNetlify && process.env.CONTEXT !== 'production' && process.env.U
 export default defineConfig({
   site,
   base: '/',
-  markdown: {
-    rehypePlugins: [rehypeRansomTitles],
-  },
   integrations: [
     tutorialkit({
       components: {
