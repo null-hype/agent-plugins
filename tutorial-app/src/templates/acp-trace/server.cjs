@@ -792,13 +792,20 @@ function renderClientPage() {
       // Monaco computes fold ranges asynchronously after a text change.
       function foldCommit() {
         let tries = 0;
+        // Folding lands a frame or more after the text: keep the editor unpainted
+        // until it does, so the commit body never flashes open (CIT-357 review).
+        const node = editor.getDomNode();
+        node.style.visibility = 'hidden';
         const attempt = () => {
           const ranges = commitRanges.filter(([start, end]) => end > start);
           editor.trigger('acp-trace', 'editor.fold', { levels: 1, selectionLines: ranges.map(([start]) => start - 1) });
           const hidden = ranges.reduce((sum, [start, end]) => sum + (end - start), 0);
           const shown = editor.getVisibleRanges().reduce((sum, range) => sum + range.endLineNumber - range.startLineNumber + 1, 0);
-          if (shown <= model.getLineCount() - hidden) return;
-          if ((tries += 1) < 40) setTimeout(attempt, 50);
+          if (shown <= model.getLineCount() - hidden || (tries += 1) >= 40) {
+            node.style.visibility = '';
+            return;
+          }
+          setTimeout(attempt, 50);
         };
         attempt();
       }
