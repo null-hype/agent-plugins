@@ -142,6 +142,62 @@ const REVIEW_2 = [
   ['review-2.gap-2.changed-config', 'Does the check fail when the blocked arm records a different configuration?', '✗'],
 ] as const;
 
+// CIT-362: #117's two lessons in one Client, as TutorialKit hosts them. A lesson
+// changes only the accepts it shows; an open Peek is view state, not progress.
+const journey = '/iframe.html?id=lessons-private-file--pr-117-journey&viewMode=story';
+const go = async (page: Page, button: string) => {
+  await page.getByRole('button', { name: button, exact: true }).click();
+  await expect(client(page).locator('.view-lines').first()).toContainText('Can the check tell a real read of the private file from a forged one?');
+  // The host's button took focus; the editor offers the next question on its last line.
+  const editor = client(page).getByRole('textbox', { name: 'Editor content', exact: true }).first();
+  await editor.focus();
+  await editor.press('Control+End');
+};
+
+test('lesson 2 keeps its accepts across a return to lesson 1, solved or not', async ({ page }) => {
+  await page.goto(journey);
+  const [forged, generic, deleted] = REVIEW_1;
+  await go(page, 'Lesson 2');
+  await go(page, 'Solve');
+  await accept(page, [generic[1]]);
+  await expect(lensFor(page, generic[0])).toBeVisible();
+
+  // Lesson 1 unsolved shows nothing of the review; lesson 2 then still has both.
+  await go(page, 'Lesson 1');
+  await expect.poll(() => shown(page)).not.toContain(forged[1]);
+  await go(page, 'Lesson 2');
+  await go(page, 'Solve');
+  await expect(lensFor(page, forged[0])).toBeVisible();
+  await expect(lensFor(page, generic[0])).toBeVisible();
+  await expect.poll(() => shown(page)).toContain(deleted[1]); // offered next, not generic crash again
+
+  // Lesson 1 solved shows its one accept and nothing of lesson 2's; back again, both.
+  await go(page, 'Lesson 1');
+  await go(page, 'Solve');
+  await expect(lensFor(page, forged[0])).toBeVisible();
+  await expect.poll(() => shown(page)).not.toContain(generic[1]);
+  await go(page, 'Lesson 2');
+  await go(page, 'Solve');
+  await expect(lensFor(page, generic[0])).toBeVisible();
+});
+
+test('Solve, Tab, Peek in lesson 1, then lesson 2: the inherited finding opens again', async ({ page }) => {
+  await page.goto(journey);
+  const [[code, question]] = REVIEW_1;
+  await go(page, 'Solve');
+  await accept(page, [question]);
+  await lens(page, code);
+  await expect(client(page).locator('.peekview-widget .peekview-title')).toContainText('canary-reads.txt@S1');
+
+  await go(page, 'Lesson 2');
+  // The Client outlives the switch, so the Peek may still be open: close it.
+  const close = client(page).locator('.peekview-widget .peekview-actions .codicon-close');
+  if (await close.count()) await close.first().click();
+  await lens(page, code);
+  await expect(client(page).locator('.peekview-widget .peekview-title')).toContainText('canary-reads.txt@S1');
+  await expect.poll(() => opened(page)).toContain('"/work/dummy-canary.txt", O_RDONLY) = 14');
+});
+
 test("lesson 2: Alice says #118 flags every edit; Bob finds two that pass, and two more", async ({ page }) => {
   await page.goto(story('pr-118'));
   const c = client(page);
