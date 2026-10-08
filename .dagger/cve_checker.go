@@ -74,15 +74,15 @@ func (m *AgentPlugins) CveCheckerReplayImage(
 	if err != nil { return nil, err }
 	var delivery map[string]string
 	if err := json.Unmarshal([]byte(raw), &delivery); err != nil { return nil, err }
-    if state == "S1" {
+    if state == "S1" || state == "Vaults" {
         raw, err := feature.File("deliveries.json").Contents(ctx)
         if err != nil { return nil, err }
         var deliveries []map[string]string
         if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
         for _, candidate := range deliveries {
-            if candidate["state"] == "S1" && candidate["version"] == "20261008.0811" { delivery = candidate }
+            if candidate["state"] == state && ((state == "S1" && candidate["version"] == "20261008.0811") || (state == "Vaults" && candidate["case"] == "vaults")) { delivery = candidate }
         }
-        if delivery["state"] != "S1" { return nil, fmt.Errorf("missing S1 delivery") }
+        if delivery["state"] != state { return nil, fmt.Errorf("missing selected delivery") }
         metadataRaw, err := feature.File("devcontainer-feature.json").Contents(ctx)
         if err != nil { return nil, err }
         var metadata map[string]interface{}
@@ -94,8 +94,10 @@ func (m *AgentPlugins) CveCheckerReplayImage(
     } else if state != "S2" || delivery["version"] != "20261008.0812" || delivery["packageVersion"] != "0.3.0" || delivery["state"] != "S2" {
         return nil, fmt.Errorf("unexpected retention delivery")
     }
+	target := "checker-runtime"
+	if state == "Vaults" { target = "vaults-runtime" }
 	return source.Directory("test/_global/cve-2026-66066-forensics").
-		DockerBuild(dagger.DirectoryDockerBuildOpts{Target: "checker-runtime"}).
+		DockerBuild(dagger.DirectoryDockerBuildOpts{Target: target}).
 		WithDirectory("/feature", feature).
 		WithExec([]string{"sh", "/feature/install.sh"}).
 		WithoutDirectory("/feature"), nil
