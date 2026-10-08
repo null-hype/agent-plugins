@@ -92,8 +92,11 @@ The declared exclusions are live Rails/application state, fresh exploit runs,
 agent/vault sessions, container writable state outside the capture scope,
 host environment and Dagger/registry/Docker caches. The generated repository
 password and repository are retained beside the snapshot, outside its scope.
-The workflow verifies local export and restoration; retaining a CI capture
-beyond runner disposal requires an explicitly chosen storage destination.
+CI uploads the complete capture as a GitHub Actions artifact, together with
+the new evaluation and failure records. Its tar archive preserves file modes
+and includes the generated password for this disposable local repository.
+Restored payload copies are excluded from the upload because the pinned
+repository already retains their exact bytes.
 
 ## Original observation and new evaluation
 
@@ -121,8 +124,50 @@ collected answer and derived assessment against the original evaluation.
 Both S2 executions pass 56 assertions and still miss the deleted trace, yielding
 `out-of-range`. A failed collection emits `answer = null`, a retained error and
 an explicit missing-answer observation; Pkl derives `not-collected`, and replay
-fails. Missing snapshots/inputs or changed bytes fail before an answer is
-produced. Nonempty destinations are refused before any restoration or writes.
+fails. The host saves the container log, exit-status receipt and emitted report
+before acting on a nonzero exit. Both failed capture and failed replay therefore
+remain inspectable after their containers are disposed. If report copying
+itself fails, the receipt records that failure and the container is preserved
+for recovery. Missing snapshots/inputs or changed bytes fail before an answer
+is produced. An unavailable exact snapshot has an explicit host error rather
+than a dependency on restic's version-specific wording. Nonempty destinations
+are refused before any restoration or writes.
+
+## Retrieve a retained CI capture
+
+The `cve-checker-retention` job uploads
+`cit336-s2-<source-head-sha>-<run-id>-<run-attempt>` with a requested lifetime
+of **90 days**. The run summary links its immutable artifact ID and records
+the full snapshot ID, artifact digest, archive SHA-256 and retrieval command.
+The artifact API's `expires_at` is authoritative; deletion of the artifact or
+workflow run can shorten availability. This is a finite handoff, not permanent
+storage.
+
+The artifact contains `evidence.tar` and `handoff.json`. After choosing the
+specific artifact linked from the successful run, use its exact name and run
+ID (never a latest-run lookup):
+
+```sh
+gh run download <run-id> --repo null-hype/agent-plugins \
+  --name <exact-artifact-name> --dir /tmp/cit336-download
+mkdir -m 700 /tmp/cit336-retained
+tar -xf /tmp/cit336-download/evidence.tar -C /tmp/cit336-retained
+python3 /tmp/cit336-retained/capture/replay.py replay \
+  --capture /tmp/cit336-retained/capture --output /tmp/cit336-rerun
+```
+
+Python, Docker and restic are the only replay prerequisites. A separate
+`cve-checker-handoff` CI job downloads the uploaded artifact by its immutable
+ID on a fresh runner, verifies its archive hash, and reruns from that capture
+without checking out this repository or rebuilding an image. That job also
+retains its new evaluation. The upload runs even if replay or the failure
+controls fail, so their available evidence survives runner disposal; an
+incomplete capture is explicitly identified in `handoff.json`.
+
+This delivery retains **S2**. CIT-337 must establish retrievable, pinned evidence
+for **both S1 and S2**, with an adequate retention lifetime for its clean build,
+before removing any replaced viewer fixtures. It must regenerate the accepted
+replay and each revision's Peek from those records.
 
 ## Fixture accounting and handoff
 
@@ -143,7 +188,8 @@ record decoder are unchanged, and no generic equipment API from CIT-287 is
 duplicated.
 
 Validation covers installed capture/disposal/offline restoration, real restic
-failure controls, the original S1/S2 installed deliveries, package generation
+failure controls, nonzero host capture/replay controls, replay of the published
+artifact on a fresh runner, the original S1/S2 installed deliveries, package generation
 and packaging, Deno type checks, and 22 Pkl tests / 63 assertions. The source
 and image identifiers, snapshot and per-file counts for a particular run are
 in that run's `retention.json`; they are execution observations, not committed
