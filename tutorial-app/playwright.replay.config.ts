@@ -1,4 +1,7 @@
+import { generateReplay } from './tests/rails-probes/generate';
 import { defineConfig } from '@playwright/test';
+
+generateReplay();
 
 // A second checkout (a worktree) can run beside one already serving 6006.
 const port = Number(process.env.STORYBOOK_PORT || 6006);

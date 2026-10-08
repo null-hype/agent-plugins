@@ -1,0 +1,268 @@
+{
+  "baseCommit": "09f1c11276ffa0f49aca65d719b018f072f2a397",
+  "before": {
+    "files": 50,
+    "uncompressedBytes": 150446
+  },
+  "after": {
+    "files": 0,
+    "uncompressedBytes": 0
+  },
+  "independentlyMaintainedResultDefinitions": {
+    "before": 4,
+    "after": 4,
+    "scope": "Existing question range, consistency range, historical baseline-count table, and installed outcome/control matrix; no new authored answer key."
+  },
+  "verifiedFiles": [
+    {
+      "path": "tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/answer.json",
+      "bytes": 106,
+      "sha256": "sha256:a49a331f6df221e643af0c89805d18527cb97e086db1106ce4ae2bfd2f24c9d6"
+    },
+    {
+      "path": "tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/answer.json",
+      "bytes": 106,
+      "sha256": "sha256:aba1b6a87455651347a940d2b46bb905dc84c38544e9fdb9ef5a108eb1046608"
+    },
+    {
+      "path": "tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S2/probes/deleted-trace/result.txt",
+      "bytes": 2449,
+      "sha256": "sha256:1a04b4cd5558c8250fac1560ab5eb883f3455679fb4a628024c7edb9397efde7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_files/acp-trace.json",
+      "bytes": 1304,
+      "sha256": "sha256:279174af626ba06a52bb3ddfd21d9ef79e863759896270a8f2cff63963990227"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/acp-trace.json",
+      "bytes": 16419,
+      "sha256": "sha256:1153b846fa09e3d8f298ca894cc123786cd062ef68e2f05a829b3221e13f76fa"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S1/runs/baseline/canary-reads.txt",
+      "bytes": 2671,
+      "sha256": "sha256:2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_files/acp-trace.json",
+      "bytes": 1808,
+      "sha256": "sha256:029ee43227820694b609cb30b3eb4df55ea9efec089f8f69bc7673f42e36ef4f"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_files/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_files/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_files/reproduction/S1/runs/baseline/canary-reads.txt",
+      "bytes": 2671,
+      "sha256": "sha256:2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/acp-trace.json",
+      "bytes": 24250,
+      "sha256": "sha256:e05ad39674d397eec04957680a6d21db627ee3264bc1b38d57e28930aa4afc39"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S1/runs/baseline/canary-reads.txt",
+      "bytes": 2671,
+      "sha256": "sha256:2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S2/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S2/probes/deleted-trace/result.txt",
+      "bytes": 2449,
+      "sha256": "sha256:1a04b4cd5558c8250fac1560ab5eb883f3455679fb4a628024c7edb9397efde7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one/_solution/reproduction/S2/runs/baseline/canary-reads.txt",
+      "bytes": 4055,
+      "sha256": "sha256:186a4dfd7713c1c147987337c16081630125c044e03bd7294f6b5b0f1fd93ec0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_files/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_files/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_files/reproduction/S1/runs/baseline/canary-reads.txt",
+      "bytes": 2671,
+      "sha256": "sha256:2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_files/reproduction/S2/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_files/reproduction/S2/probes/deleted-trace/result.txt",
+      "bytes": 2449,
+      "sha256": "sha256:1a04b4cd5558c8250fac1560ab5eb883f3455679fb4a628024c7edb9397efde7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_files/reproduction/S2/runs/baseline/canary-reads.txt",
+      "bytes": 4055,
+      "sha256": "sha256:186a4dfd7713c1c147987337c16081630125c044e03bd7294f6b5b0f1fd93ec0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_solution/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_solution/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_solution/reproduction/S1/runs/baseline/canary-reads.txt",
+      "bytes": 2671,
+      "sha256": "sha256:2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_solution/reproduction/S2/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_solution/reproduction/S2/probes/deleted-trace/result.txt",
+      "bytes": 2449,
+      "sha256": "sha256:1a04b4cd5558c8250fac1560ab5eb883f3455679fb4a628024c7edb9397efde7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one/_solution/reproduction/S2/runs/baseline/canary-reads.txt",
+      "bytes": 4055,
+      "sha256": "sha256:186a4dfd7713c1c147987337c16081630125c044e03bd7294f6b5b0f1fd93ec0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_files/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_files/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_files/reproduction/S1/runs/baseline/canary-reads.txt",
+      "bytes": 2671,
+      "sha256": "sha256:2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_files/reproduction/S2/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_files/reproduction/S2/probes/deleted-trace/result.txt",
+      "bytes": 2449,
+      "sha256": "sha256:1a04b4cd5558c8250fac1560ab5eb883f3455679fb4a628024c7edb9397efde7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_files/reproduction/S2/runs/baseline/canary-reads.txt",
+      "bytes": 4055,
+      "sha256": "sha256:186a4dfd7713c1c147987337c16081630125c044e03bd7294f6b5b0f1fd93ec0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_solution/reproduction/S1/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_solution/reproduction/S1/probes/deleted-trace/result.txt",
+      "bytes": 1012,
+      "sha256": "sha256:831e5566c898d86ac50ae34351b6ea33c573e9eab8d213a5bd74228082822cc7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_solution/reproduction/S1/runs/baseline/canary-reads.txt",
+      "bytes": 2671,
+      "sha256": "sha256:2fec01e389418afb993305f8647621125e6a928ffc75881f7299b39107d96aad"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_solution/reproduction/S2/probes/deleted-trace/mutation.txt",
+      "bytes": 65,
+      "sha256": "sha256:98946f9145dd983aef83ba406afe93225d925f8b573476a838673426f91142d0"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_solution/reproduction/S2/probes/deleted-trace/result.txt",
+      "bytes": 2449,
+      "sha256": "sha256:1a04b4cd5558c8250fac1560ab5eb883f3455679fb4a628024c7edb9397efde7"
+    },
+    {
+      "path": "tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_solution/reproduction/S2/runs/baseline/canary-reads.txt",
+      "bytes": 4055,
+      "sha256": "sha256:186a4dfd7713c1c147987337c16081630125c044e03bd7294f6b5b0f1fd93ec0"
+    },
+    {
+      "path": "tutorial-app/src/stories/fixtures/rails-matlab-review-1.solved.json",
+      "bytes": 16419,
+      "sha256": "sha256:1153b846fa09e3d8f298ca894cc123786cd062ef68e2f05a829b3221e13f76fa"
+    },
+    {
+      "path": "tutorial-app/src/stories/fixtures/rails-matlab-review-1.starter.json",
+      "bytes": 1304,
+      "sha256": "sha256:279174af626ba06a52bb3ddfd21d9ef79e863759896270a8f2cff63963990227"
+    },
+    {
+      "path": "tutorial-app/src/stories/fixtures/rails-matlab-review-2.solved.json",
+      "bytes": 24250,
+      "sha256": "sha256:e05ad39674d397eec04957680a6d21db627ee3264bc1b38d57e28930aa4afc39"
+    },
+    {
+      "path": "tutorial-app/src/stories/fixtures/rails-matlab-review-2.starter.json",
+      "bytes": 1808,
+      "sha256": "sha256:029ee43227820694b609cb30b3eb4df55ea9efec089f8f69bc7673f42e36ef4f"
+    }
+  ]
+}

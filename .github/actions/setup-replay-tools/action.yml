@@ -1,0 +1,13 @@
+name: Set up retained replay tools
+description: Install the Pkl version used by the retained checker records and replay renderer.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        tools="$RUNNER_TEMP/replay-tools"
+        mkdir -p "$tools"
+        curl -fsSL https://github.com/apple/pkl/releases/download/0.32.1/pkl-linux-amd64 -o "$tools/pkl"
+        chmod +x "$tools/pkl"
+        echo "$tools" >> "$GITHUB_PATH"
