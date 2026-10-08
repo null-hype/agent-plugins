@@ -1,0 +1,60 @@
+amends "pkl:test"
+
+import "pkl:json"
+import "Claims.pkl" as Claims
+import "Reconcile.pkl" as Reconcile
+import "Observation.pkl" as Observation
+
+local function load(name: String): Observation.Observed =
+  Observation.fromJson(read("observations/\(name).json").text)
+
+local matUnblocked = load("mat-unblocked")
+local matBlocked = load("mat-blocked")
+local pngUnblocked = load("png-unblocked")
+local pngBlocked = load("png-blocked")
+
+facts {
+  ["unblocked MAT canary: content type retained as declared, despite the real bytes being the MAT/HDF5 payload"] {
+    matUnblocked.declared_content_type == "image/png"
+    matUnblocked.stored_content_type == "image/png"
+  }
+  ["unblocked MAT canary: matload is the loader libvips actually selected"] {
+    matUnblocked.loader_selected == "matload"
+  }
+  ["unblocked MAT canary: the dummy file's bytes are recoverable from the returned variant"] {
+    matUnblocked.matches_dummy_file == true
+  }
+  ["blocked MAT canary: no loader ran and the variant was refused, not merely slow or truncated"] {
+    matBlocked.loader_selected == null
+    matBlocked.variant_succeeded == false
+    (matBlocked.loader_error ?? "").contains("blocked")
+  }
+  ["blocked MAT canary: no disclosure field claims a match (refusal, not a silent empty read)"] {
+    matBlocked.matches_dummy_file != true
+  }
+  ["PNG control processes normally whether or not untrusted loaders are blocked"] {
+    pngUnblocked.variant_succeeded == true
+    pngBlocked.variant_succeeded == true
+    pngUnblocked.loader_selected == "pngload"
+    pngBlocked.loader_selected == "pngload"
+  }
+  ["reconciling each observation against its declared claim raises no flags"] {
+    Reconcile.check(Claims.matUnblocked, matUnblocked).isEmpty
+    Reconcile.check(Claims.matBlocked, matBlocked).isEmpty
+    Reconcile.check(Claims.pngUnblocked, pngUnblocked).isEmpty
+    Reconcile.check(Claims.pngBlocked, pngBlocked).isEmpty
+  }
+  ["a claim that disagrees with reality is exactly what gets flagged"] {
+    Reconcile.check((Claims.matUnblocked) { discloseExpected = false }, matUnblocked)
+      .any((f) -> f.kind == "unexpected-disclosure")
+    Reconcile.check((Claims.matBlocked) { variantSucceedsExpected = true }, matBlocked)
+      .any((f) -> f.kind == "variant-outcome-mismatch")
+  }
+}
+
+examples {
+  ["mat-unblocked"] { matUnblocked.loader_selected; matUnblocked.matches_dummy_file; matUnblocked.recovered_text }
+  ["mat-blocked"] { matBlocked.loader_selected; matBlocked.variant_succeeded; matBlocked.loader_error }
+  ["png-unblocked"] { pngUnblocked.loader_selected; pngUnblocked.variant_succeeded }
+  ["png-blocked"] { pngBlocked.loader_selected; pngBlocked.variant_succeeded }
+}

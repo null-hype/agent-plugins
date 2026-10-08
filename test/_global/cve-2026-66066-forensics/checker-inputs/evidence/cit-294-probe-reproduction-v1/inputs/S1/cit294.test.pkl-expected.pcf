@@ -1,0 +1,20 @@
+examples {
+  ["mat-unblocked"] {
+    "matload"
+    true
+    #""KR2S-CANARY-CIT294-0123456789abc""#
+  }
+  ["mat-blocked"] {
+    null
+    false
+    "matload: operation is blocked"
+  }
+  ["png-unblocked"] {
+    "pngload"
+    true
+  }
+  ["png-blocked"] {
+    "pngload"
+    true
+  }
+}
