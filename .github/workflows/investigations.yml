@@ -14,10 +14,19 @@ on:
       - 'src/jev/**'
       - 'src/cve-2026-66066/**'
       - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-forecast*'
+      - 'test/_global/cve-forecast-replay/**'
       - 'test/_global/cve-checker.sh'
       - 'test/_global/cve-checker-failures.ts'
       - 'scripts/package-cve-questions.ts'
-      - 'scripts/cve-checker-retention.py'
+      - 'scripts/cve-*-retention.py'
+      - 'scripts/cve-*-viewer-export.py'
+      - 'scripts/scenario-handoff.py'
+      - 'scripts/cve-forecast-fixture-accounting.py'
+      - 'scripts/cve-forecast-clean-viewer.py'
+      - 'tutorial-app/tests/retained/**'
+      - 'tutorial-app/tests/private-file-lessons.spec.ts'
+      - 'tutorial-app/evidence/cit-338-captures-v1/**'
       - 'scripts/cve-checker-viewer-export.py'
       - 'scripts/cve-checker-fixture-accounting.py'
       - 'tutorial-app/evidence/cit-337-captures-v1/**'
@@ -29,6 +38,9 @@ on:
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
+      - 'tutorial-app/tests/forecast/**'
+      - 'tutorial-app/src/stories/ForecastReplay*'
+      - 'tutorial-app/src/stories/frozen/**'
       - 'tutorial-app/tests/rails-probes/**'
       - 'tutorial-app/tests/questions/**'
       - 'tutorial-app/evidence/cit-294-*/**'
@@ -43,10 +55,19 @@ on:
       - 'src/jev/**'
       - 'src/cve-2026-66066/**'
       - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-forecast*'
+      - 'test/_global/cve-forecast-replay/**'
       - 'test/_global/cve-checker.sh'
       - 'test/_global/cve-checker-failures.ts'
       - 'scripts/package-cve-questions.ts'
-      - 'scripts/cve-checker-retention.py'
+      - 'scripts/cve-*-retention.py'
+      - 'scripts/cve-*-viewer-export.py'
+      - 'scripts/scenario-handoff.py'
+      - 'scripts/cve-forecast-fixture-accounting.py'
+      - 'scripts/cve-forecast-clean-viewer.py'
+      - 'tutorial-app/tests/retained/**'
+      - 'tutorial-app/tests/private-file-lessons.spec.ts'
+      - 'tutorial-app/evidence/cit-338-captures-v1/**'
       - 'scripts/cve-checker-viewer-export.py'
       - 'scripts/cve-checker-fixture-accounting.py'
       - 'tutorial-app/evidence/cit-337-captures-v1/**'
@@ -58,6 +79,9 @@ on:
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
+      - 'tutorial-app/tests/forecast/**'
+      - 'tutorial-app/src/stories/ForecastReplay*'
+      - 'tutorial-app/src/stories/frozen/**'
       - 'tutorial-app/tests/rails-probes/**'
       - 'tutorial-app/tests/questions/**'
       - 'tutorial-app/evidence/cit-294-*/**'
@@ -286,7 +310,13 @@ jobs:
           python3 scripts/cve-checker-viewer-export.py --output "$RUNNER_TEMP/cit337-export/records" --cache "$RUNNER_TEMP/cit337-captures"
           cmp "$RUNNER_TEMP/cit337-export/bundle.tar.gz" tutorial-app/evidence/cit-337-captures-v1/bundle.tar.gz
           cmp "$RUNNER_TEMP/cit337-export/bundle.json" tutorial-app/evidence/cit-337-captures-v1/bundle.json
+          python3 scripts/cve-forecast-viewer-export.py --output "$RUNNER_TEMP/cit338-export/records" --cache "$RUNNER_TEMP/cit338-captures"
+          cmp "$RUNNER_TEMP/cit338-export/bundle.tar.gz" tutorial-app/evidence/cit-338-captures-v1/bundle.tar.gz
+          cmp "$RUNNER_TEMP/cit338-export/bundle.json" tutorial-app/evidence/cit-338-captures-v1/bundle.json
           npm --prefix tutorial-app run replay:generate -- --check-existing
+          python3 scripts/cve-forecast-fixture-accounting.py
+          git diff --exit-code -- docs/investigations/CIT-338/fixture-accounting.json
+          python3 scripts/cve-forecast-clean-viewer.py --output "$RUNNER_TEMP/cit338-clean-viewer"
           python3 scripts/cve-checker-fixture-accounting.py
           git diff --exit-code -- docs/investigations/CIT-337/fixture-accounting.json
       - run: npx playwright install --with-deps chromium
@@ -298,3 +328,78 @@ jobs:
           npx playwright test --config playwright.replay.config.ts
           npm run build-storybook -- --output-dir "$RUNNER_TEMP/cit337-storybook"
           npm run build
+
+  retained-forecast:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-id: ${{ steps.handoff.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - id: image
+        uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: '0.21.7'
+          verb: call
+          args: cve-forecast-replay-image export --forced-compression GZIP --path ./build/cve-forecast-runtime.oci.tar
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+      - id: capture
+        run: python3 scripts/cve-forecast-retention.py capture --image build/cve-forecast-runtime.oci.tar --output build/cve-forecast-retention/capture --trace-url "$FORECAST_TRACE_URL"
+        env:
+          FORECAST_TRACE_URL: ${{ steps.image.outputs.traceURL }}
+      - name: Verify separately against the retained installed image
+        run: python3 scripts/cve-forecast-retention.py reexecute --capture build/cve-forecast-retention/capture --output build/cve-forecast-retention/verification
+      - id: package
+        if: always() && (steps.capture.outcome == 'success' || steps.capture.outcome == 'failure')
+        run: python3 scripts/scenario-handoff.py --root build/cve-forecast-retention --output build/cve-forecast-handoff --state forecast
+        env:
+          CAPTURE_ARTIFACT_NAME: cit338-forecast-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          CAPTURE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      - id: handoff
+        name: Publish collected evidence even if verification fails
+        if: always() && steps.package.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact-name }}
+          path: build/cve-forecast-handoff/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+
+  forecast-handoff:
+    needs: retained-forecast
+    runs-on: ubuntu-latest
+    steps:
+      # No checkout, installation, scenario input tree or image build on this runner.
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.retained-forecast.outputs.artifact-id }}
+          path: handoff
+          merge-multiple: true
+      - name: Re-execute the downloaded exact snapshot offline
+        run: |
+          python3 - <<'PYCODE'
+          import hashlib, json, tarfile
+          from pathlib import Path
+          receipt = json.loads(Path('handoff/handoff.json').read_text())
+          assert receipt['completeCapture']
+          with Path('handoff/evidence.tar').open('rb') as stream:
+              assert 'sha256:' + hashlib.file_digest(stream, 'sha256').hexdigest() == receipt['archiveSha256']
+          with tarfile.open('handoff/evidence.tar') as tar:
+              for entry in tar.getmembers():
+                  assert not Path(entry.name).is_absolute() and '..' not in Path(entry.name).parts and (entry.isfile() or entry.isdir())
+              tar.extractall('retained')
+          PYCODE
+          python3 retained/capture/replay.py reexecute --capture retained/capture --output verification
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cit338-forecast-handoff-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            verification/verification.json
+            verification/evaluation/comparison.json
+            verification/container-execution.json
+            verification/container.log
+          if-no-files-found: warn
+          retention-days: 90

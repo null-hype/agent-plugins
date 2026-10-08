@@ -117,6 +117,7 @@ test("lesson 2: Alice says #118 flags every edit; Bob finds two that pass, and t
       expect((await typed(page)).split('Can the strengthened check')[1]).toContain(question);
     }).toPass({ timeout: 15_000 });
   }
+  await expect.poll(() => markers(page)).toContain('review-2.gap-2.changed-config: ');
   const said = await markers(page);
   for (const [code, , mark] of REVIEW_2) {
     await expect(c.getByRole('button', { name: new RegExp(`${code.replace(/\./g, '\\.')}\\b`) })).toContainText(mark);
