@@ -173,9 +173,13 @@ function reasoningViewStyles() {
 function renderClientPage() {
   return `${sharedHead('ACP Trace: Client')}
   <style>
+      /* CIT-340: the tutorial's ransom-note/holographic theme, kept to accents
+         here -- a foil strip on top, mono-caps labels, ink cursor, lilac selection. */
+      :root { --holo: linear-gradient(90deg, #ff9ad5, #c7a6ff, #8fd3ff, #9dffcf, #fff59a, #ffb38a, #ff9ad5); }
       main.client { display: flex; flex-direction: column; }
+      main.client::before { content: ''; flex: 0 0 3px; background: var(--holo); }
       main.client #monaco-root { flex: 1 1 auto; min-height: 72px; height: auto; }
-      #scripted { flex: 0 0 auto; font: 600 11.5px/1.35 system-ui, sans-serif; color: #6b5d2e; padding: 4px 8px; border-bottom: 1px solid #d8d4c8; background: #faf7ef; }
+      #scripted { flex: 0 0 auto; font: 700 10.5px/1.35 "Space Mono", "Roboto Mono", Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; color: #6b5d2e; padding: 4px 8px; border-bottom: 1px solid #d8d4c8; background: #faf7ef; }
       #scripted[hidden] { display: none; }
       /* CIT-XXX: a gated diagnostic's line gets a glyph-margin affordance
          instead of its marker/CodeLens -- a play triangle before the user
@@ -229,7 +233,9 @@ function renderClientPage() {
         node.setAttribute('aria-label', 'Diagnostic evidence');
         node.className = 'evidence-widget';
         node.style.cssText =
-          'background:#1e1e1e;color:#d4d4d4;border:1px solid #454545;border-radius:3px;' +
+          'background:#1e1e1e;color:#d4d4d4;border:1px solid #454545;border-top:3px solid transparent;border-radius:3px;' +
+          'background-image:linear-gradient(#1e1e1e,#1e1e1e),linear-gradient(90deg,#ff9ad5,#c7a6ff,#8fd3ff,#9dffcf,#fff59a,#ffb38a);' +
+          'background-origin:border-box;background-clip:padding-box,border-box;' +
           'padding:6px 10px;font:12px "Roboto Mono",Menlo,Consolas,monospace;width:600px;max-width:80vw;max-height:300px;overflow:auto;white-space:pre-wrap;';
         related.forEach((entry) => {
           const row = document.createElement('div');
@@ -375,6 +381,20 @@ function renderClientPage() {
         const monaco = await loadMonaco();
         if (editor) return;
         configureLanguage(monaco);
+        // CIT-340: 'vs' with the tutorial's ink and foil accents; syntax colours unchanged.
+        monaco.editor.defineTheme('tidelands', {
+          base: 'vs',
+          inherit: true,
+          rules: [],
+          colors: {
+            'editor.background': '#fffdf8',
+            'editorCursor.foreground': '#1c1c17',
+            'editor.selectionBackground': '#c7a6ff55',
+            'editor.inactiveSelectionBackground': '#8fd3ff33',
+            'editorLineNumber.foreground': '#b3ad9c',
+            'editorLineNumber.activeForeground': '#1c1c17',
+          },
+        });
         model = monaco.editor.createModel('', 'acp-warm-log');
         editor = monaco.editor.create(document.getElementById('monaco-root'), {
           automaticLayout: true,
@@ -388,7 +408,7 @@ function renderClientPage() {
           readOnly: true,
           renderLineHighlight: 'none',
           scrollBeyondLastLine: false,
-          theme: 'vs',
+          theme: 'tidelands',
           wordWrap: 'on',
         });
         editor.onDidLayoutChange(revealNewest);
