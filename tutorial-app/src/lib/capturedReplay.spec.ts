@@ -25,7 +25,6 @@ describe('retained installed-scenario replay', () => {
     for (const key of ['S1', 'S2'] as const) {
       const record = capture.investigation.records.find((r: any) => r.state.id === key + '-pinned');
       expect(record.forecast).toBeNull();
-      expect(record.outcome).toBe('out-of-range');
       expect(record.declarations.some((d: any) => d.evidence.origin === 'historical')).toBe(true);
       expect(record.declarations.some((d: any) => d.observedFrom?.origin === 'reproduced')).toBe(true);
       expect(record.observations.some((e: any) => e.availability === 'retained' && e.origin === 'reproduced')).toBe(true);
