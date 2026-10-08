@@ -8,7 +8,11 @@
     "preview": "astro preview",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "replay:generate": "tsx tests/rails-probes/generate.ts",
+    "predev": "npm run replay:generate",
+    "prebuild": "npm run replay:generate",
+    "pretest": "npm run replay:generate"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",

@@ -1,7 +1,10 @@
+import { generateReplay } from './tests/rails-probes/generate';
 import { defineConfig, type Project } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+
+generateReplay();
 
 // CIT-317: one config, driven by Questions. Each part names the Pkl module that
 // holds its Questions; every Question becomes one Playwright project, with the
