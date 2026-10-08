@@ -3,7 +3,7 @@ import AcpTracePreview from './AcpTracePreview';
 import { deriveAcpTraceState, type Lesson } from './lessonFixtures';
 
 // Part 5, "Can an upload read a private file?", as the tutorial reporter generated
-// it: one story per lesson, each a pull request and its review. With `solved`, the
+// it: one story per lesson, each a pull request and its review, or the rest of one. With `solved`, the
 // lesson's `_solution` lies over its `_files`, as TutorialKit's Solve leaves them,
 // and Peek opens the lesson's own files where the evidence names one.
 const meta = {
@@ -39,17 +39,24 @@ export const PR117: Story = {
   render: render('1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
 };
 
+// CIT-357: #117's review continues in a second lesson, in the same session. It
+// opens on the first lesson's solved files with its one accepted question.
+export const PR117Continued: Story = {
+  name: '#117, continued: Can the check tell a real block from a generic crash?',
+  render: render('2-can-the-check-tell-a-real-block-from-a-generic-crash'),
+};
+
 export const PR118: Story = {
   name: '#118: Can the strengthened check tell a real read of the private file from a forged one?',
-  render: render('2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
+  render: render('3-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
 };
 
 export const PR120: Story = {
   name: '#120: Can the check tell a real read of the private file from a mention of one?',
-  render: render('3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one'),
+  render: render('4-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one'),
 };
 
 export const CC23E89: Story = {
   name: 'cc23e89: Does the check require a real read of the private file?',
-  render: render('4-does-the-check-require-a-real-read-of-the-private-file'),
+  render: render('5-does-the-check-require-a-real-read-of-the-private-file'),
 };

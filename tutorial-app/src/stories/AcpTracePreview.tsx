@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import clientPageHtml from 'virtual:acp-trace-client-page';
 import agentPageHtml from 'virtual:acp-trace-agent-page';
-import type { AcpTraceState } from '../lib/acpTraceProtocol';
+import { withAcceptedAtStart, type AcpTraceState } from '../lib/acpTraceProtocol';
 
 type Props = {
 	payload?: AcpTraceState;
@@ -80,13 +80,15 @@ export default function AcpTracePreview({ payload, height = 360, agent = true }:
 			setAcceptedReviews((previous) => ({ ...previous, [recordingId]: order }));
 		}
 	};
+	// A lesson that continues another opens with what that one ended on (CIT-357).
+	const reviews = useMemo(() => withAcceptedAtStart(payload?.acceptedAtStart, acceptedReviews), [payload, acceptedReviews]);
 	const clientPayload = useMemo(
-		() => (payload ? ({ ...payload, acceptedReviews } as AcpTraceState) : payload),
-		[payload, acceptedReviews],
+		() => (payload ? ({ ...payload, acceptedReviews: reviews } as AcpTraceState) : payload),
+		[payload, reviews],
 	);
 	const agentPayload = useMemo(
-		() => (payload ? ({ ...payload, acceptedReviews, accepted } as AcpTraceState) : payload),
-		[payload, acceptedReviews, accepted],
+		() => (payload ? ({ ...payload, acceptedReviews: reviews, accepted } as AcpTraceState) : payload),
+		[payload, reviews, accepted],
 	);
 
 	// Both pages now announce `lesson-preview-ready` themselves (see

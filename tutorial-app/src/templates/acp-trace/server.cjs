@@ -33,7 +33,25 @@ function probeOffers(nodes, accepted) {
     (nodes[index].parent < 0 || accepted.includes(nodes[index].parent)));
 }
 
-const probeHelpers = [probeTree, probeLine, probeDiagnostic, probeOffers].map(String).join('\n\n      ');
+// CIT-357: a review may come in several replies, one per lesson, all answering
+// the same prompt. Acceptance indexes count the turn's probes across its replies
+// in order; a reply's own probes start at the count before it.
+function probeOffset(frames, at) {
+  let offset = 0;
+  for (let index = at - 1; index >= 0 && frames[index].actor !== 'client'; index -= 1) {
+    const envelope = frames[index].envelope || {};
+    const meta = (envelope.result && envelope.result._meta) || {};
+    offset += probeTree(meta.probes).length;
+  }
+  return offset;
+}
+
+// The accepted indexes that fall in one reply's probes, as that reply counts them.
+function acceptedIn(accepted, offset, count) {
+  return accepted.filter((index) => index >= offset && index < offset + count).map((index) => index - offset);
+}
+
+const probeHelpers = [probeTree, probeLine, probeDiagnostic, probeOffers, probeOffset, acceptedIn].map(String).join('\n\n      ');
 const verdictContract = require('./verdict-contract.json');
 // CIT-245: two independent HTTP servers in one process, one per preview
 // ("agent" and "client") -- TutorialKit/WebContainer watches for a server to
@@ -616,8 +634,20 @@ function renderClientPage() {
         const frames = state.frames || [];
         const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
         let review = null;
+        // Earlier turns show only the choices the host persisted, over every
+        // probe the turn's replies offered.
+        let turnProbes = [];
+        const flush = () => {
+          const nodes = probeTree(turnProbes);
+          const chosen = acceptedReviews[review] || [];
+          chosen.forEach((probeIndex) => {
+            if (nodes[probeIndex]) records.push(probeRecord(nodes, probeIndex, chosen));
+          });
+          turnProbes = [];
+        };
         frames.forEach((frame, index) => {
           if (frame.actor === 'client') {
+            flush();
             review = frame.provenance && frame.provenance.recordingId;
             const promptText = extractPromptText((frame.envelope || {}).params);
             if (!promptText) return;
@@ -626,15 +656,8 @@ function renderClientPage() {
             commitRanges.push([start, records.length]);
             return;
           }
-          // Earlier turns show only the choices the host persisted.
           const meta = index < lastPrompt ? metaOf(frame.envelope || {}) : null;
-          if (meta && meta.diagnostic) {
-            const nodes = probeTree(meta.probes);
-            const chosen = acceptedReviews[review] || [];
-            chosen.forEach((probeIndex) => {
-              if (nodes[probeIndex]) records.push(probeRecord(nodes, probeIndex, chosen));
-            });
-          }
+          if (meta && meta.diagnostic) turnProbes.push(...(meta.probes || []));
         });
         if (records.length === 0) return renderRecords(null);
         // The current commit ends here. Below it is where suggestions go: an empty
@@ -654,16 +677,19 @@ function renderClientPage() {
 
       ${probeHelpers}
 
-      // The probes the agent ran to split the current question: the reply to the
-      // last prompt (agent frame _meta), if it has come.
+      // The probes the agent ran to split the current question: the replies to the
+      // last prompt (agent frame _meta), if they have come.
       function reviewProbes(state) {
         const frames = state.frames || [];
         const lastPrompt = frames.map((frame) => frame.actor === 'client').lastIndexOf(true);
+        // Every reply to it so far: a review continued over lessons offers
+        // each reply's probes after the last's (CIT-357).
+        const probes = [];
         for (const frame of frames.slice(lastPrompt + 1)) {
           const meta = frame.actor === 'agent' ? metaOf(frame.envelope || {}) : null;
-          if (meta && meta.diagnostic) return probeTree(meta.probes || []);
+          if (meta && meta.diagnostic) probes.push(...(meta.probes || []));
         }
-        return [];
+        return probeTree(probes);
       }
 
       // What the agent offers after the commit: the two probes it ran to split
@@ -893,6 +919,12 @@ function renderClientPage() {
           acceptedOrder = acceptedReviews[review] || [];
           reportedOrder = null;
         }
+        // CIT-357: the lesson opens where the one before it ended, whether the
+        // learner came from it or straight here; anything more they accepted stays.
+        Object.entries(payload.acceptedAtStart || {}).forEach(([id, order]) => {
+          acceptedReviews[id] = order.concat((acceptedReviews[id] || []).filter((index) => !order.includes(index)));
+          if (id === currentReview) acceptedOrder = acceptedReviews[id];
+        });
         suggestion = payload.scenario === 'cit294-review-v1' ? reviewCompletion(payload) : null;
         if (!suggestion) acceptedOrder = [];
         if (payload.scenario !== 'cit294-review-v1') {
@@ -1081,7 +1113,8 @@ function renderAgentPage() {
         root.replaceChildren();
         if (!active) return false;
         let review = null;
-        for (const frame of state.frames || []) {
+        const frames = state.frames || [];
+        for (const [frameIndex, frame] of frames.entries()) {
           const envelope = frame.envelope || {};
           if (frame.actor === 'client') review = frame.provenance && frame.provenance.recordingId;
           const fromClient = frame.actor === 'client';
@@ -1090,8 +1123,9 @@ function renderAgentPage() {
           who.appendChild(el('span', 'method', envelope.method || (envelope.result && envelope.result.stopReason) || ''));
           message.appendChild(who);
           const meta = metaOf(envelope) || {};
-          const chosen = state.acceptedReviews ? (state.acceptedReviews[review] || []) : null;
           const nodes = probeTree(meta.probes);
+          const chosen = state.acceptedReviews
+            ? acceptedIn(state.acceptedReviews[review] || [], probeOffset(frames, frameIndex), nodes.length) : null;
           const selected = chosen === null ? (meta.probes || []) : chosen.filter((index) => nodes[index])
             .map((index) => ({ ...nodes[index].probe, diagnostic: probeDiagnostic(nodes, index, chosen) }));
           const diagnostic = meta.diagnostic && chosen !== null
@@ -1289,7 +1323,8 @@ function activity(trace) {
       lines.push(who + ': deciding what to check');
       probes.forEach((probe, index) => lines.push('  probe ' + (index + 1) + ' (' + probe.action + '): ' + probe.question));
       // Earlier findings come from persisted choices; current ones wait for the Client.
-      const accepted = frameIndex < lastPrompt ? (acceptedReviews[review] || []) : acceptedProbes;
+      const accepted = acceptedIn(frameIndex < lastPrompt ? (acceptedReviews[review] || []) : acceptedProbes,
+        probeOffset(frames, frameIndex), probeTree(probes).length);
       if (accepted.length === 0) {
         hint = who + ': its findings wait until you accept a probe in the Client (Tab)';
         return;

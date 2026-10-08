@@ -27,6 +27,9 @@ import "../../../../src/cve-2026-66066/questions/checker/Question.pkl" as instal
 
 /// The checker state the probes were asked of (S1 = PR 117, S2 = PR 118).
 state: String = read("prop:state")
+/// Which of the state's lessons to render: 0 for the revision's own lesson,
+/// k for its k-th continuation (CIT-357).
+step: Int = read?("prop:step")?.toInt() ?? 0
 /// The checker commit, in full. Rows cite its first eight characters.
 checker: String = read("prop:checker")
 reproductionId: String = read("prop:reproductionId")
@@ -69,6 +72,22 @@ class Revision {
   claimSaid: AcpTrace.Row?
   /// This revision's lesson in the chapter (CIT-316).
   lesson: Question.Lesson
+  /// The lessons that continue this revision's review, in order (CIT-357). Each
+  /// opens where the one before it ends, in the same session, and offers the
+  /// probes it names; the revision's own lesson offers the probes none names.
+  continued: Listing<Continuation> = new {}
+}
+
+/// A lesson that continues a revision's review: Bob's next reply in the same
+/// session, offering the probes named here.
+class Continuation {
+  /// Also the lesson's directory name, slugified.
+  title: String(!isEmpty)
+  /// Markdown, like `Question.Lesson.prose`.
+  prose: String(!isEmpty)
+  /// The probes this reply offers, in order.
+  probes: Listing<Question.Id>(!isEmpty)
+  replyAction: String = "continue the review"
 }
 
 revisions: Mapping<String, Revision> = new {
@@ -145,18 +164,42 @@ revisions: Mapping<String, Revision> = new {
         subject is the question this lesson asks, and its body is her description,
         quoted. Her checker passes.
 
-        Select **Solve** for Bob's review. Each grey line is a question he answered by
-        editing the recorded evidence in a copy and running Alice's checker again: a
-        forged read of the private file, a deleted trace, a generic crash in place of
-        the block, emptied bytes, corrupted control pixels. Press **Tab** to accept the
-        one shown, or **Alt+]** to switch first.
+        Select **Solve** for Bob's review. The grey line below the commit is his first
+        question, which he answered by editing the recorded evidence in a copy and
+        running Alice's checker again: he forged a read of the private file into the
+        blocked arm's trace. Press **Tab** to accept it.
 
-        Open the lens above an accepted line. Peek opens the edit itself, the record as
-        Bob left it, beside the review's own words and the checker's result. Each
+        Open the lens above the accepted line. Peek opens the edit itself, the trace as
+        Bob left it, beside the review's own words and the checker's result. The
         result is a **reproduction**: Bob's edit, run again for real against Alice's
-        checker as submitted, because the review's own runs were not kept. It shows
-        the checker \(found).
+        checker as submitted, because the review's own runs were not kept.
+        \(each(forgedRead, "The forged read")).
         """
+    }
+    continued {
+      new {
+        title = "Can the check tell a real block from a generic crash"
+        probes { "generic-crash"; "deleted-trace"; "emptied-bytes"; "corrupted-pixels" }
+        prose =
+          """
+          # Can the check tell a real block from a generic crash?
+
+          This lesson opens where the last one ended. Bob's first question, the forged
+          read, is accepted below Alice's commit, and its lens still opens his edit and
+          the checker's answer. Coming here directly starts you at the same point.
+
+          CIT-294 said the blocked arm must refuse the path, and that *a generic crash
+          alone is insufficient*. Select **Solve** and Bob continues his review: his next
+          question records the block as a generic crash and runs Alice's checker again.
+          Press **Tab** to accept it, then open its lens.
+          \(each(genericCrash, "The generic crash")).
+
+          Bob asked three more questions of #117: he deleted the trace, emptied the
+          returned bytes and corrupted the PNG control's pixels. **Alt+]** switches
+          between them, and each one you accept adds its own lens. After all five
+          edits, the checker was \(found).
+          """
+      }
     }
   }
   ["S2"] {
@@ -407,6 +450,13 @@ chapter: List<String> =
     if (keys.toList().mapIndexed((i, k) -> revisions[k].lesson.order == i + 1).every((it) -> it)) keys
     else throw("lesson orders in `revisions` must count 1 to \(keys.length)")
 
+/// The chapter's lessons in order: each revision's own, then its continuations.
+/// A lesson's directory is its place here, counting from 1, and its title. Needs no run.
+lessons: List<Map<String, Any>> =
+  chapter.flatMap((k) ->
+    List(Map("key", k, "step", 0, "title", revisions[k].lesson.title))
+    + revisions[k].continued.toList().mapIndexed((i, c) -> Map("key", k, "step", i + 1, "title", c.title)))
+
 local claims =
   revisions.getOrNull(state)
     ?? throw("no claims for state \(state): amend `revisions` in CheckerProbes.pkl")
@@ -471,6 +521,19 @@ questions: Mapping<Question.Id, Probe> = new {
 local offered: List<Probe> = List(forgedRead, deletedTrace, genericCrash, emptiedBytes, corruptedPixels, swappedSource, changedConfig, proseMention, failedOpen, otherDirectory)
 /// The probes this revision is asked: those raised by its own review or an earlier one.
 local asked: List<Probe> = offered.filter((q) -> revisions[q.from].lesson.order <= claims.lesson.order)
+
+/// The probes each of this revision's lessons offers (CIT-357): its own lesson
+/// those no continuation names, then each continuation those it names. Every
+/// probe asked is offered exactly once.
+local continuedNames: List<String> = claims.continued.toList().flatMap((c) -> c.probes.toList())
+local steps: List<List<Probe>> =
+  if (continuedNames.isDistinct && continuedNames.every((n) -> asked.any((q) -> q.name == n)))
+    List(asked.filter((q) -> !continuedNames.contains(q.name)))
+    + claims.continued.toList().map((c) -> c.probes.toList().map((n) -> asked.find((q) -> q.name == n)))
+  else throw("continued probes of \(state) must be distinct probes it asks")
+local stepLesson: Question.Lesson|Continuation =
+  if (step == 0) claims.lesson
+  else claims.continued.toList().getOrNull(step - 1) ?? throw("\(state) has no lesson step \(step)")
 
 local deletedTrace = new Probe {
   judge = installedChecker.question.judge
@@ -743,54 +806,68 @@ local ask: AcpTrace.ClientFrame = new {
   }
 }
 
-starter: AcpTrace.Trace = new {
-  scenario = "cit294-review-v1"
-  frames { ask }
-  nextTurn {
-    actor = "agent"
-    speaker = claims.reviewer
-    action = claims.replyAction
-  }
-}
-
-solved: AcpTrace.Trace = new {
-  scenario = "cit294-review-v1"
-  frames {
-    ask
-    new AcpTrace.AgentFrame {
-      action = "reply with finding"
-      speaker = claims.reviewer
-      envelope {
-        id = 1
-        result {
-          _meta {
-            diagnostic {
-              code = claims.findingCode
-              severity = claims.findingSeverity
-              message = "\(code): \(claims.finding)"
-              subject = claims.subject
-              related {
-                claims.reviewSaid
-                claims.axiom
-                transcript
-                notRetained
-                for (q in asked) { reproduction(q) }
-              }
-              evaluationId = "\(historyRun):\(finding)"
-            }
-            probes {
-              for (q in asked) { probe(q, rowsOf(q)) }
-            }
+/// Bob's reply that opens lesson step `k`: the first is his review; each later one
+/// continues it in the same session, offering that step's probes.
+local function reply(k: Int): AcpTrace.AgentFrame = new {
+  action = if (k == 0) "reply with finding" else "continue the review"
+  speaker = claims.reviewer
+  envelope {
+    id = 1
+    result {
+      _meta {
+        diagnostic {
+          code = claims.findingCode
+          severity = claims.findingSeverity
+          message = "\(code): \(claims.finding)"
+          subject = claims.subject
+          related {
+            claims.reviewSaid
+            claims.axiom
+            transcript
+            notRetained
+            for (q in steps[k]) { reproduction(q) }
           }
+          evaluationId = "\(historyRun):\(finding)"
         }
-      }
-      provenance {
-        recordingId = "\(recording)#1"
-        capturedAt = claims.capturedAt
-        scripted = claims.replyScripted
+        probes {
+          for (q in steps[k]) { probe(q, rowsOf(q)) }
+        }
       }
     }
   }
+  provenance {
+    recordingId = "\(recording)#\(k + 1)"
+    capturedAt = claims.capturedAt
+    scripted = claims.replyScripted
+  }
+}
+
+/// Where a continuation opens: every probe the earlier steps offered, accepted
+/// in the order they offered them, which is how the step before it ends (CIT-357).
+local startAccepted: Mapping<String, Listing<Int>>? =
+  if (step == 0) null
+  else new {
+    ["\(recording)#0"] {
+      for (i in IntSeq(0, steps.take(step).fold(0, (n, probes) -> n + probes.length) - 1)) { i }
+    }
+  }
+
+starter: AcpTrace.Trace = new {
+  scenario = "cit294-review-v1"
+  frames {
+    ask
+    for (k in IntSeq(0, step - 1)) { reply(k) }
+  }
+  acceptedAtStart = startAccepted
+  nextTurn {
+    actor = "agent"
+    speaker = claims.reviewer
+    action = if (step == 0) claims.replyAction else (stepLesson as Continuation).replyAction
+  }
+}
+
+solved: AcpTrace.Trace = (starter) {
+  frames { reply(step) }
   nextTurn = null
 }
 
@@ -798,6 +875,6 @@ output {
   files {
     ["starter.json"] { value = starter; renderer = AcpTrace.renderer }
     ["solved.json"] { value = solved; renderer = AcpTrace.renderer }
-    ["lesson.md"] { text = claims.lesson.prose + "\n" }
+    ["lesson.md"] { text = stepLesson.prose + "\n" }
   }
 }

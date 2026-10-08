@@ -15,24 +15,34 @@ const shown = (page: Page) => client(page).locator('.view-lines').first().innerT
 const typed = (page: Page) => client(page).locator('body').evaluate((el) =>
   (el.ownerDocument.defaultView as any).monaco.editor.getModels()[0].getValue() as string);
 
-// Review 1's edits, in the order Bob offers them.
+// Review 1's edits, in the order Bob offers them: the first lesson's one, then
+// the rest of the review, which the next lesson continues (CIT-357).
 const REVIEW_1 = [
   ['review-1.finding-1.forged-read', 'Does the check fail when a read of the private file is forged?'],
-  ['review-1.finding-1.deleted-trace', 'Does the check fail when the trace is deleted?'],
   ['review-1.finding-2.generic-crash', 'Does the check fail when the block is a generic crash?'],
+  ['review-1.finding-1.deleted-trace', 'Does the check fail when the trace is deleted?'],
   ['review-1.finding-3.emptied-bytes', 'Does the check fail when the returned bytes are emptied?'],
   ['review-1.finding-3.corrupted-pixels', "Does the check fail when the PNG control's pixels are corrupted?"],
 ] as const;
+const lensFor = (page: Page, code: string) => client(page).getByRole('button', { name: new RegExp(code.replace(/\./g, '\\.')) });
 
-test('lesson 1: Alice says #117 passes; each of Bob\'s edits still passes it', async ({ page }) => {
-  await page.goto(story('pr-117'));
-  const c = client(page);
-  // Alice's commit: the question, and her claim, quoted from #117.
-  await expect(c.locator('.view-lines')).toContainText('Can the check tell a real read of the private file from a forged one?');
-  const editor = c.getByRole('textbox', { name: 'Editor content', exact: true });
+// Each lens opens the edit itself first: the record or trace as Bob left it.
+const opened = (page: Page) => client(page).locator('.peekview-widget').locator('.monaco-editor').first().evaluate((element) => {
+  const monaco = (element.ownerDocument.defaultView as any).monaco;
+  return monaco.editor.getEditors().find((e: any) => e.getDomNode() === element).getModel().getValue() as string;
+});
+const lens = async (page: Page, code: string) => {
+  const peek = client(page).locator('.peekview-widget');
+  if (await peek.count()) await page.keyboard.press('Escape');
+  await expect(peek).toHaveCount(0);
+  await lensFor(page, code).click();
+  await expect(peek).toBeVisible();
+};
 
-  // Bob's review: each question is an edit to the recorded evidence.
-  for (const [, question] of REVIEW_1) {
+/** Tab each question in turn; the editor offers the next only once the last is in. */
+async function accept(page: Page, questions: readonly string[]) {
+  const editor = client(page).getByRole('textbox', { name: 'Editor content', exact: true });
+  for (const question of questions) {
     // The editor re-renders after each accept and offers the next suggestion
     // again; a Tab with nothing on offer is taken back, so retry until it lands.
     await expect(async () => {
@@ -41,42 +51,73 @@ test('lesson 1: Alice says #117 passes; each of Bob\'s edits still passes it', a
       expect(await typed(page)).toContain(question);
     }).toPass({ timeout: 15_000 });
   }
+}
+
+test("lesson 1: Alice says #117 passes; Bob's first edit, a forged read, still passes it", async ({ page }) => {
+  await page.goto(story('pr-117'));
+  const c = client(page);
+  // Alice's commit: the question, and her claim, quoted from #117.
+  await expect(c.locator('.view-lines')).toContainText('Can the check tell a real read of the private file from a forged one?');
+
+  // One Solve, one Tab: the lesson offers Bob's first question and nothing after it.
+  const [code, question] = REVIEW_1[0];
+  await accept(page, [question]);
+  await page.waitForTimeout(500);
+  for (const [, rest] of REVIEW_1.slice(1)) expect(await shown(page)).not.toContain(rest);
+  await expect(lensFor(page, code)).toContainText('✗');
+  expect(await markers(page)).toContain(`${code}: Forging a read of the private file still left all 28 assertions passing.`);
+
+  // One Peek: the trace with the private file's openat added to the blocked arm.
+  await lens(page, code);
+  await expect(c.locator('.peekview-widget .peekview-title')).toContainText('canary-reads.txt@S1');
+  await expect.poll(() => opened(page)).toContain('"/work/dummy-canary.txt", O_RDONLY) = 14');
+});
+
+test('lesson 1, continued: opens where lesson 1 ended, then Bob reviews the rest of #117', async ({ page }) => {
+  // Entered directly, unsolved: the first lesson's accepted question and its
+  // result are already there, before anything is pressed.
+  await page.goto(story('pr-117-continued').replace('&args=solved:!true', ''));
+  const c = client(page);
+  const [first, question] = REVIEW_1[0];
+  await expect(c.locator('.view-lines')).toContainText(question);
+  expect(await typed(page)).toContain(question);
+  // The commit stays folded under its subject, as the first lesson left it.
+  await expect(c.locator('.view-lines')).not.toContainText('Alice, #117:');
+  await expect(lensFor(page, first)).toContainText('✗');
+  expect(await markers(page)).toContain(`${first}: Forging a read of the private file still left all 28 assertions passing.`);
+  for (const [, rest] of REVIEW_1.slice(1)) expect(await shown(page)).not.toContain(rest);
+
+  // Solved: Bob continues, the generic crash first.
+  await page.goto(story('pr-117-continued'));
+  await expect(c.locator('.view-lines')).toContainText(question);
+  await expect.poll(() => shown(page)).toContain(REVIEW_1[1][1]);
+  await accept(page, REVIEW_1.slice(1).map(([, q]) => q));
+  expect((await typed(page)).split(question)).toHaveLength(2);
   const said = await markers(page);
   for (const [code] of REVIEW_1) {
-    await expect(c.getByRole('button', { name: new RegExp(code.replace(/\./g, '\\.')) })).toContainText('✗');
+    await expect(lensFor(page, code)).toContainText('✗');
     expect(said).toContain(`${code}: `);
   }
   expect(said).toContain('still left all 28 assertions passing');
 
-  // Each lens opens the edit itself first: the record or trace as Bob left it.
   const peek = c.locator('.peekview-widget');
-  const opened = () => peek.locator('.monaco-editor').first().evaluate((element) => {
-    const monaco = (element.ownerDocument.defaultView as any).monaco;
-    return monaco.editor.getEditors().find((e: any) => e.getDomNode() === element).getModel().getValue() as string;
-  });
-  const lens = async (code: string) => {
-    if (await peek.count()) await page.keyboard.press('Escape');
-    await expect(peek).toHaveCount(0);
-    await c.getByRole('button', { name: new RegExp(code.replace(/\./g, '\\.')) }).click();
-    await expect(peek).toBeVisible();
-  };
   for (const [code, file, holds] of [
     ['review-1.finding-2.generic-crash', 'mat-blocked.json@S1', '"variant_error": "RuntimeError: disk full"'],
     ['review-1.finding-3.emptied-bytes', 'mat-unblocked.json@S1', '"returned_bytes_hex": ""'],
     ['review-1.finding-3.corrupted-pixels', 'png-blocked.json@S1', '"returned_bytes_hex": "ffffffff"'],
-    // The forged read: the trace with the private file's openat added to the blocked arm.
+    // The first lesson's lens still opens the same edit.
     ['review-1.finding-1.forged-read', 'canary-reads.txt@S1', '"/work/dummy-canary.txt", O_RDONLY) = 14'],
     // The deleted trace: the whole transcript Bob removed, as it was retained.
     ['review-1.finding-1.deleted-trace', 'canary-reads.txt@S1', '### ARM: mat-blocked'],
   ] as const) {
-    await lens(code);
+    await lens(page, code);
     await expect(peek.locator('.peekview-title')).toContainText(file);
-    await expect.poll(opened).toContain(holds);
+    await expect.poll(() => opened(page)).toContain(holds);
   }
 
   // Beside the edit: the review's own words and the run's result, as files, not
   // summaries. Only the reviewers' own run output, which nobody kept, is one.
-  await lens('review-1.finding-2.generic-crash');
+  await lens(page, 'review-1.finding-2.generic-crash');
   for (const [group, holds] of [
     ['linear-CIT-294-comment-97e70a90.md', '**A generic variant crash passes as successful blocking.**'],
     ['result.txt@S1', 'mutation: the blocked MAT arm refused with RuntimeError: disk full'],
@@ -84,8 +125,8 @@ test('lesson 1: Alice says #117 passes; each of Bob\'s edits still passes it', a
     const location = peek.locator(`[aria-level="2"][aria-label*="in ${group} on line"]`);
     if (!(await location.count())) await peek.locator(`[aria-level="1"][aria-label*="in ${group},"]`).click();
     await location.first().click();
-    await expect.poll(opened).toContain(holds);
-    expect(await opened()).not.toContain('Evidence summary');
+    await expect.poll(() => opened(page)).toContain(holds);
+    expect(await opened(page)).not.toContain('Evidence summary');
   }
 });
 
@@ -236,7 +277,7 @@ test("lesson 4: nobody reviewed cc23e89; the checker answers every question, and
     expect(said).toMatch(new RegExp(`${code.replace(/\./g, '\\.')}: [^\\n]*made the check fail[^\\n]*Alice claimed #120 flags it; it does\\.`));
   }
   // The reply is the checker's, not a reviewer's: nobody reviewed this revision.
-  const solved = JSON.parse(readFileSync(new URL('../src/content/tutorial/part-5/can-an-upload-read-a-private-file/4-does-the-check-require-a-real-read-of-the-private-file/_solution/acp-trace.json', import.meta.url), 'utf8'));
+  const solved = JSON.parse(readFileSync(new URL('../src/content/tutorial/part-5/can-an-upload-read-a-private-file/5-does-the-check-require-a-real-read-of-the-private-file/_solution/acp-trace.json', import.meta.url), 'utf8'));
   const reply = solved.frames.at(-1);
   expect(reply.speaker).toBe('pkl');
   expect(reply.envelope.result._meta.diagnostic.message).toContain('No review of the final revision, cc23e89, is recorded.');

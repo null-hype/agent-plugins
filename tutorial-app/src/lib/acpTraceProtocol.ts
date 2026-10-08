@@ -159,9 +159,17 @@ export type AcpNextTurn = {
   action: string;
 };
 
+/** Probe indexes accepted per review, by the recording id of its prompt. */
+export type AcceptedReviews = Record<string, number[]>;
+
 export type AcpTraceFixture = {
   scenario: string;
   frames: AcpFrame[];
+  /**
+   * What the lesson opens with already accepted: where the lesson before it
+   * ended (CIT-357). Navigating in and entering directly both start here.
+   */
+  acceptedAtStart?: AcceptedReviews;
   nextTurn: AcpNextTurn | null;
 };
 
@@ -176,6 +184,8 @@ export type AcpTraceState = {
   revision: number;
   scenario: string;
   frames: AcpFrame[];
+  /** See `AcpTraceFixture.acceptedAtStart`. */
+  acceptedAtStart?: AcceptedReviews;
   solved: boolean;
   /** What pressing Solve reveals, or null once nothing is left to solve. */
   nextTurn: AcpNextTurn | null;
@@ -225,6 +235,7 @@ export function parseAcpTraceFixture(value: string | Uint8Array | undefined): Ac
     return {
       scenario: typeof parsed.scenario === 'string' ? parsed.scenario : EMPTY_FIXTURE.scenario,
       frames: Array.isArray(parsed.frames) ? parsed.frames : [],
+      ...acceptedAtStartOf(parsed.acceptedAtStart),
       nextTurn: parsed.nextTurn ?? null,
     };
   } catch (_error) {
@@ -245,6 +256,7 @@ export type AcpTraceFixtureRef = {
   scenario: string;
   frames?: AcpFrame[];
   frameIds?: string[];
+  acceptedAtStart?: AcceptedReviews;
   nextTurn?: AcpNextTurn | null;
 };
 
@@ -298,6 +310,7 @@ export function resolveAcpTraceFixture(
   return {
     scenario: ref.scenario ?? DEFAULT_CONFIG.scenario,
     frames,
+    ...acceptedAtStartOf(ref.acceptedAtStart),
     nextTurn: ref.nextTurn ?? null,
   };
 }
@@ -331,6 +344,29 @@ export function valueToText(value: string | Uint8Array | undefined) {
   return '';
 }
 
+/** A well-formed `acceptedAtStart` as a spreadable field, or nothing. */
+function acceptedAtStartOf(value: unknown): { acceptedAtStart?: AcceptedReviews } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const reviews = Object.entries(value).filter(([, order]) =>
+    Array.isArray(order) && order.every((index) => Number.isInteger(index) && index >= 0));
+  return reviews.length ? { acceptedAtStart: Object.fromEntries(reviews) as AcceptedReviews } : {};
+}
+
+/**
+ * The choices a lesson opens with (CIT-357): what it declares it starts from,
+ * then whatever else the learner has accepted of the same review, in their
+ * order. A learner who skipped the previous lesson's accept still lands where
+ * it ends; one who accepted more keeps it.
+ */
+export function withAcceptedAtStart(start: AcceptedReviews | undefined, reviews: AcceptedReviews): AcceptedReviews {
+  if (!start) return reviews;
+  const merged = { ...reviews };
+  for (const [review, order] of Object.entries(start)) {
+    merged[review] = [...order, ...(reviews[review] ?? []).filter((index) => !order.includes(index))];
+  }
+  return merged;
+}
+
 export function buildAcpTraceState(options: {
   revision: number;
   fixture: AcpTraceFixture;
@@ -344,6 +380,7 @@ export function buildAcpTraceState(options: {
     revision,
     scenario: scenario ?? fixture.scenario,
     frames: fixture.frames,
+    ...(fixture.acceptedAtStart ? { acceptedAtStart: fixture.acceptedAtStart } : {}),
     solved: fixture.nextTurn === null && fixture.frames.length > 0,
     nextTurn: fixture.nextTurn,
     ...(readFile ? { evidenceFiles: evidenceFilesOf(fixture.frames, readFile) } : {}),

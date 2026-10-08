@@ -1,0 +1,39 @@
+---
+type: lesson
+title: Can the check tell a real block from a generic crash
+template: acp-trace
+focus: /acp-trace.json
+terminal:
+  open: true
+  panels:
+    - - output
+      - Agent
+editor: false
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+# Can the check tell a real block from a generic crash?
+
+This lesson opens where the last one ended. Bob's first question, the forged
+read, is accepted below Alice's commit, and its lens still opens his edit and
+the checker's answer. Coming here directly starts you at the same point.
+
+CIT-294 said the blocked arm must refuse the path, and that *a generic crash
+alone is insufficient*. Select **Solve** and Bob continues his review: his next
+question records the block as a generic crash and runs Alice's checker again.
+Press **Tab** to accept it, then open its lens.
+The generic crash still left all 28 assertions passing.
+
+Bob asked three more questions of #117: he deleted the trace, emptied the
+returned bytes and corrupted the PNG control's pixels. **Alt+]** switches
+between them, and each one you accept adds its own lens. Across all five
+edits, the checker was still passing all 28 assertions, whichever edit Bob made.

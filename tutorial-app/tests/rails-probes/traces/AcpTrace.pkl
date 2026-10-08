@@ -6,6 +6,9 @@ module AcpTrace
 class Trace {
   scenario: String
   frames: Listing<Frame>
+  /// The probes a lesson opens with already accepted, by review (its prompt's
+  /// recording id): where the lesson before it ended (CIT-357). Left out when unset.
+  acceptedAtStart: Mapping<String, Listing<Int>>?
   nextTurn: NextTurn?
 }
 
@@ -188,6 +191,7 @@ renderer: JsonRenderer = new {
   omitNullProperties = false
   converters {
     [Row] = (row) -> row.toMap().filter((_, value) -> value != null)
+    [Trace] = (it) -> it.toMap().filter((key, value) -> key != "acceptedAtStart" || value != null)
     [Commit] = (commit) -> commit.toMap().filter((_, value) -> value != null)
     // A prompt names its sender only when it is someone other than the viewer.
     [ClientFrame] = (frame) -> frame.toMap().filter((key, value) -> key != "speaker" || value != null)
