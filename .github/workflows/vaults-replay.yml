@@ -1,40 +1,56 @@
 name: Retained Vaults replay
-
 on:
   pull_request:
     paths:
+      - '.dagger/cve_checker.go'
       - '.dagger/internal/devenv-base/pkl/vaults-replay/**'
+      - 'src/cve-2026-66066/**'
       - 'src/jev/pkl/**'
-      - 'src/cve-2026-66066/questions/checker/Decode.pkl'
-      - '.github/actions/setup-replay-tools/**'
-      - '.github/workflows/vaults-replay.yml'
-  push:
-    branches: [main]
-    paths:
-      - '.dagger/internal/devenv-base/pkl/vaults-replay/**'
-      - 'src/jev/pkl/**'
-      - 'src/cve-2026-66066/questions/checker/Decode.pkl'
-      - '.github/actions/setup-replay-tools/**'
+      - 'scripts/cve-checker-retention.py'
+      - 'scripts/investigation-bundle.py'
+      - 'scripts/vaults-fixture-accounting.py'
+      - 'test/_global/vaults-replay.ts'
+      - 'test/_global/cve-2026-66066-forensics/Dockerfile'
       - '.github/workflows/vaults-replay.yml'
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
-
 jobs:
   replay:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-replay-tools
-      - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.9.7
-      - name: Verify offline restoration and evidence integrity
+          fetch-depth: 0
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - id: image
+        uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: '0.21.7'
+          verb: call
+          args: cve-checker-replay-image --state Vaults export --forced-compression GZIP --path ./build/vaults-runtime.oci.tar
+      - name: Retain one installed scenario, dispose it, and restore from the exact snapshot
         run: |
-          deno test --allow-read --allow-write --allow-env --allow-run=pkl \
-            .dagger/internal/devenv-base/pkl/vaults-replay/replay.test.ts
+          python3 scripts/cve-checker-retention.py capture --state Vaults --image ./build/vaults-runtime.oci.tar --output ./build/vaults/capture
+          python3 scripts/cve-checker-retention.py view --capture ./build/vaults/capture --output ./build/vaults/view
+          python3 scripts/cve-checker-retention.py replay --capture ./build/vaults/capture --output ./build/vaults/replay
+          image=$(python3 -c 'import json;print(json.load(open("build/vaults/capture/retention.json"))["image"]["configDigest"])')
+          docker run --rm --network=none --entrypoint /usr/local/share/cve-2026-66066/runtime/bin/deno \
+            -v "$PWD/build/vaults/replay/retained:/retained:ro" \
+            -v "$PWD/test/_global/vaults-replay.ts:/test.ts:ro" \
+            -e PATH=/usr/local/share/cve-2026-66066/runtime/bin:/usr/local/bin:/usr/bin:/bin \
+            "$image" test --no-check --allow-all /test.ts
+          python3 scripts/vaults-fixture-accounting.py --check
+      - name: Retain this execution separately from the pinned original
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vaults-retention-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/vaults/capture
+            build/vaults/replay/*.json
+            build/vaults/view/record.json
+          retention-days: 90

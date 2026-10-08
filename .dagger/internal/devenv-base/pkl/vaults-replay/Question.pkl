@@ -1,9 +1,0 @@
-module VaultInventoryQuestion
-import "../../../../../src/jev/pkl/Question.pkl"
-
-question: Question.Question = new {
-  judge = new Question.Checker {}
-  collector = "retained-vault-inventory"
-  requiredEvidence { "exitCode" }
-  expected { min = 0; max = 0 }
-}
