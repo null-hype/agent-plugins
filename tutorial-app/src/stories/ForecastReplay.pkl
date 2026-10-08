@@ -5,7 +5,7 @@
 /// tree itself: the root is offered as a suggestion, and accepting a question
 /// that rests on others turns it into a heading and offers those as the next
 /// suggestions. Every forecast, rule and account comes from
-/// `WasIVulnerable.pkl`; registration and read-back are the round's own
+/// the validated shared record and its pinned tree; registration and read-back are the round's own
 /// monitor entries, each a separate location in the files as retained.
 ///
 /// This replays recorded reasoning. It reads files and runs nothing: no
@@ -17,15 +17,17 @@ module ForecastReplay
 
 import "pkl:json"
 
-import "../../../src/cve-2026-66066/questions/WasIVulnerable.pkl" as tree
+import "../../../src/cve-2026-66066/questions/forecast/Record.pkl" as capture
 import "../../../src/cve-2026-66066/questions/Register.pkl"
+local tree = capture.tree
+local bundle = read?("prop:bundle") ?? "../../evidence/cit-338-forecast-v1/"
 
 /// The tree and round, as committed at c897e8d (draft PR 147) and copied here
 /// unaltered; Peek shows these files under their source location.
 const source = "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/"
 const roundId = "20261006T065648Z-stub"
 local roundDir = "rounds/\(roundId)/"
-local questions = "../../../src/cve-2026-66066/questions/"
+local questions = bundle + "inputs/"
 
 local function lines(path: String): List<String> = read(questions + path).text.split("\n")
 local treeLines = lines("WasIVulnerable.pkl")
@@ -33,7 +35,7 @@ local registerLines = lines(roundDir + "register.json")
 local monitorLines = lines(roundDir + "monitor.json")
 local round = new json.Parser {}.parse(read(questions + roundDir + "round.json").text)
 local held = new json.Parser {}.parse(read(questions + roundDir + "register.json").text) as Dynamic
-local log = Register.load(questions + roundDir + "monitor.json")
+local log = Register.load(read(questions + roundDir + "monitor.json").uri)
 
 /// The 1-based line of the first line at or after `from` that `test` holds for.
 local function find(text: List<String>, from: Int, test: (String) -> Boolean): Int =
@@ -61,7 +63,7 @@ local treeFile = "WasIVulnerable.pkl"
 local expectedFile = "WasIVulnerable.test.pkl-expected.pcf"
 
 local function frozenLines(commit: String, file: String): List<String> =
-  read("frozen/\(commit)/\(file)").text.split("\n")
+  read(questions + "frozen/\(commit)/\(file)").text.split("\n")
 
 local function readings(text: List<String>): Pair<Int, Int> =
   objectRange(text, find(text, 1, (l) -> l == "  [\"readings\"] {"))

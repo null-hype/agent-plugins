@@ -16,7 +16,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
 // can't interleave.
 export default defineConfig({
   test: {
-    include: ['src/**/*.spec.ts', 'reporters/**/*.spec.ts', 'tests/budget-authority/merge.spec.ts'],
+    include: ['src/**/*.spec.ts', 'reporters/**/*.spec.ts', 'tests/budget-authority/merge.spec.ts', 'tests/forecast/*.spec.ts'],
     exclude: [...configDefaults.exclude, '**/_files/**', '**/_solution/**'],
     globalSetup: ['./vitest-global-setup.ts'],
     fileParallelism: false,

@@ -104,5 +104,15 @@
             "CIT271_REPEATS": "${localEnv:CIT271_REPEATS}",
             "CIT271_MODEL": "${localEnv:CIT271_MODEL}"
         }
+    },
+    "cve-forecast-replay": {
+        "build": {
+            "dockerfile": "cve-forecast-replay/Dockerfile",
+            "context": "../..",
+            "target": "inputs"
+        },
+        "features": {
+            "cve-2026-66066": {}
+        }
     }
 }

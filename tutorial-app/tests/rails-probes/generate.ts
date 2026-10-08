@@ -2,6 +2,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateForecastReplay } from '../forecast/generate';
 import { capturedPresentation, loadCapturedReplay } from './captures';
 import { renderTraces, reproductionDir, solvedFixture, starterFixture } from './fixture';
 
@@ -45,6 +46,7 @@ export function generateReplay(checkExisting = false) {
       }
     }
   }
+  generateForecastReplay(checkExisting);
   return capture;
 }
 

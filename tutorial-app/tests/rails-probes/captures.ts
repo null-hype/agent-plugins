@@ -6,6 +6,7 @@ import { lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyEvidence } from '../../../src/cve-2026-66066/questions/retained';
 import { REPRODUCTION_ID, REVISIONS, type RevisionKey } from './probes';
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -59,14 +60,7 @@ export function loadCapturedReplay(pinFile = CAPTURE_PIN): CapturedReplay {
     const decoded = JSON.parse(execFileSync('pkl', ['eval', DECODER, '-p', 'capture=' + path.join(dir, 'capture.json')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
     if (canonical(decoded) !== canonical(JSON.parse(files.get('record.json')!.toString()))) throw new Error('Captured record differs from the shared Pkl evaluation');
     if (decoded.questionId !== 'deleted-trace' || canonical(decoded.records.map((r: any) => r.state.id)) !== canonical(['S1-pinned', 'S2-pinned'])) throw new Error('Replay capture must contain S1 and S2 in order');
-    const verifyResource = (value: any): void => {
-      if (!value || typeof value !== 'object') return;
-      if (value.availability === 'retained' && value.immutableId?.startsWith('sha256:')) {
-        const bytes = files.get(value.uri);
-        if (!bytes || hash(bytes) !== value.immutableId) throw new Error('Captured evidence differs: ' + value.uri);
-      } else Object.values(value).forEach(verifyResource);
-    };
-    verifyResource(decoded);
+    verifyEvidence(decoded, files);
     for (const r of decoded.records) {
       const key = r.state.id.split('-')[0] as RevisionKey;
       if (r.state.source.immutableId !== 'git-commit:' + REVISIONS[key].revision || r.delivery.finding !== REVISIONS[key].findingId || r.delivery.status !== 'captured' || !r.answer) throw new Error('Capture does not match the selected revision');

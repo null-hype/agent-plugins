@@ -14,6 +14,8 @@ on:
       - 'src/jev/**'
       - 'src/cve-2026-66066/**'
       - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-forecast*'
+      - 'test/_global/cve-forecast-replay/**'
       - 'test/_global/cve-checker.sh'
       - 'test/_global/cve-checker-failures.ts'
       - 'scripts/package-cve-questions.ts'
@@ -29,6 +31,9 @@ on:
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
+      - 'tutorial-app/tests/forecast/**'
+      - 'tutorial-app/src/stories/ForecastReplay*'
+      - 'tutorial-app/src/stories/frozen/**'
       - 'tutorial-app/tests/rails-probes/**'
       - 'tutorial-app/tests/questions/**'
       - 'tutorial-app/evidence/cit-294-*/**'
@@ -43,6 +48,8 @@ on:
       - 'src/jev/**'
       - 'src/cve-2026-66066/**'
       - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-forecast*'
+      - 'test/_global/cve-forecast-replay/**'
       - 'test/_global/cve-checker.sh'
       - 'test/_global/cve-checker-failures.ts'
       - 'scripts/package-cve-questions.ts'
@@ -58,6 +65,9 @@ on:
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
+      - 'tutorial-app/tests/forecast/**'
+      - 'tutorial-app/src/stories/ForecastReplay*'
+      - 'tutorial-app/src/stories/frozen/**'
       - 'tutorial-app/tests/rails-probes/**'
       - 'tutorial-app/tests/questions/**'
       - 'tutorial-app/evidence/cit-294-*/**'
@@ -298,3 +308,19 @@ jobs:
           npx playwright test --config playwright.replay.config.ts
           npm run build-storybook -- --output-dir "$RUNNER_TEMP/cit337-storybook"
           npm run build
+
+  retained-forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the installed forecast scenario
+        run: docker build --target installed -f test/_global/cve-forecast-replay/Dockerfile -t cit338-forecast .
+      - name: Capture, dispose original inputs, and replay retained reasoning
+        run: |
+          docker run --rm cit338-forecast bash -euc '
+            cve-forecast-capture /forecast-input /tmp/capture
+            rm -rf /forecast-input
+            cve-forecast-replay /tmp/capture /tmp/replayed
+            /usr/local/share/cve-2026-66066/runtime/bin/deno run --allow-read /check.ts /tmp/replayed
+            cmp /tmp/capture/record.json /tmp/replayed/record.json
+          '
