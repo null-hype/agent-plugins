@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-// CveChecker installs both delivered versions into disposable instances of the
+// CveChecker installs both historical checker states into disposable instances of the
 // existing forensics scenario's checker target. Export the returned directory
 // to retain each run's inputs/output and the combined shared investigation.
 func (m *AgentPlugins) CveChecker(
@@ -21,19 +21,19 @@ func (m *AgentPlugins) CveChecker(
 	if err != nil { return nil, err }
 	var deliveries []map[string]string
 	if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
-	if len(deliveries) != 2 { return nil, fmt.Errorf("this slice requires two delivery versions") }
+	if len(deliveries) != 2 { return nil, fmt.Errorf("this slice requires two checker states") }
 	meta, err := feature.File("devcontainer-feature.json").Contents(ctx)
 	if err != nil { return nil, err }
 	var metadata map[string]interface{}
 	if err := json.Unmarshal([]byte(meta), &metadata); err != nil { return nil, err }
 	base := source.Directory("test/_global/cve-2026-66066-forensics").DockerBuild(dagger.DirectoryDockerBuildOpts{Target: "checker"})
 	reports := dag.Directory()
-	versions := []string{}
+	states := []string{}
 	var last *dagger.Container
 	for _, delivery := range deliveries {
-		version := delivery["version"]
-		versions = append(versions, version)
-		metadata["version"] = version
+		state := delivery["state"]
+		states = append(states, state)
+		metadata["version"] = delivery["packageVersion"]
 		deliveryJSON, err := json.MarshalIndent(delivery, "", "  ")
 		if err != nil { return nil, err }
 		metadataJSON, err := json.MarshalIndent(metadata, "", "  ")
@@ -44,10 +44,10 @@ func (m *AgentPlugins) CveChecker(
 			WithFile("/test/cve-checker-failures.ts", source.File("test/_global/cve-checker-failures.ts")).
 			WithExec([]string{"sh", "/feature/install.sh"}).
 			WithExec([]string{"bash", "/test/cve-checker.sh", "/report"})
-		reports = reports.WithDirectory(version, last.Directory("/report"))
+		reports = reports.WithDirectory(state, last.Directory("/report"))
 	}
 	last = last.WithDirectory("/all", reports).
 		WithEnvVariable("PATH", "/usr/local/share/cve-2026-66066/runtime/bin:$PATH", dagger.ContainerWithEnvVariableOpts{Expand: true}).
-		WithExec(append([]string{"deno", "run", "--no-check", "--allow-all", "/usr/local/share/cve-2026-66066/src/cve-2026-66066/questions/checker/combine.ts", "/all"}, versions...))
+		WithExec(append([]string{"deno", "run", "--no-check", "--allow-all", "/usr/local/share/cve-2026-66066/src/cve-2026-66066/questions/checker/combine.ts", "/all"}, states...))
 	return last.Directory("/all"), nil
 }

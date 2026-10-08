@@ -156,8 +156,9 @@ class Transition {
 }
 
 /// Where a review round is delivered. A plan names its finding and scenario and
-/// may not have a version yet; a captured delivery has its version and the
-/// evidence that it was installed.
+/// may not have a version yet; a captured delivery has its timestamp milestone
+/// id and installation evidence (including the mapped SemVer package version).
+/// One delivery may reproduce several historical checker states.
 class Delivery {
   feature: String(!isEmpty)
   version: String(matches(Regex("[0-9]{8}\\.[0-9]{4}")))?
@@ -231,12 +232,11 @@ function validRecord(r: EvaluationRecord): Boolean =
 /// Every record is valid and asks the same Question; no two records share a
 /// state id, so a transition names each state unambiguously; each transition
 /// links one record's state to the next one's, changes the source, and is
-/// prompted by the finding the record it leaves was delivered for; no two
-/// rounds share a delivered version.
+/// prompted by the finding the record it leaves was delivered for. Several
+/// distinct states may be reproduced in the same project delivery.
 function validInvestigation(i: Investigation): Boolean =
   let (records = i.records.toList())
   let (transitions = i.transitions.toList())
-  let (versions = records.map((r) -> r.delivery.version).filter((v) -> v != null))
     records.every((r) -> r.questionId == i.questionId && r.question == records.first.question && validRecord(r)) &&
     distinctStates(i) &&
     transitions.length == records.length - 1 &&
@@ -244,8 +244,7 @@ function validInvestigation(i: Investigation): Boolean =
       t.from == records[n].state.id && t.to == records[n + 1].state.id &&
       records[n].state.source.immutableId != records[n + 1].state.source.immutableId &&
       t.evidence.toList().every((e) -> validEvidence(e))).length == transitions.length &&
-    transitionsFollowFindings(i) &&
-    versions.length == versions.toSet().length
+    transitionsFollowFindings(i)
 
 /// No two records share a state id.
 function distinctStates(i: Investigation): Boolean =
