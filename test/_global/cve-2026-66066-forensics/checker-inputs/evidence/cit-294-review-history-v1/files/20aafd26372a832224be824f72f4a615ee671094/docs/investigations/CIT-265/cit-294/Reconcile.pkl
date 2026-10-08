@@ -1,0 +1,42 @@
+/// Checks a CIT-294 Claim against its Observed run. Scoped to the four arms
+/// this case runs (unblocked/blocked MAT canary, unblocked/blocked PNG
+/// control) -- it does not generalize to other loaders or canaries.
+module cit294.Reconcile
+
+import "pkl:json"
+import "Claims.pkl" as Claims
+import "Observation.pkl" as Observation
+
+class Flag {
+  kind: String
+  detail: String
+}
+
+local function flag(code: String, detail_: String): Flag = new { kind = code; detail = detail_ }
+
+function check(claim: Claims.Claim, observed: Observation.Observed): List<Flag> =
+  (if (observed.arm != claim.arm)
+    List(flag("arm-mismatch", "claim is for arm \(claim.arm) but observation is for \(observed.arm)"))
+  else List())
+  + (if (observed.block_untrusted_env != claim.blockUntrustedEnv)
+    List(flag("block-env-mismatch", "expected VIPS_BLOCK_UNTRUSTED=\(claim.blockUntrustedEnv), observed \(observed.block_untrusted_env)"))
+  else List())
+  + (if (claim.contentTypeRetained && observed.stored_content_type != observed.declared_content_type)
+    List(flag("content-type-not-retained", "declared \(observed.declared_content_type) but stored \(observed.stored_content_type)"))
+  else List())
+  + (if (observed.variant_succeeded != claim.variantSucceedsExpected)
+    List(flag("variant-outcome-mismatch", "expected variant_succeeded=\(claim.variantSucceedsExpected), observed \(observed.variant_succeeded)"))
+  else List())
+  + (if (!claim.variantSucceedsExpected && observed.loader_selected != null)
+    List(flag("unexpected-loader", "expected no loader to run (blocked), but loader_selected=\(observed.loader_selected)"))
+  else if (claim.variantSucceedsExpected && observed.loader_selected != claim.loaderExpected)
+    List(flag("loader-mismatch", "expected loader \(claim.loaderExpected), observed \(observed.loader_selected)"))
+  else List())
+  + (if (claim.discloseExpected && observed.matches_dummy_file != true)
+    List(flag("disclosure-not-observed", "expected the dummy file's bytes to come back, matches_dummy_file=\(observed.matches_dummy_file)"))
+  else if (!claim.discloseExpected && observed.matches_dummy_file == true)
+    List(flag("unexpected-disclosure", "expected no disclosure, but matches_dummy_file=true"))
+  else List())
+
+function checkJson(claim: Claims.Claim, observationJson: String): List<Flag> =
+  check(claim, Observation.fromJson(observationJson))
