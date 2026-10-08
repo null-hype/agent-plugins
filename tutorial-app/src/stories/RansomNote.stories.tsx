@@ -7,7 +7,7 @@ const meta: Meta<typeof RansomNote> = {
   title: 'Brand/Ransom note',
   component: RansomNote,
   parameters: { layout: 'fullscreen' },
-  args: { text: 'TIDELANDS', size: 48, seed: 0 },
+  args: { text: 'TIDELANDS', size: 48, seed: 0, mark: true },
   argTypes: { size: { control: { type: 'range', min: 16, max: 96 } }, seed: { control: { type: 'number' } } },
   render: (args) => (
     <>
@@ -24,6 +24,8 @@ export default meta;
 
 export const Wordmark: StoryObj<typeof meta> = {};
 
+export const WithoutMark: StoryObj<typeof meta> = { args: { mark: false } };
+
 export const LessonTitle: StoryObj<typeof meta> = {
-  args: { text: 'What does a passing check tell you?', size: 36, seed: 3 },
+  args: { text: 'Trust The Check?', size: 48, seed: 3 },
 };
