@@ -27,7 +27,11 @@ Commit what it produces.
 ## Part 5: Alice's pull requests, Bob's reviews (CIT-328)
 
 The chapter is the whole 117 -> 118 -> 120 history, one lesson per checker
-state. Alice authors: each lesson's commit quotes her pull request, and the
+state, except where a state's review takes more than one (CIT-357): #117's runs
+over two lessons in one session. The second lesson's starting trace is the
+first one's solved trace, and its `acceptedAtStart` declares the probe the first
+one ends with accepted, so navigating in and entering directly open alike
+(`continued` per revision in `traces/CheckerProbes.pkl`). Alice authors: each lesson's commit quotes her pull request, and the
 probes her PR claims to flag are her forecast for each (`claimed` per revision
 in `traces/CheckerProbes.pkl`). Bob reviews: Solve brings back his questions,
 each an edit to the recorded evidence run again against the pinned checker. A

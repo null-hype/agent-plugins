@@ -22,8 +22,9 @@ test-results/budget-authority/.last-run.json
 
 # CIT-337: regenerate selected S1/S2 replay presentation from the retained capture.
 /tutorial-app/src/stories/fixtures/rails-matlab-review-[12].*.json
-/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/[12]-*/_files/acp-trace.json
-/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/[12]-*/_solution/acp-trace.json
+/tutorial-app/src/stories/fixtures/rails-matlab-review-1-[0-9].*.json
+/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/[123]-*/_files/acp-trace.json
+/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/[123]-*/_solution/acp-trace.json
 /tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S[12]/probes/deleted-trace/
 
 /tutorial-app/node_modules

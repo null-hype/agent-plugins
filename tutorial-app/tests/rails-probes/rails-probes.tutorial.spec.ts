@@ -62,7 +62,7 @@ const readTree = (dir: string) =>
   );
 
 /** One checker state as the Question projects recorded it. Returns the files that record the run, and its traces. */
-function compile(key: RevisionKey) {
+function compile(key: RevisionKey, step = 0) {
   const run = readTree(path.join(process.env.QUESTIONS_RUN_DIR!, 'rails-probes', key));
   // The runner's answers: committed beside the reproduction and read by the
   // Pkl-authored traces (CIT-312), but not copied into the lesson.
@@ -83,7 +83,7 @@ function compile(key: RevisionKey) {
   }
 
   // Both traces render from the state's claims and this run's answers (CIT-312).
-  const { starter, solved, prose } = renderTraces(key, answers);
+  const { starter, solved, prose } = renderTraces(key, answers, step);
 
   // CIT-313: the finding is the recorded history's, under its id and in its words.
   const finding = EVALUATION_SPECS.find(({ id }) => id === REVISIONS[key].findingId);
@@ -97,7 +97,7 @@ function compile(key: RevisionKey) {
   for (const [file, body] of run) {
     if (!committed(path.join(reproductionDir(key), file), body).matches) drift.push(`reproduction/${key}/${file}`);
   }
-  for (const [file, body] of [[starterFixture(key), starter], [solvedFixture(key), solved]]) if (!committed(file, body).matches) drift.push(path.basename(file));
+  for (const [file, body] of [[starterFixture(key, step), starter], [solvedFixture(key, step), solved]]) if (!committed(file, body).matches) drift.push(path.basename(file));
   expect(drift, 'committed reproduction differs from this run; rerun with CIT307_UPDATE=1').toEqual([]);
 
   return { files, starter, solved, prose };
@@ -109,10 +109,10 @@ test('Can an upload read a private file', { tag: '@tutorial' }, async ({}, testI
   // continuity check holds the second lesson to what the first one left.
   let end = new Map<string, string>();
 
-  for (const [i, { key, title }] of CHAPTER.entries()) {
+  for (const [i, { key, step, title }] of CHAPTER.entries()) {
     const index = i + 1;
     await test.step(title, async () => {
-      const { files, starter, solved, prose } = compile(key);
+      const { files, starter, solved, prose } = compile(key, step);
 
       const before = new Map(end);
       before.set('acp-trace.json', starter);
@@ -143,7 +143,8 @@ test('Can an upload read a private file', { tag: '@tutorial' }, async ({}, testI
   });
 });
 
-for (const { key } of CHAPTER) {
+// A state's last lesson holds every reply of its review (CIT-357).
+for (const { key, step } of CHAPTER.filter((lesson, i) => CHAPTER[i + 1]?.key !== lesson.key)) {
   test(`the harness can fail at ${key}: a mutation the checker does see is reported`, () => {
     const files = new Map(loadPinnedChecker(key));
     const observed = JSON.parse(files.get('observations/mat-blocked.json')!.toString('utf8'));
@@ -154,7 +155,7 @@ for (const { key } of CHAPTER) {
     expect(run.assertsPassed).toBeLessThan(run.assertsTotal!);
     // And a "noticed" answer is written up as data, not rejected: the fixture says what failed.
     expect(noticed(run)).toBe(true);
-    const messages = renderTraces(key, new Map((['forged-read', 'deleted-trace', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config', 'prose-mention', 'failed-open', 'other-directory'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
+    const messages = renderTraces(key, new Map((['forged-read', 'deleted-trace', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config', 'prose-mention', 'failed-open', 'other-directory'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)])), step).solved;
     expect(messages).toContain(answerText('deleted-trace', run));
     expect(messages).toContain(`${run.assertsPassed} of ${run.assertsTotal} assertions pass`);
     expect(messages).not.toContain(`Deleting the trace still left all ${run.assertsTotal} assertions passing.`);

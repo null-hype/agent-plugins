@@ -8,6 +8,7 @@ import {
   resolveAcpTraceConfig,
   resolveAcpTraceFixture,
   valueToText,
+  withAcceptedAtStart,
 } from '../lib/acpTraceProtocol';
 
 type DocumentRecord = Record<
@@ -109,7 +110,7 @@ export default function AcpTraceBridge({
   // `revision`, so any message that arrives out of order or twice is a no-op.
   useEffect(() => {
     const delivery = ++deliveryRevision;
-    const clientMessage = { payload: { ...traceState, acceptedReviews, revision: delivery }, source: 'tk-acp-trace-bridge', type: 'lesson-state' };
+    const clientMessage = { payload: { ...traceState, acceptedReviews: withAcceptedAtStart(traceState.acceptedAtStart, acceptedReviews), revision: delivery }, source: 'tk-acp-trace-bridge', type: 'lesson-state' };
     // Each delivery gets a revision so accepting a second probe updates both panes.
     // Legacy hosts can still send the coarse acceptance flag to the Agent.
     const agentMessage = {

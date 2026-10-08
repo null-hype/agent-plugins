@@ -13,11 +13,12 @@ import { REPRODUCTION_ID, REVISIONS, noticed, type CheckerRun, type RevisionKey 
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODULE = path.join(APP, 'tests/rails-probes/traces/CheckerProbes.pkl');
-// Named by the review of the revision, or by the revision when none is recorded.
-const fixtureFile = (key: RevisionKey, kind: 'starter' | 'solved') =>
-  path.join(APP, `src/stories/fixtures/rails-matlab-${REVISIONS[key].review ? `review-${REVISIONS[key].review}` : key.toLowerCase()}.${kind}.json`);
-export const starterFixture = (key: RevisionKey) => fixtureFile(key, 'starter');
-export const solvedFixture = (key: RevisionKey) => fixtureFile(key, 'solved');
+// Named by the review of the revision, or by the revision when none is recorded;
+// a lesson that continues the review (CIT-357) adds its place in it, from 2.
+const fixtureFile = (key: RevisionKey, kind: 'starter' | 'solved', step: number) =>
+  path.join(APP, `src/stories/fixtures/rails-matlab-${REVISIONS[key].review ? `review-${REVISIONS[key].review}` : key.toLowerCase()}${step ? `-${step + 1}` : ''}.${kind}.json`);
+export const starterFixture = (key: RevisionKey, step = 0) => fixtureFile(key, 'starter', step);
+export const solvedFixture = (key: RevisionKey, step = 0) => fixtureFile(key, 'solved', step);
 export const reproductionDir = (key: RevisionKey) => path.join(APP, 'evidence/cit-294-probe-reproduction-v1/reproduction', key);
 
 export type ProbeName = 'forged-read' | 'deleted-trace' | 'generic-crash' | 'emptied-bytes' | 'corrupted-pixels' | 'swapped-source' | 'changed-config'
@@ -50,18 +51,22 @@ export const answerJson = (run: CheckerRun) =>
     2,
   )}\n`;
 
-/** The states in lesson order, each with its lesson title, as the module declares them. Needs no run. */
-export function chapter(): { key: RevisionKey; title: string }[] {
-  const expr = 'new JsonRenderer {}.renderValue(chapter.map((k) -> Map("key", k, "title", revisions[k].lesson.title)))';
+/**
+ * The chapter's lessons in order, as the module declares them: each state's own
+ * lesson (step 0), then the lessons that continue its review (CIT-357). Needs no run.
+ */
+export function chapter(): { key: RevisionKey; step: number; title: string }[] {
+  const expr = 'new JsonRenderer {}.renderValue(lessons)';
   return JSON.parse(execFileSync('pkl', ['eval', '-x', expr, MODULE], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
 }
 
 /**
  * Render one state's traces and lesson prose from the Pkl claims and a run's answers. `files`
  * holds each probe's `answer.json` by its path under `reproductionDir(key)`;
- * the module reads those and nothing else measured.
+ * the module reads those and nothing else measured. `step` picks the state's
+ * lesson: 0 for its own, k for the k-th that continues its review.
  */
-export function renderTraces(key: RevisionKey, files: Map<string, string>): { starter: string; solved: string; prose: string } {
+export function renderTraces(key: RevisionKey, files: Map<string, string>, step = 0): { starter: string; solved: string; prose: string } {
   const dir = mkdtempSync(path.join(tmpdir(), 'cit-312-'));
   try {
     const run = path.join(dir, 'run');
@@ -70,7 +75,7 @@ export function renderTraces(key: RevisionKey, files: Map<string, string>): { st
       writeFileSync(path.join(run, file), body);
     }
     const out = path.join(dir, 'out');
-    const props = { state: key, checker: REVISIONS[key].revision, reproductionId: REPRODUCTION_ID, run };
+    const props = { state: key, step, checker: REVISIONS[key].revision, reproductionId: REPRODUCTION_ID, run };
     execFileSync('pkl', ['eval', '-m', out, MODULE, ...Object.entries(props).flatMap(([k, v]) => ['-p', `${k}=${v}`])], {
       stdio: ['ignore', 'ignore', 'pipe'],
     });

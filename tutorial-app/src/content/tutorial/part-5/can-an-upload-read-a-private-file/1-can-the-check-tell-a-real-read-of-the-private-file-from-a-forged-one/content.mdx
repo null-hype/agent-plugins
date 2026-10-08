@@ -47,14 +47,13 @@ they recorded. Her pull request, #117, is the commit in the **Client**: its
 subject is the question this lesson asks, and its body is her description,
 quoted. Her checker passes.
 
-Select **Solve** for Bob's review. Each grey line is a question he answered by
-editing the recorded evidence in a copy and running Alice's checker again: a
-forged read of the private file, a deleted trace, a generic crash in place of
-the block, emptied bytes, corrupted control pixels. Press **Tab** to accept the
-one shown, or **Alt+]** to switch first.
+Select **Solve** for Bob's review. The grey line below the commit is his first
+question, which he answered by editing the recorded evidence in a copy and
+running Alice's checker again: he forged a read of the private file into the
+blocked arm's trace. Press **Tab** to accept it.
 
-Open the lens above an accepted line. Peek opens the edit itself, the record as
-Bob left it, beside the review's own words and the checker's result. Each
+Open the lens above the accepted line. Peek opens the edit itself, the trace as
+Bob left it, beside the review's own words and the checker's result. The
 result is a **reproduction**: Bob's edit, run again for real against Alice's
-checker as submitted, because the review's own runs were not kept. It shows
-the checker still passing all 28 assertions, whichever edit Bob made.
+checker as submitted, because the review's own runs were not kept.
+The forged read still left all 28 assertions passing.
