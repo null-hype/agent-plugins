@@ -1,0 +1,92 @@
+.holo-sticker {
+  --hs-x: 0.5;
+  --hs-y: 0.5;
+  display: inline-block;
+  line-height: 0;
+  transform: rotate(var(--hs-tilt, -8deg));
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  touch-action: none;
+}
+
+.holo-sticker svg {
+  overflow: visible;
+  filter: drop-shadow(4px 5px 0 rgba(0, 0, 0, 0.85));
+}
+
+/* At rest: the foil drifts through its hues and a sheen sweeps across every
+   few seconds, so the sticker reads as foil even when nobody touches it. */
+.holo-sticker .hs-foil {
+  animation: hs-drift 7s ease-in-out infinite alternate;
+}
+
+.holo-sticker .hs-sheen {
+  transform: rotate(20deg);
+  animation: hs-sweep 5s ease-in-out infinite;
+}
+
+.holo-sticker .hs-glare {
+  opacity: 0;
+  mix-blend-mode: overlay;
+  transform: translate(
+    calc((var(--hs-x) * 60 - 6) * 1px),
+    calc((var(--hs-y) * 60 - 6) * 1px)
+  );
+  transition: opacity 0.3s;
+}
+
+/* Under the pointer: lean toward it, lift, and let the glare follow. The foil
+   itself slides with the angle via the gradientTransform set in HoloSticker.tsx.
+   The lean is a 2D skew rather than rotateX/rotateY: Chrome rasterizes a
+   3D-transformed layer as a bitmap, which turns the ink outline jagged. */
+.holo-sticker:hover {
+  transform: rotate(calc(var(--hs-tilt, -8deg) * 0.5))
+    skew(calc((var(--hs-x) - 0.5) * -10deg), calc((var(--hs-y) - 0.5) * 6deg))
+    scale(1.06);
+  transition: transform 0.08s linear;
+}
+
+.holo-sticker:hover .hs-foil {
+  animation-play-state: paused;
+  filter: saturate(1.3) brightness(1.05);
+}
+
+.holo-sticker:hover .hs-sheen {
+  animation: none;
+  opacity: 0;
+}
+
+.holo-sticker:hover .hs-glare {
+  opacity: 1;
+}
+
+@keyframes hs-drift {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(60deg);
+  }
+}
+
+@keyframes hs-sweep {
+  0%,
+  55% {
+    transform: translateX(0) rotate(20deg);
+  }
+  85%,
+  100% {
+    transform: translateX(90px) rotate(20deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-sticker,
+  .holo-sticker:hover {
+    transform: rotate(var(--hs-tilt, -8deg));
+    transition: none;
+  }
+  .holo-sticker .hs-foil,
+  .holo-sticker .hs-sheen {
+    animation: none;
+  }
+}
