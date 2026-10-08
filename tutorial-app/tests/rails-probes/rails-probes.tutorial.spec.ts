@@ -13,6 +13,7 @@ import {
   starterFixture,
 } from './fixture';
 import { REPRODUCTION_ID, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChecker, type RevisionKey } from './probes';
+import { capturedPresentation, loadCapturedReplay } from './captures';
 import { EVALUATION_SPECS, evaluationIdOf } from '../../src/lib/reviewHistory';
 
 // CIT-307 / CIT-309: review 1 of PR 117 said that deleting the retained strace
@@ -43,6 +44,7 @@ import { EVALUATION_SPECS, evaluationIdOf } from '../../src/lib/reviewHistory';
 // CIT-316: each lesson's title, place and prose are authored in
 // `traces/CheckerProbes.pkl`, beside the questions they tell.
 const CHAPTER = chapter();
+const CAPTURE = loadCapturedReplay();
 const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 async function attachTutorial(testInfo: TestInfo, index: number, name: string, body: string, contentType = 'text/plain') {
@@ -66,6 +68,19 @@ function compile(key: RevisionKey) {
   // Pkl-authored traces (CIT-312), but not copied into the lesson.
   const answers = new Map([...run].filter(([file]) => path.basename(file) === 'answer.json'));
   const files = new Map([...run].filter(([file]) => !answers.has(file)));
+
+  // CIT-337: independently rerun the question, then render the selected finding
+  // from its retained installed-scenario record. A fresh result cannot silently
+  // replace an older observation in a replay.
+  if (key === 'S1' || key === 'S2') {
+    const retained = capturedPresentation(CAPTURE, key);
+    for (const [file, body] of retained) {
+      expect(run.get(file), `fresh ${key}/${file} differs from its retained capture`).toBe(body);
+      run.set(file, body);
+      if (file.endsWith('/answer.json')) answers.set(file, body);
+      else files.set(file, body);
+    }
+  }
 
   // Both traces render from the state's claims and this run's answers (CIT-312).
   const { starter, solved, prose } = renderTraces(key, answers);
