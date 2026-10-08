@@ -12,6 +12,11 @@ on:
       - '.dagger/*.go'
       - 'dagger.json'
       - 'src/jev/**'
+      - 'src/cve-2026-66066/**'
+      - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-checker.sh'
+      - 'test/_global/cve-checker-failures.ts'
+      - 'scripts/package-cve-questions.ts'
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
@@ -27,6 +32,11 @@ on:
       - '.dagger/*.go'
       - 'dagger.json'
       - 'src/jev/**'
+      - 'src/cve-2026-66066/**'
+      - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-checker.sh'
+      - 'test/_global/cve-checker-failures.ts'
+      - 'scripts/package-cve-questions.ts'
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
@@ -64,3 +74,17 @@ jobs:
           verb: call
           args: ${{ matrix.investigation }} check
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+  cve-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.9.7'
+      - run: deno run --allow-read scripts/package-cve-questions.ts --check
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: '0.21.7'
+          verb: call
+          args: cve-checker export --path ./build/cve-checker

@@ -1,0 +1,45 @@
+/// Case-owned declared expectations for each of CIT-294's four runs. Kept
+/// separate from the independent Observation (observations/*.json, produced
+/// by the live run) and from Reconcile's check function, per the
+/// declared/observed/checked split CIT-265 uses throughout (see
+/// src/noteexpand's Claims.pkl for the pattern this follows). Written before
+/// reading the observations, not fitted to them afterward.
+module cit294.claims
+
+class Claim {
+  arm: String
+  blockUntrustedEnv: String?
+  contentTypeRetained: Boolean
+  loaderExpected: String?
+  variantSucceedsExpected: Boolean
+  discloseExpected: Boolean
+}
+
+matUnblocked: Claim = new {
+  arm = "mat"
+  blockUntrustedEnv = null
+  contentTypeRetained = true
+  loaderExpected = "matload"
+  variantSucceedsExpected = true
+  discloseExpected = true
+}
+
+matBlocked: Claim = new {
+  arm = "mat"
+  blockUntrustedEnv = "1"
+  contentTypeRetained = true
+  loaderExpected = null
+  variantSucceedsExpected = false
+  discloseExpected = false
+}
+
+pngUnblocked: Claim = new {
+  arm = "png"
+  blockUntrustedEnv = null
+  contentTypeRetained = true
+  loaderExpected = "pngload"
+  variantSucceedsExpected = true
+  discloseExpected = false
+}
+
+pngBlocked: Claim = (pngUnblocked) { blockUntrustedEnv = "1" }

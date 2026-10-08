@@ -1,75 +1,10 @@
-/// CIT-334: one existing Question across the checker revisions, typed as the
-/// shared record (`Question.Investigation`) and validated.
-///
-///   pkl eval ReplayRecord.pkl -p capture=<file>
-///
-/// `<file>` is written by `../records.ts` (`captureInvestigation`) from verified
-/// committed evidence. A capture that is not a valid record does not evaluate.
 module ReplayRecord
-
 import "pkl:json"
 import "CheckerProbes.pkl"
 import "../../../../src/jev/pkl/Question.pkl"
-
+import "../../../../src/cve-2026-66066/questions/checker/Decode.pkl"
 local raw = new json.Parser {}.parse(read(read("prop:capture")).text)
-
-local function evidence(d: Dynamic): Question.Evidence = d.toTyped(Question.Evidence)
-local function resources(items: Listing): Listing<Question.Evidence> = new {
-  for (item in items) { evidence(item) }
-}
-local function optional(d: Dynamic?): Question.Evidence? = if (d == null) null else evidence(d)
-
-local function evaluation(d: Dynamic): Question.EvaluationRecord = new {
-  questionId = d.questionId
-  question = CheckerProbes.questions[questionId]
-  state {
-    id = d.state.id
-    source = evidence(d.state.source)
-    scope = d.state.scope
-    inputs = resources(d.state.inputs)
-    image = optional(d.state.image)
-    snapshot = optional(d.state.snapshot)
-    limitations = d.state.limitations
-  }
-  mutation = if (d.mutation == null) null else new Question.Mutation {
-    action = d.mutation.action
-    affects = d.mutation.affects
-    evidence = resources(d.mutation.evidence)
-  }
-  delivery = (d.delivery) { evidence = optional(d.delivery.evidence) }.toTyped(Question.Delivery)
-  declarations {
-    for (c in d.declarations) {
-      new {
-        text = c.text
-        evidence = evidence(c.evidence)
-        property = c.property
-        declared = c.declared
-        observed = c.observed
-        observedFrom = optional(c.observedFrom)
-      }
-    }
-  }
-  forecast = d.forecast
-  answer = if (d.answer == null) null else d.answer.toTyped(Question.CheckerAnswer)
-  observations = resources(d.observations)
-}
-
-investigation: Question.Investigation = new {
-  questionId = raw.questionId
-  records { for (r in raw.records) { evaluation(r) } }
-  transitions {
-    for (t in raw.transitions) {
-      new {
-        from = t.from
-        to = t.to
-        action = t.action
-        finding = t.finding
-        evidence = resources(t.evidence)
-      }
-    }
-  }
-}
-
+investigation: Question.Investigation = Decode.investigation(raw, CheckerProbes.questions[raw.questionId])
 output {
   value = if (Question.validInvestigation(investigation)) investigation else throw("Invalid evaluation record")
   renderer = new JsonRenderer { omitNullProperties = false }
