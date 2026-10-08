@@ -106,9 +106,11 @@ Each record carries a `planned` delivery:
 - **Scenario:** `test/_global/cve-2026-66066-forensics`
 - **Finding:** the revision's own finding
 
-`version` is null. Each review round is its own `YYYYMMDD.HHMM` version, and
-`validInvestigation` rejects two rounds that share one. Neither version exists
-yet: packaging them is CIT-335. A `captured` delivery needs a version and
+`version` is null in these historical records. CIT-335 reproduces both states
+in project delivery `20261008.0811`, mapped to SemVer packages `0.2.0-s1` and
+`0.2.0-s2` (see `docs/investigations/CIT-335/README.md`). Distinct historical
+states may share a project delivery; `validInvestigation` requires unambiguous
+state IDs and finding-linked transitions. A `captured` delivery needs a version and
 retained evidence that it was installed.
 
 ## Scope
