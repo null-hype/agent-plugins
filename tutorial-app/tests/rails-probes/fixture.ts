@@ -55,18 +55,21 @@ export const answerJson = (run: CheckerRun) =>
  * The chapter's lessons in order, as the module declares them: each state's own
  * lesson (step 0), then the lessons that continue its review (CIT-357). Needs no run.
  */
-export function chapter(): { key: RevisionKey; step: number; title: string }[] {
+export type Layout = 'current' | 'pr152';
+
+export function chapter(layout: Layout = 'current'): { key: RevisionKey; step: number; title: string }[] {
   const expr = 'new JsonRenderer {}.renderValue(lessons)';
-  return JSON.parse(execFileSync('pkl', ['eval', '-x', expr, MODULE], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+  return JSON.parse(execFileSync('pkl', ['eval', '-x', expr, '-p', `layout=${layout}`, MODULE], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
 }
 
 /**
  * Render one state's traces and lesson prose from the Pkl claims and a run's answers. `files`
  * holds each probe's `answer.json` by its path under `reproductionDir(key)`;
  * the module reads those and nothing else measured. `step` picks the state's
- * lesson: 0 for its own, k for the k-th that continues its review.
+ * lesson: 0 for its own, k for the k-th that continues its review. `layout`
+ * 'pr152' renders the chapter PR 152 accepted, without continuations (CIT-362).
  */
-export function renderTraces(key: RevisionKey, files: Map<string, string>, step = 0): { starter: string; solved: string; prose: string } {
+export function renderTraces(key: RevisionKey, files: Map<string, string>, step = 0, layout: Layout = 'current'): { starter: string; solved: string; prose: string } {
   const dir = mkdtempSync(path.join(tmpdir(), 'cit-312-'));
   try {
     const run = path.join(dir, 'run');
@@ -75,7 +78,7 @@ export function renderTraces(key: RevisionKey, files: Map<string, string>, step 
       writeFileSync(path.join(run, file), body);
     }
     const out = path.join(dir, 'out');
-    const props = { state: key, step, checker: REVISIONS[key].revision, reproductionId: REPRODUCTION_ID, run };
+    const props = { state: key, step, layout, checker: REVISIONS[key].revision, reproductionId: REPRODUCTION_ID, run };
     execFileSync('pkl', ['eval', '-m', out, MODULE, ...Object.entries(props).flatMap(([k, v]) => ['-p', `${k}=${v}`])], {
       stdio: ['ignore', 'ignore', 'pipe'],
     });

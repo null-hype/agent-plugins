@@ -29,6 +29,7 @@ on:
       - 'tutorial-app/evidence/cit-338-captures-v1/**'
       - 'scripts/cve-checker-viewer-export.py'
       - 'scripts/cve-checker-fixture-accounting.py'
+      - 'scripts/cve-checker-lesson-accounting.py'
       - 'tutorial-app/evidence/cit-337-captures-v1/**'
       - 'tutorial-app/src/lib/capturedReplay.spec.ts'
       - 'tutorial-app/playwright.replay.config.ts'
@@ -70,6 +71,7 @@ on:
       - 'tutorial-app/evidence/cit-338-captures-v1/**'
       - 'scripts/cve-checker-viewer-export.py'
       - 'scripts/cve-checker-fixture-accounting.py'
+      - 'scripts/cve-checker-lesson-accounting.py'
       - 'tutorial-app/evidence/cit-337-captures-v1/**'
       - 'tutorial-app/src/lib/capturedReplay.spec.ts'
       - 'tutorial-app/playwright.replay.config.ts'
@@ -319,6 +321,14 @@ jobs:
           python3 scripts/cve-forecast-clean-viewer.py --output "$RUNNER_TEMP/cit338-clean-viewer"
           python3 scripts/cve-checker-fixture-accounting.py
           git diff --exit-code -- docs/investigations/CIT-337/fixture-accounting.json
+          # CIT-362: a lesson renamed since the last generate leaves its ignored
+          # files behind; generating again must remove them, not fill them in.
+          stale=tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one
+          mkdir -p "$stale/_solution" && cp tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/3-*/_solution/acp-trace.json "$stale/_solution/"
+          npm --prefix tutorial-app run replay:generate -- --check-existing
+          test ! -e "$stale"
+          python3 scripts/cve-checker-lesson-accounting.py
+          git diff --exit-code -- docs/investigations/CIT-362/presentation-accounting.json
       - run: npx playwright install --with-deps chromium
         working-directory: tutorial-app
       - name: Verify replay and revision-specific Peek
