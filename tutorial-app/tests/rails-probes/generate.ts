@@ -1,6 +1,5 @@
 // Replaceable presentation of one captured question across two revisions.
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateForecastReplay } from '../forecast/generate';
@@ -11,7 +10,6 @@ import { chapter, renderTraces, reproductionDir, solvedFixture, starterFixture, 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const REPO = path.dirname(APP);
 const CHAPTER = path.join(APP, 'src/content/tutorial/part-5/can-an-upload-read-a-private-file');
-const FIXTURES = path.join(APP, 'src/stories/fixtures');
 
 /**
  * Every file the S1/S2 replay presentation consists of in `layout`, by its path
@@ -57,24 +55,27 @@ export function replayPresentation(layout: Layout = 'current', capture = loadCap
   return files;
 }
 
-const git = (...args: string[]) => execFileSync('git', args, { cwd: REPO, encoding: 'utf8' }).split('\n').filter(Boolean);
+// What the replay generates in a lesson directory, by its path there. The same
+// files .gitignore names; everything else in a lesson is committed.
+const GENERATED = /^_(files|solution)\/(acp-trace\.json|reproduction\/S[12]\/(probes\/deleted-trace\/.*|runs\/baseline\/canary-reads\.txt))$/;
 
 /**
- * Generated files an earlier layout left behind: untracked, ignored, under the
- * chapter or the S1/S2 fixtures, and not in `expected`. Anything else that is
- * out of place (tracked, or not ignored) is not ours to delete, so it is an error.
+ * Remove what an earlier layout generated into lessons `declared` no longer
+ * names (CIT-362): a pull that renames a lesson moves its committed files and
+ * leaves the generated ones. A directory with anything else left in it is not
+ * ours to delete, so that is an error.
  */
-export function obsoletePresentation(expected: Set<string>) {
-  const chapter = path.relative(REPO, CHAPTER);
-  const fixtures = path.relative(REPO, FIXTURES);
-  const ours = (file: string) => file.startsWith(chapter + '/') || /^rails-matlab-review-[12](-\d+)?\.(starter|solved)\.json$/.test(path.relative(fixtures, file));
-  const ignored = git('ls-files', '--others', '--ignored', '--exclude-standard', '--', chapter, fixtures).filter(ours);
-  const obsolete = ignored.filter((file) => !expected.has(file));
-  const declared = new Set([...expected].filter((file) => file.startsWith(chapter + '/')).map((file) => file.split('/')[chapter.split('/').length]));
-  const strays = git('ls-files', '--others', '--exclude-standard', '--', chapter)
-    .filter((file) => !declared.has(file.split('/')[chapter.split('/').length]));
-  if (strays.length) throw new Error('Undeclared lesson files that are not generated; move or delete them by hand:\n' + strays.join('\n'));
-  return obsolete;
+export function removeObsoleteLessons(chapterDir: string, declared: readonly string[]) {
+  for (const name of readdirSync(chapterDir)) {
+    if (!/^\d+-/.test(name) || declared.includes(name)) continue;
+    const dir = path.join(chapterDir, name);
+    const files = (readdirSync(dir, { recursive: true, withFileTypes: true }) as import('node:fs').Dirent[])
+      .filter((entry) => entry.isFile())
+      .map((entry) => path.relative(dir, path.join(entry.parentPath, entry.name)));
+    const other = files.filter((file) => !GENERATED.test(file));
+    if (other.length) throw new Error(`${dir} is no longer a lesson but holds files the replay did not generate:\n${other.join('\n')}`);
+    rmSync(dir, { recursive: true });
+  }
 }
 
 export function generateReplay(checkExisting = false) {
@@ -88,10 +89,7 @@ export function generateReplay(checkExisting = false) {
   }
   // A checkout that generated an earlier layout keeps its ignored files across a
   // pull that renames lessons; remove them so it matches a clean checkout.
-  for (const file of obsoletePresentation(new Set(files.keys()))) {
-    rmSync(path.join(REPO, file));
-    for (let dir = path.dirname(path.join(REPO, file)); dir.startsWith(CHAPTER + '/') && !readdirSync(dir).length; dir = path.dirname(dir)) rmdirSync(dir);
-  }
+  removeObsoleteLessons(CHAPTER, chapter().map((lesson, place) => (place + 1) + '-' + slugify(lesson.title)));
   generateForecastReplay(checkExisting);
   return capture;
 }

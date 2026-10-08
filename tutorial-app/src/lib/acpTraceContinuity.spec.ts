@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { metaOf, withAcceptedAtStart, type AcpTraceFixture } from './acpTraceProtocol';
+import { retainedOrder } from '../templates/acp-trace/probes.cjs';
 
 /**
  * CIT-247: TutorialKit resolves each lesson's `_files`/`_solution` fixture
@@ -104,14 +105,8 @@ describe('withAcceptedAtStart', () => {
   });
 });
 
-// CIT-362: the Client's own rule for what a lesson may change of a shared review's choices.
+// CIT-362: the Client's rule for what a lesson may change of a shared review's choices.
 describe('retainedOrder', () => {
-  const server = new URL('../templates/acp-trace/server.cjs', import.meta.url);
-  const source = readFileSync(server, 'utf8');
-  const retainedOrder = new Function(
-    source.slice(source.indexOf('function retainedOrder'), source.indexOf('const probeHelpers')) + '\nreturn retainedOrder;',
-  )() as (stored: number[], shown: number[], visible: number) => number[];
-
   it('an unsolved earlier lesson, which shows no probe, keeps every accept', () => {
     expect(retainedOrder([0, 1], [], 0)).toEqual([0, 1]);
   });

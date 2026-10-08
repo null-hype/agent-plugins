@@ -10,6 +10,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "replay:generate": "tsx tests/rails-probes/generate.ts",
+    "replay:pr152": "tsx tests/rails-probes/generate.ts --layout pr152 --output",
     "predev": "npm run replay:generate",
     "prebuild": "npm run replay:generate",
     "pretest": "npm run replay:generate",

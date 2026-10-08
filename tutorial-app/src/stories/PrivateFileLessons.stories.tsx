@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import AcpTracePreview from './AcpTracePreview';
 import { deriveAcpTraceState, type Lesson } from './lessonFixtures';
@@ -44,6 +45,33 @@ export const PR117: Story = {
 export const PR117Continued: Story = {
   name: '#117, continued: Can the check tell a real block from a generic crash?',
   render: render('2-can-the-check-tell-a-real-block-from-a-generic-crash'),
+};
+
+// CIT-362: #117's two lessons as TutorialKit hosts them: one Client that outlives
+// navigation, the accepts its host keeps, and a lesson switch that opens the
+// other lesson unsolved. Accepting in lesson 2 and going back to lesson 1, solved
+// or not, must leave lesson 2's accepts alone.
+const JOURNEY = ['1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one', '2-can-the-check-tell-a-real-block-from-a-generic-crash'];
+function Journey() {
+  const [at, setAt] = useState({ lesson: 0, solved: false });
+  const payload = useMemo(() => deriveAcpTraceState(fixture, lessonFiles(JOURNEY[at.lesson], at.solved), { config }), [at]);
+  return (
+    <div>
+      <nav style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        {JOURNEY.map((_, lesson) => (
+          <button key={lesson} aria-pressed={at.lesson === lesson} onClick={() => setAt({ lesson, solved: false })}>Lesson {lesson + 1}</button>
+        ))}
+        <button disabled={at.solved} onClick={() => setAt({ ...at, solved: true })}>Solve</button>
+      </nav>
+      <AcpTracePreview agent={false} payload={payload} height={640} />
+    </div>
+  );
+}
+
+export const PR117Journey: Story = {
+  name: "#117's two lessons, back and forth",
+  parameters: { controls: { include: [] } },
+  render: () => <Journey />,
 };
 
 export const PR118: Story = {
