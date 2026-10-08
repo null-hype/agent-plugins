@@ -1,8 +1,8 @@
 /* Lesson prose, layered over TutorialKit's markdown.css (.markdown-content),
    in the Stitch "Tidelands Ransom Note Portfolio" theme: Noto Serif newsprint,
-   Manrope labels, clippings with hard shadows and square corners.
+   Space Mono labels, holographic foil accents, hard shadows, square corners.
    Imported by HeadTags.astro for the app and by Prose.stories.tsx. */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Space+Grotesk:wght@700&family=Space+Mono:wght@400;700&display=swap');
 
 .markdown-content {
   --content-measure: 68ch;
@@ -10,6 +10,8 @@
   --rn-ink: #000;
   --rn-cream: #e5e2da;
   --rn-flag: #ffb4ab;
+  --rn-holo: linear-gradient(115deg, #ff9ad5 0%, #c7a6ff 18%, #8fd3ff 36%, #9dffcf 52%, #fff59a 68%, #ffb38a 84%, #ff9ad5 100%);
+  --label-font: 'Space Mono', ui-monospace, monospace;
   width: 100%;
   max-width: var(--content-measure);
   margin-inline: auto;
@@ -27,14 +29,14 @@
   letter-spacing: 0;
 }
 
-/* Section headings: one pasted-on clipping each. */
+/* Section headings: one pasted-on clipping each; h2 is holographic foil. */
 .markdown-content :is(h2, h3) {
   display: table;
   padding: 0.15em 0.45em;
-  border: 2px solid var(--rn-ink);
-  background: var(--rn-cream);
-  color: #1c1c17;
-  font-family: 'Noto Serif', Georgia, serif;
+  border: 3px solid var(--rn-ink);
+  background: var(--rn-holo);
+  color: var(--rn-ink);
+  font-family: 'Space Grotesk', sans-serif;
   box-shadow: 4px 4px 0 var(--rn-ink);
   transform: rotate(-1deg);
 }
@@ -59,7 +61,7 @@
 
 .markdown-content h4,
 .markdown-content h4 :is(code, a) {
-  font: 800 13px/1.2 'Manrope', sans-serif;
+  font: 700 13px/1.2 var(--label-font);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -69,9 +71,9 @@
   line-height: 32px;
 }
 
-/* Labels and metadata in Manrope caps, per the Stitch theme. */
-.markdown-content :is(th, .callout-title-tag) {
-  font-family: 'Manrope', sans-serif;
+/* Labels and metadata in mono caps, after the TypeSafe cards. */
+.markdown-content th {
+  font-family: var(--label-font);
 }
 
 /* Primary call to action: <a className="cta" href="…">…</a> in MDX.
@@ -85,7 +87,7 @@
   border: 2px solid var(--rn-ink);
   background: var(--rn-ink);
   color: var(--rn-cream);
-  font: 800 13px/1 'Manrope', sans-serif;
+  font: 700 13px/1 var(--label-font);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   text-decoration: none;
@@ -133,7 +135,7 @@
 }
 
 .markdown-content .callout > div:first-child > span:last-child {
-  font: 800 12px/1 'Manrope', sans-serif !important;
+  font: 700 12px/1 var(--label-font) !important;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -161,8 +163,8 @@
 
 .markdown-content th {
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--tk-text-secondary);
 }

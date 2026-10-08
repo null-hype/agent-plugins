@@ -1,6 +1,6 @@
 /* Cut-out letters from the Stitch "Tidelands Ransom Note Portfolio" project
    (screen "TIDELANDS.DEV | DECRYPTED"). */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;800&family=Noto+Serif:ital,wght@0,700;1,400&family=Space+Grotesk:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Epilogue:wght@900&family=Manrope:wght@500;800&family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap');
 
 .ransom-note {
   --rn-ink: #000;
@@ -11,6 +11,8 @@
   --rn-moss: #65655e;
   --rn-white: #fff;
   --rn-flag: #ffb4ab;
+  /* Holographic foil, after the iridescent stickers in the TypeSafe cards. */
+  --rn-holo: linear-gradient(115deg, #ff9ad5 0%, #c7a6ff 18%, #8fd3ff 36%, #9dffcf 52%, #fff59a 68%, #ffb38a 84%, #ff9ad5 100%);
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -48,7 +50,7 @@
 .ransom-note .rn-0 {
   background: var(--rn-cream);
   color: #1c1c17;
-  font: 700 1em 'Noto Serif', serif;
+  font: 900 1em 'Epilogue', sans-serif;
   box-shadow: 4px 4px 0 var(--rn-ink);
 }
 
@@ -56,7 +58,7 @@
   background: var(--rn-paper);
   color: var(--rn-white);
   border-color: var(--rn-white);
-  font: italic 400 0.55em 'Noto Serif', serif;
+  font: 400 0.55em 'Space Mono', monospace;
 }
 
 .ransom-note .rn-2 {
@@ -70,7 +72,7 @@
 .ransom-note .rn-3 {
   background: var(--rn-white);
   color: var(--rn-ink);
-  font: 700 1em 'Noto Serif', serif;
+  font: 700 1em 'Space Grotesk', sans-serif;
 }
 
 .ransom-note .rn-4 {
@@ -78,14 +80,22 @@
   color: #bdc9c8;
   border-width: 0 0 4px;
   border-color: var(--rn-white);
-  font: 500 0.5em 'Space Grotesk', monospace;
+  font: 700 0.5em 'Space Mono', monospace;
 }
 
 .ransom-note .rn-5 {
-  background: var(--rn-cream);
-  color: #1c1c17;
+  background: var(--rn-holo);
+  background-size: 250% 100%;
+  color: var(--rn-ink);
+  border-width: 3px;
   font: 800 0.7em 'Manrope', sans-serif;
   box-shadow: 4px 4px 0 var(--rn-ink);
+  transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-position 0.6s;
+}
+
+/* Foil catches the light: the gradient slides as the pointer arrives. */
+.ransom-note :is(.rn-5, .rn-seal):hover {
+  background-position: 100% 0;
 }
 
 .ransom-note .rn-5::after {
@@ -104,22 +114,25 @@
   background: var(--rn-paper);
   color: #e5e2e0;
   border: 2px dashed #929188;
-  font: 700 1em 'Noto Serif', serif;
+  font: 900 1em 'Epilogue', sans-serif;
 }
 
 .ransom-note .rn-7 {
   background: var(--rn-moss);
   color: var(--rn-white);
-  font: 400 0.55em 'Noto Serif', serif;
+  font: 500 0.6em 'Space Grotesk', sans-serif;
   box-shadow: 4px 4px 0 var(--rn-cream);
 }
 
-/* The CIT-332 mark as its own clipping: a cream square cut around the circle. */
+/* The CIT-332 mark as a holographic sticker: foil square, thick ink outline. */
 .ransom-note .rn-seal {
   padding: 0.1em;
-  background: var(--rn-cream);
-  color: #172a31;
+  background: var(--rn-holo);
+  background-size: 250% 100%;
+  color: var(--rn-ink);
+  border-width: 3px;
   box-shadow: 4px 4px 0 var(--rn-ink);
+  transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-position 0.6s;
 }
 
 .ransom-note .rn-mark {
