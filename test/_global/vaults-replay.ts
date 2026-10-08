@@ -10,6 +10,7 @@ const original = '/retained/payload/bundle';
 const tooling = '/usr/local/share/cve-2026-66066/src/cve-2026-66066/questions/vaults/adapter.ts';
 const { derive, render, replay } = await import(pathToFileURL(tooling).href);
 const execution = JSON.parse(readFileSync(path.join(original, 'execution.json'), 'utf8'));
+const manifest = JSON.parse(readFileSync(path.join(original, 'inputs.json'), 'utf8'));
 const hash = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
 
 Deno.test('read-only assessment replay preserves the identified execution', () => {
@@ -41,7 +42,9 @@ Deno.test('new offline execution agrees with original answers and generated base
 });
 
 for (const [label, uri] of [
-  ['historical input', JSON.parse(readFileSync(path.join(original, 'inputs.json'), 'utf8')).states[0].files[0].evidence.uri],
+  ['historical input', manifest.states[0].files[0].evidence.uri],
+  ['original expected baseline', manifest.states[0].files.find((f: any) => f.path.endsWith('-expected.pcf')).evidence.uri],
+  ['historical inventory', manifest.inventory.evidence.uri],
   ['generated baseline', execution.runs[0].generatedBaseline.uri],
   ['raw output', execution.runs[0].check.output.uri],
   ['tool identity', 'installed-feature.json'],

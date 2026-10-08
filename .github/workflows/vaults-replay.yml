@@ -10,6 +10,7 @@ on:
       - 'scripts/investigation-bundle.py'
       - 'scripts/vaults-fixture-accounting.py'
       - 'test/_global/vaults-replay.ts'
+      - 'test/_global/investigation-bundle.py'
       - 'test/_global/cve-2026-66066-forensics/Dockerfile'
       - '.github/workflows/vaults-replay.yml'
   workflow_dispatch:
@@ -44,6 +45,20 @@ jobs:
             -e PATH=/usr/local/share/cve-2026-66066/runtime/bin:/usr/local/bin:/usr/bin:/bin \
             "$image" test --no-check --allow-all /test.ts
           python3 scripts/vaults-fixture-accounting.py --check
+          python3 test/_global/investigation-bundle.py
+      - name: Replay the pinned original assessment and check it in a new execution
+        run: |
+          python3 scripts/investigation-bundle.py unpack \
+            .dagger/internal/devenv-base/pkl/vaults-replay/evidence.tar.gz build/vaults/pinned/payload/bundle
+          image=$(python3 -c 'import json;print(json.load(open("build/vaults/capture/retention.json"))["image"]["configDigest"])')
+          docker run --rm --network=none --entrypoint /usr/local/bin/cve-investigation-view \
+            -v "$PWD/build/vaults/pinned:/retained:ro" "$image" /retained/payload/bundle \
+            > build/vaults/pinned-record.json
+          docker run --rm --network=none --entrypoint /usr/local/share/cve-2026-66066/runtime/bin/deno \
+            -v "$PWD/build/vaults/pinned:/retained:ro" \
+            -v "$PWD/test/_global/vaults-replay.ts:/test.ts:ro" \
+            -e PATH=/usr/local/share/cve-2026-66066/runtime/bin:/usr/local/bin:/usr/bin:/bin \
+            "$image" test --no-check --allow-all /test.ts
       - name: Retain this execution separately from the pinned original
         if: always()
         uses: actions/upload-artifact@v4
@@ -53,4 +68,5 @@ jobs:
             build/vaults/capture
             build/vaults/replay/*.json
             build/vaults/view/record.json
+            build/vaults/pinned-record.json
           retention-days: 90

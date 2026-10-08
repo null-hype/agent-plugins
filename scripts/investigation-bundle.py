@@ -38,11 +38,13 @@ def unpack(archive, output, inputs_only=False):
     retention.fresh(output)
     with tempfile.TemporaryDirectory(prefix='investigation-bundle-') as temporary:
         scope = Path(temporary)
+        seen = set()
         with tarfile.open(archive) as tar:
             for member in tar.getmembers():
                 target = scope / member.name
-                if not member.isfile() or member.name.startswith('/') or '..' in Path(member.name).parts:
+                if not member.isfile() or member.name.startswith('/') or '..' in Path(member.name).parts or member.name in seen:
                     raise RuntimeError('unsafe retained member')
+                seen.add(member.name)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(tar.extractfile(member).read())
         retention.verify(scope, descriptor['files'])
@@ -53,6 +55,8 @@ def unpack(archive, output, inputs_only=False):
         else:
             names = {e['path'] for e in descriptor['files']}
         for name in sorted(names):
+            if name not in seen:
+                raise RuntimeError('input reference is outside the retained bundle: ' + name)
             target = output / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((scope / name).read_bytes())
