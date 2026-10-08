@@ -21,6 +21,11 @@ func (m *AgentPlugins) CveChecker(
 	if err != nil { return nil, err }
 	var deliveries []map[string]string
 	if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
+	var historical []map[string]string
+	for _, delivery := range deliveries {
+		if delivery["version"] == "20261008.0811" { historical = append(historical, delivery) }
+	}
+	deliveries = historical
 	if len(deliveries) != 2 { return nil, fmt.Errorf("this slice requires two checker states") }
 	meta, err := feature.File("devcontainer-feature.json").Contents(ctx)
 	if err != nil { return nil, err }
@@ -50,4 +55,29 @@ func (m *AgentPlugins) CveChecker(
 		WithEnvVariable("PATH", "/usr/local/share/cve-2026-66066/runtime/bin:$PATH", dagger.ContainerWithEnvVariableOpts{Expand: true}).
 		WithExec(append([]string{"deno", "run", "--no-check", "--allow-all", "/usr/local/share/cve-2026-66066/src/cve-2026-66066/questions/checker/combine.ts", "/all"}, states...))
 	return last.Directory("/all"), nil
+}
+
+// CveCheckerReplayImage exports the installed CIT-336 tooling as a retainable
+// image. Subject inputs are copied into each disposable instance by the host
+// capture command; none survive in this image. Restoration needs no checkout,
+// registry, installer download, Dagger cache, or original container.
+func (m *AgentPlugins) CveCheckerReplayImage(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/node_modules", "**/.venv", "**/.worktrees", ".git"]
+	source *dagger.Directory,
+) (*dagger.Container, error) {
+	feature := source.Directory("src/cve-2026-66066")
+	raw, err := feature.File("delivery.json").Contents(ctx)
+	if err != nil { return nil, err }
+	var delivery map[string]string
+	if err := json.Unmarshal([]byte(raw), &delivery); err != nil { return nil, err }
+	if delivery["version"] != "20261008.0812" || delivery["packageVersion"] != "0.3.0" || delivery["state"] != "S2" {
+		return nil, fmt.Errorf("unexpected retention delivery")
+	}
+	return source.Directory("test/_global/cve-2026-66066-forensics").
+		DockerBuild(dagger.DirectoryDockerBuildOpts{Target: "checker-runtime"}).
+		WithDirectory("/feature", feature).
+		WithExec([]string{"sh", "/feature/install.sh"}).
+		WithoutDirectory("/feature"), nil
 }
