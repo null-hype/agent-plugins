@@ -45,24 +45,14 @@ the evidence from their prerequisites. Authentication is represented by fixed
 synthetic sessions; only this document-read ownership check is under test.
 This is a reproducible patch scenario, not an assessment of a deployed app.
 
-## Lessons (CIT-318, CIT-328)
+## Lessons (retired in CIT-328)
 
-These Questions are also the `jev/<id>` projects of
-`tutorial-app/playwright.questions.config.ts`, which name the same collectors
-(`tutorial-app/tests/jev/collectors.ts` wraps `collectors.ts` and `score.mjs`).
-Each entry in `revisions` (its commit subject and its lesson's order, title and
-prose) is one lesson: the `jev:lesson` project renders it from the run with
-`tutorial-app/tests/jev/JevReport.pkl`, as a review in the form of part 4's
-"Can the checker be trusted", and the tutorial reporter compiles them into
-`tutorial-app/src/content/tutorial/part-5/private-document`, which is
-committed. To record a new run, from `tutorial-app`:
-
-```sh
-JEV_RUN_ID=jev-lessons-mock RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.questions.config.ts --project 'jev/*' --project jev:lesson
-```
-
-Scores are canned (`fixtures/answers.json`) unless `JEV_BACKEND=real` (with
-`JEV_SECRET_REF`); the lesson's trace labels a canned answer as such.
+These Questions were once the `jev/<id>` projects of
+`tutorial-app/playwright.questions.config.ts`, compiled into part 5's "Private
+document" chapter. CIT-328 replaced that chapter with the CIT-294 history
+(`tutorial-app/tests/rails-probes/`), whose private file is the case's own, so
+the lesson projects and `tutorial-app/tests/jev/` are gone. The Questions, the
+collectors and the scorer here still run on their own.
 
 ## Run
 
