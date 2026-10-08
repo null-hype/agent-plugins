@@ -31,7 +31,14 @@ state, except where a state's review takes more than one (CIT-357): #117's runs
 over two lessons in one session. The second lesson's starting trace is the
 first one's solved trace, and its `acceptedAtStart` declares the probe the first
 one ends with accepted, so navigating in and entering directly open alike
-(`continued` per revision in `traces/CheckerProbes.pkl`). Alice authors: each lesson's commit quotes her pull request, and the
+(`continued` per revision in `traces/CheckerProbes.pkl`). Direct entry opens on
+that canonical checkpoint; it does not show that the learner did the lesson
+before. `npm run replay:generate` writes only the lessons the module declares,
+and removes the ignored files a renamed lesson left behind (CIT-362).
+`scripts/cve-checker-fixture-accounting.py` regenerates PR 152's layout
+(`-p layout=pr152`, no continuations) and holds it to the pinned bytes;
+`scripts/cve-checker-lesson-accounting.py` accounts for every file of the
+current layout against it (`docs/investigations/CIT-362/`). Alice authors: each lesson's commit quotes her pull request, and the
 probes her PR claims to flag are her forecast for each (`claimed` per revision
 in `traces/CheckerProbes.pkl`). Bob reviews: Solve brings back his questions,
 each an edit to the recorded evidence run again against the pinned checker. A

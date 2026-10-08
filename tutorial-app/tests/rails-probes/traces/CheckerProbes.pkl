@@ -30,6 +30,9 @@ state: String = read("prop:state")
 /// Which of the state's lessons to render: 0 for the revision's own lesson,
 /// k for its k-th continuation (CIT-357).
 step: Int = read?("prop:step")?.toInt() ?? 0
+/// `pr152` renders the layout PR 152 accepted, one lesson per revision and no
+/// continuations, which the pinned fixture accounting regenerates (CIT-362).
+layout: "current"|"pr152" = read?("prop:layout") ?? "current"
 /// The checker commit, in full. Rows cite its first eight characters.
 checker: String = read("prop:checker")
 reproductionId: String = read("prop:reproductionId")
@@ -455,7 +458,7 @@ chapter: List<String> =
 lessons: List<Map<String, Any>> =
   chapter.flatMap((k) ->
     List(Map("key", k, "step", 0, "title", revisions[k].lesson.title))
-    + revisions[k].continued.toList().mapIndexed((i, c) -> Map("key", k, "step", i + 1, "title", c.title)))
+    + continuationsOf(revisions[k]).mapIndexed((i, c) -> Map("key", k, "step", i + 1, "title", c.title)))
 
 local claims =
   revisions.getOrNull(state)
@@ -525,15 +528,17 @@ local asked: List<Probe> = offered.filter((q) -> revisions[q.from].lesson.order 
 /// The probes each of this revision's lessons offers (CIT-357): its own lesson
 /// those no continuation names, then each continuation those it names. Every
 /// probe asked is offered exactly once.
-local continuedNames: List<String> = claims.continued.toList().flatMap((c) -> c.probes.toList())
+local function continuationsOf(revision: Revision): List<Continuation> =
+  if (layout == "pr152") List() else revision.continued.toList()
+local continuedNames: List<String> = continuationsOf(claims).flatMap((c) -> c.probes.toList())
 local steps: List<List<Probe>> =
   if (continuedNames.isDistinct && continuedNames.every((n) -> asked.any((q) -> q.name == n)))
     List(asked.filter((q) -> !continuedNames.contains(q.name)))
-    + claims.continued.toList().map((c) -> c.probes.toList().map((n) -> asked.find((q) -> q.name == n)))
+    + continuationsOf(claims).map((c) -> c.probes.toList().map((n) -> asked.find((q) -> q.name == n)))
   else throw("continued probes of \(state) must be distinct probes it asks")
 local stepLesson: Question.Lesson|Continuation =
   if (step == 0) claims.lesson
-  else claims.continued.toList().getOrNull(step - 1) ?? throw("\(state) has no lesson step \(step)")
+  else continuationsOf(claims).getOrNull(step - 1) ?? throw("\(state) has no lesson step \(step)")
 
 local deletedTrace = new Probe {
   judge = installedChecker.question.judge
