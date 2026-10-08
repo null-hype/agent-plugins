@@ -187,9 +187,10 @@ revisions: Mapping<String, Revision> = new {
           """
           # Can the check tell a real block from a generic crash?
 
-          This lesson opens where the last one ended. Bob's first question, the forged
-          read, is accepted below Alice's commit, and its lens still opens his edit and
-          the checker's answer. Coming here directly starts you at the same point.
+          This lesson continues the last one in the same session. Bob's first question,
+          the forged read, is accepted below Alice's commit, and its lens still opens his
+          edit and the checker's answer. Coming here directly starts you from the same
+          checkpoint, with the forged read accepted for you.
 
           CIT-294 said the blocked arm must refuse the path, and that *a generic crash
           alone is insufficient*. Select **Solve** and Bob continues his review: his next

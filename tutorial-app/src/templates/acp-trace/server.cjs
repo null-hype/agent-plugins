@@ -51,7 +51,17 @@ function acceptedIn(accepted, offset, count) {
   return accepted.filter((index) => index >= offset && index < offset + count).map((index) => index - offset);
 }
 
-const probeHelpers = [probeTree, probeLine, probeDiagnostic, probeOffers, probeOffset, acceptedIn].map(String).join('\n\n      ');
+// What a review's stored choices become when a lesson that shows only its first
+// \`visible\` probes reports \`shown\` (CIT-362). A continued review's lessons each
+// show a prefix of its probes, so the lesson decides those and keeps the rest:
+// revisiting an earlier lesson, solved or not, leaves a later lesson's accepts
+// alone. Removing an accepted line, in a lesson that shows it, still un-accepts it.
+function retainedOrder(stored, shown, visible) {
+  const kept = shown.filter((index) => index < visible);
+  return kept.concat(stored.filter((index) => index >= visible && !kept.includes(index)));
+}
+
+const probeHelpers = [probeTree, probeLine, probeDiagnostic, probeOffers, probeOffset, acceptedIn, retainedOrder].map(String).join('\n\n      ');
 const verdictContract = require('./verdict-contract.json');
 // CIT-245: two independent HTTP servers in one process, one per preview
 // ("agent" and "client") -- TutorialKit/WebContainer watches for a server to
@@ -903,12 +913,15 @@ function renderClientPage() {
         gateDecorationIds = editor.deltaDecorations(gateDecorationIds, glyphDecorations);
         revealNewest();
         // Persist actual choices on the host, whose origin survives lesson iframe changes.
-        if (currentReview) acceptedReviews[currentReview] = acceptedOrder;
-        const order = JSON.stringify({ recordingId: currentReview, order: acceptedOrder, reviews: acceptedReviews });
+        // This lesson decides only the probes it shows; later ones keep theirs (CIT-362).
+        const stored = currentReview
+          ? (acceptedReviews[currentReview] = retainedOrder(acceptedReviews[currentReview] || [], acceptedOrder, reviewProbes(lastState).length))
+          : acceptedOrder;
+        const order = JSON.stringify({ recordingId: currentReview, order: stored, reviews: acceptedReviews });
         if (order !== reportedOrder) {
           reportedOrder = order;
           window.parent.postMessage({ type: 'acp-trace-suggestion-accepted', source: 'tk-acp-trace-client-preview',
-            accepted: acceptedOrder.length > 0, recordingId: currentReview, order: acceptedOrder }, '*');
+            accepted: acceptedOrder.length > 0, recordingId: currentReview, order: stored }, '*');
           fetch('/agent-activity', { method: 'POST', body: order }).catch(() => {});
         }
       }
@@ -923,9 +936,11 @@ function renderClientPage() {
         acceptedReviews = { ...(payload.acceptedReviews || {}), ...acceptedReviews };
         if (review !== currentReview) {
           currentReview = review;
-          acceptedOrder = acceptedReviews[review] || [];
           reportedOrder = null;
         }
+        // The stored choices, not the last lesson's view of them: the preview
+        // outlives navigation, and an unsolved lesson shows none (CIT-362).
+        acceptedOrder = acceptedReviews[review] || [];
         // CIT-357: the lesson opens where the one before it ended, whether the
         // learner came from it or straight here; anything more they accepted stays.
         Object.entries(payload.acceptedAtStart || {}).forEach(([id, order]) => {
