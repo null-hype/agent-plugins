@@ -1,0 +1,26 @@
+{
+  "format": "vaults-fixture-baseline-v1",
+  "baseCommit": "dea80d7c9a01875bf644ae8fbbaf0ff14b24665b",
+  "note": "Frozen pre-CIT-339 before-state. baseCommit dea80d7c lived only on the CIT-339 PR branch and was discarded by the squash-merge (#165); it is unreachable on main and on sibling PR checkouts, so this before-baseline can no longer be re-derived from git and is pinned here. The live after-state and capsule integrity are still computed from the working tree at check time.",
+  "trackedResultFixtures": {
+    "files": 4,
+    "uncompressedBytes": 49318
+  },
+  "trackedInputPaths": {
+    "files": 76,
+    "uncompressedBytes": 106808,
+    "uniqueContents": 22,
+    "uniqueContentBytes": 30576,
+    "duplicateFiles": 54,
+    "duplicateContentBytes": 76232
+  },
+  "retainedEvidence": {
+    "files": 93,
+    "uncompressedBytes": 193001,
+    "uniqueContents": 35,
+    "uniqueContentBytes": 101413,
+    "duplicateFiles": 58,
+    "duplicateContentBytes": 91588
+  },
+  "originalEvidenceVerified": 92
+}
