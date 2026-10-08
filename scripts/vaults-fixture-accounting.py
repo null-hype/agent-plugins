@@ -40,17 +40,27 @@ def report():
         legacy = json.loads((restored / 'legacy.json').read_text())
         # Every historical path's bytes remain accessible from the retained
         # capsule, including retired generated presentation. This is the live
-        # integrity check that survives squash-merge: the before-counts in
-        # baseline.json describe dead history, but the retained evidence is
-        # verified here against the capsule on every run.
+        # integrity check that survives squash-merge. legacy.json and the
+        # capsule descriptor are mutable and travel with the capsule, so they
+        # cannot anchor themselves; baseline.json's retainedDigests is the
+        # independent, committed expectation (it replaces the pre-CIT-339 git
+        # hashes the squashed BASE used to supply). Both the path set and each
+        # blob digest are checked against it, so a regenerated capsule that
+        # drops, swaps or re-hashes a historical path is caught even if the
+        # path count is preserved.
+        expected = baseline['retainedDigests']
         refs = legacy['paths']
-        verified = 0
-        for name, retained in refs.items():
-            if not name.startswith(('inputs/', 'captured/')):
-                continue
-            if bundle.retention.digest(restored / retained['uri']) != retained['immutableId']:
+        present = {name: retained for name, retained in refs.items()
+                   if name.startswith(('inputs/', 'captured/'))}
+        if set(present) != set(expected):
+            missing = sorted(set(expected) - set(present))
+            added = sorted(set(present) - set(expected))
+            raise RuntimeError('retained original evidence path set changed; missing=%s added=%s'
+                               % (missing, added))
+        for name, want in expected.items():
+            if bundle.retention.digest(restored / present[name]['uri']) != want:
                 raise RuntimeError('original evidence bytes changed: ' + name)
-            verified += 1
+        verified = len(expected)
         if verified != baseline['originalEvidenceVerified']:
             raise RuntimeError('retained original evidence count changed: %d != %d'
                                % (verified, baseline['originalEvidenceVerified']))
