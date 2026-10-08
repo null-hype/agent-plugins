@@ -20,33 +20,18 @@
   line-height: 30px;
 }
 
-/* Lesson titles: per-letter clippings from rehypeRansomTitles. */
-.markdown-content h1.ransom-note {
-  --rn-size: 34px;
-  font-size: var(--rn-size);
-  display: flex;
-  margin-block-end: 28px;
-  letter-spacing: 0;
-}
-
-/* Section headings: one pasted-on clipping each; h2 is holographic foil. */
-.markdown-content :is(h2, h3) {
-  display: table;
-  padding: 0.15em 0.45em;
-  border: 3px solid var(--rn-ink);
-  background: var(--rn-holo);
+/* Headings in a plain sans; the ransom-note clippings are kept for special
+   cases (RansomNote, the logo), not every title. */
+.markdown-content :is(h1, h2, h3) {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   color: var(--rn-ink);
-  font-family: 'Space Grotesk', sans-serif;
-  box-shadow: 4px 4px 0 var(--rn-ink);
-  transform: rotate(-1deg);
+  letter-spacing: -0.01em;
 }
 
-.markdown-content h3 {
-  background: #1c1c17;
-  color: var(--rn-cream);
-  border-color: #1c1c17;
-  box-shadow: 4px 4px 0 var(--rn-cream);
-  transform: rotate(0.8deg);
+.markdown-content h1 {
+  font-size: 34px;
+  line-height: 1.15;
+  margin-block-end: 24px;
 }
 
 .markdown-content h2,

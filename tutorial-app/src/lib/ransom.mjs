@@ -1,5 +1,5 @@
-// Shared by RansomNote.tsx and rehypeRansomTitles.mjs so a title renders the
-// same clippings whether it comes from a component or from lesson markdown.
+// Letter assignment for RansomNote.tsx, kept for special cases such as the
+// wordmark; lesson headings use the plain heading face in prose.css.
 
 // Fixed tilts so a word looks the same on every render (no hydration drift).
 export const TILTS = [-2, 3, -1, 2, -4, 1, -3, 4, -2.5, 1.5];
