@@ -23,6 +23,7 @@ import "pkl:json"
 
 import "AcpTrace.pkl"
 import "../../../../src/jev/pkl/Question.pkl"
+import "../../../../src/cve-2026-66066/questions/checker/Question.pkl" as installedChecker
 
 /// The checker state the probes were asked of (S1 = PR 117, S2 = PR 118).
 state: String = read("prop:state")
@@ -472,6 +473,10 @@ local offered: List<Probe> = List(forgedRead, deletedTrace, genericCrash, emptie
 local asked: List<Probe> = offered.filter((q) -> revisions[q.from].lesson.order <= claims.lesson.order)
 
 local deletedTrace = new Probe {
+  judge = installedChecker.question.judge
+  collector = installedChecker.question.collector
+  requiredEvidence = installedChecker.question.requiredEvidence
+  expected = installedChecker.question.expected
   name = "deleted-trace"
   action = "removed canary-reads.txt, the whole retained trace"
   question = "Does the check fail when the trace is deleted?"

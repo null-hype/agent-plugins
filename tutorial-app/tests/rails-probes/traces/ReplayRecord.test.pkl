@@ -47,6 +47,11 @@ facts {
     records.every((r) -> r.observations.toList().any((e) -> e.availability == "missing" && e.origin == "historical"))
     records.every((r) -> r.state.image?.availability == "missing" && r.state.snapshot?.availability == "missing")
   }
+  ["A delivery can reproduce both historical states"] {
+    Question.validInvestigation((investigation) {
+      records { [0] { delivery { version = "20261008.0811" } }; [1] { delivery { version = "20261008.0811" } } }
+    })
+  }
   ["A tampered record does not validate"] {
     // A gap given an id it never had.
     !Question.validRecord((first) { observations { [3] { immutableId = "sha256:invented" } } })
@@ -60,10 +65,7 @@ facts {
     !Question.validInvestigation((investigation) { records { [1] { state { id = "S1-pinned" } } }; transitions { [0] { to = "S1-pinned" } } })
     // S2 claimed as prompted by a finding S1 was not delivered for.
     !Question.validInvestigation((investigation) { transitions { [0] { finding = "review-3.finding-1" } } })
-    // Both rounds delivered as one version.
-    !Question.validInvestigation((investigation) {
-      records { [0] { delivery { version = "20261008.0811" } }; [1] { delivery { version = "20261008.0811" } } }
-    })
+
   }
 }
 
