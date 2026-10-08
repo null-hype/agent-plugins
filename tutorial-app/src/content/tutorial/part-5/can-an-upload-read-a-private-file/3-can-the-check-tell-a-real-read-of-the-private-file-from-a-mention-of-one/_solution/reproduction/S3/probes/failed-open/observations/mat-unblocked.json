@@ -1,0 +1,22 @@
+{
+  "arm": "mat",
+  "block_untrusted_env": null,
+  "source_path": "/work/canary.mat",
+  "declared_content_type": "image/png",
+  "stored_content_type": "image/png",
+  "identified": true,
+  "variable": true,
+  "loader_selected": "matload",
+  "variant_succeeded": true,
+  "returned_bytes_hex": "4b5232532d43414e4152592d4349543239342d30313233343536373839616263",
+  "returned_byte_count": 32,
+  "matches_dummy_file": true,
+  "recovered_text": "\"KR2S-CANARY-CIT294-0123456789abc\"",
+  "expected_text": "\"KR2S-CANARY-CIT294-0123456789abc\"",
+  "independent_dummy_file_openat_count": 1,
+  "independent_trace_text": "[pid     8] openat(AT_FDCWD</app>, \"/work/canary.mat\", O_RDONLY|O_CLOEXEC) = 6</work/canary.mat>\n[pid    12] openat(AT_FDCWD</app>, \"/work/dummy-canary.txt\", O_RDONLY) = -1 EACCES (Permission denied)\n  \"source_path\": \"/work/canary.mat\",",
+  "independent_source_sha256": "f1c62ebc5fb7ab50655d505f3c30498713cdef232d3bdef585935024bd007fcc",
+  "independent_image_id": "sha256:d57333cda1248a419cbe7cc5e34e31401d48b63ebc67edb4e78b6fa75c9ab47e",
+  "independent_rails_load_defaults": "7.0",
+  "independent_active_storage_variant_processor": "vips"
+}

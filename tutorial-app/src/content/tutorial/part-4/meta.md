@@ -2,8 +2,6 @@
 type: part
 title: 'Research: what a green check misses'
 chapters:
-  - rails-matlab-canary
-  - can-the-checker-be-trusted
   - experiment
   - smuggling-survives-the-merge
 # Hidden from production builds; see src/content/config.ts.

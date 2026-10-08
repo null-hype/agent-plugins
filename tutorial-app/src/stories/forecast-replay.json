@@ -1,0 +1,418 @@
+{
+  "source": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/",
+  "roundId": "20261006T065648Z-stub",
+  "splitBase": "5282c7e",
+  "splitHead": "12f2351",
+  "starter": {
+    "scenario": "cit294-review-v1",
+    "frames": [
+      {
+        "actor": "client",
+        "action": "send prompt",
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "session/prompt",
+          "params": {
+            "sessionId": "forecast-replay",
+            "prompt": [
+              {
+                "type": "text",
+                "text": "Was Meridian ever exposed to CVE-2026-66066?\n\nSubject: Meridian (kr2s-was-i-vulnerable/references/assessment-example.md)\nRound 20261006T065648Z-stub, stub register, read since 2026-10-06T06:56:48.978Z."
+              }
+            ]
+          }
+        },
+        "provenance": {
+          "recordingId": "20261006T065648Z-stub:was-i-vulnerable",
+          "capturedAt": "2026-10-06T06:56:48.978Z",
+          "scripted": "Replay framing rendered from the tree and the retained round; the round recorded no proposal."
+        }
+      }
+    ],
+    "nextTurn": {
+      "actor": "agent",
+      "speaker": "replay",
+      "action": "replay the recorded questions"
+    }
+  },
+  "solved": {
+    "scenario": "cit294-review-v1",
+    "frames": [
+      {
+        "actor": "client",
+        "action": "send prompt",
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "session/prompt",
+          "params": {
+            "sessionId": "forecast-replay",
+            "prompt": [
+              {
+                "type": "text",
+                "text": "Was Meridian ever exposed to CVE-2026-66066?\n\nSubject: Meridian (kr2s-was-i-vulnerable/references/assessment-example.md)\nRound 20261006T065648Z-stub, stub register, read since 2026-10-06T06:56:48.978Z."
+              }
+            ]
+          }
+        },
+        "provenance": {
+          "recordingId": "20261006T065648Z-stub:was-i-vulnerable",
+          "capturedAt": "2026-10-06T06:56:48.978Z",
+          "scripted": "Replay framing rendered from the tree and the retained round; the round recorded no proposal."
+        }
+      },
+      {
+        "actor": "agent",
+        "action": "replay the recorded questions",
+        "speaker": "replay",
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "stopReason": "end_turn",
+            "_meta": {
+              "diagnostic": {
+                "severity": "info",
+                "code": "question.split",
+                "message": "question.split: 12f2351 split it into the 2 questions it rests on (40%, 80%); 5282c7e froze it alone at 50%.",
+                "evaluationId": "20261006T065648Z-stub:was-i-vulnerable:question.split",
+                "related": [
+                  {
+                    "role": "split-base",
+                    "revision": "5282c7e",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                    "line": 68,
+                    "endLine": 71,
+                    "detail": "5282c7e froze was-i-vulnerable alone, at 0.5, resting on nothing."
+                  },
+                  {
+                    "role": "split-base",
+                    "revision": "5282c7e",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                    "line": 2,
+                    "endLine": 4,
+                    "detail": "The reading 5282c7e froze: none, since nothing is split."
+                  },
+                  {
+                    "role": "split-head",
+                    "revision": "12f2351",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                    "line": 68,
+                    "endLine": 76,
+                    "detail": "12f2351 gives was-i-vulnerable the questions it rests on and accounts for the difference they make."
+                  },
+                  {
+                    "role": "split-head",
+                    "revision": "12f2351",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                    "line": 77,
+                    "endLine": 85,
+                    "detail": "The questions 12f2351 added, each with its own forecast."
+                  },
+                  {
+                    "role": "split-head",
+                    "revision": "12f2351",
+                    "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                    "line": 2,
+                    "endLine": 11,
+                    "detail": "The reading 12f2351 froze: 0.5 against the 0.32 its questions imply."
+                  }
+                ]
+              },
+              "probes": [
+                {
+                  "question": "Was Meridian ever exposed to CVE-2026-66066? Forecast: 50% yes.",
+                  "action": "inspect the recorded registration and read-back",
+                  "diagnostic": {
+                    "severity": "info",
+                    "code": "question.split",
+                    "message": "question.split: 12f2351 split it into the 2 questions it rests on (40%, 80%); 5282c7e froze it alone at 50%.",
+                    "evaluationId": "20261006T065648Z-stub:was-i-vulnerable:question.split",
+                    "related": [
+                      {
+                        "role": "split-base",
+                        "revision": "5282c7e",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 68,
+                        "endLine": 71,
+                        "detail": "5282c7e froze was-i-vulnerable alone, at 0.5, resting on nothing."
+                      },
+                      {
+                        "role": "split-base",
+                        "revision": "5282c7e",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                        "line": 2,
+                        "endLine": 4,
+                        "detail": "The reading 5282c7e froze: none, since nothing is split."
+                      },
+                      {
+                        "role": "split-head",
+                        "revision": "12f2351",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 68,
+                        "endLine": 76,
+                        "detail": "12f2351 gives was-i-vulnerable the questions it rests on and accounts for the difference they make."
+                      },
+                      {
+                        "role": "split-head",
+                        "revision": "12f2351",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 77,
+                        "endLine": 85,
+                        "detail": "The questions 12f2351 added, each with its own forecast."
+                      },
+                      {
+                        "role": "split-head",
+                        "revision": "12f2351",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+                        "line": 2,
+                        "endLine": 11,
+                        "detail": "The reading 12f2351 froze: 0.5 against the 0.32 its questions imply."
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "question": "Would an uploaded file reach libvips' matload? Active Storage makes variants, the variant processor is :vips, and the deployed libvips has matload (conditions 1 to 3). Forecast: 40% yes.",
+                      "action": "inspect the recorded registration and read-back",
+                      "diagnostic": {
+                        "severity": "info",
+                        "code": "forecast.registered",
+                        "message": "forecast.registered: Forecast 40%, registered once and read back as 40%, not moved. Unresolved in this round.",
+                        "evaluationId": "20261006T065648Z-stub:file-reaches-matload:forecast.registered",
+                        "related": [
+                          {
+                            "role": "fact",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                            "line": 78,
+                            "endLine": 81,
+                            "detail": "Would an uploaded file reach libvips' matload? Active Storage makes variants, the variant processor is :vips, and the deployed libvips has matload (conditions 1 to 3). Forecast 0.4, set before anything answers it. No resolution is recorded."
+                          },
+                          {
+                            "role": "observation",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/register.json",
+                            "line": 11,
+                            "endLine": 19,
+                            "detail": "The round read back 0.4 for a tree forecast of 0.4; moved: false."
+                          },
+                          {
+                            "role": "observation",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 38,
+                            "endLine": 43,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.107Z: CIT-326 file-reaches-matload: is it registered"
+                          },
+                          {
+                            "role": "registration",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 44,
+                            "endLine": 49,
+                            "detail": "ItemCreate at 2026-10-06T06:56:49.108Z: CIT-326 file-reaches-matload: register"
+                          },
+                          {
+                            "role": "read-back",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 50,
+                            "endLine": 55,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.110Z: CIT-326 file-reaches-matload: read back note"
+                          },
+                          {
+                            "role": "read-back",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 56,
+                            "endLine": 61,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.110Z: CIT-326 file-reaches-matload: read back forecast"
+                          },
+                          {
+                            "role": "registration",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 62,
+                            "endLine": 67,
+                            "detail": "ItemUpdate at 2026-10-06T06:56:49.111Z: CIT-326 file-reaches-matload: fill"
+                          },
+                          {
+                            "role": "read-back",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 68,
+                            "endLine": 73,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.111Z: CIT-326 file-reaches-matload: read back forecast"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "question": "Could an attacker get a crafted upload rendered? The direct uploads endpoint is reachable, a variation key is scrapeable, and Rails predates the fix (conditions 4 to 6). Forecast: 80% yes.",
+                      "action": "inspect the recorded registration and read-back",
+                      "diagnostic": {
+                        "severity": "info",
+                        "code": "forecast.registered",
+                        "message": "forecast.registered: Forecast 80%, registered once and read back as 80%, not moved. Unresolved in this round.",
+                        "evaluationId": "20261006T065648Z-stub:attacker-reaches-it:forecast.registered",
+                        "related": [
+                          {
+                            "role": "fact",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                            "line": 82,
+                            "endLine": 85,
+                            "detail": "Could an attacker get a crafted upload rendered? The direct uploads endpoint is reachable, a variation key is scrapeable, and Rails predates the fix (conditions 4 to 6). Forecast 0.8, set before anything answers it. No resolution is recorded."
+                          },
+                          {
+                            "role": "observation",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/register.json",
+                            "line": 20,
+                            "endLine": 28,
+                            "detail": "The round read back 0.8 for a tree forecast of 0.8; moved: false."
+                          },
+                          {
+                            "role": "observation",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 74,
+                            "endLine": 79,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.111Z: CIT-326 attacker-reaches-it: is it registered"
+                          },
+                          {
+                            "role": "registration",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 80,
+                            "endLine": 85,
+                            "detail": "ItemCreate at 2026-10-06T06:56:49.112Z: CIT-326 attacker-reaches-it: register"
+                          },
+                          {
+                            "role": "read-back",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 86,
+                            "endLine": 91,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.112Z: CIT-326 attacker-reaches-it: read back note"
+                          },
+                          {
+                            "role": "read-back",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 92,
+                            "endLine": 97,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.112Z: CIT-326 attacker-reaches-it: read back forecast"
+                          },
+                          {
+                            "role": "registration",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 98,
+                            "endLine": 103,
+                            "detail": "ItemUpdate at 2026-10-06T06:56:49.113Z: CIT-326 attacker-reaches-it: fill"
+                          },
+                          {
+                            "role": "read-back",
+                            "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                            "line": 104,
+                            "endLine": 109,
+                            "detail": "ItemRead at 2026-10-06T06:56:49.113Z: CIT-326 attacker-reaches-it: read back forecast"
+                          }
+                        ]
+                      }
+                    }
+                  ],
+                  "unfolded": {
+                    "severity": "info",
+                    "code": "forecast.split",
+                    "message": "forecast.split: Forecast 50%. Its questions imply 32% read as independent (40% × 80%): a difference of -0.18, accounted for in the tree. 0.5 was a guess at the whole conjunction. Split along the guide's conditions, the processing path (0.4, since many libvips builds lack matload) bounds it, and two independent conditions at 0.4 and 0.8 can only reach 0.32.",
+                    "evaluationId": "20261006T065648Z-stub:was-i-vulnerable:forecast.split",
+                    "related": [
+                      {
+                        "role": "fact",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 68,
+                        "endLine": 76,
+                        "detail": "Was Meridian ever exposed to CVE-2026-66066? Forecast 0.5, set before anything answers it. No resolution is recorded."
+                      },
+                      {
+                        "role": "rule",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 36,
+                        "endLine": 39,
+                        "detail": "A question holds only if all the questions it rests on do."
+                      },
+                      {
+                        "role": "rule",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 46,
+                        "endLine": 47,
+                        "detail": "Read as independent: the product of their forecasts. Dependence between them is not modelled."
+                      },
+                      {
+                        "role": "rule",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/WasIVulnerable.pkl",
+                        "line": 90,
+                        "endLine": 96,
+                        "detail": "How the reading is computed and checked against the account."
+                      },
+                      {
+                        "role": "observation",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/reading.txt",
+                        "line": 1,
+                        "endLine": 2,
+                        "detail": "The round's reading under pkl test. The round was not accepted or frozen."
+                      },
+                      {
+                        "role": "observation",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/register.json",
+                        "line": 2,
+                        "endLine": 10,
+                        "detail": "The round read back 0.5 for a tree forecast of 0.5; moved: false."
+                      },
+                      {
+                        "role": "observation",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                        "line": 2,
+                        "endLine": 7,
+                        "detail": "ItemRead at 2026-10-06T06:56:49.105Z: CIT-326 was-i-vulnerable: is it registered"
+                      },
+                      {
+                        "role": "registration",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                        "line": 8,
+                        "endLine": 13,
+                        "detail": "ItemCreate at 2026-10-06T06:56:49.105Z: CIT-326 was-i-vulnerable: register"
+                      },
+                      {
+                        "role": "read-back",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                        "line": 14,
+                        "endLine": 19,
+                        "detail": "ItemRead at 2026-10-06T06:56:49.106Z: CIT-326 was-i-vulnerable: read back note"
+                      },
+                      {
+                        "role": "read-back",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                        "line": 20,
+                        "endLine": 25,
+                        "detail": "ItemRead at 2026-10-06T06:56:49.106Z: CIT-326 was-i-vulnerable: read back forecast"
+                      },
+                      {
+                        "role": "registration",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                        "line": 26,
+                        "endLine": 31,
+                        "detail": "ItemUpdate at 2026-10-06T06:56:49.107Z: CIT-326 was-i-vulnerable: fill"
+                      },
+                      {
+                        "role": "read-back",
+                        "uri": "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+                        "line": 32,
+                        "endLine": 37,
+                        "detail": "ItemRead at 2026-10-06T06:56:49.107Z: CIT-326 was-i-vulnerable: read back forecast"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "provenance": {
+          "recordingId": "20261006T065648Z-stub:was-i-vulnerable:replay",
+          "capturedAt": "2026-10-06T06:56:49.113Z",
+          "scripted": "Rendered from WasIVulnerable.pkl and the retained round's records."
+        }
+      }
+    ]
+  }
+}

@@ -37,7 +37,7 @@ describe('Contact and Conversion Paths (CIT-166, CIT-259, CIT-165)', () => {
     const content = fs.readFileSync(landingPath, 'utf8');
     expect(content).toContain('https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml');
     expect(content).toContain('public.rant@pm.me');
-    expect(content).toContain('/part-5/private-document/1-is-the-private-document-private');
+    expect(content).toContain('/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one');
   });
 
 

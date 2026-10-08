@@ -1,0 +1,451 @@
+{
+  "scenario": "cit294-review-v1",
+  "frames": [
+    {
+      "actor": "client",
+      "action": "send prompt",
+      "speaker": "alice",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "session/prompt",
+        "params": {
+          "sessionId": "sess_cit294-04",
+          "prompt": [
+            {
+              "type": "text",
+              "text": "Does the check require a real read of the private file?\n\nAlice, cc23e89 (the last commit of #120):\nCIT-303 PR follow-up: parse trace evidence instead of substring-matching it\n\nReview of PR #120 found the independent-read check still only did a\nbare substring match on the retained trace text, and nothing required\nvalid trace evidence to exist for an arm whose expected open-count was\nalready zero -- so deleting a blocked arm's whole trace, or replacing\nreal evidence with a prose mention/failed EACCES open/different-directory\nopen, still passed with empty diagnostics. Reconcile.pkl now requires a\nparsed, successful openat of the exact path, plus proof-of-capture (a\nsuccessful open of the arm's own source file) for every arm; run_arms.sh\ncollects trace text under the same criterion and no longer merges\nstrace's stderr with the script's own JSON stdout."
+            }
+          ]
+        }
+      },
+      "provenance": {
+        "recordingId": "cit294-s4#0",
+        "capturedAt": "2026-10-04",
+        "scripted": "ACP framing and the subject question authored; the body quotes the cc23e89 commit message verbatim."
+      }
+    },
+    {
+      "actor": "agent",
+      "action": "reply with finding",
+      "speaker": "pkl",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "stopReason": "end_turn",
+          "_meta": {
+            "diagnostic": {
+              "code": "landed.merge-to-main",
+              "severity": "info",
+              "message": "landed.merge-to-main: Merged to main as bc97c0e (parents be95c86 and cc23e89). No review of the final revision, cc23e89, is recorded.",
+              "subject": {
+                "role": "fact",
+                "uri": "evidence/cit-294-review-history-v1/captures/git-landing-facts.json",
+                "line": 2,
+                "detail": "the merge commit and its parents"
+              },
+              "related": [
+                {
+                  "role": "observation",
+                  "uri": "evidence/cit-294-review-history-v1/captures/review-3-retrieval-check.json",
+                  "line": 1,
+                  "detail": "no review of cc23e89 is recorded; where review 3 was looked for, and not found"
+                },
+                {
+                  "role": "axiom",
+                  "uri": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+                  "revision": "cc23e892",
+                  "line": 38,
+                  "detail": "successfulOpenatCount: a read counts only as a successful openat of the exact quoted path"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/runs/baseline/canary-reads.txt",
+                  "revision": "S4",
+                  "line": 1,
+                  "detail": "the committed strace transcript of the four arms; from #120 on, the checker reads each arm's embedded copy instead"
+                },
+                {
+                  "role": "observation",
+                  "uri": "landed.history/mutation-output",
+                  "detail": "expected the deleted-trace run's output | actual -- not retained -- [missing]"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/forged-read/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): an openat of the private file, /work/dummy-canary.txt, added to the blocked MAT arm's embedded trace; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/deleted-trace/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm's embedded trace emptied; checker cc23e892; pkl test exit 1, 74 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/generic-crash/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm refused with RuntimeError: disk full instead of the matload block; checker cc23e892; pkl test exit 1, 70 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/emptied-bytes/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's returned bytes emptied and their count set to 0; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/corrupted-pixels/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked PNG control's pixels set to ffffffff; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/swapped-source/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm's source sha256 replaced with another valid one; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/changed-config/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm's Rails defaults set to 6.1 and its variant processor to mini_magick; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/prose-mention/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's real read of the private file replaced by a prose mention of it; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/failed-open/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's real read of the private file replaced by a failed (EACCES) open of it; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                },
+                {
+                  "role": "observation",
+                  "uri": "reproduction/S4/probes/other-directory/result.txt",
+                  "revision": "S4",
+                  "line": 4,
+                  "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's real read of the private file replaced by an open of /tmp/dummy-canary.txt; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                }
+              ],
+              "evaluationId": "cit-294-117-118-120:landed.history"
+            },
+            "probes": [
+              {
+                "action": "forged a read of the private file into the blocked arm's embedded trace",
+                "question": "Does the check fail when a read of the private file is forged?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-2.gap-1.forged-read",
+                  "message": "review-2.gap-1.forged-read: Forging a read of the private file made the check fail: 72 of 75 assertions passed (pkl test exit 1).",
+                  "evaluationId": "cit-294-117-118-120:review-2.gap-1.forged-read",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/forged-read/observations/mat-blocked.json",
+                      "revision": "S4",
+                      "line": 15,
+                      "detail": "mat-blocked.json as the probe left it: an openat of the private file, /work/dummy-canary.txt, added to the blocked MAT arm's embedded trace"
+                    },
+                    {
+                      "role": "axiom",
+                      "uri": "docs/investigations/CIT-265/cit-294/Reconcile.pkl",
+                      "revision": "cc23e892",
+                      "line": 38,
+                      "detail": "successfulOpenatCount: a read counts only as a successful openat of the exact quoted path"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/forged-read/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): an openat of the private file, /work/dummy-canary.txt, added to the blocked MAT arm's embedded trace; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "emptied the blocked arm's embedded trace, the trace the checker reads",
+                "question": "Does the check fail when the trace is deleted?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-3.finding-1.deleted-trace",
+                  "message": "review-3.finding-1.deleted-trace: Deleting the trace made the check fail: 74 of 75 assertions passed (pkl test exit 1). Alice claimed #120 flags it; it does.",
+                  "evaluationId": "cit-294-117-118-120:review-3.finding-1.deleted-trace",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/deleted-trace/observations/mat-blocked.json",
+                      "revision": "S4",
+                      "line": 15,
+                      "detail": "mat-blocked.json as the probe left it: the blocked MAT arm's embedded trace emptied"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt",
+                      "line": 30,
+                      "detail": "cc23e89: Reconcile.pkl now requires a parsed, successful openat of the exact path, plus proof-of-capture for every arm"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/deleted-trace/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm's embedded trace emptied; checker cc23e892; pkl test exit 1, 74 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "recorded the blocked arm's refusal as RuntimeError: disk full",
+                "question": "Does the check fail when the block is a generic crash?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-2.reassessed.findings-2-3.generic-crash",
+                  "message": "review-2.reassessed.findings-2-3.generic-crash: Recording the block as a generic crash made the check fail: 70 of 75 assertions passed (pkl test exit 1).",
+                  "evaluationId": "cit-294-117-118-120:review-2.reassessed.findings-2-3.generic-crash",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/generic-crash/observations/mat-blocked.json",
+                      "revision": "S4",
+                      "line": 13,
+                      "detail": "mat-blocked.json as the probe left it: the blocked MAT arm refused with RuntimeError: disk full instead of the matload block"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/generic-crash/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm refused with RuntimeError: disk full instead of the matload block; checker cc23e892; pkl test exit 1, 70 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "emptied the private file's returned bytes and set their count to 0",
+                "question": "Does the check fail when the returned bytes are emptied?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-2.reassessed.findings-2-3.emptied-bytes",
+                  "message": "review-2.reassessed.findings-2-3.emptied-bytes: Emptying the returned bytes made the check fail: 72 of 75 assertions passed (pkl test exit 1).",
+                  "evaluationId": "cit-294-117-118-120:review-2.reassessed.findings-2-3.emptied-bytes",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/emptied-bytes/observations/mat-unblocked.json",
+                      "revision": "S4",
+                      "line": 11,
+                      "detail": "mat-unblocked.json as the probe left it: the unblocked MAT arm's returned bytes emptied and their count set to 0"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/emptied-bytes/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's returned bytes emptied and their count set to 0; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "set the blocked PNG control's pixels to ffffffff",
+                "question": "Does the check fail when the PNG control's pixels are corrupted?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-2.reassessed.findings-2-3.corrupted-pixels",
+                  "message": "review-2.reassessed.findings-2-3.corrupted-pixels: Corrupting the PNG control's pixels made the check fail: 72 of 75 assertions passed (pkl test exit 1).",
+                  "evaluationId": "cit-294-117-118-120:review-2.reassessed.findings-2-3.corrupted-pixels",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/corrupted-pixels/observations/png-blocked.json",
+                      "revision": "S4",
+                      "line": 11,
+                      "detail": "png-blocked.json as the probe left it: the blocked PNG control's pixels set to ffffffff"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/corrupted-pixels/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked PNG control's pixels set to ffffffff; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "replaced the blocked arm's source sha256 with another valid one",
+                "question": "Does the check fail when the blocked arm records a different upload?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-2.gap-2.swapped-source",
+                  "message": "review-2.gap-2.swapped-source: Recording a different upload for the blocked arm made the check fail: 73 of 75 assertions passed (pkl test exit 1).",
+                  "evaluationId": "cit-294-117-118-120:review-2.gap-2.swapped-source",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/swapped-source/observations/mat-blocked.json",
+                      "revision": "S4",
+                      "line": 16,
+                      "detail": "mat-blocked.json as the probe left it: the blocked MAT arm's source sha256 replaced with another valid one"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/swapped-source/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm's source sha256 replaced with another valid one; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "set the blocked arm's Rails defaults to 6.1 and its variant processor to mini_magick",
+                "question": "Does the check fail when the blocked arm records a different configuration?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-2.gap-2.changed-config",
+                  "message": "review-2.gap-2.changed-config: Recording a different configuration for the blocked arm made the check fail: 72 of 75 assertions passed (pkl test exit 1).",
+                  "evaluationId": "cit-294-117-118-120:review-2.gap-2.changed-config",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/changed-config/observations/mat-blocked.json",
+                      "revision": "S4",
+                      "line": 18,
+                      "detail": "mat-blocked.json as the probe left it: the blocked MAT arm's Rails defaults set to 6.1 and its variant processor to mini_magick"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/changed-config/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the blocked MAT arm's Rails defaults set to 6.1 and its variant processor to mini_magick; checker cc23e892; pkl test exit 1, 72 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "replaced the unblocked arm's real read with a prose mention of the private file",
+                "question": "Does the check fail when the real read is only a mention of the private file?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-3.finding-2.prose-mention",
+                  "message": "review-3.finding-2.prose-mention: Replacing the real read with a prose mention of the private file made the check fail: 73 of 75 assertions passed (pkl test exit 1). Alice claimed #120 flags it; it does.",
+                  "evaluationId": "cit-294-117-118-120:review-3.finding-2.prose-mention",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/prose-mention/observations/mat-unblocked.json",
+                      "revision": "S4",
+                      "line": 17,
+                      "detail": "mat-unblocked.json as the probe left it: the unblocked MAT arm's real read of the private file replaced by a prose mention of it"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt",
+                      "line": 30,
+                      "detail": "cc23e89: Reconcile.pkl now requires a parsed, successful openat of the exact path, plus proof-of-capture for every arm"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/prose-mention/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's real read of the private file replaced by a prose mention of it; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "replaced the unblocked arm's real read with a failed (EACCES) open of the private file",
+                "question": "Does the check fail when the real read is a failed open?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-3.finding-2.failed-open",
+                  "message": "review-3.finding-2.failed-open: Replacing the real read with a failed open of the private file made the check fail: 73 of 75 assertions passed (pkl test exit 1). Alice claimed #120 flags it; it does.",
+                  "evaluationId": "cit-294-117-118-120:review-3.finding-2.failed-open",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/failed-open/observations/mat-unblocked.json",
+                      "revision": "S4",
+                      "line": 17,
+                      "detail": "mat-unblocked.json as the probe left it: the unblocked MAT arm's real read of the private file replaced by a failed (EACCES) open of it"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt",
+                      "line": 30,
+                      "detail": "cc23e89: Reconcile.pkl now requires a parsed, successful openat of the exact path, plus proof-of-capture for every arm"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/failed-open/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's real read of the private file replaced by a failed (EACCES) open of it; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "replaced the unblocked arm's real read with an open of /tmp/dummy-canary.txt",
+                "question": "Does the check fail when the real read is of a same-named file elsewhere?",
+                "diagnostic": {
+                  "severity": "info",
+                  "code": "review-3.finding-2.other-directory",
+                  "message": "review-3.finding-2.other-directory: Replacing the real read with an open of a same-named file elsewhere made the check fail: 73 of 75 assertions passed (pkl test exit 1). Alice claimed #120 flags it; it does.",
+                  "evaluationId": "cit-294-117-118-120:review-3.finding-2.other-directory",
+                  "related": [
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/other-directory/observations/mat-unblocked.json",
+                      "revision": "S4",
+                      "line": 17,
+                      "detail": "mat-unblocked.json as the probe left it: the unblocked MAT arm's real read of the private file replaced by an open of /tmp/dummy-canary.txt"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "evidence/cit-294-review-history-v1/captures/git-commit-object-cc23e89297855dd07b1ee477ced455ab46a94738.txt",
+                      "line": 30,
+                      "detail": "cc23e89: Reconcile.pkl now requires a parsed, successful openat of the exact path, plus proof-of-capture for every arm"
+                    },
+                    {
+                      "role": "observation",
+                      "uri": "reproduction/S4/probes/other-directory/result.txt",
+                      "revision": "S4",
+                      "line": 4,
+                      "detail": "REPRODUCTION cit-294-checker-probes-reproduction-v1 (a new run, not the reviewers' own output): the unblocked MAT arm's real read of the private file replaced by an open of /tmp/dummy-canary.txt; checker cc23e892; pkl test exit 1, 73 of 75 assertions pass"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "cit294-s4#1",
+        "capturedAt": "2026-10-04",
+        "scripted": "No review of this revision is recorded. The reply is the pinned checker's own answers, run again for this lesson; nothing in it is a reviewer's."
+      }
+    }
+  ],
+  "nextTurn": null
+}
