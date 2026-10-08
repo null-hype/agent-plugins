@@ -22,16 +22,20 @@ could not be collected or the graph did not respect its dependencies.
 
 ## Example
 
+Two revisions of the app, each asked the same two Questions, word for word
+(CIT-328). `expected` is what a sound policy answers; the patched revision's
+Questions depend on the baseline's, and their collectors send the same request.
+
 ```text
-vulnerability-reproduced
-  Alice reads Bob's private document from the baseline app: 200
+baseline-alice-reads   Can Alice read Bob's private document?  baseline: 200
+baseline-bob-reads     Can Bob read it?                        baseline: 200
         ↓
-exploit-prevented
-  The same request against the patched app: 403
-        ↓
-legitimate-access-preserved
-  Bob reads his own document from the patched app: 200
+patched-alice-reads    Can Alice read Bob's private document?  patched: 403
+patched-bob-reads      Can Bob read it?                        patched: 200
 ```
+
+Alice's expected range is `[0, 0.2]` and Bob's `[0.8, 1]`, so the baseline's
+canned answer for Alice (`0.95`) is recorded as `out-of-range`: that is the flaw.
 
 `fixture-app.mjs` serves synthetic accounts and documents on an ephemeral
 loopback port. It switches between an allow-any-signed-in-user policy and an
@@ -41,18 +45,20 @@ the evidence from their prerequisites. Authentication is represented by fixed
 synthetic sessions; only this document-read ownership check is under test.
 This is a reproducible patch scenario, not an assessment of a deployed app.
 
-## Lessons (CIT-318)
+## Lessons (CIT-318, CIT-328)
 
 These Questions are also the `jev/<id>` projects of
 `tutorial-app/playwright.questions.config.ts`, which name the same collectors
 (`tutorial-app/tests/jev/collectors.ts` wraps `collectors.ts` and `score.mjs`).
-A Question with a `lesson` (order, title, prose) has its lesson rendered from its
-answer by `tutorial-app/tests/jev/JevReport.pkl`, and the tutorial reporter
-compiles them into `tutorial-app/src/content/tutorial/part-5/private-document`,
-which is committed. To record a new run, from `tutorial-app`:
+Each entry in `revisions` (its commit subject and its lesson's order, title and
+prose) is one lesson: the `jev:lesson` project renders it from the run with
+`tutorial-app/tests/jev/JevReport.pkl`, as a review in the form of part 4's
+"Can the checker be trusted", and the tutorial reporter compiles them into
+`tutorial-app/src/content/tutorial/part-5/private-document`, which is
+committed. To record a new run, from `tutorial-app`:
 
 ```sh
-RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.questions.config.ts --project 'jev/*'
+JEV_RUN_ID=jev-lessons-mock RAILS_PROBES_NO_SERVERS=1 npx playwright test --config=playwright.questions.config.ts --project 'jev/*' --project jev:lesson
 ```
 
 Scores are canned (`fixtures/answers.json`) unless `JEV_BACKEND=real` (with
@@ -72,8 +78,8 @@ npm run test:contracts
 ```
 
 No browser installation or credentials are needed for mock scoring. The
-HTTP collectors require permission to bind a loopback port. Canned scores of
-`0.95` come from `fixtures/answers.json`; they are not Jev judgements.
+HTTP collectors require permission to bind a loopback port. The canned scores
+in `fixtures/answers.json` are not Jev judgements.
 
 To demonstrate prerequisite gating:
 
@@ -81,10 +87,11 @@ To demonstrate prerequisite gating:
 npm run score -- --mock-answers fixtures/prerequisite-fails.json
 ```
 
-This deliberately exits 1: the canned answers hold no score for the first
-question, so its answer cannot be collected. Both dependent projects are skipped
-and make no Jev calls. A score outside the declared range (say `0.2` against
-`[0.8, 1]`) is different: it is recorded as `out-of-range`, and its dependents run.
+This deliberately exits 1: the canned answers hold no score for
+`baseline-alice-reads`, so its answer cannot be collected. Its dependent,
+`patched-alice-reads`, is skipped and makes no Jev call. A score outside the
+declared range (say `0.2` for Bob against `[0.8, 1]`) is different: it is
+recorded as `out-of-range`, and its dependents run.
 Use `--mock-answers /path/to/answers.json` for other canned responses.
 
 For a real call, authenticate your existing **host** `pass-cli` in a dedicated
