@@ -1,7 +1,9 @@
 ---
 import '../styles/prose.css';
+// Lesson MDX renders RansomNote statically; Astro doesn't pick up its CSS from there.
+import './RansomNote.css';
 
-const title ='Agent decisions, checked against evidence';
+const title = 'Agent decisions, checked against evidence';
 const description = 'Follow an agent proposal from confident answer to failed check and scoped approval. Inspect the evidence behind each verdict.';
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://null-hype.tidelands.dev');
 const image = new URL('/social-preview.png', canonical.origin);
