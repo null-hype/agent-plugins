@@ -1,8 +1,16 @@
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type { StorybookConfig } from '@storybook/react-vite';
 import { mergeConfig } from 'vite';
 import { otelWarmLogPage } from './otel-warm-log-page';
 import { acpTracePages } from './acp-trace-pages';
+
+// Generate before Storybook imports the selected lesson and fixture JSON.
+// Keep this in a separate process: Storybook bundles this config with Vite.
+execFileSync('npm', ['run', 'replay:generate'], {
+  cwd: fileURLToPath(new URL('..', import.meta.url)),
+  stdio: 'inherit',
+});
 
 const config: StorybookConfig = {
 	stories: ['../src/stories/**/*.mdx', '../src/stories/**/*.stories.@(js|jsx|mjs|ts|tsx)'],

@@ -66,15 +66,34 @@ func (m *AgentPlugins) CveCheckerReplayImage(
 	// +defaultPath="/"
 	// +ignore=["**/node_modules", "**/.venv", "**/.worktrees", ".git"]
 	source *dagger.Directory,
+	// +default="S2"
+	state string,
 ) (*dagger.Container, error) {
 	feature := source.Directory("src/cve-2026-66066")
 	raw, err := feature.File("delivery.json").Contents(ctx)
 	if err != nil { return nil, err }
 	var delivery map[string]string
 	if err := json.Unmarshal([]byte(raw), &delivery); err != nil { return nil, err }
-	if delivery["version"] != "20261008.0812" || delivery["packageVersion"] != "0.3.0" || delivery["state"] != "S2" {
-		return nil, fmt.Errorf("unexpected retention delivery")
-	}
+    if state == "S1" {
+        raw, err := feature.File("deliveries.json").Contents(ctx)
+        if err != nil { return nil, err }
+        var deliveries []map[string]string
+        if err := json.Unmarshal([]byte(raw), &deliveries); err != nil { return nil, err }
+        for _, candidate := range deliveries {
+            if candidate["state"] == "S1" && candidate["version"] == "20261008.0811" { delivery = candidate }
+        }
+        if delivery["state"] != "S1" { return nil, fmt.Errorf("missing S1 delivery") }
+        metadataRaw, err := feature.File("devcontainer-feature.json").Contents(ctx)
+        if err != nil { return nil, err }
+        var metadata map[string]interface{}
+        if err := json.Unmarshal([]byte(metadataRaw), &metadata); err != nil { return nil, err }
+        metadata["version"] = delivery["packageVersion"]
+        deliveryJSON, _ := json.MarshalIndent(delivery, "", "  ")
+        metadataJSON, _ := json.MarshalIndent(metadata, "", "  ")
+        feature = feature.WithNewFile("delivery.json", string(deliveryJSON)).WithNewFile("devcontainer-feature.json", string(metadataJSON))
+    } else if state != "S2" || delivery["version"] != "20261008.0812" || delivery["packageVersion"] != "0.3.0" || delivery["state"] != "S2" {
+        return nil, fmt.Errorf("unexpected retention delivery")
+    }
 	return source.Directory("test/_global/cve-2026-66066-forensics").
 		DockerBuild(dagger.DirectoryDockerBuildOpts{Target: "checker-runtime"}).
 		WithDirectory("/feature", feature).

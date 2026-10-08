@@ -8,7 +8,12 @@
     "preview": "astro preview",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "replay:generate": "tsx tests/rails-probes/generate.ts",
+    "predev": "npm run replay:generate",
+    "prebuild": "npm run replay:generate",
+    "pretest": "npm run replay:generate",
+    "replay:export": "bash scripts/export-replay.sh"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
@@ -35,6 +40,7 @@
     "monaco-editor": "^0.55.1",
     "nanostores": "0.10.3",
     "storybook": "^10.6.0",
+    "tsx": "4.20.6",
     "vitest": "^5.0.1"
   }
 }
