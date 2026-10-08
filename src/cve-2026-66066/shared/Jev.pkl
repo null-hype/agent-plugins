@@ -1,0 +1,98 @@
+/// The Jev/Noul transport contract: the shape of one request the `jev` client
+/// sends to TypeSafe's Jev judge and the response it accepts back.
+///
+/// This is the single owner of the contract. The `jev` bin loads a request
+/// through this module with the pkl-python binding (`requestFromJson` below),
+/// and reads the result as the dataclasses generated from this same file
+/// (`jev_pkl.py`, via `pkl-gen-python`), so a structurally invalid request
+/// fails Pkl evaluation before any transport is invoked -- Python carries no
+/// second copy of these rules. See NOTES.md for regeneration.
+///
+/// Verified against docs.typesafe.ai/api (POST https://api.typesafe.ai/v1/systemone).
+module jev
+
+import "pkl:json"
+import "pkl:reflect"
+
+/// Any JSON value. `state` is deliberately opaque here for the same reason the
+/// client treats it opaquely: the questions phrase themselves over
+/// `diff_items`/`files`, but the client must not assume that (or the CIT-284
+/// evidence shape). See NOTES.md, "Open question: what is `state`?".
+typealias JsonValue = String|Boolean|Number|Mapping|Listing|Null
+
+/// Optional free-text descriptions of what a yes/no answer means. Both fields
+/// optional per the API.
+class Criteria {
+  `true`: String?
+  `false`: String?
+}
+
+/// One Noul question. `type` is always "noul"; `instructions` carries the whole
+/// judgement (OWASP category semantics live in this text, not in any dedicated
+/// field). `criteria` is optional.
+class NoulQuestion {
+  type: "noul"
+  instructions: String(!isEmpty)
+  criteria: Criteria?
+}
+
+/// The request body. Only `state`, `model`, and `questions` -- a closed class,
+/// so amending it with harness-only `meta`/`expected` is a structural error,
+/// which is exactly the "only `state` is sent" rule expressed as a type.
+class JevRequest {
+  state: JsonValue
+  model: String = "jev-latest"
+  questions: Mapping<String, NoulQuestion>(!isEmpty)
+}
+
+/// Reject fields the class does not declare. `Dynamic.toTyped` would drop them
+/// silently, letting a misspelt or harness-only key vanish without an error.
+local function noUnknown(d: Dynamic, cls: Class): Dynamic =
+  let (extras = d.toMap().keys.filter((k) -> !reflect.Class(cls).properties.containsKey(k)))
+    if (extras.isEmpty) d
+    else throw("unknown field(s) \(extras.toList().sort()) for \(reflect.Class(cls).name)")
+
+/// `toTyped` does not convert nested values, so `criteria` is converted here
+/// rather than left as a `Dynamic` that would fail its own type check.
+local function question(q: Dynamic): NoulQuestion =
+  let (checked = noUnknown(q, NoulQuestion))
+  let (c = checked.getPropertyOrNull("criteria"))
+    new NoulQuestion {
+      type = checked.type
+      instructions = checked.instructions
+      criteria = if (c == null) null else noUnknown(c as Dynamic, Criteria).toTyped(Criteria)
+    }
+
+/// Build a `JevRequest` from raw JSON text. `state` is parsed opaquely (objects
+/// as `Mapping`, arrays as `Listing`); each question is converted strictly, so
+/// a wrong `type`, an empty `instructions`, an unknown field or an empty
+/// question set is a Pkl evaluation error, not a Python check.
+function requestFromJson(stateJson: String, questionsJson: String, modelName: String): JevRequest =
+  new JevRequest {
+    state = new json.Parser { useMapping = true }.parse(stateJson) as JsonValue
+    model = modelName
+    questions =
+      (new json.Parser {}.parse(questionsJson) as Dynamic)
+        .toMap()
+        .mapValues((_, q) -> question(q as Dynamic))
+        .toMapping()
+  }
+
+/// The observed API answer. Scores remain numbers; they are not classifications.
+class NoulAnswer {
+  type: "noul" = "noul"
+  noul: Number(isFinite, isBetween(0, 1))
+}
+class JevResponse {
+  model: String
+  answers: Mapping<String, NoulAnswer>
+}
+function responseFromJson(text: String, questionIdsJson: String, modelName: String): JevResponse =
+  let (raw = new json.Parser {}.parse(text) as Dynamic)
+  let (questionIds = new json.Parser {}.parse(questionIdsJson).toList().toSet())
+    new JevResponse {
+      model = raw.getPropertyOrNull("model") ?? modelName
+      answers = raw.answers.toMap()
+        .mapValues((_, answer) -> (answer as Dynamic).toTyped(NoulAnswer)).toMapping()
+        as Mapping<String, NoulAnswer>(keys == questionIds)
+    }

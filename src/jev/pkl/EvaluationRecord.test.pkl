@@ -112,9 +112,12 @@ facts {
     Question.validRecord((base) { delivery { status = "captured"; version = "20261008.0811"; evidence = kept } })
     !Question.validRecord((base) { delivery { evidence = kept } })
   }
-  ["Two review rounds are two versions"] {
-    !Question.validInvestigation((investigation) {
-      records { [0] { delivery { version = "20261008.0811" } }; [1] { delivery { version = "20261008.0811" } } }
+  ["One project delivery can reproduce two distinct historical states"] {
+    Question.validInvestigation((investigation) {
+      records {
+        [0] { delivery { version = "20261008.0811"; status = "captured"; evidence = kept } }
+        [1] { delivery { version = "20261008.0811"; status = "captured"; evidence = rerun } }
+      }
     })
   }
   ["A declared value is observed from retained evidence, and may disagree"] {
