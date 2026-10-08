@@ -27,3 +27,8 @@ test-results/budget-authority/.last-run.json
 /tutorial-app/evidence/cit-294-probe-reproduction-v1/reproduction/S[12]/probes/deleted-trace/
 
 /tutorial-app/node_modules
+
+/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/*/_files/reproduction/S[12]/probes/deleted-trace/
+/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/*/_solution/reproduction/S[12]/probes/deleted-trace/
+/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/*/_files/reproduction/S[12]/runs/baseline/canary-reads.txt
+/tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/*/_solution/reproduction/S[12]/runs/baseline/canary-reads.txt
