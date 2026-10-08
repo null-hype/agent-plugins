@@ -1,6 +1,7 @@
 import { expect, test, type TestInfo } from '@playwright/test';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   answerJson,
   answerText,
@@ -12,6 +13,7 @@ import {
   starterFixture,
 } from './fixture';
 import { REPRODUCTION_ID, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChecker, type RevisionKey } from './probes';
+import { capturedPresentation, loadCapturedReplay } from './captures';
 import { EVALUATION_SPECS, evaluationIdOf } from '../../src/lib/reviewHistory';
 
 // CIT-307 / CIT-309: review 1 of PR 117 said that deleting the retained strace
@@ -42,6 +44,8 @@ import { EVALUATION_SPECS, evaluationIdOf } from '../../src/lib/reviewHistory';
 // CIT-316: each lesson's title, place and prose are authored in
 // `traces/CheckerProbes.pkl`, beside the questions they tell.
 const CHAPTER = chapter();
+const CAPTURE = loadCapturedReplay();
+const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 async function attachTutorial(testInfo: TestInfo, index: number, name: string, body: string, contentType = 'text/plain') {
   await testInfo.attach(`tutorial:${index}:${name}`, { body, contentType });
@@ -65,6 +69,19 @@ function compile(key: RevisionKey) {
   const answers = new Map([...run].filter(([file]) => path.basename(file) === 'answer.json'));
   const files = new Map([...run].filter(([file]) => !answers.has(file)));
 
+  // CIT-337: independently rerun the question, then render the selected finding
+  // from its retained installed-scenario record. A fresh result cannot silently
+  // replace an older observation in a replay.
+  if (key === 'S1' || key === 'S2') {
+    const retained = capturedPresentation(CAPTURE, key);
+    for (const [file, body] of retained) {
+      expect(run.get(file), `fresh ${key}/${file} differs from its retained capture`).toBe(body);
+      run.set(file, body);
+      if (file.endsWith('/answer.json')) answers.set(file, body);
+      else files.set(file, body);
+    }
+  }
+
   // Both traces render from the state's claims and this run's answers (CIT-312).
   const { starter, solved, prose } = renderTraces(key, answers);
 
@@ -86,7 +103,7 @@ function compile(key: RevisionKey) {
   return { files, starter, solved, prose };
 }
 
-test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) => {
+test('Can an upload read a private file', { tag: '@tutorial' }, async ({}, testInfo) => {
   // The lesson file state at the end of the previous lesson. Each lesson starts
   // from it with only the trace replaced (the incoming turn), so the reporter's
   // continuity check holds the second lesson to what the first one left.
@@ -105,6 +122,10 @@ test('Can the checker be trusted', { tag: '@tutorial' }, async ({}, testInfo) =>
       // What Solve leaves: the solved trace and this state's reproduction files.
       const added = new Map<string, string>([['acp-trace.json', solved]]);
       for (const [file, body] of files) added.set(`reproduction/${key}/${file}`, body);
+      // The review's own words, which the trace's rows cite, as files the lens opens.
+      for (const uri of new Set([...solved.matchAll(/"uri": "(evidence\/cit-294-review-history-v1\/captures\/[^"#]+)"/g)].map((m) => m[1]))) {
+        added.set(uri, readFileSync(path.join(APP_DIR, uri), 'utf8'));
+      }
       // The first lesson restates what it leaves untouched: the reporter builds a
       // step's end state from file/ attachments alone, so nothing carries by itself.
       const declared = index === 1 ? new Map([...before, ...added]) : added;
@@ -133,25 +154,23 @@ for (const { key } of CHAPTER) {
     expect(run.assertsPassed).toBeLessThan(run.assertsTotal!);
     // And a "noticed" answer is written up as data, not rejected: the fixture says what failed.
     expect(noticed(run)).toBe(true);
-    const messages = renderTraces(key, new Map((['deleted-trace', 'forged-read'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
+    const messages = renderTraces(key, new Map((['forged-read', 'deleted-trace', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config', 'prose-mention', 'failed-open', 'other-directory'] as const).map((probe) => [`probes/${probe}/answer.json`, answerJson(run)]))).solved;
     expect(messages).toContain(answerText('deleted-trace', run));
     expect(messages).toContain(`${run.assertsPassed} of ${run.assertsTotal} assertions pass`);
     expect(messages).not.toContain(`Deleting the trace still left all ${run.assertsTotal} assertions passing.`);
   });
 }
 
-// The same previews the budget-authority lessons use: Client is the commit-message
-// editor, Agent is the reviewer. Solve swaps the starter trace for the solved one.
+// Part 5's layout: the Client (the commit-message editor) is the only preview,
+// and the reviewer's activity prints to the terminal. Solve swaps the starter
+// trace for the solved one.
 const LESSON_META = {
   template: 'acp-trace',
   prepareCommands: ['npm install'],
   mainCommand: 'npm run dev',
-  previews: [
-    [4173, 'Client'],
-    [4174, 'Agent'],
-  ],
-  editor: true,
-  terminal: false,
+  previews: [[4173, 'Client']],
+  editor: false,
+  terminal: { open: true, panels: [['output', 'Agent']] },
 };
 
 const BRIDGE = `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';

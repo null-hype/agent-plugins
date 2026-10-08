@@ -1,5 +1,5 @@
 [build]
-command = "npm run build"
+command = "bash scripts/netlify-build.sh"
 publish = "dist"
 # Skip the build (and deploy preview) unless tutorial-app/ changed. Netlify
 # runs this from the base directory, so "." is tutorial-app/.

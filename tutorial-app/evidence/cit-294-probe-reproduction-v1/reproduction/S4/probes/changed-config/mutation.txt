@@ -1,0 +1,1 @@
+edited observations/mat-blocked.json: the blocked MAT arm's Rails defaults set to 6.1 and its variant processor to mini_magick

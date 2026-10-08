@@ -13,7 +13,6 @@ const serverPath = fileURLToPath(new URL('../src/templates/acp-trace/server.cjs'
 
 function renderTemplatePages(): { client: string; agent: string } {
 	const realRequire = createRequire(serverPath);
-	delete realRequire.cache[realRequire.resolve('./jev-viewer.cjs')];
 	const source = `${readFileSync(serverPath, 'utf8')}\nmodule.exports = { renderClientPage, renderAgentPage };`;
 	const stubbedRequire = (id: string) =>
 		id === 'node:http' ? { createServer: () => ({ listen() {} }) } : realRequire(id);
@@ -41,7 +40,6 @@ export function acpTracePages(): Plugin {
 		load(id) {
 			if (id !== `\0${CLIENT_VIRTUAL_ID}` && id !== `\0${AGENT_VIRTUAL_ID}`) return undefined;
 			this.addWatchFile(serverPath);
-			this.addWatchFile(fileURLToPath(new URL('../src/templates/acp-trace/jev-viewer.cjs', import.meta.url)));
 			const pages = renderTemplatePages();
 			const html = id === `\0${CLIENT_VIRTUAL_ID}` ? pages.client : pages.agent;
 			return `export default ${JSON.stringify(html)};`;

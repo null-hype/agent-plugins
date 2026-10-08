@@ -12,13 +12,27 @@ on:
       - '.dagger/*.go'
       - 'dagger.json'
       - 'src/jev/**'
+      - 'src/cve-2026-66066/**'
+      - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-checker.sh'
+      - 'test/_global/cve-checker-failures.ts'
+      - 'scripts/package-cve-questions.ts'
+      - 'scripts/cve-checker-retention.py'
+      - 'scripts/cve-checker-viewer-export.py'
+      - 'scripts/cve-checker-fixture-accounting.py'
+      - 'tutorial-app/evidence/cit-337-captures-v1/**'
+      - 'tutorial-app/src/lib/capturedReplay.spec.ts'
+      - 'tutorial-app/playwright.replay.config.ts'
+      - 'test/_global/cve-checker-retention.py'
+      - 'test/_global/cve-checker-replay-failures.ts'
+      - 'test/_global/cve-checker-collection-failure.ts'
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
       - 'tutorial-app/tests/rails-probes/**'
       - 'tutorial-app/tests/questions/**'
       - 'tutorial-app/evidence/cit-294-*/**'
-      - 'tutorial-app/src/content/tutorial/part-4/can-the-checker-be-trusted/**'
+      - 'tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/**'
       - 'tutorial-app/src/stories/fixtures/rails-matlab-review-*'
       - 'tutorial-app/src/lib/reviewHistory/**'
       - '.github/workflows/investigations.yml'
@@ -27,17 +41,37 @@ on:
       - '.dagger/*.go'
       - 'dagger.json'
       - 'src/jev/**'
+      - 'src/cve-2026-66066/**'
+      - 'test/_global/cve-2026-66066-forensics/**'
+      - 'test/_global/cve-checker.sh'
+      - 'test/_global/cve-checker-failures.ts'
+      - 'scripts/package-cve-questions.ts'
+      - 'scripts/cve-checker-retention.py'
+      - 'scripts/cve-checker-viewer-export.py'
+      - 'scripts/cve-checker-fixture-accounting.py'
+      - 'tutorial-app/evidence/cit-337-captures-v1/**'
+      - 'tutorial-app/src/lib/capturedReplay.spec.ts'
+      - 'tutorial-app/playwright.replay.config.ts'
+      - 'test/_global/cve-checker-retention.py'
+      - 'test/_global/cve-checker-replay-failures.ts'
+      - 'test/_global/cve-checker-collection-failure.ts'
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
       - 'tutorial-app/tests/rails-probes/**'
       - 'tutorial-app/tests/questions/**'
       - 'tutorial-app/evidence/cit-294-*/**'
-      - 'tutorial-app/src/content/tutorial/part-4/can-the-checker-be-trusted/**'
+      - 'tutorial-app/src/content/tutorial/part-5/can-an-upload-read-a-private-file/**'
       - 'tutorial-app/src/stories/fixtures/rails-matlab-review-*'
       - 'tutorial-app/src/lib/reviewHistory/**'
       - '.github/workflows/investigations.yml'
   workflow_dispatch:
+    inputs:
+      retention-state:
+        description: Historical checker revision to retain as a new observation
+        type: choice
+        options: [S2, S1]
+        default: S2
 
 permissions:
   contents: read
@@ -64,3 +98,203 @@ jobs:
           verb: call
           args: ${{ matrix.investigation }} check
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+  cve-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.9.7'
+      - run: deno run --allow-read scripts/package-cve-questions.ts --check
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: '0.21.7'
+          verb: call
+          args: cve-checker export --path ./build/cve-checker
+
+  cve-checker-retention:
+    runs-on: ubuntu-latest
+    env:
+      CAPTURE_STATE: ${{ inputs.retention-state || 'S2' }}
+    outputs:
+      artifact-id: ${{ steps.handoff.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - id: image
+        uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: '0.21.7'
+          verb: call
+          args: cve-checker-replay-image --state ${{ inputs.retention-state || 'S2' }} export --forced-compression GZIP --path ./build/cve-checker-runtime.oci.tar
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+      - id: capture
+        run: python3 scripts/cve-checker-retention.py capture --state "$CAPTURE_STATE" --image ./build/cve-checker-runtime.oci.tar --output ./build/cve-checker-retention/capture --trace-url "$CVE_CHECKER_TRACE_URL"
+        env:
+          CVE_CHECKER_TRACE_URL: ${{ steps.image.outputs.traceURL }}
+      - run: python3 scripts/cve-checker-retention.py replay --capture ./build/cve-checker-retention/capture --output ./build/cve-checker-retention/replay --trace-url "$CVE_CHECKER_TRACE_URL"
+        env:
+          CVE_CHECKER_TRACE_URL: ${{ steps.image.outputs.traceURL }}
+      - run: python3 test/_global/cve-checker-retention.py ./build/cve-checker-retention
+      - name: Package retained capture and evaluation records
+        id: package
+        if: always() && (steps.capture.outcome == 'success' || steps.capture.outcome == 'failure')
+        env:
+          CAPTURE_ARTIFACT_NAME: cit336-${{ inputs.retention-state || 'S2' }}-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          CAPTURE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, tarfile
+          from pathlib import Path
+          root = Path('build/cve-checker-retention')
+          handoff = Path('build/cve-checker-handoff')
+          handoff.mkdir()
+          def scope(member):
+              # Keep the pinned repository once, plus new evaluation records.
+              if member.name.startswith(('replay/retained', 'failures/replay/retained')):
+                  return None
+              if member.name == 'failures/capture/payload/runtime.oci.tar':
+                  return None
+              return member
+          archive = handoff / 'evidence.tar'
+          with tarfile.open(archive, 'w') as bundle:
+              for name in ('capture', 'replay', 'failures'):
+                  if (root / name).exists():
+                      bundle.add(root / name, arcname=name, filter=scope)
+          manifest_file = root / 'capture/retention.json'
+          manifest = json.loads(manifest_file.read_text()) if manifest_file.exists() else {}
+          with archive.open('rb') as stream:
+              archive_hash = 'sha256:' + hashlib.file_digest(stream, 'sha256').hexdigest()
+          descriptor = dict(
+              format='cit336-handoff-v1', historicalState=os.environ['CAPTURE_STATE'],
+              sourceCommit=os.environ['CAPTURE_SOURCE_SHA'],
+              executionCommit=manifest.get('source', {}).get('commit'),
+              snapshotId=manifest.get('snapshotId'), image=manifest.get('image'),
+              completeCapture=bool(manifest), archiveSha256=archive_hash,
+              artifactName=os.environ['CAPTURE_ARTIFACT_NAME'],
+              repository=os.environ['GITHUB_REPOSITORY'],
+              runId=int(os.environ['GITHUB_RUN_ID']),
+              runAttempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
+              configuredRetentionDays=90)
+          (handoff / 'handoff.json').write_text(json.dumps(descriptor, indent=2) + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as outputs:
+              outputs.write('artifact-name=' + descriptor['artifactName'] + '\n')
+          PY
+      - name: Retain capture even when replay or controls fail
+        id: handoff
+        if: always() && steps.package.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact-name }}
+          path: build/cve-checker-handoff/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+      - name: Link the pinned handoff
+        if: always() && steps.handoff.outcome == 'success'
+        env:
+          CAPTURE_ARTIFACT_ID: ${{ steps.handoff.outputs.artifact-id }}
+          CAPTURE_ARTIFACT_URL: ${{ steps.handoff.outputs.artifact-url }}
+          CAPTURE_ARTIFACT_DIGEST: ${{ steps.handoff.outputs.artifact-digest }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          handoff = json.loads(Path('build/cve-checker-handoff/handoff.json').read_text())
+          command = f"gh run download {handoff['runId']} --repo {handoff['repository']} --name {handoff['artifactName']} --dir /tmp/cit336-download"
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(
+                  f"### Retained {handoff['historicalState']} evidence\n\n"
+                  f"[Download artifact {os.environ['CAPTURE_ARTIFACT_ID']}]({os.environ['CAPTURE_ARTIFACT_URL']})\n\n"
+                  f"Snapshot: {handoff['snapshotId']}\n\n"
+                  f"Artifact SHA-256: {os.environ['CAPTURE_ARTIFACT_DIGEST']}\n\n"
+                  f"Archive SHA-256: {handoff['archiveSha256']}\n\n"
+                  "Retention: 90 days requested; the artifact API records the actual expiry. "
+                  "CIT-337 derives its export from explicitly selected snapshots; this invocation is a separate observation.\n\n"
+                  f"```sh\n{command}\n"
+                  "mkdir -m 700 /tmp/cit336-retained\n"
+                  "tar -xf /tmp/cit336-download/evidence.tar -C /tmp/cit336-retained\n"
+                  "python3 /tmp/cit336-retained/capture/replay.py replay "
+                  "--capture /tmp/cit336-retained/capture --output /tmp/cit336-rerun\n"
+                  "```\n")
+          PY
+
+  cve-checker-handoff:
+    needs: cve-checker-retention
+    runs-on: ubuntu-latest
+    steps:
+      # Deliberately no checkout, Dagger call, or image build on this runner.
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.cve-checker-retention.outputs.artifact-id }}
+          path: handoff
+          merge-multiple: true
+      - name: Verify and replay the downloaded capture
+        working-directory: ${{ runner.temp }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          handoff = Path(os.environ['GITHUB_WORKSPACE']) / 'handoff'
+          descriptor = json.loads((handoff / 'handoff.json').read_text())
+          assert descriptor['completeCapture'], 'artifact has no complete pinned capture'
+          with (handoff / 'evidence.tar').open('rb') as stream:
+              actual = 'sha256:' + hashlib.file_digest(stream, 'sha256').hexdigest()
+          assert actual == descriptor['archiveSha256'], 'downloaded archive hash differs'
+          (Path(os.environ['RUNNER_TEMP']) / 'cit336-retained').mkdir(mode=0o700)
+          PY
+          tar -xf "$GITHUB_WORKSPACE/handoff/evidence.tar" -C "$RUNNER_TEMP/cit336-retained"
+          python3 "$RUNNER_TEMP/cit336-retained/capture/replay.py" replay --capture "$RUNNER_TEMP/cit336-retained/capture" --output "$RUNNER_TEMP/cit336-handoff-replay"
+      - name: Retain the fresh runner's evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cit336-s2-handoff-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/cit336-handoff-replay/*.json
+            ${{ runner.temp }}/cit336-handoff-replay/*.txt
+            ${{ runner.temp }}/cit336-handoff-replay/container.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  retained-viewer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      CI: '1'
+      ASTRO_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-replay-tools
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tutorial-app/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - run: npm ci
+        working-directory: tutorial-app
+      - name: Regenerate the committed export from the exact retained snapshots
+        run: |
+          python3 scripts/cve-checker-viewer-export.py --output "$RUNNER_TEMP/cit337-export/records" --cache "$RUNNER_TEMP/cit337-captures"
+          cmp "$RUNNER_TEMP/cit337-export/bundle.tar.gz" tutorial-app/evidence/cit-337-captures-v1/bundle.tar.gz
+          cmp "$RUNNER_TEMP/cit337-export/bundle.json" tutorial-app/evidence/cit-337-captures-v1/bundle.json
+          npm --prefix tutorial-app run replay:generate -- --check-existing
+          python3 scripts/cve-checker-fixture-accounting.py
+          git diff --exit-code -- docs/investigations/CIT-337/fixture-accounting.json
+      - run: npx playwright install --with-deps chromium
+        working-directory: tutorial-app
+      - name: Verify replay and revision-specific Peek
+        working-directory: tutorial-app
+        run: |
+          npm test
+          npx playwright test --config playwright.replay.config.ts
+          npm run build-storybook -- --output-dir "$RUNNER_TEMP/cit337-storybook"
+          npm run build

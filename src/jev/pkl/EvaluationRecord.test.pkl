@@ -1,0 +1,152 @@
+/// CIT-334: the shared evaluation record, on synthetic states. Nothing here is
+/// about Rails or a PR; tutorial-app/tests/rails-probes/traces/ReplayRecord.test.pkl
+/// checks the generated records of a real investigation.
+///
+///   pkl test src/jev/pkl/EvaluationRecord.test.pkl
+amends "pkl:test"
+
+import "Question.pkl"
+import "Jev.pkl"
+
+local kept = new Question.Evidence {
+  uri = "inputs.json"
+  origin = "historical"
+  availability = "retained"
+  immutableId = "sha256:abc"
+}
+local rerun = (kept) { uri = "answer.json"; origin = "reproduced"; immutableId = "sha256:def" }
+local gap = new Question.Evidence {
+  uri = "original-output"
+  origin = "historical"
+  availability = "missing"
+  reason = "Not retained"
+}
+local q = new Question.Question {
+  judge = new Question.Checker {}
+  collector = "remove-input"
+  requiredEvidence { "exitCode" }
+  expected { min = 1; max = 1 }
+}
+local base = new Question.EvaluationRecord {
+  questionId = "remove-input"
+  question = q
+  state { id = "r1"; source = (kept) { uri = "repo"; immutableId = "git-commit:1" }; scope { "checker inputs" }; inputs { kept } }
+  mutation { action = "Remove input"; affects { "inputs.json" }; evidence { rerun } }
+  delivery {
+    feature = "example"
+    status = "planned"
+    finding = "finding-1"
+    scenario = "example-scenario"
+  }
+  declarations {
+    new { text = "28 asserts"; evidence = kept; property = "assertsTotal"; declared = 28; observed = 28; observedFrom = rerun }
+  }
+  answer = new Question.CheckerAnswer { exitCode = 0; assertsPassed = 28; assertsTotal = 28 }
+  observations { rerun; gap }
+}
+local second = (base) {
+  state { id = "r2"; source { immutableId = "git-commit:2" } }
+}
+local investigation = new Question.Investigation {
+  questionId = "remove-input"
+  records { base; second }
+  transitions { new { from = "r1"; to = "r2"; action = "Revise after finding-1"; finding = "finding-1"; evidence { kept } } }
+}
+local sameId = (investigation) {
+  records { [1] { state { id = "r1" } } }
+  transitions { [0] { to = "r1" } }
+}
+local unrelated = (investigation) { transitions { [0] { finding = "finding-9" } } }
+
+facts {
+  ["Shared assessment preserves unexpected answers"] {
+    Question.validRecord(base)
+    base.outcome == "out-of-range"
+    !Question.failsRun(base.outcome)
+  }
+  ["Missing evidence has a reason and no fabricated immutable identity"] {
+    Question.validEvidence(gap)
+    !Question.validEvidence((gap) { reason = null })
+    !Question.validEvidence((gap) { immutableId = "invented" })
+    !Question.validEvidence((kept) { immutableId = null })
+  }
+  ["A probe stays inside its state: it can only affect the state's own inputs"] {
+    !Question.validRecord((base) { mutation { affects { "not-an-input" } } })
+    Question.validRecord((base) { mutation = null })
+  }
+  ["A transition links consecutive states and changes the source"] {
+    Question.validInvestigation(investigation)
+    !Question.validInvestigation((investigation) { transitions { [0] { to = "r1" } } })
+    !Question.validInvestigation((investigation) { records { [1] { state { source { immutableId = "git-commit:1" } } } } })
+    !Question.validInvestigation((investigation) { transitions = new Listing {} })
+  }
+  ["State ids are unambiguous across an investigation"] {
+    Question.distinctStates(investigation)
+    // Two captured states under one id: the transition reads as r1 -> r1. Everything
+    // else still holds (distinct sources, linked ids, the finding), so only the id rejects it.
+    !Question.distinctStates(sameId)
+    Question.transitionsFollowFindings(sameId)
+    sameId.records.toList().every((r) -> Question.validRecord(r))
+    !Question.validInvestigation(sameId)
+  }
+  ["A transition is prompted by the finding of the record it leaves"] {
+    Question.transitionsFollowFindings(investigation)
+    // Any non-empty finding used to pass; an unrelated one is now rejected, and only for that.
+    !Question.transitionsFollowFindings(unrelated)
+    Question.distinctStates(unrelated)
+    !Question.validInvestigation(unrelated)
+    // The finding is the record it leaves, not the one it reaches.
+    !Question.validInvestigation((investigation) {
+      records { [1] { delivery { finding = "finding-2" } } }
+      transitions { [0] { finding = "finding-2" } }
+    })
+  }
+  ["Every record in an investigation asks the same Question"] {
+    !Question.validInvestigation((investigation) { records { [1] { questionId = "other" } } })
+    !Question.validInvestigation((investigation) { records { [1] { question { expected { min = 0 } } } } })
+  }
+  ["A planned version cannot imply a delivered capture"] {
+    Question.validRecord((base) { delivery { version = "20261008.0811" } })
+    !Question.validRecord((base) { delivery { status = "captured" } })
+    !Question.validRecord((base) { delivery { status = "captured"; evidence = kept } })
+    Question.validRecord((base) { delivery { status = "captured"; version = "20261008.0811"; evidence = kept } })
+    !Question.validRecord((base) { delivery { evidence = kept } })
+  }
+  ["One project delivery can reproduce two distinct historical states"] {
+    Question.validInvestigation((investigation) {
+      records {
+        [0] { delivery { version = "20261008.0811"; status = "captured"; evidence = kept } }
+        [1] { delivery { version = "20261008.0811"; status = "captured"; evidence = rerun } }
+      }
+    })
+  }
+  ["A declared value is observed from retained evidence, and may disagree"] {
+    Question.validRecord((base) { declarations { [0] { observed = 27 } } })
+    // Origin is descriptive: the value may be read from the original output.
+    Question.validRecord((base) { declarations { [0] { observedFrom = kept } } })
+    !Question.validRecord((base) { declarations { [0] { observedFrom = gap } } })
+    !Question.validRecord((base) { declarations { [0] { observedFrom = null } } })
+    !Question.validRecord((base) { declarations { [0] { property = null } } })
+  }
+  ["Retained historical output substantiates an answer"] {
+    // No reproduction at all: the original run's retained output is the observation.
+    Question.validRecord((base) { observations = new Listing { kept } })
+    Question.validRecord((base) { mutation = null; observations = new Listing { kept; gap } })
+    // A gap given an identity it never had is still not evidence.
+    !Question.validRecord((base) { observations = new Listing { kept; (gap) { immutableId = "sha256:invented" } } })
+    !Question.validRecord((base) { observations = new Listing { (gap) { origin = "historical"; immutableId = "sha256:invented"; reason = null } } })
+  }
+  ["Missing answers remain not collected"] {
+    (base) { answer = null }.outcome == "not-collected"
+    !Question.validRecord((base) { observations = new Listing { gap } })
+  }
+  ["Forecasts remain distinct from answers and policy expectations"] {
+    (base) { forecast = 0.4 }.outcome == "out-of-range"
+    !Question.validRecord((base) { answer = 0.4 })
+    Question.validRecord((base) {
+      question { judge = new Jev.NoulQuestion { instructions = "Does it hold?" } }
+      answer = 0.4
+      forecast = 0.8
+    })
+  }
+}

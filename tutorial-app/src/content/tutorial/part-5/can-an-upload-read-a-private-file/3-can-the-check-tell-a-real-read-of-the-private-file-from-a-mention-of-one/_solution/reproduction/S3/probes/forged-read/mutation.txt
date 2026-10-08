@@ -1,0 +1,1 @@
+edited observations/mat-blocked.json: an openat of the private file, /work/dummy-canary.txt, added to the blocked MAT arm's embedded trace
