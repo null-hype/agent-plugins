@@ -17,6 +17,9 @@ on:
       - 'test/_global/cve-checker.sh'
       - 'test/_global/cve-checker-failures.ts'
       - 'scripts/package-cve-questions.ts'
+      - 'scripts/cve-checker-retention.py'
+      - 'test/_global/cve-checker-retention.py'
+      - 'test/_global/cve-checker-replay-failures.ts'
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
@@ -37,6 +40,9 @@ on:
       - 'test/_global/cve-checker.sh'
       - 'test/_global/cve-checker-failures.ts'
       - 'scripts/package-cve-questions.ts'
+      - 'scripts/cve-checker-retention.py'
+      - 'test/_global/cve-checker-retention.py'
+      - 'test/_global/cve-checker-replay-failures.ts'
       - 'jev-playwright/**'
       - 'tutorial-app/package*.json'
       - 'tutorial-app/playwright.questions.config.ts'
@@ -88,3 +94,25 @@ jobs:
           version: '0.21.7'
           verb: call
           args: cve-checker export --path ./build/cve-checker
+
+  cve-checker-retention:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - id: image
+        uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: '0.21.7'
+          verb: call
+          args: cve-checker-replay-image export --forced-compression GZIP --path ./build/cve-checker-runtime.oci.tar
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+      - run: python3 scripts/cve-checker-retention.py capture --image ./build/cve-checker-runtime.oci.tar --output ./build/cve-checker-retention/capture --trace-url "$CVE_CHECKER_TRACE_URL"
+        env:
+          CVE_CHECKER_TRACE_URL: ${{ steps.image.outputs.traceURL }}
+      - run: python3 scripts/cve-checker-retention.py replay --capture ./build/cve-checker-retention/capture --output ./build/cve-checker-retention/replay --trace-url "$CVE_CHECKER_TRACE_URL"
+        env:
+          CVE_CHECKER_TRACE_URL: ${{ steps.image.outputs.traceURL }}
+      - run: python3 test/_global/cve-checker-retention.py ./build/cve-checker-retention
+      # This job verifies local export/restore. Retention beyond the runner
+      # requires keeping the capture directory in explicitly chosen storage.
