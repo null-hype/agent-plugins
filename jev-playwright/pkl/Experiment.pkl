@@ -7,8 +7,27 @@ typealias Id = Question.Id
 
 model: String(!isEmpty) = "jev-latest"
 
+/// CIT-328: one revision of the app under review, held as a commit whose subject
+/// is the question put to it. Each revision is one lesson, asking the same
+/// Questions as every other revision.
+class Revision {
+  /// The commit's subject line. The commit's body is the revision's
+  /// authorization policy, read from the run.
+  subject: String(!isEmpty)
+  lesson: Question.Lesson
+}
+
+/// A Question asked of one revision. `ask` is its words, the same at every
+/// revision; `judge` puts the same words to Jev.
+class Asked extends Question.Question {
+  revision: String(!isEmpty)
+  ask: String(!isEmpty)
+}
+
+revisions: Mapping<String, Revision>
+
 /// Every Question here is answered by a Jev judge: the checker's Questions run elsewhere.
-questions: Mapping<Id, Question.Question(judge is Jev.NoulQuestion)>(!isEmpty)
+questions: Mapping<Id, Asked(judge is Jev.NoulQuestion, revisions.containsKey(revision))>(!isEmpty)
 
 output {
   // Validate the dependency graph before execution or secret access.

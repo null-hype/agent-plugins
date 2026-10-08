@@ -1,0 +1,41 @@
+---
+type: lesson
+title: Can the strengthened check tell a real read of the private file from a forged one
+template: acp-trace
+focus: /acp-trace.json
+terminal:
+  open: true
+  panels:
+    - - output
+      - Agent
+editor: false
+previews:
+  - - 4173
+    - Client
+prepareCommands:
+  - npm install
+mainCommand: npm run dev
+---
+
+import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+
+<AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
+
+# Can the strengthened check tell a real read of the private file from a forged one?
+
+Alice answers Bob's first review with pull request #118, the new commit in the
+**Client**, below the first. Her checker now reads evidence gathered outside
+the Rails process: an open count of the private file taken from the `strace`
+transcript, the upload's sha256, and the live Rails configuration. Her
+description says each of Bob's five edits is "now flagged".
+
+That is a forecast, and this lesson checks it. Select **Solve** for Bob's second
+review. His first five questions are the ones he asked of #117, word for word,
+each now carrying Alice's claim and whether the run bears it out. Two more are
+new: his review notices that the upload's sha256 and the configuration are
+recorded for every arm but checked for one, and edits the blocked arm's to
+see. Press **Tab** to accept each.
+
+Open a lens. Peek opens the edit Bob made to #118's own records, then his
+review's words beside it, then the checker's result. Here the checker
+catching 3 of Bob's 7 edits, and still passing every assertion for the rest: forging a read of the private file; deleting the trace; recording a different upload for the blocked arm; recording a different configuration for the blocked arm; a reproduction of what each edit did is the lens's last row. The new negative controls change the open count, a number derived from the trace; Bob's trace edits change the trace and leave that number alone, so they still pass.

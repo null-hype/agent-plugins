@@ -231,14 +231,10 @@ function renderPage() {
       // equal to it by reasonResolver.spec.ts). Hover reads this to show
       // *why*, alongside the verdict reasonDiagnosticsByLine already
       // carries; the CodeLens command below reads it to render the same
-      // evidence in a content widget under the line -- this bundled
-      // monaco-editor build's standalone "min" AMD bundle does not
-      // register the gotoSymbol/peek-definition contribution (checked
-      // directly: no editor.action.peekDefinition/revealDefinition action
-      // exists on a freshly created editor here), so a content widget --
-      // an API this build does have -- is what actually renders the
-      // "little embedded editor opens underneath" idea today, not
-      // Monaco's own Peek View.
+      // evidence in a content widget under the line. The standalone bundle
+      // lacks peek-definition actions, but does support the public
+      // editor.action.peekLocations command (CIT-329). The acp-trace review
+      // Client uses that native Peek; this template has not migrated yet.
       let reasonRelatedByLine = {};
       const REASON_LOG_MARKER_OWNER = 'reason-resolver';
       const PEEK_EVIDENCE_COMMAND = 'otel-warm-log.peekReasonEvidence';
@@ -306,7 +302,7 @@ function renderPage() {
           }
 
           const script = document.createElement('script');
-          script.src = '/monaco/vs/loader.js';
+          script.src = new URL('monaco/vs/loader.js', document.baseURI).href;
           script.onload = () => configureMonaco(window.require, resolve, reject);
           script.onerror = () => reject(new Error('Failed to load Monaco assets'));
           document.head.appendChild(script);
@@ -316,7 +312,7 @@ function renderPage() {
       }
 
       function configureMonaco(requireFn, resolve, reject) {
-        requireFn.config({ paths: { vs: '/monaco/vs' } });
+        requireFn.config({ paths: { vs: new URL('monaco/vs', document.baseURI).href } });
         requireFn(['vs/editor/editor.main'], () => {
           const monaco = window.monaco;
           const languageId = 'otel-warm-log';

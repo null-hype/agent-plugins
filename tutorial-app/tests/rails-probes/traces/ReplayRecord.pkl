@@ -1,0 +1,11 @@
+module ReplayRecord
+import "pkl:json"
+import "CheckerProbes.pkl"
+import "../../../../src/jev/pkl/Question.pkl"
+import "../../../../src/cve-2026-66066/questions/checker/Decode.pkl"
+local raw = new json.Parser {}.parse(read(read("prop:capture")).text)
+investigation: Question.Investigation = Decode.investigation(raw, CheckerProbes.questions[raw.questionId])
+output {
+  value = if (Question.validInvestigation(investigation)) investigation else throw("Invalid evaluation record")
+  renderer = new JsonRenderer { omitNullProperties = false }
+}

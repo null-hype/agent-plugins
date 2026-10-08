@@ -4,6 +4,8 @@ title: 'Research: what a green check misses'
 chapters:
   - experiment
   - smuggling-survives-the-merge
-  - rails-matlab-canary
-  - can-the-checker-be-trusted
+# Hidden from production builds; see src/content/config.ts.
+drafts:
+  - experiment
+  - smuggling-survives-the-merge
 ---

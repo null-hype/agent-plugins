@@ -27,12 +27,23 @@ async function show(pages: Page[], fixture: Parameters<typeof buildAcpTraceState
 const modelText = (page: Page) => page.evaluate(() => (window as any).monaco.editor.getModels()[0].getValue() as string);
 const editorText = async (page: Page) => (await page.locator('.monaco-editor .view-lines').innerText()).replace(/ /g, ' ');
 
+// Native Peek groups evidence by source. Select a reference to inspect its body.
+async function peekSummary(page: Page, text: string) {
+  const peek = page.locator('.peekview-widget');
+  await expect(peek).toBeVisible();
+  for (const group of await peek.locator('[role="treeitem"][aria-level="1"]').all()) {
+    if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
+  }
+  await peek.locator('[role="treeitem"][aria-level="2"]').filter({ hasText: text }).first().click();
+  return peek.locator('.monaco-editor');
+}
+
 for (const key of ['S1', 'S2'] as RevisionKey[]) {
 test(`accepting a probe shows the numbers the executed run produced (PR ${REVISIONS[key].pr})`, async ({ page, context }) => {
   const { finding, asserts } = { finding: REVISIONS[key].findingId, asserts: REVISIONS[key].baseline.asserts };
   const solved = JSON.parse(readFileSync(solvedFixture(key), 'utf8'));
   // The starter is the solved fixture before the reviewer answers: its prompt frame only.
-  const starter = { ...solved, frames: solved.frames.slice(0, 1), nextTurn: { actor: 'agent', action: `review PR ${REVISIONS[key].pr}`, speaker: 'reviewer' } };
+  const starter = { ...solved, frames: solved.frames.slice(0, 1), nextTurn: { actor: 'agent', action: `review PR ${REVISIONS[key].pr}`, speaker: 'bob' } };
   const subject: string = solved.frames[0].envelope.params.prompt[0].text.split('\n')[0];
 
   const agent = await context.newPage();
@@ -60,41 +71,42 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
   await test.step('solve offers the probes; nothing is accepted yet', async () => {
     await show([page], solved);
     await expect(page.locator('.ghost-text-decoration, .ghost-text').first()).toBeVisible();
-    await expect.poll(() => editorText(page)).toContain('Does the check fail when the trace is deleted?'); // shown as grey text
+    await expect.poll(() => editorText(page)).toContain('Does the check fail when a read of the private file is forged?'); // shown as grey text
     expect(await modelText(page)).not.toContain('Does the check fail when');
   });
 
   await test.step('Tab accepts each probe in turn', async () => {
     await page.keyboard.press('Tab');
-    await expect.poll(() => modelText(page)).toContain('Does the check fail when the trace is deleted?');
+    await expect.poll(() => modelText(page)).toContain('Does the check fail when a read of the private file is forged?');
     // Clicking a lens would take focus out of the editor and the next suggestion
     // would not be offered, so both are accepted before any evidence is opened.
-    await expect.poll(() => editorText(page)).toContain('Does the check fail when a dummy-file read is forged?'); // shown as grey text
-    expect(await modelText(page)).not.toContain('forged?');
+    await expect.poll(() => editorText(page)).toContain('Does the check fail when the trace is deleted?'); // shown as grey text
+    expect(await modelText(page)).not.toContain('deleted?');
     await page.keyboard.press('Tab');
-    await expect.poll(() => modelText(page)).toContain('Does the check fail when a dummy-file read is forged?');
+    await expect.poll(() => modelText(page)).toContain('Does the check fail when the trace is deleted?');
   });
 
   await test.step('the deleted-trace diagnostic names the executed run', async () => {
     await page.locator('.codelens-decoration a', { hasText: `${finding}.deleted-trace` }).click();
-    const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
+    const widget = await peekSummary(page, 'canary-reads.txt removed');
     const markers = await page.evaluate(() => (window as any).monaco.editor.getModelMarkers({}).map((m: any) => m.message as string));
-    expect(markers).toContain(`${finding}.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`);
+    // The answer, then (from #118 on) whether it bears out Alice's claim.
+    expect(markers.some((m: string) => m.startsWith(`${finding}.deleted-trace: Deleting the trace still left all ${asserts} assertions passing.`))).toBe(true);
     await expect(widget).toContainText(`REPRODUCTION ${REPRODUCTION_ID}`);
     await expect(widget).toContainText('canary-reads.txt removed');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
     // The reviewers' own run output stays visibly missing next to the new one.
-    await expect(widget).toContainText('not retained');
+    await expect(await peekSummary(page, 'not retained')).toContainText('not retained');
     if (process.env.STORYBOARD_SCREENSHOTS) await page.screenshot({ path: 'deleted-trace.png' });
   });
 
   await test.step('the forged-read diagnostic carries its own run', async () => {
-    // The open widget covers the next line's lens: clicking the same lens again closes it.
+    // Clicking the same lens again closes the inline Peek.
     await page.locator('.codelens-decoration a', { hasText: `${finding}.deleted-trace` }).click();
-    await expect(page.getByRole('region', { name: 'Diagnostic evidence' })).toHaveCount(0);
+    await expect(page.locator('.peekview-widget')).toHaveCount(0);
     await page.locator('.codelens-decoration a', { hasText: `${finding}.forged-read` }).click();
-    const widget = page.getByRole('region', { name: 'Diagnostic evidence' });
-    await expect(widget).toContainText('a dummy-file openat added to the mat-blocked arm');
+    const widget = await peekSummary(page, 'REPRODUCTION');
+    await expect(widget).toContainText('an openat of the private file, /work/dummy-canary.txt, added to the mat-blocked arm');
     await expect(widget).toContainText(`${asserts} of ${asserts} assertions pass`);
   });
 

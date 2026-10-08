@@ -23,9 +23,6 @@ import {
 // src/content, so stories exercise the lesson's own data, not copies of it.
 const raw = import.meta.glob(
 	[
-		'../content/tutorial/part-5/private-document/1-reproduce-the-flaw/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-5/private-document/2-block-unauthorized-access/{content.mdx,_files/*,_solution/*}',
-		'../content/tutorial/part-5/private-document/3-preserve-owner-access/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-1/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-1/chapter-2/lesson-1/{content.mdx,_files/*,_solution/*}',
 		'../content/tutorial/part-2/chapter-1/lesson-1/{content.mdx,_files/*,_solution/*}',
@@ -54,9 +51,6 @@ export type Lesson = {
 
 export function loadLesson(
 	dir:
-		| 'part-5/private-document/1-reproduce-the-flaw'
-		| 'part-5/private-document/2-block-unauthorized-access'
-		| 'part-5/private-document/3-preserve-owner-access'
 		| 'part-1/chapter-1/lesson-1'
 		| 'part-1/chapter-2/lesson-1'
 		| 'part-2/chapter-1/lesson-1'
@@ -118,6 +112,7 @@ export function deriveAcpTraceState(
 		revision: 1,
 		fixture: resolveAcpTraceFixture(ref, loadFrame, options),
 		scenario: config.scenario,
+		readFile: (path) => files[path],
 	});
 }
 

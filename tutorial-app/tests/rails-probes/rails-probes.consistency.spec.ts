@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answerJson, answerText, reproductionDir, solvedFixture, type ProbeName } from './fixture';
 import { FORGED_LINE, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChecker, type CheckerRun, type RevisionKey } from './probes';
+import { RECORDED, captureInvestigation, evaluateRecord, writeCapture } from './records';
 
 // CIT-320: does the checker investigation agree with itself? The probes spec
 // asks the questions and records the answers; this spec trusts none of it. It
@@ -14,14 +15,46 @@ import { FORGED_LINE, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChec
 // noticed a probe is not a rule: that is the answer, recorded as data.
 // src/jev/pkl/Consistency.pkl decides; the facts and its verdict are written
 // to CONSISTENCY_OUT (default test-results/rails-probes/consistency).
+//
+// CIT-334: the same pass generates the shared evaluation record of the
+// `deleted-trace` Question (records.ts, traces/ReplayRecord.pkl) and requires it
+// to validate, to match its committed baseline, to reject a tampered capture,
+// and to say what the re-run says. Only the revisions records.ts names in
+// RECORDED have a record; each of those must, and no other may.
 
 test.skip(pklVersion() === null, 'pkl is not on PATH');
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.resolve(APP, process.env.CONSISTENCY_OUT ?? '../test-results/rails-probes/consistency');
-const CHAPTER = path.join(APP, 'src/content/tutorial/part-4/can-the-checker-be-trusted');
-const ORDER: RevisionKey[] = ['S1', 'S2'];
-const PROBES: ProbeName[] = ['deleted-trace', 'forged-read'];
+const CHAPTER = path.join(APP, 'src/content/tutorial/part-5/can-an-upload-read-a-private-file');
+const ORDER: RevisionKey[] = ['S1', 'S2', 'S3', 'S4'];
+const PROBES: ProbeName[] = [
+  'deleted-trace', 'forged-read', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config',
+  'prose-mention', 'failed-open', 'other-directory',
+];
+// The fields each edit to a recorded observation may change, as the review that
+// raised it describes the edit. Declared here, not read from probes.ts, so the
+// probes' own code cannot vouch for itself.
+const EDITED: Partial<Record<ProbeName, { arm: string; fields: string[] }>> = {
+  'generic-crash': { arm: 'mat-blocked', fields: ['variant_error_class', 'variant_error'] },
+  'emptied-bytes': { arm: 'mat-unblocked', fields: ['returned_bytes_hex', 'returned_byte_count'] },
+  'corrupted-pixels': { arm: 'png-blocked', fields: ['returned_bytes_hex'] },
+  'swapped-source': { arm: 'mat-blocked', fields: ['independent_source_sha256'] },
+  'changed-config': { arm: 'mat-blocked', fields: ['independent_rails_load_defaults', 'independent_active_storage_variant_processor'] },
+  'prose-mention': { arm: 'mat-unblocked', fields: ['independent_trace_text'] },
+  'failed-open': { arm: 'mat-unblocked', fields: ['independent_trace_text'] },
+  'other-directory': { arm: 'mat-unblocked', fields: ['independent_trace_text'] },
+};
+// From #120 on, the checker reads each arm's embedded trace: the trace probes
+// edit the blocked arm's, emptying it or adding exactly the forged read.
+const TRACE_EDIT: Partial<Record<ProbeName, (pinned: string) => string>> = {
+  'deleted-trace': () => '',
+  'forged-read': (pinned) => `${pinned}\n${FORGED_LINE}`,
+};
+
+/** The top-level fields whose values differ between two JSON objects. */
+const changedFields = (before: Record<string, unknown>, after: Record<string, unknown>) =>
+  [...new Set([...Object.keys(before), ...Object.keys(after)])].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k])).sort();
 // What each probe expects of a checker that can be trusted: that it notices
 // (CheckerProbes.pkl's `Probe.expected`). Not noticing is an out-of-range answer.
 const EXPECTED = { min: 1, max: 1 };
@@ -37,10 +70,63 @@ function attempt(fn: () => Rule): Rule {
   }
 }
 const sameRun = (a: CheckerRun, b: CheckerRun) => answerJson(a) === answerJson(b);
+const TRACES = path.join(APP, 'tests/rails-probes/traces');
+const SCHEMA_TESTS = ['Question.test.pkl', 'EvaluationRecord.test.pkl'].map((f) => path.join(APP, '../src/jev/pkl', f));
+
+/** `pkl test` as a rule: it held when every fact and example passed, and nothing was written instead of compared. */
+function pklTest(args: string[], what: string): Rule {
+  try {
+    const output = execFileSync('pkl', ['test', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return rule(!/examples written/.test(output) || !!process.env.CIT307_UPDATE, `${what}: pkl wrote examples instead of comparing them`);
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    // pkl exits 10 when it wrote examples: the rewrite CIT307_UPDATE asked for, otherwise a missing baseline.
+    if (failure.status === 10 && process.env.CIT307_UPDATE) return { held: true };
+    const failed = `${failure.stdout ?? ''}${failure.stderr ?? ''}`.split('\n').filter((l) => /✘|Error|expected|written/i.test(l));
+    return rule(false, `${what}: ${failed.slice(0, 3).join(' | ').trim()}`);
+  }
+}
+
+type GeneratedRecord = { state: { id: string }; answer: CheckerRun; outcome: string; declarations: { property: string; observed: number }[] };
 
 test('the checker investigation is consistent', () => {
   const runRules: Record<string, Rule> = {};
   const findings: Record<string, unknown> = {};
+
+  // CIT-334: the record's schema, the generated records against their baseline,
+  // and a tampered capture that must not evaluate.
+  mkdirSync(OUT, { recursive: true });
+  runRules['record-schema'] = pklTest(SCHEMA_TESTS, 'Question.test.pkl, EvaluationRecord.test.pkl');
+  const capture = writeCapture(path.join(OUT, 'records/capture.json'));
+  runRules['record-baseline'] = pklTest(
+    [path.join(TRACES, 'ReplayRecord.test.pkl'), '-p', `capture=${capture}`, ...(process.env.CIT307_UPDATE ? ['--overwrite'] : [])],
+    'ReplayRecord.test.pkl',
+  );
+  let records: GeneratedRecord[] = [];
+  runRules['record-valid'] = attempt(() => {
+    const generated = evaluateRecord(captureInvestigation());
+    writeFileSync(path.join(OUT, 'records/investigation.json'), generated);
+    records = JSON.parse(generated).records;
+    return { held: true };
+  });
+  runRules['record-scope'] = attempt(() => {
+    const ids = records.map((r) => r.state.id);
+    const expected = RECORDED.map((key) => `${key}-pinned`);
+    return rule(JSON.stringify(ids) === JSON.stringify(expected),
+      `generated records for ${ids.join(', ') || 'nothing'}; the recorded revisions are ${expected.join(', ')}`);
+  });
+  runRules['record-rejects-tampered'] = attempt(() => {
+    // A gap given an id, as though it had been retained.
+    const tampered = captureInvestigation();
+    const gap = tampered.records[0].observations.find((e) => e.availability === 'missing')!;
+    gap.immutableId = 'sha256:invented';
+    try {
+      evaluateRecord(tampered);
+    } catch {
+      return { held: true };
+    }
+    return rule(false, 'a missing observation with an invented id still evaluated as a record');
+  });
 
   for (const [i, key] of ORDER.entries()) {
     const state = key.toLowerCase();
@@ -94,6 +180,8 @@ test('the checker investigation is consistent', () => {
     for (const probe of PROBES) {
       const id = `${state}-${probe}`;
       const answerFile = path.join(recorded, 'probes', probe, 'answer.json');
+      // A probe raised by a later review is not asked of this revision: no record, no line.
+      if (!existsSync(answerFile) && !messages.has(probe)) continue;
       if (!existsSync(answerFile)) {
         findings[id] = { answerer: 'checker', value: null, expected: EXPECTED, rules: {} };
         continue;
@@ -105,6 +193,29 @@ test('the checker investigation is consistent', () => {
       let mutated: Map<string, Buffer> | null = null;
       rules['mutation-as-claimed'] = attempt(() => {
         const files = new Map(inputs);
+        const traceEdit = TRACE_EDIT[probe];
+        if (traceEdit && existsSync(path.join(recorded, 'probes', probe, 'observations/mat-blocked.json'))) {
+          const file = 'observations/mat-blocked.json';
+          const text = readFileSync(path.join(recorded, 'probes', probe, file), 'utf8');
+          files.set(file, Buffer.from(text));
+          mutated = files;
+          const before = JSON.parse(inputs.get(file)!.toString('utf8'));
+          const after = JSON.parse(text);
+          const changed = changedFields(before, after);
+          return rule(JSON.stringify(changed) === '["independent_trace_text"]' && after.independent_trace_text === traceEdit(before.independent_trace_text),
+            `the recorded ${file} changes ${changed.join(', ') || 'nothing'}, not just the embedded trace as the probe says`);
+        }
+        const edit = EDITED[probe];
+        if (edit) {
+          const file = `observations/${edit.arm}.json`;
+          const claim = readFileSync(path.join(recorded, 'probes', probe, 'mutation.txt'), 'utf8');
+          const text = readFileSync(path.join(recorded, 'probes', probe, file), 'utf8');
+          files.set(file, Buffer.from(text));
+          mutated = files;
+          const changed = changedFields(JSON.parse(inputs.get(file)!.toString('utf8')), JSON.parse(text));
+          return rule(claim.startsWith(`edited ${file}: `) && JSON.stringify(changed) === JSON.stringify([...edit.fields].sort()),
+            `the recorded ${file} changes ${changed.join(', ') || 'nothing'}; the review's edit changes ${edit.fields.join(', ')}`);
+        }
         if (probe === 'deleted-trace') {
           const claim = readFileSync(path.join(recorded, 'probes', probe, 'mutation.txt'), 'utf8');
           files.delete('canary-reads.txt');
@@ -132,18 +243,32 @@ test('the checker investigation is consistent', () => {
       rules['full-pass-when-unnoticed'] = rule(noticed(answer) || answer.assertsTotal === declared.asserts,
         `"not noticed" with ${answer.assertsTotal} assertions, the baseline ran ${declared.asserts}`);
       rules['lesson-says-answer'] = rule(
-        (messages.get(probe) ?? '').endsWith(answerText(probe, answer)) &&
+        // The message states the answer; a revision's author may have made a claim about it, told after.
+        (messages.get(probe) ?? '').includes(`: ${answerText(probe, answer)}`) &&
           existsSync(lesson(`reproduction/${key}/probes/${probe}/result.txt`)) &&
           readFileSync(lesson(`reproduction/${key}/probes/${probe}/result.txt`), 'utf8') ===
             readFileSync(path.join(recorded, 'probes', probe, 'result.txt'), 'utf8'),
         `the lesson does not say "${answerText(probe, answer)}" or carries a different result.txt`,
       );
 
+      // CIT-334: the generated record says what the re-run says, for each recorded revision.
+      if (probe === 'deleted-trace' && RECORDED.includes(key)) {
+        rules['record-agrees'] = attempt(() => {
+          const generated = records.find((r) => r.state.id === `${key}-pinned`);
+          if (!generated) return rule(false, `no generated record for ${key}`);
+          const outcome = noticed(answer) ? 'in-range' : 'out-of-range';
+          const observed = generated.declarations.find((d) => d.property === 'assertsTotal')?.observed;
+          return rule(
+            !!recomputed && sameRun(recomputed, generated.answer) && generated.outcome === outcome && observed === baseline.assertsTotal,
+            `record: ${JSON.stringify(generated.answer)}, ${generated.outcome}, ${observed} asserts at baseline; re-run: ${recomputed ? answerJson(recomputed).replace(/\s+/g, ' ') : 'nothing'}, ${outcome}, ${baseline.assertsTotal}`,
+          );
+        });
+      }
+
       findings[id] = { answerer: 'checker', value: noticed(answer) ? 1 : 0, expected: EXPECTED, rules };
     }
   }
 
-  mkdirSync(OUT, { recursive: true });
   const factsFile = path.join(OUT, 'consistency-facts.json');
   writeFileSync(factsFile, `${JSON.stringify({ runId: process.env.CONSISTENCY_RUN_ID ?? 'local', runRules, findings }, null, 2)}\n`);
   const verdict = execFileSync('pkl', ['eval', '-f', 'json', '-p', `facts=${factsFile}`, path.join(APP, '../src/jev/pkl/Consistency.pkl')], { encoding: 'utf8' });

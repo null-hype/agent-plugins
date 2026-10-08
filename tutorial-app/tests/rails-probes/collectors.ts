@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Collector } from '../questions/collectors';
 import { answerJson, type ProbeName } from './fixture';
-import { FORGED_LINE, REPRODUCTION_ID, REVISIONS, deletedTrace, forgedRead, loadPinnedChecker, runChecker, type CheckerRun, type RevisionKey } from './probes';
+import { FORGED_LINE, REPRODUCTION_ID, REVISIONS, changedConfig, corruptedPixels, deletedTrace, embeddedTrace, emptiedBytes, failedOpen, forgedRead, genericCrash, loadPinnedChecker, otherDirectory, proseMention, runChecker, swappedSource, type CheckerRun, type RevisionKey } from './probes';
 
 // CIT-317: the collectors the two Questions in `traces/CheckerProbes.pkl` name.
 // Each asks its probe of every checker state, for real, in its own copy of the
@@ -20,7 +20,9 @@ const result = (key: RevisionKey, probe: string, run: CheckerRun, what: string) 
   [
     `reproduction: ${REPRODUCTION_ID}`,
     `probe: ${probe}`,
-    `checker: PR ${REVISIONS[key].pr} at ${REVISIONS[key].revision.slice(0, 8)} (same cit-294 tree as ${REVISIONS[key].mergedEquivalent.slice(0, 8)} on main)`,
+    `checker: PR ${REVISIONS[key].pr} at ${REVISIONS[key].revision.slice(0, 8)} ${REVISIONS[key].mergedEquivalent
+      ? `(same cit-294 tree as ${REVISIONS[key].mergedEquivalent!.slice(0, 8)} on main)`
+      : '(on main as itself: GitHub re-created it when the stack merged)'}`,
     `mutation: ${what}`,
     `exit code: ${run.exitCode}`,
     run.summary,
@@ -35,11 +37,39 @@ const write = (file: string, body: string) => {
 
 /** The mutated files for one probe, and what the mutation was, after checking it is exactly that mutation. */
 function mutate(name: ProbeName, pinned: Map<string, Buffer>, trace: string) {
+  // From #120 on the checker reads each arm's embedded trace: the trace probes edit that.
+  if (embeddedTrace(pinned) && (name === 'deleted-trace' || name === 'forged-read')) {
+    const files = name === 'deleted-trace' ? deletedTrace(pinned) : forgedRead(pinned);
+    const file = 'observations/mat-blocked.json';
+    const what = name === 'deleted-trace'
+      ? "the blocked MAT arm's embedded trace emptied"
+      : "an openat of the private file, /work/dummy-canary.txt, added to the blocked MAT arm's embedded trace";
+    return { files, what, record: { [file]: files.get(file)!.toString('utf8'), 'mutation.txt': `edited ${file}: ${what}\n` } };
+  }
   if (name === 'deleted-trace') {
     // The flaw: nothing reads the trace, so nothing changes.
     const files = deletedTrace(pinned);
     expect(files.has('canary-reads.txt')).toBe(false);
     return { files, what: 'canary-reads.txt removed', record: { 'mutation.txt': 'removed: canary-reads.txt (the whole retained strace transcript)\n' } };
+  }
+  // An edit to one recorded observation: the lesson keeps the edited record.
+  const edits = {
+    'generic-crash': genericCrash, 'emptied-bytes': emptiedBytes, 'corrupted-pixels': corruptedPixels, 'swapped-source': swappedSource,
+    'changed-config': changedConfig, 'prose-mention': proseMention, 'failed-open': failedOpen, 'other-directory': otherDirectory,
+  } as const;
+  if (name in edits) {
+    const { files, file, text } = edits[name as keyof typeof edits](pinned);
+    const what = {
+      'generic-crash': 'the blocked MAT arm refused with RuntimeError: disk full instead of the matload block',
+      'emptied-bytes': "the unblocked MAT arm's returned bytes emptied and their count set to 0",
+      'corrupted-pixels': "the blocked PNG control's pixels set to ffffffff",
+      'swapped-source': "the blocked MAT arm's source sha256 replaced with another valid one",
+      'changed-config': "the blocked MAT arm's Rails defaults set to 6.1 and its variant processor to mini_magick",
+      'prose-mention': "the unblocked MAT arm's real read of the private file replaced by a prose mention of it",
+      'failed-open': "the unblocked MAT arm's real read of the private file replaced by a failed (EACCES) open of it",
+      'other-directory': "the unblocked MAT arm's real read of the private file replaced by an open of /tmp/dummy-canary.txt",
+    }[name as keyof typeof edits];
+    return { files, what, record: { [file]: text, 'mutation.txt': `edited ${file}: ${what}\n` } };
   }
   // A dummy-file read in the blocked arm, which blocking should prevent.
   const files = forgedRead(pinned);
@@ -56,8 +86,11 @@ function mutate(name: ProbeName, pinned: Map<string, Buffer>, trace: string) {
   };
 }
 
-const probe = (name: ProbeName): Collector => (partDir) =>
-  (Object.keys(REVISIONS) as RevisionKey[]).map((key) => {
+// A probe is asked from the revision whose review raised it (`from` in
+// CheckerProbes.pkl) on: never of a revision before it, which would leak a
+// later review into an earlier lesson.
+const probe = (name: ProbeName): Collector => (partDir, { question }) =>
+  (Object.keys(REVISIONS) as RevisionKey[]).slice((Object.keys(REVISIONS) as RevisionKey[]).indexOf(question.from)).map((key) => {
     const { baseline: expected } = REVISIONS[key];
     const pinned = loadPinnedChecker(key);
     const trace = pinned.get('canary-reads.txt')!.toString('utf8');
@@ -72,6 +105,8 @@ const probe = (name: ProbeName): Collector => (partDir) =>
     // The unmodified transcript has no dummy-file read in the blocked arm.
     expect(trace.split('### ARM: ')[2]).not.toContain('dummy-canary.txt');
     write(path.join(dir, 'runs/baseline/result.txt'), result(key, 'none', baseline, 'none (retained evidence as pinned)'));
+    // The trace as retained, which the trace probes delete or forge into.
+    write(path.join(dir, 'runs/baseline/canary-reads.txt'), trace);
 
     const { files, what, record } = mutate(name, pinned, trace);
     const run = runChecker(files);
@@ -83,6 +118,14 @@ const probe = (name: ProbeName): Collector => (partDir) =>
   });
 
 export const railsProbes: Record<string, Collector> = {
-  'deleted-trace': probe('deleted-trace'),
   'forged-read': probe('forged-read'),
+  'deleted-trace': probe('deleted-trace'),
+  'generic-crash': probe('generic-crash'),
+  'emptied-bytes': probe('emptied-bytes'),
+  'corrupted-pixels': probe('corrupted-pixels'),
+  'swapped-source': probe('swapped-source'),
+  'changed-config': probe('changed-config'),
+  'prose-mention': probe('prose-mention'),
+  'failed-open': probe('failed-open'),
+  'other-directory': probe('other-directory'),
 };

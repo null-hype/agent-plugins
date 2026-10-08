@@ -1,0 +1,159 @@
+{
+  "baseCommit": "70a41b6",
+  "scope": "CIT-338 forecast slice only; source/tooling code and other corpus fixtures excluded.",
+  "maintainedFixtures": {
+    "before": {
+      "files": 11,
+      "uncompressedBytes": 41963
+    },
+    "after": {
+      "files": 10,
+      "uncompressedBytes": 16795
+    },
+    "presentation": {
+      "before": {
+        "files": 1,
+        "bytes": 25168
+      },
+      "after": {
+        "files": 0,
+        "bytes": 0
+      }
+    },
+    "originalHistoricalEvidence": {
+      "before": {
+        "files": 10,
+        "bytes": 16795
+      },
+      "after": {
+        "files": 10,
+        "bytes": 16795
+      },
+      "files": [
+        {
+          "path": "src/cve-2026-66066/questions/WasIVulnerable.pkl",
+          "bytes": 4529,
+          "sha256": "sha256:ba28f1eb8d3aa0d4ecd74cd141bcae2c372af1c94f521d03262b93e06d980049"
+        },
+        {
+          "path": "tutorial-app/src/stories/frozen/5282c7e/WasIVulnerable.pkl",
+          "bytes": 3645,
+          "sha256": "sha256:99bccff150c3b39eb0767f69388bc88c10a9064d046683bfe0a475e59f8268ab"
+        },
+        {
+          "path": "tutorial-app/src/stories/frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf",
+          "bytes": 75,
+          "sha256": "sha256:cd55e76891e8e0ba893c47a3db0ede3d2580ca14eb190ae289076e04d58b5ab5"
+        },
+        {
+          "path": "tutorial-app/src/stories/frozen/12f2351/WasIVulnerable.pkl",
+          "bytes": 4512,
+          "sha256": "sha256:8adc1316ca479ef63402bb5be04dc51da4619e593752e13a2e49c4bfedbd75e1"
+        },
+        {
+          "path": "tutorial-app/src/stories/frozen/12f2351/WasIVulnerable.test.pkl-expected.pcf",
+          "bytes": 215,
+          "sha256": "sha256:0df4407be4b64050975004dd19ab5d52cd9c3625121cb401a23c7820791b866f"
+        },
+        {
+          "path": "src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/register.json",
+          "bytes": 418,
+          "sha256": "sha256:5a0cf5a33173e49e3116c4139941f41a783ef51a931fb75af5cf6b7e7006792a"
+        },
+        {
+          "path": "src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/monitor.json",
+          "bytes": 3033,
+          "sha256": "sha256:85ce087726b2d747fd020862a3b4d2f5fb6a5fdd6233be6bb0095ce9bafdedab"
+        },
+        {
+          "path": "src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/reading.txt",
+          "bytes": 89,
+          "sha256": "sha256:974757769d4e8ab59ef2737903f137322a948902daf5b2236bc7ab218ff22d1e"
+        },
+        {
+          "path": "src/cve-2026-66066/questions/rounds/20261006T065648Z-stub/round.json",
+          "bytes": 64,
+          "sha256": "sha256:fd3fad8ba819aae78d00a7fd713b190da6bf674985c361de89d2724be10c09d0"
+        },
+        {
+          "path": "src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf",
+          "bytes": 215,
+          "sha256": "sha256:0df4407be4b64050975004dd19ab5d52cd9c3625121cb401a23c7820791b866f"
+        }
+      ]
+    }
+  },
+  "independentlyMaintainedResultDefinitions": {
+    "before": 5,
+    "after": 6,
+    "scope": "Count documents that independently state forecast result values, including validation matrices. Three original expected-reading PCFs plus tracked presentation and existing UI assertions before; remove presentation and add record/scenario validation matrices after. No authored answer table is consumed by the renderer.",
+    "resultDocuments": {
+      "before": 4,
+      "after": 3,
+      "preservedHistoricalExpectedReadings": 3,
+      "removedPresentationCopies": 1
+    },
+    "validationMatrices": {
+      "before": 1,
+      "after": 3,
+      "existing": [
+        "tutorial-app/src/stories/forecastReplay.spec.ts"
+      ],
+      "added": [
+        "tutorial-app/tests/forecast/record.spec.ts",
+        "test/_global/cve-forecast-check.ts"
+      ]
+    },
+    "historicalExpectedReadings": [
+      "tutorial-app/src/stories/frozen/5282c7e/WasIVulnerable.test.pkl-expected.pcf",
+      "tutorial-app/src/stories/frozen/12f2351/WasIVulnerable.test.pkl-expected.pcf",
+      "src/cve-2026-66066/questions/WasIVulnerable.test.pkl-expected.pcf"
+    ]
+  },
+  "generatedStorage": {
+    "presentation": {
+      "path": "tutorial-app/src/stories/forecast-replay.json",
+      "bytes": 25168,
+      "sha256": "sha256:2bab48bbe97db101e650c2480adeef079b27cbebcce7ce0cf16d5d3d483fcf51"
+    },
+    "exportedFiles": 17,
+    "exportedUncompressedBytes": 110274,
+    "scope": "Ignored presentation and unpacked export; includes copied historical evidence, not an independent definition."
+  },
+  "retainedStorage": {
+    "committedExport": [
+      {
+        "path": "bundle.json",
+        "bytes": 8352,
+        "sha256": "sha256:acbfdc2858d39bfb2e83050d85da8054c08a09782af079d11d3bc8a879f641ed"
+      },
+      {
+        "path": "bundle.tar.gz",
+        "bytes": 14280,
+        "sha256": "sha256:702795bd732b3234d76135fa0164d9d817a585fccfee071b937b424c08087157"
+      },
+      {
+        "path": "capture-pins.json",
+        "bytes": 5198,
+        "sha256": "sha256:ec408329c1e3a491fc0f62686aecfce81c54161ac24527ef301cfe65bbefecd8"
+      }
+    ],
+    "committedBytes": 27830,
+    "snapshotId": "de1ac972d64c2b1dc8ef6aebe92eaf7ad93b2d44383e9c4e56d96a6591091e11",
+    "image": {
+      "manifestDigest": "sha256:678ceff20054e91b8d4f7419df87f193daff697cfce202dad5c4a6f6329952b8",
+      "configDigest": "sha256:b56439f28414d8df518d227b83d953992a49151d241de0a3981dc3b06ededa57",
+      "archiveHash": "sha256:c348558b75856b160425c23fc83f458c2fdd403c9def39c1ec44748ef8b49020",
+      "platform": "linux/amd64"
+    },
+    "fullSnapshotFiles": 29,
+    "fullSnapshotUncompressedBytes": 411600541,
+    "runtimeArchiveBytes": 411457024,
+    "scope": "Committed compressed export, provenance descriptor and capture pins; full image/restic snapshot lives in the identified expiring Actions artifact. Compression is not fixture reduction."
+  },
+  "acceptedPresentation": {
+    "path": "tutorial-app/src/stories/forecast-replay.json",
+    "bytes": 25168,
+    "sha256": "sha256:2bab48bbe97db101e650c2480adeef079b27cbebcce7ce0cf16d5d3d483fcf51"
+  }
+}

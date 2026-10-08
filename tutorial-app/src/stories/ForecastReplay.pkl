@@ -1,0 +1,251 @@
+/// CIT-330: the forecast replay, a review (`cit294-review-v1`) of the question
+/// tree's retained round, rendered from the tree and the round's raw records.
+///
+/// The Client holds a commit naming the question. The reply's probes are the
+/// tree itself: the root is offered as a suggestion, and accepting a question
+/// that rests on others turns it into a heading and offers those as the next
+/// suggestions. Every forecast, rule and account comes from
+/// the validated shared record and its pinned tree; registration and read-back are the round's own
+/// monitor entries, each a separate location in the files as retained.
+///
+/// This replays recorded reasoning. It reads files and runs nothing: no
+/// register is called, and no round is accepted or frozen. The round resolved
+/// no question, so no answer or score appears.
+///
+///   pkl eval -f json ForecastReplay.pkl > forecast-replay.json
+module ForecastReplay
+
+import "pkl:json"
+
+import "../../../src/cve-2026-66066/questions/forecast/Record.pkl" as capture
+import "../../../src/cve-2026-66066/questions/Register.pkl"
+local tree = capture.tree
+local bundle = read?("prop:bundle") ?? "../../evidence/cit-338-forecast-v1/"
+
+/// The tree and round, as committed at c897e8d (draft PR 147) and copied here
+/// unaltered; Peek shows these files under their source location.
+const source = "https://github.com/null-hype/agent-plugins/blob/c897e8d41b633fc539b9bd558c7e7bd69f18d369/src/cve-2026-66066/questions/"
+const roundId = "20261006T065648Z-stub"
+local roundDir = "rounds/\(roundId)/"
+local questions = bundle + "inputs/"
+
+local function lines(path: String): List<String> = read(questions + path).text.split("\n")
+local treeLines = lines("WasIVulnerable.pkl")
+local registerLines = lines(roundDir + "register.json")
+local monitorLines = lines(roundDir + "monitor.json")
+local round = new json.Parser {}.parse(read(questions + roundDir + "round.json").text)
+local held = new json.Parser {}.parse(read(questions + roundDir + "register.json").text) as Dynamic
+local log = Register.load(read(questions + roundDir + "monitor.json").uri)
+
+/// The 1-based line of the first line at or after `from` that `test` holds for.
+local function find(text: List<String>, from: Int, test: (String) -> Boolean): Int =
+  from + text.drop(from - 1).findIndex(test)
+
+/// A JSON object's lines in a retained file: its opening line through the
+/// closing brace at the same indent.
+local function objectRange(text: List<String>, start: Int): Pair<Int, Int> =
+  let (indent = text[start - 1].takeWhile((c) -> c == " "))
+    Pair(start, find(text, start + 1, (l) -> l == "\(indent)}" || l == "\(indent)},"))
+
+/// The monitor entries, each with its lines, in the order the register wrote them.
+local entryStarts: List<Int> = monitorLines.toList().mapIndexed((i, l) -> if (l == "  {") i + 1 else 0).filter((n) -> n > 0)
+local entries = log.mapIndexed((i, e) -> Pair(e, objectRange(monitorLines, entryStarts[i])))
+
+/// The split as two versions of the tree, the way a merge front end sets two
+/// environments' work side by side: 5282c7e froze the root alone (the base),
+/// 12f2351 split it (the head). For each, the tree's question and the reading
+/// `pkl test` froze, both static files, retained under `frozen/<commit>/` as
+/// git holds them (forecastReplay.spec.ts checks). Peek lists the two sides
+/// together, base first, because their roles sort that way.
+const splitBase = "5282c7e"
+const splitHead = "12f2351"
+local treeFile = "WasIVulnerable.pkl"
+local expectedFile = "WasIVulnerable.test.pkl-expected.pcf"
+
+local function frozenLines(commit: String, file: String): List<String> =
+  read(questions + "frozen/\(commit)/\(file)").text.split("\n")
+
+local function readings(text: List<String>): Pair<Int, Int> =
+  objectRange(text, find(text, 1, (l) -> l == "  [\"readings\"] {"))
+
+local function nodeAt(text: List<String>, id: String): Pair<Int, Int> =
+  objectRange(text, find(text, 1, (l) -> l.contains("[\"\(id)\"] {")))
+
+/// The nodes a question rests on, from the first through the last, with any
+/// comment the commit put above them.
+local function premisesAt(text: List<String>, id: String): Pair<Int, Int> =
+  let (ids = tree.nodes[id].all.toList())
+    Pair(nodeAt(text, ids.first).first - (if (text[nodeAt(text, ids.first).first - 2].trim().startsWith("//")) 1 else 0),
+      nodeAt(text, ids.last).second)
+
+local function side(role: String, commit: String, file: String, range: Pair<Int, Int>, text: String): Location =
+  (at(role, file, range, text)) { revision = commit }
+
+local function frozen(id: String): List<Location> =
+  if (tree.nodes[id].all.isEmpty) List() else
+    let (base = frozenLines(splitBase, treeFile))
+    let (head = frozenLines(splitHead, treeFile))
+    List(
+      side("split-base", splitBase, treeFile, nodeAt(base, id),
+        "\(splitBase) froze \(id) alone, at \(tree.nodes[id].forecast), resting on nothing."),
+      side("split-base", splitBase, expectedFile, readings(frozenLines(splitBase, expectedFile)),
+        "The reading \(splitBase) froze: none, since nothing is split."),
+      side("split-head", splitHead, treeFile, nodeAt(head, id),
+        "\(splitHead) gives \(id) the questions it rests on and accounts for the difference they make."),
+      side("split-head", splitHead, treeFile, premisesAt(head, id),
+        "The questions \(splitHead) added, each with its own forecast."),
+      side("split-head", splitHead, expectedFile, readings(frozenLines(splitHead, expectedFile)),
+        "The reading \(splitHead) froze: \(tree.readings[id].forecast) against the \(tree.readings[id].implied) its questions imply.")
+    )
+
+local function percent(p: Number): String = "\((p * 100).round().toInt())%"
+
+class Location {
+  role: String
+  revision: String?
+  uri: String
+  line: Int
+  endLine: Int
+  detail: String
+}
+
+local function at(kind: String, path: String, range: Pair<Int, Int>, text: String): Location = new {
+  role = kind
+  uri = source + path
+  line = range.first
+  endLine = range.second
+  detail = text
+}
+
+/// Where the tree states a question: its node, through its closing brace.
+local function node(id: String): Location =
+  let (start = find(treeLines, 1, (l) -> l.contains("[\"\(id)\"] {")))
+    at("fact", "WasIVulnerable.pkl", objectRange(treeLines, start),
+      "\(tree.nodes[id].ask) Forecast \(tree.nodes[id].forecast), set before anything answers it. No resolution is recorded.")
+
+/// The register's entry for a question, then its monitor entries split into
+/// registration (create and fill) and read-back, each its own location.
+local function registration(id: String): List<Location> =
+  let (h = held.getProperty(id) as Dynamic)
+  let (start = find(registerLines, 1, (l) -> l == "  \"\(id)\": {"))
+    List(at("observation", roundDir + "register.json", objectRange(registerLines, start),
+      "The round read back \(h.held) for a tree forecast of \(h.tree); moved: \(h.moved)."))
+    + entries.filter((e) -> e.first.question == id && e.first.step != null).map((e) ->
+      let (readBack = e.first.step!!.startsWith("read back"))
+        at(if (readBack) "read-back" else if (e.first.step == "register" || e.first.step == "fill") "registration" else "observation",
+          roundDir + "monitor.json", e.second,
+          "\(e.first.action) at \(e.first.time): \(e.first.reason)"))
+
+local function registered(id: String): String =
+  let (h = held.getProperty(id) as Dynamic)
+  let (created = log.filter((e) -> e.question == id && e.step == "register").length)
+    "Forecast \(percent(tree.nodes[id].forecast)), registered \(if (created == 1) "once" else "\(created) times") and read back as \(percent(h.held))\(if (h.moved) ", moved" else ", not moved"). Unresolved in this round."
+
+local function diagnostic(id: String, diagnosticCode: String, text: String, locations: List<Location>) = new Dynamic {
+  severity = "info"
+  code = diagnosticCode
+  message = "\(diagnosticCode): \(text)"
+  evaluationId = "\(roundId):\(id):\(diagnosticCode)"
+  related = locations.toListing()
+}
+
+/// The combination rule a split question's reading applies: the conjunction
+/// its `all` states, read as independent (the product).
+local ruleLocations: List<Location> = List(
+  at("rule", "WasIVulnerable.pkl",
+    Pair(find(treeLines, 1, (l) -> l.contains("Exposure is a conjunction")), find(treeLines, 1, (l) -> l.contains("all: Listing<Question.Id>"))),
+    "A question holds only if all the questions it rests on do."),
+  at("rule", "WasIVulnerable.pkl",
+    Pair(find(treeLines, 1, (l) -> l.contains("What a split question's children imply")), find(treeLines, 1, (l) -> l.contains("product of their forecasts"))),
+    "Read as independent: the product of their forecasts. Dependence between them is not modelled."),
+  at("rule", "WasIVulnerable.pkl",
+    let (start = find(treeLines, 1, (l) -> l.contains("for (id, n in nodes)"))) Pair(start, find(treeLines, start, (l) -> l.contains("accounted = "))),
+    "How the reading is computed and checked against the account.")
+)
+
+local function probe(id: String, depth: Int): Dynamic =
+  let (n = tree.nodes[id])
+  new Dynamic {
+    question = "\(n.ask) Forecast: \(percent(n.forecast)) yes."
+    action = "inspect the recorded registration and read-back"
+    // A split question's first finding is the split itself, its two sides
+    // alone; its registration joins the finding that combines its questions.
+    diagnostic = if (n.all.isEmpty)
+        diagnostic(id, "forecast.registered", registered(id), List(node(id)) + registration(id))
+      else
+        diagnostic(id, "question.split",
+          "\(splitHead) split it into the \(n.all.length) questions it rests on (\(n.all.toList().map((c) -> percent(tree.nodes[c].forecast)).join(", "))); \(splitBase) froze it alone at \(percent(n.forecast)).",
+          frozen(id))
+    when (!n.all.isEmpty) {
+      children { for (child in n.all) { probe(child, depth + 1) } }
+      // Shown once every question it rests on has been accepted.
+      unfolded = let (r = tree.readings[id])
+        diagnostic(id, "forecast.split",
+          "Forecast \(percent(r.forecast)). Its questions imply \(percent(r.implied)) read as independent (\(n.all.toList().map((c) -> percent(tree.nodes[c].forecast)).join(" × "))): a difference of \(r.difference)\(if (r.accounted) ", accounted for in the tree" else ", not accounted for"). \(n.account?.why ?? "")",
+          List(node(id)) + ruleLocations + List(
+            at("observation", roundDir + "reading.txt", Pair(1, lines(roundDir + "reading.txt").length - 1),
+              "The round's reading under pkl test. The round was not accepted or frozen.")
+          ) + registration(id))
+    }
+  }
+
+local root = "was-i-vulnerable"
+
+local prompt = new Dynamic {
+  actor = "client"
+  action = "send prompt"
+  envelope {
+    jsonrpc = "2.0"
+    id = 1
+    method = "session/prompt"
+    params {
+      sessionId = "forecast-replay"
+      prompt {
+        new {
+          type = "text"
+          text = "\(tree.nodes[root].ask)\n\nSubject: \(tree.subject)\nRound \(roundId), \(round.register) register, read since \(round.since)."
+        }
+      }
+    }
+  }
+  provenance {
+    recordingId = "\(roundId):\(root)"
+    capturedAt = round.since
+    scripted = "Replay framing rendered from the tree and the retained round; the round recorded no proposal."
+  }
+}
+
+local reply = new Dynamic {
+  actor = "agent"
+  action = "replay the recorded questions"
+  speaker = "replay"
+  envelope {
+    jsonrpc = "2.0"
+    id = 1
+    result {
+      stopReason = "end_turn"
+      _meta {
+        diagnostic = probe(root, 0).diagnostic
+        probes { probe(root, 0) }
+      }
+    }
+  }
+  provenance {
+    recordingId = "\(roundId):\(root):replay"
+    capturedAt = log.last.time
+    scripted = "Rendered from WasIVulnerable.pkl and the retained round's records."
+  }
+}
+
+local reviewScenario = "cit294-review-v1"
+starter {
+  scenario = reviewScenario
+  frames { prompt }
+  nextTurn { actor = "agent"; speaker = "replay"; action = "replay the recorded questions" }
+}
+solved {
+  scenario = reviewScenario
+  frames { prompt; reply }
+}
+
+output { renderer = new JsonRenderer {} }
