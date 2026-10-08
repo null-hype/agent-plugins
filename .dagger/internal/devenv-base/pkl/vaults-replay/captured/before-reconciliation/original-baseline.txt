@@ -1,0 +1,31 @@
+module Vaults.test
+  facts
+    ✔ every pass:// ref in this repo's env files resolves to a declared vault/item
+    ✔ no script hardcodes a Proton Pass share/item ID default -- addresses by vault-name/item-title instead
+    ✔ every hardcoded --vault-name literal resolves to a declared vault
+    ✔ every declared vault actually exists in Proton Pass
+    ✘ every declared item actually exists in its declared vault
+       observedItems(v.name).contains(i) (file:///tmp/vaults-replay-v07btg/.dagger/internal/devenv-base/pkl/Vaults.test.pkl, line 147)
+       │             │ │     │        │
+       │             │ │     false    "linear-release"
+       │             │ "tidelands.dev"
+       │             new VaultSpec { name = "tidelands.dev"; items { "linear-release"; "agent.tidelands.dev"; "claude"...
+       List("pass-cli", "agent.tidelands.dev")
+       observedItems(v.name).contains(i) (file:///tmp/vaults-replay-v07btg/.dagger/internal/devenv-base/pkl/Vaults.test.pkl, line 147)
+       │             │ │     │        │
+       │             │ │     false    "claude"
+       │             │ "tidelands.dev"
+       │             new VaultSpec { name = "tidelands.dev"; items { "linear-release"; "agent.tidelands.dev"; "claude"...
+       List("pass-cli", "agent.tidelands.dev")
+  examples
+    ✘ observed vault names
+       #0: (file:///tmp/vaults-replay-v07btg/.dagger/internal/devenv-base/pkl/Vaults.test.pkl, line 158)
+         Expected: (file:///tmp/vaults-replay-v07btg/.dagger/internal/devenv-base/pkl/Vaults.test.pkl-expected.pcf, line 3)
+         List("infra", "tidelands.dev")
+         Actual: (file:///tmp/vaults-replay-v07btg/.dagger/internal/devenv-base/pkl/Vaults.test.pkl-actual.pcf, line 3)
+         List("anthropic.ai", "api.linear.app", "infra", "jingling057", "test", "tidelands.dev")
+    ✘ observed items in each declared vault
+       (file:///tmp/vaults-replay-v07btg/.dagger/internal/devenv-base/pkl/Vaults.test.pkl, line 161)
+       Output mismatch: Expected "observed items in each declared vault" to contain 2 examples, but found 4
+
+57.1% tests pass [3/7 failed], 94.1% asserts pass [4/68 failed]

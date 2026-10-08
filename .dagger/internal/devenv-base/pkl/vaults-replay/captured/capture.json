@@ -1,0 +1,575 @@
+{
+  "questionId": "declared-vault-inventory",
+  "records": [
+    {
+      "questionId": "declared-vault-inventory",
+      "state": {
+        "id": "before-reconciliation",
+        "source": {
+          "uri": "https://github.com/null-hype/agent-plugins/commit/99e902df60f43ae8d9757ac138c92bf6aa78eb7f",
+          "origin": "historical",
+          "availability": "retained",
+          "immutableId": "git-commit:99e902df60f43ae8d9757ac138c92bf6aa78eb7f",
+          "reason": null
+        },
+        "scope": [
+          "Vaults contract, declarations, original expected PCF, referenced env/scripts and the captured inventory metadata."
+        ],
+        "inputs": [
+          {
+            "uri": "inputs/vaults-observed.json",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.pkl",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:399b2deba75e34c49e8e73754c3b3182f80ff1fed612bf22228e16c07c6a937a",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.test.pkl",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:05836327ca4114a6efe6e3f89e952b2862c1d6a957a05062c186793de04bdb78",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.test.pkl-expected.pcf",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:1d8dc8c9e2ee34159176eebc20628ff4470b96ce37ce575664ef598e83d355d9",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/linear-release.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:cbe33668543cb8ac83e342693e201bdf3c15b611675ef6e90f68c34158dc244c",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/gcloud.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:578420676ad3214da0e7313f8bdacd2ee8a9de90fea6c5a96dc337427688c80d",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/keepalive/devpod-keepalive.sh",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:a7a578053b00dc37846a676bac10cce430a6819d069717cde7f7a79a8bb1538d",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/tailscale.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:3aa1530c7a78386f91225f94689221c621f495977377f0cd9b7eb5e21c9c558e",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/render.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:5594138ddbb4be7aba376fc419ee9ade9797659f6aabe6143411425d4a98ea71",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/linear-agent.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:315c2543e7816d2130ecd85dda87831b727cb162b8665051d1d356fa10906e53",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/linear-triage-agent.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:896cd49584619a956ed39d367ded0145079a8686f46e121997d1207071442b1c",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/continue-claude-session.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:ab51c36c80a7a8e3d63b5d4852a8bdf217fd3ec86150e267870eeec0e06365e2",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/cloudflared.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:f86849578d1cf45863c0a54afce5f178338f87ca5c644e099e6eb15cb0e4fd14",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:a778847db2b370da27ec3581919a8f373c05626f8d430c867376abf997c5db3a",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/test/pass-cli/restic-backup/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/test/_global/jin-81-pass-cli/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/test/_global/jin-90-dead-drop/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:bacf305b60e054bc472e17d6b2300b0a95b878ea9131891cb9f5584ba5015fab",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/test/_global/jin-91-resume-session/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/hk/rotate-jin63-secrets.sh",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:42564b5a4610bd825f539a8d5c1d5bcee092a7c5012899770108e1479bc87095",
+            "reason": null
+          },
+          {
+            "uri": "before-reconciliation/inputs/test/_global/jin-90-dead-drop.sh",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:cc4cf94a591256767cdbf5a958909656030e6409f4ae5a423ff830a71fb9e893",
+            "reason": null
+          }
+        ],
+        "image": {
+          "uri": "before-reconciliation/image",
+          "origin": "historical",
+          "availability": "missing",
+          "immutableId": null,
+          "reason": "The original CI container image was not retained."
+        },
+        "snapshot": {
+          "uri": "before-reconciliation/snapshot",
+          "origin": "historical",
+          "availability": "missing",
+          "immutableId": null,
+          "reason": "No original container snapshot is available; the scoped files are retained individually."
+        },
+        "limitations": [
+          "Inventory describes the historical capture, not current vault contents.",
+          "No secret values, live vault operations or application state are required."
+        ]
+      },
+      "mutation": null,
+      "delivery": {
+        "feature": "vaults-contract",
+        "version": null,
+        "status": "planned",
+        "finding": "tidelands.dev/linear-release is declared but absent from the retained inventory. tidelands.dev/claude is declared but absent from the retained inventory.",
+        "scenario": "offline-vault-inventory",
+        "evidence": null
+      },
+      "declarations": [
+        {
+          "text": "Every declared vault/item must actually exist in Proton Pass.",
+          "evidence": {
+            "uri": "before-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.pkl",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:399b2deba75e34c49e8e73754c3b3182f80ff1fed612bf22228e16c07c6a937a",
+            "reason": null
+          },
+          "property": "missingDeclaredResources",
+          "declared": 0,
+          "observed": 2,
+          "observedFrom": {
+            "uri": "inputs/vaults-observed.json",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+            "reason": null
+          }
+        }
+      ],
+      "forecast": null,
+      "answer": {
+        "exitCode": 1,
+        "testsPassed": 6,
+        "testsTotal": 7,
+        "assertsPassed": 69,
+        "assertsTotal": 71
+      },
+      "observations": [
+        {
+          "uri": "inputs/vaults-observed.json",
+          "origin": "historical",
+          "availability": "retained",
+          "immutableId": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+          "reason": null
+        },
+        {
+          "uri": "before-reconciliation/original-baseline.txt",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:b4289fd3c55dedcee1712ad11e82aa448f8cfd1c44a9986012b6b93da382f175",
+          "reason": null
+        },
+        {
+          "uri": "before-reconciliation/generate-baseline.txt",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:01b57eb1041548bfa5d898bb39eec19c609aff9dddc198aaadcb7f5867c7ad10",
+          "reason": null
+        },
+        {
+          "uri": "before-reconciliation/generated/Vaults.test.pkl-expected.pcf",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:e0c7b7e24887ffe1ea47a50d962b5b878a79e6320dbf337388cdc4f6d2242c8c",
+          "reason": null
+        },
+        {
+          "uri": "before-reconciliation/checked.txt",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:0d74945908530ea9d644649e406bdc23c38239e767c64f08310c916fc0358da1",
+          "reason": null
+        },
+        {
+          "uri": "before-reconciliation/answer.json",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:9fb862d3008511b0b3f668efb93b30cdc979520a3415f49b17d6f1ab51ffab49",
+          "reason": null
+        },
+        {
+          "uri": "before-reconciliation/original-check-output",
+          "origin": "historical",
+          "availability": "missing",
+          "immutableId": null,
+          "reason": "Original CI assertion output is not retained in this bundle; these check outputs are new reproductions."
+        },
+        {
+          "uri": "execution.json",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:552264ad420d25e157e1ec72c88cf46e6f74dcea84ebff5cdea28ea3d30200d6",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "questionId": "declared-vault-inventory",
+      "state": {
+        "id": "after-reconciliation",
+        "source": {
+          "uri": "https://github.com/null-hype/agent-plugins/commit/d9a581d8fcbabe81b61cf1417fb62dbbb38fb59b",
+          "origin": "historical",
+          "availability": "retained",
+          "immutableId": "git-commit:d9a581d8fcbabe81b61cf1417fb62dbbb38fb59b",
+          "reason": null
+        },
+        "scope": [
+          "Vaults contract, declarations, original expected PCF, referenced env/scripts and the captured inventory metadata."
+        ],
+        "inputs": [
+          {
+            "uri": "inputs/vaults-observed.json",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.pkl",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:ea6aa2ffc2da25d5189fca6f6c4967b6cb2caf05dd8c1f488b9199b1481d2481",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.test.pkl",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:05836327ca4114a6efe6e3f89e952b2862c1d6a957a05062c186793de04bdb78",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.test.pkl-expected.pcf",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:d5b74666020b42fcc1da2641c4d00cb29d381a1b790a6f0d06e0d6fa2f308b9c",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/linear-release.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:f66fd6e5a877c80db0fd08967ff8a734b252254d86ebad577d0df670c137cddc",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/gcloud.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:578420676ad3214da0e7313f8bdacd2ee8a9de90fea6c5a96dc337427688c80d",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/keepalive/devpod-keepalive.sh",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:a7a578053b00dc37846a676bac10cce430a6819d069717cde7f7a79a8bb1538d",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/tailscale.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:3aa1530c7a78386f91225f94689221c621f495977377f0cd9b7eb5e21c9c558e",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/render.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:5594138ddbb4be7aba376fc419ee9ade9797659f6aabe6143411425d4a98ea71",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/linear-agent.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:315c2543e7816d2130ecd85dda87831b727cb162b8665051d1d356fa10906e53",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/linear-triage-agent.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:7c4e3e2bbc1ae43854a5ed6a602373623c2f4d126b2e847f289739159dbbffe8",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/continue-claude-session.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:3edcc9ae32101c381da8c492376ab01c1b0798611508076edb4d420f86e739e7",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/.devcontainer/cloudflared.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:f86849578d1cf45863c0a54afce5f178338f87ca5c644e099e6eb15cb0e4fd14",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:a778847db2b370da27ec3581919a8f373c05626f8d430c867376abf997c5db3a",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/test/pass-cli/restic-backup/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/test/_global/jin-81-pass-cli/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/test/_global/jin-90-dead-drop/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:bacf305b60e054bc472e17d6b2300b0a95b878ea9131891cb9f5584ba5015fab",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/test/_global/jin-91-resume-session/.env",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/hk/rotate-jin63-secrets.sh",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:42564b5a4610bd825f539a8d5c1d5bcee092a7c5012899770108e1479bc87095",
+            "reason": null
+          },
+          {
+            "uri": "after-reconciliation/inputs/test/_global/jin-90-dead-drop.sh",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:cc4cf94a591256767cdbf5a958909656030e6409f4ae5a423ff830a71fb9e893",
+            "reason": null
+          }
+        ],
+        "image": {
+          "uri": "after-reconciliation/image",
+          "origin": "historical",
+          "availability": "missing",
+          "immutableId": null,
+          "reason": "The original CI container image was not retained."
+        },
+        "snapshot": {
+          "uri": "after-reconciliation/snapshot",
+          "origin": "historical",
+          "availability": "missing",
+          "immutableId": null,
+          "reason": "No original container snapshot is available; the scoped files are retained individually."
+        },
+        "limitations": [
+          "Inventory describes the historical capture, not current vault contents.",
+          "No secret values, live vault operations or application state are required."
+        ]
+      },
+      "mutation": null,
+      "delivery": {
+        "feature": "vaults-contract",
+        "version": null,
+        "status": "planned",
+        "finding": "Every declared vault/item exists in the retained inventory after reconciliation.",
+        "scenario": "offline-vault-inventory",
+        "evidence": null
+      },
+      "declarations": [
+        {
+          "text": "Every declared vault/item must actually exist in Proton Pass.",
+          "evidence": {
+            "uri": "after-reconciliation/inputs/.dagger/internal/devenv-base/pkl/Vaults.pkl",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:ea6aa2ffc2da25d5189fca6f6c4967b6cb2caf05dd8c1f488b9199b1481d2481",
+            "reason": null
+          },
+          "property": "missingDeclaredResources",
+          "declared": 0,
+          "observed": 0,
+          "observedFrom": {
+            "uri": "inputs/vaults-observed.json",
+            "origin": "historical",
+            "availability": "retained",
+            "immutableId": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+            "reason": null
+          }
+        }
+      ],
+      "forecast": null,
+      "answer": {
+        "exitCode": 0,
+        "testsPassed": 7,
+        "testsTotal": 7,
+        "assertsPassed": 72,
+        "assertsTotal": 72
+      },
+      "observations": [
+        {
+          "uri": "inputs/vaults-observed.json",
+          "origin": "historical",
+          "availability": "retained",
+          "immutableId": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+          "reason": null
+        },
+        {
+          "uri": "after-reconciliation/original-baseline.txt",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:615824bbef61e59dcef7706fb8a5956b640049d4e728cd9b77529d850b4b444e",
+          "reason": null
+        },
+        {
+          "uri": "after-reconciliation/generate-baseline.txt",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:97a90f05a619e2698038712eae4a2c345354300eeedef955b25a77469dc67c6f",
+          "reason": null
+        },
+        {
+          "uri": "after-reconciliation/generated/Vaults.test.pkl-expected.pcf",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:d5b74666020b42fcc1da2641c4d00cb29d381a1b790a6f0d06e0d6fa2f308b9c",
+          "reason": null
+        },
+        {
+          "uri": "after-reconciliation/checked.txt",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:615824bbef61e59dcef7706fb8a5956b640049d4e728cd9b77529d850b4b444e",
+          "reason": null
+        },
+        {
+          "uri": "after-reconciliation/answer.json",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:f4569377e1bff536b93fd9fcef2570e9adcebfd5739c6afca0f3377e7fd12e29",
+          "reason": null
+        },
+        {
+          "uri": "after-reconciliation/original-check-output",
+          "origin": "historical",
+          "availability": "missing",
+          "immutableId": null,
+          "reason": "Original CI assertion output is not retained in this bundle; these check outputs are new reproductions."
+        },
+        {
+          "uri": "execution.json",
+          "origin": "reproduced",
+          "availability": "retained",
+          "immutableId": "sha256:552264ad420d25e157e1ec72c88cf46e6f74dcea84ebff5cdea28ea3d30200d6",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "before-reconciliation",
+      "to": "after-reconciliation",
+      "action": "Reconcile declarations and consumers with the retained observed topology, and regenerate the reviewable baseline.",
+      "finding": "tidelands.dev/linear-release is declared but absent from the retained inventory. tidelands.dev/claude is declared but absent from the retained inventory.",
+      "evidence": [
+        {
+          "uri": "manifest.json",
+          "origin": "historical",
+          "availability": "retained",
+          "immutableId": "sha256:1cb47d07b6951e7143bf4edf3f23e4f56d51f1b9b7a2ea80ae7fb82d99522e92",
+          "reason": null
+        },
+        {
+          "uri": "inputs/vaults-observed.json",
+          "origin": "historical",
+          "availability": "retained",
+          "immutableId": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+          "reason": null
+        }
+      ]
+    }
+  ]
+}

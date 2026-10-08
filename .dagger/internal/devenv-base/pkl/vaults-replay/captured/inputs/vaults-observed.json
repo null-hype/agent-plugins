@@ -1,0 +1,55 @@
+{
+  "vaults": [
+    {
+      "name": "tidelands.dev",
+      "items": [
+        "pass-cli",
+        "agent.tidelands.dev"
+      ]
+    },
+    {
+      "name": "infra",
+      "items": [
+        "dagger.cloud",
+        "render.com",
+        "github.com",
+        "restic",
+        "tailscale",
+        "cloudflare",
+        "jules.googleapis.com",
+        "SSH-tidelane",
+        "stitch.withgoogle.com",
+        "netlify",
+        "tidelands-1.seahorse-saurolophus.ts.net"
+      ]
+    },
+    {
+      "name": "api.linear.app",
+      "items": [
+        "geek-handball-cane",
+        "jingling057",
+        "Citizen6.Librarian6.Refrain4",
+        "Tidelands"
+      ]
+    },
+    {
+      "name": "jingling057",
+      "items": [
+        "agent.tidelands.dev",
+        "linear-release"
+      ]
+    },
+    {
+      "name": "anthropic.ai",
+      "items": [
+        "claude"
+      ]
+    },
+    {
+      "name": "test",
+      "items": [
+        "cit-96"
+      ]
+    }
+  ]
+}

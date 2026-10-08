@@ -1,0 +1,254 @@
+{
+  "repository": "https://github.com/null-hype/agent-plugins",
+  "inventory": {
+    "file": "inputs/vaults-observed.json",
+    "sha256": "sha256:1e91ccccb3e86d7eaede701204c6bae6a74b079b6ae4e87a05c768da44167620",
+    "origin": "historical",
+    "capturedAt": "2026-09-17T01:45:39Z",
+    "run": "https://github.com/null-hype/agent-plugins/actions/runs/35171754006",
+    "artifactId": 10477305436,
+    "archiveDigest": "sha256:fc80e74dadc1ec102258b242891fbfcc3b6d84c1fbb41d173b9878785efdf0b4"
+  },
+  "states": [
+    {
+      "id": "before-reconciliation",
+      "revision": "99e902df60f43ae8d9757ac138c92bf6aa78eb7f",
+      "files": [
+        {
+          "path": ".dagger/internal/devenv-base/pkl/Vaults.pkl",
+          "file": "inputs/0/.dagger/internal/devenv-base/pkl/Vaults.pkl",
+          "blob": "b037526e92b4eaeac81baa8665d76e063dda007c",
+          "sha256": "sha256:399b2deba75e34c49e8e73754c3b3182f80ff1fed612bf22228e16c07c6a937a"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/pkl/Vaults.test.pkl",
+          "file": "inputs/0/.dagger/internal/devenv-base/pkl/Vaults.test.pkl",
+          "blob": "48cb907d1b103bf86909a2038b94c5a1eae565a3",
+          "sha256": "sha256:05836327ca4114a6efe6e3f89e952b2862c1d6a957a05062c186793de04bdb78"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/pkl/Vaults.test.pkl-expected.pcf",
+          "file": "inputs/0/.dagger/internal/devenv-base/pkl/Vaults.test.pkl-expected.pcf",
+          "blob": "73e612b88807c967449f25d58e15dd4ce8abc437",
+          "sha256": "sha256:1d8dc8c9e2ee34159176eebc20628ff4470b96ce37ce575664ef598e83d355d9"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/linear-release.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/linear-release.env",
+          "blob": "db053570fe985fe274c24fb2c61125aaab9f0998",
+          "sha256": "sha256:cbe33668543cb8ac83e342693e201bdf3c15b611675ef6e90f68c34158dc244c"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/gcloud.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/.devcontainer/gcloud.env",
+          "blob": "6d00cc45739487ff581e03044e0654e30b84e32c",
+          "sha256": "sha256:578420676ad3214da0e7313f8bdacd2ee8a9de90fea6c5a96dc337427688c80d"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/keepalive/devpod-keepalive.sh",
+          "file": "inputs/0/.dagger/internal/devenv-base/keepalive/devpod-keepalive.sh",
+          "blob": "b1cfc0e7f7ca11387f8299372e0c3e7ee623fa7b",
+          "sha256": "sha256:a7a578053b00dc37846a676bac10cce430a6819d069717cde7f7a79a8bb1538d"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/tailscale.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/.devcontainer/tailscale.env",
+          "blob": "1921200402993c38cffdb8d36fd8c6cf2eff18f9",
+          "sha256": "sha256:3aa1530c7a78386f91225f94689221c621f495977377f0cd9b7eb5e21c9c558e"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/render.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/.devcontainer/render.env",
+          "blob": "6f468403db79eb58ad9ce381cc58de866cb97145",
+          "sha256": "sha256:5594138ddbb4be7aba376fc419ee9ade9797659f6aabe6143411425d4a98ea71"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/linear-agent.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/.devcontainer/linear-agent.env",
+          "blob": "d2029762b6293f5e0249c523bb7e2c9eef646876",
+          "sha256": "sha256:315c2543e7816d2130ecd85dda87831b727cb162b8665051d1d356fa10906e53"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/linear-triage-agent.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/.devcontainer/linear-triage-agent.env",
+          "blob": "b529941a318b8e6ba105aba1b61f957d4c60d081",
+          "sha256": "sha256:896cd49584619a956ed39d367ded0145079a8686f46e121997d1207071442b1c"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/continue-claude-session.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/.devcontainer/continue-claude-session.env",
+          "blob": "a1f172f2cd92b9611fc54c6116e7ae2a684d9e50",
+          "sha256": "sha256:ab51c36c80a7a8e3d63b5d4852a8bdf217fd3ec86150e267870eeec0e06365e2"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/cloudflared.env",
+          "file": "inputs/0/.dagger/internal/devenv-base/.devcontainer/cloudflared.env",
+          "blob": "6bc163e37fd4f8dfae7c28632cd00fd35c166707",
+          "sha256": "sha256:f86849578d1cf45863c0a54afce5f178338f87ca5c644e099e6eb15cb0e4fd14"
+        },
+        {
+          "path": ".env",
+          "file": "inputs/0/.env",
+          "blob": "61f98edf42cfa638f454c38dca83809b5ab2584a",
+          "sha256": "sha256:a778847db2b370da27ec3581919a8f373c05626f8d430c867376abf997c5db3a"
+        },
+        {
+          "path": "test/pass-cli/restic-backup/.env",
+          "file": "inputs/0/test/pass-cli/restic-backup/.env",
+          "blob": "a5fc1998ae0e28a00bda6be42f8b5174776da59d",
+          "sha256": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5"
+        },
+        {
+          "path": "test/_global/jin-81-pass-cli/.env",
+          "file": "inputs/0/test/_global/jin-81-pass-cli/.env",
+          "blob": "a5fc1998ae0e28a00bda6be42f8b5174776da59d",
+          "sha256": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5"
+        },
+        {
+          "path": "test/_global/jin-90-dead-drop/.env",
+          "file": "inputs/0/test/_global/jin-90-dead-drop/.env",
+          "blob": "87a5e846d2c29d34aac70c417a6fbe21007ca219",
+          "sha256": "sha256:bacf305b60e054bc472e17d6b2300b0a95b878ea9131891cb9f5584ba5015fab"
+        },
+        {
+          "path": "test/_global/jin-91-resume-session/.env",
+          "file": "inputs/0/test/_global/jin-91-resume-session/.env",
+          "blob": "a5fc1998ae0e28a00bda6be42f8b5174776da59d",
+          "sha256": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/hk/rotate-jin63-secrets.sh",
+          "file": "inputs/0/.dagger/internal/devenv-base/hk/rotate-jin63-secrets.sh",
+          "blob": "1f9d07d21341754a63ae56cf7577d20cb7a0b685",
+          "sha256": "sha256:42564b5a4610bd825f539a8d5c1d5bcee092a7c5012899770108e1479bc87095"
+        },
+        {
+          "path": "test/_global/jin-90-dead-drop.sh",
+          "file": "inputs/0/test/_global/jin-90-dead-drop.sh",
+          "blob": "8e5da051926aaa81a250f353e701dded2f5951e7",
+          "sha256": "sha256:cc4cf94a591256767cdbf5a958909656030e6409f4ae5a423ff830a71fb9e893"
+        }
+      ]
+    },
+    {
+      "id": "after-reconciliation",
+      "revision": "d9a581d8fcbabe81b61cf1417fb62dbbb38fb59b",
+      "files": [
+        {
+          "path": ".dagger/internal/devenv-base/pkl/Vaults.pkl",
+          "file": "inputs/1/.dagger/internal/devenv-base/pkl/Vaults.pkl",
+          "blob": "74cb0cf18eb8bbfd339a435bbd6d71929604b631",
+          "sha256": "sha256:ea6aa2ffc2da25d5189fca6f6c4967b6cb2caf05dd8c1f488b9199b1481d2481"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/pkl/Vaults.test.pkl",
+          "file": "inputs/1/.dagger/internal/devenv-base/pkl/Vaults.test.pkl",
+          "blob": "48cb907d1b103bf86909a2038b94c5a1eae565a3",
+          "sha256": "sha256:05836327ca4114a6efe6e3f89e952b2862c1d6a957a05062c186793de04bdb78"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/pkl/Vaults.test.pkl-expected.pcf",
+          "file": "inputs/1/.dagger/internal/devenv-base/pkl/Vaults.test.pkl-expected.pcf",
+          "blob": "c61b571f660f7bc19a0dc667d7fa6b410ba76877",
+          "sha256": "sha256:d5b74666020b42fcc1da2641c4d00cb29d381a1b790a6f0d06e0d6fa2f308b9c"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/linear-release.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/linear-release.env",
+          "blob": "06e9b7b33ba669dc254c30b6bf1e3c13725af4c2",
+          "sha256": "sha256:f66fd6e5a877c80db0fd08967ff8a734b252254d86ebad577d0df670c137cddc"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/gcloud.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/.devcontainer/gcloud.env",
+          "blob": "6d00cc45739487ff581e03044e0654e30b84e32c",
+          "sha256": "sha256:578420676ad3214da0e7313f8bdacd2ee8a9de90fea6c5a96dc337427688c80d"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/keepalive/devpod-keepalive.sh",
+          "file": "inputs/1/.dagger/internal/devenv-base/keepalive/devpod-keepalive.sh",
+          "blob": "b1cfc0e7f7ca11387f8299372e0c3e7ee623fa7b",
+          "sha256": "sha256:a7a578053b00dc37846a676bac10cce430a6819d069717cde7f7a79a8bb1538d"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/tailscale.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/.devcontainer/tailscale.env",
+          "blob": "1921200402993c38cffdb8d36fd8c6cf2eff18f9",
+          "sha256": "sha256:3aa1530c7a78386f91225f94689221c621f495977377f0cd9b7eb5e21c9c558e"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/render.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/.devcontainer/render.env",
+          "blob": "6f468403db79eb58ad9ce381cc58de866cb97145",
+          "sha256": "sha256:5594138ddbb4be7aba376fc419ee9ade9797659f6aabe6143411425d4a98ea71"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/linear-agent.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/.devcontainer/linear-agent.env",
+          "blob": "d2029762b6293f5e0249c523bb7e2c9eef646876",
+          "sha256": "sha256:315c2543e7816d2130ecd85dda87831b727cb162b8665051d1d356fa10906e53"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/linear-triage-agent.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/.devcontainer/linear-triage-agent.env",
+          "blob": "9d41705a1fa8a5e8b90a5910f92dc29cc694ca28",
+          "sha256": "sha256:7c4e3e2bbc1ae43854a5ed6a602373623c2f4d126b2e847f289739159dbbffe8"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/continue-claude-session.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/.devcontainer/continue-claude-session.env",
+          "blob": "bc502fc8302461996eeddc5ce49680e380604bac",
+          "sha256": "sha256:3edcc9ae32101c381da8c492376ab01c1b0798611508076edb4d420f86e739e7"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/.devcontainer/cloudflared.env",
+          "file": "inputs/1/.dagger/internal/devenv-base/.devcontainer/cloudflared.env",
+          "blob": "6bc163e37fd4f8dfae7c28632cd00fd35c166707",
+          "sha256": "sha256:f86849578d1cf45863c0a54afce5f178338f87ca5c644e099e6eb15cb0e4fd14"
+        },
+        {
+          "path": ".env",
+          "file": "inputs/1/.env",
+          "blob": "61f98edf42cfa638f454c38dca83809b5ab2584a",
+          "sha256": "sha256:a778847db2b370da27ec3581919a8f373c05626f8d430c867376abf997c5db3a"
+        },
+        {
+          "path": "test/pass-cli/restic-backup/.env",
+          "file": "inputs/1/test/pass-cli/restic-backup/.env",
+          "blob": "a5fc1998ae0e28a00bda6be42f8b5174776da59d",
+          "sha256": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5"
+        },
+        {
+          "path": "test/_global/jin-81-pass-cli/.env",
+          "file": "inputs/1/test/_global/jin-81-pass-cli/.env",
+          "blob": "a5fc1998ae0e28a00bda6be42f8b5174776da59d",
+          "sha256": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5"
+        },
+        {
+          "path": "test/_global/jin-90-dead-drop/.env",
+          "file": "inputs/1/test/_global/jin-90-dead-drop/.env",
+          "blob": "87a5e846d2c29d34aac70c417a6fbe21007ca219",
+          "sha256": "sha256:bacf305b60e054bc472e17d6b2300b0a95b878ea9131891cb9f5584ba5015fab"
+        },
+        {
+          "path": "test/_global/jin-91-resume-session/.env",
+          "file": "inputs/1/test/_global/jin-91-resume-session/.env",
+          "blob": "a5fc1998ae0e28a00bda6be42f8b5174776da59d",
+          "sha256": "sha256:8155d0dd7521a045f7af2857fbc3316d5880041e6ec5a7099b8a6aa475c0b6b5"
+        },
+        {
+          "path": ".dagger/internal/devenv-base/hk/rotate-jin63-secrets.sh",
+          "file": "inputs/1/.dagger/internal/devenv-base/hk/rotate-jin63-secrets.sh",
+          "blob": "1f9d07d21341754a63ae56cf7577d20cb7a0b685",
+          "sha256": "sha256:42564b5a4610bd825f539a8d5c1d5bcee092a7c5012899770108e1479bc87095"
+        },
+        {
+          "path": "test/_global/jin-90-dead-drop.sh",
+          "file": "inputs/1/test/_global/jin-90-dead-drop.sh",
+          "blob": "8e5da051926aaa81a250f353e701dded2f5951e7",
+          "sha256": "sha256:cc4cf94a591256767cdbf5a958909656030e6409f4ae5a423ff830a71fb9e893"
+        }
+      ]
+    }
+  ]
+}

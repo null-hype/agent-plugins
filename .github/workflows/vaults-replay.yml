@@ -1,0 +1,40 @@
+name: Retained Vaults replay
+
+on:
+  pull_request:
+    paths:
+      - '.dagger/internal/devenv-base/pkl/vaults-replay/**'
+      - 'src/jev/pkl/**'
+      - 'src/cve-2026-66066/questions/checker/Decode.pkl'
+      - '.github/actions/setup-replay-tools/**'
+      - '.github/workflows/vaults-replay.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.dagger/internal/devenv-base/pkl/vaults-replay/**'
+      - 'src/jev/pkl/**'
+      - 'src/cve-2026-66066/questions/checker/Decode.pkl'
+      - '.github/actions/setup-replay-tools/**'
+      - '.github/workflows/vaults-replay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-replay-tools
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.7
+      - name: Verify offline restoration and evidence integrity
+        run: |
+          deno test --allow-read --allow-write --allow-env --allow-run=pkl \
+            .dagger/internal/devenv-base/pkl/vaults-replay/replay.test.ts
