@@ -113,3 +113,16 @@
   font: 400 0.55em 'Noto Serif', serif;
   box-shadow: 4px 4px 0 var(--rn-cream);
 }
+
+/* The CIT-332 mark as its own clipping: a cream square cut around the circle. */
+.ransom-note .rn-seal {
+  padding: 0.1em;
+  background: var(--rn-cream);
+  color: #172a31;
+  box-shadow: 4px 4px 0 var(--rn-ink);
+}
+
+.ransom-note .rn-mark {
+  width: 1.15em;
+  height: 1.15em;
+}
