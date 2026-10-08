@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { buildAcpTraceState } from '../../src/lib/acpTraceProtocol';
-import { solvedFixture } from './fixture';
+import { chapter, solvedFixture } from './fixture';
 import { REPRODUCTION_ID, REVISIONS, type RevisionKey } from './probes';
 
 // CIT-307 x CIT-253: the review-1 editor flow, driven against the fixture the
@@ -41,9 +41,12 @@ async function peekSummary(page: Page, text: string) {
 for (const key of ['S1', 'S2'] as RevisionKey[]) {
 test(`accepting a probe shows the numbers the executed run produced (PR ${REVISIONS[key].pr})`, async ({ page, context }) => {
   const { finding, asserts } = { finding: REVISIONS[key].findingId, asserts: REVISIONS[key].baseline.asserts };
-  const solved = JSON.parse(readFileSync(solvedFixture(key), 'utf8'));
+  // The review as its last lesson leaves it: every reply (CIT-357), and the first one alone.
+  const last = Math.max(...chapter().filter((lesson) => lesson.key === key).map((lesson) => lesson.step));
+  const solved = JSON.parse(readFileSync(solvedFixture(key, last), 'utf8'));
+  const first = JSON.parse(readFileSync(solvedFixture(key), 'utf8'));
   // The starter is the solved fixture before the reviewer answers: its prompt frame only.
-  const starter = { ...solved, frames: solved.frames.slice(0, 1), nextTurn: { actor: 'agent', action: `review PR ${REVISIONS[key].pr}`, speaker: 'bob' } };
+  const starter = { scenario: solved.scenario, frames: solved.frames.slice(0, 1), nextTurn: { actor: 'agent', action: `review PR ${REVISIONS[key].pr}`, speaker: 'bob' } };
   const subject: string = solved.frames[0].envelope.params.prompt[0].text.split('\n')[0];
 
   const agent = await context.newPage();
@@ -69,7 +72,7 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
   await expect.poll(() => editorText(page)).toContain(subject);
 
   await test.step('solve offers the probes; nothing is accepted yet', async () => {
-    await show([page], solved);
+    await show([page], first);
     await expect(page.locator('.ghost-text-decoration, .ghost-text').first()).toBeVisible();
     await expect.poll(() => editorText(page)).toContain('Does the check fail when a read of the private file is forged?'); // shown as grey text
     expect(await modelText(page)).not.toContain('Does the check fail when');
@@ -78,12 +81,18 @@ test(`accepting a probe shows the numbers the executed run produced (PR ${REVISI
   await test.step('Tab accepts each probe in turn', async () => {
     await page.keyboard.press('Tab');
     await expect.poll(() => modelText(page)).toContain('Does the check fail when a read of the private file is forged?');
+    // A review continued in a later lesson (#117's): its next reply opens on this accept.
+    if (last > 0) await show([page], solved);
     // Clicking a lens would take focus out of the editor and the next suggestion
-    // would not be offered, so both are accepted before any evidence is opened.
-    await expect.poll(() => editorText(page)).toContain('Does the check fail when the trace is deleted?'); // shown as grey text
-    expect(await modelText(page)).not.toContain('deleted?');
-    await page.keyboard.press('Tab');
+    // would not be offered, so the deleted trace is accepted before any evidence is opened.
+    for (let tries = 0; tries < 5 && !(await modelText(page)).includes('the trace is deleted?'); tries += 1) {
+      const before = await modelText(page);
+      await expect(page.locator('.ghost-text-decoration, .ghost-text').first()).toBeVisible();
+      await page.keyboard.press('Tab');
+      await expect.poll(() => modelText(page)).not.toBe(before);
+    }
     await expect.poll(() => modelText(page)).toContain('Does the check fail when the trace is deleted?');
+    expect(await modelText(page)).toContain('Does the check fail when a read of the private file is forged?');
   });
 
   await test.step('the deleted-trace diagnostic names the executed run', async () => {

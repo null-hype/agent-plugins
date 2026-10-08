@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { answerJson, answerText, reproductionDir, solvedFixture, type ProbeName } from './fixture';
+import { answerJson, answerText, chapter, reproductionDir, solvedFixture, type ProbeName } from './fixture';
 import { FORGED_LINE, REVISIONS, loadPinnedChecker, noticed, pklVersion, runChecker, type CheckerRun, type RevisionKey } from './probes';
 import { RECORDED, captureInvestigation, evaluateRecord, writeCapture } from './records';
 
@@ -28,6 +28,7 @@ const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.resolve(APP, process.env.CONSISTENCY_OUT ?? '../test-results/rails-probes/consistency');
 const CHAPTER = path.join(APP, 'src/content/tutorial/part-5/can-an-upload-read-a-private-file');
 const ORDER: RevisionKey[] = ['S1', 'S2', 'S3', 'S4'];
+const LESSONS = chapter();
 const PROBES: ProbeName[] = [
   'deleted-trace', 'forged-read', 'generic-crash', 'emptied-bytes', 'corrupted-pixels', 'swapped-source', 'changed-config',
   'prose-mention', 'failed-open', 'other-directory',
@@ -128,7 +129,7 @@ test('the checker investigation is consistent', () => {
     return rule(false, 'a missing observation with an invented id still evaluated as a record');
   });
 
-  for (const [i, key] of ORDER.entries()) {
+  for (const key of ORDER) {
     const state = key.toLowerCase();
     const recorded = reproductionDir(key);
     let pinned: Map<string, Buffer> | null = null;
@@ -163,15 +164,18 @@ test('the checker investigation is consistent', () => {
       return rule(noticed(runChecker(files)), 'flipping block_untrusted_env went unnoticed');
     });
 
-    const solved = readFileSync(solvedFixture(key), 'utf8');
-    const lessonDir = readdirSync(CHAPTER).find((name) => name.startsWith(`${i + 1}-`));
+    // The state's last lesson: it holds every reply of the state's review (CIT-357).
+    const place = LESSONS.findLastIndex((lesson) => lesson.key === key);
+    const { step } = LESSONS[place];
+    const solved = readFileSync(solvedFixture(key, step), 'utf8');
+    const lessonDir = readdirSync(CHAPTER).find((name) => name.startsWith(`${place + 1}-`));
     const lesson = (rel: string) => (lessonDir ? path.join(CHAPTER, lessonDir, '_solution', rel) : '');
     runRules[`${state}-lesson-trace`] = rule(
       !!lessonDir && existsSync(lesson('acp-trace.json')) && readFileSync(lesson('acp-trace.json'), 'utf8') === solved,
-      `lesson ${i + 1}'s solved trace is not the committed ${path.basename(solvedFixture(key))}`,
+      `lesson ${place + 1}'s solved trace is not the committed ${path.basename(solvedFixture(key, step))}`,
     );
     const messages = new Map<string, string>(
-      JSON.parse(solved).frames[1].envelope.result._meta.probes.map((p: { diagnostic: { code: string; message: string } }) => [
+      JSON.parse(solved).frames.slice(1).flatMap((frame: any) => frame.envelope.result._meta.probes).map((p: { diagnostic: { code: string; message: string } }) => [
         p.diagnostic.code.split('.').at(-1),
         p.diagnostic.message,
       ]),
