@@ -1,101 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker.js?worker';
+import {
+  buildInvestigationModel,
+  type DocumentRange,
+  type Investigation,
+  type InvestigationDocument,
+  type Severity,
+} from '../lib/investigationModel';
 
-// CIT-372 / CIT-373 / CIT-374 / CIT-376: the surface of an investigation. You pre-registered one
-// question in the `investigations` vault. An agent, out of sight, tagged a
-// snapshot for each question it asked; each tag is the question's text, and it
-// only took a snapshot when it had something to show, so a snapshot *is* its
-// diff from the baseline. The vault now holds more questions than you declared,
-// so the editor shows a conflict; Peek opens the snapshots behind it, and Go to
-// Definition walks from a snapshot's diff into the planted evidence, and from
-// there to each revision of the check that judged it. With a Proton Drive
-// folder, the walk starts where an archive arrived: its restic repository lives
-// on Drive, and the diagnostics land on the archive.
+// CIT-372 / CIT-373 / CIT-374 / CIT-376 / CIT-385: the surface of an investigation. You
+// pre-registered one question in the `investigations` vault. An agent, out of
+// sight, tagged a snapshot for each question it asked; each tag is the
+// question's text, and it only took a snapshot when it had something to show,
+// so a snapshot *is* its diff from the baseline. The vault now holds more
+// questions than you declared, so the editor shows a conflict; Peek opens the
+// snapshots behind it, and Go to Definition walks from a snapshot's diff into
+// the planted evidence, and from there to each revision of the check that
+// judged it. With a Proton Drive folder, the walk starts where an archive
+// arrived: its restic repository lives on Drive, and the diagnostics land on
+// the archive.
+//
+// CIT-385: *what* this shows -- documents, markers, lenses, definition targets,
+// added lines -- is computed by `../lib/investigationModel` with no Monaco. This
+// component is the Monaco *adapter*: it turns that model into editor models and
+// providers. A VS Code adapter over the same module is step 2. The investigation
+// domain types live in the module and are re-exported here for existing imports.
+export type { Investigation, DriveFolder, AgentQuestion, SnapshotChange, Verdict } from '../lib/investigationModel';
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 
-/** How one revision of the check judged a piece of planted evidence. */
-export type Verdict = {
-  /** The revision, e.g. a pull request: `#117`. */
-  revision: string;
-  /** Whether the check passed the planted evidence (a miss) or failed it (caught). */
-  passed: boolean;
-  /** That revision's check, and the line of the rule that decided. */
-  check: { path: string; contents: string; rule: number; note: string };
-};
-
-/** One file in a snapshot's diff from the baseline. */
-export type SnapshotChange = {
-  kind: 'A' | 'M' | 'D';
-  path: string;
-  /** Why this change matters, shown on its line in the listing. */
-  note?: string;
-  /** The file in the snapshot (absent for D). */
-  contents?: string;
-  /** The file in the baseline (absent for A). */
-  baseline?: string;
-  /** What the check missed, shown where it applies in the file. */
-  finding?: { line: number; message: string };
-  /** Each revision of the check on this file, oldest first; shown at the finding. */
-  verdicts?: Verdict[];
-};
-
-export type AgentQuestion = {
-  /** The snapshot's tag: the question the agent asked. */
-  tag: string;
-  snapshot: string;
-  /** One line on what the snapshot's evidence showed. */
-  evidence: string;
-  changes: SnapshotChange[];
-};
-
-/** A Proton Drive folder of archives; each one was snapshotted with restic when it arrived. */
-export type DriveFolder = {
-  folder: string;
-  archives: { name: string; snapshot: string; baseline?: boolean }[];
-};
-
-export type Investigation = {
-  /** Start in this Drive folder instead of the vault. */
-  drive?: DriveFolder;
-  vault: string;
-  /** The question you pre-registered. */
-  question: string;
-  /** The questions the agent tagged snapshots with. */
-  agent: AgentQuestion[];
-};
-
 const SOURCE = 'investigations';
-const HEADER = 4; // lines above a snapshot's listing
 
-const vaultText = ({ vault, question }: Investigation) =>
-  `/// pass://${vault}: the question you pre-registered.\nvault "${vault}" {\n  item "${question}"\n}\n`;
-
-// A snapshot reads like tar.vim's listing of an archive: what changed since the baseline.
-const snapshotText = (q: AgentQuestion) =>
-  [`snapshot ${q.snapshot}: ${q.tag}`, `evidence: ${q.evidence}`, '', 'changes since the baseline:',
-    ...q.changes.map((c) => `${c.kind}  ${c.path}`)].join('\n') + '\n';
-
-const driveText = ({ folder, archives }: DriveFolder) =>
-  [`/// Proton Drive: /${folder}. Each archive is a restic snapshot.`,
-    ...archives.map((a) => `${a.name}   snapshot ${a.snapshot}${a.baseline ? ' · the baseline' : ''}`)].join('\n') + '\n';
-
-const count = (n: number) => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
-const snapshotUri = (q: AgentQuestion) => monaco.Uri.from({ scheme: 'restic', authority: q.snapshot, path: '/' + q.tag });
-// The revision is in the path, so Peek's title says which check you're looking at.
-const checkUri = (revision: string, path: string) => monaco.Uri.from({ scheme: 'check', path: `/${revision}/${path}` });
-const fileUri = (snapshot: string, path: string) => monaco.Uri.from({ scheme: 'restic', authority: snapshot, path: '/files/' + path });
-const warn = (line: number, message: string, model: monaco.editor.ITextModel, column = 1, severity = monaco.MarkerSeverity.Warning): monaco.editor.IMarkerData => ({
-  severity, source: SOURCE, message,
-  startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: model.getLineMaxColumn(line),
-});
-
-/** Lines of `after` that the baseline doesn't have, by line number. */
-const addedLines = (after: string, before = '') => {
-  const old = new Set(before.split('\n'));
-  return after.split('\n').flatMap((text, i) => (text.trim() && !old.has(text) ? [i + 1] : []));
+const SEVERITY: Record<Severity, monaco.MarkerSeverity> = {
+  error: monaco.MarkerSeverity.Error,
+  warning: monaco.MarkerSeverity.Warning,
+  info: monaco.MarkerSeverity.Info,
 };
+
+const toRange = (r: DocumentRange) => new monaco.Range(r.startLineNumber, r.startColumn, r.endLineNumber, r.endColumn);
+const atLine = (line: number) => new monaco.Range(line, 1, line, 1);
 
 // Standalone Monaco opens other models only through a registered opener; Go to
 // Definition from a listing (or from inside Peek) lands in the active vault editor.
@@ -117,60 +61,33 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
   const [path, setPath] = useState<string[]>(start);
 
   useEffect(() => {
+    const model = buildInvestigationModel(investigation);
     const disposables: monaco.IDisposable[] = [];
     const models: monaco.editor.ITextModel[] = [];
-    const model = (text: string, uri: monaco.Uri) => {
-      const m = monaco.editor.createModel(text, 'plaintext', uri);
-      models.push(m);
-      return m;
-    };
-    const vaultModel = model(vaultText(investigation), monaco.Uri.parse(`vault://${investigation.vault}/items`));
-    const { drive } = investigation;
-    const driveModel = drive && model(driveText(drive), monaco.Uri.parse(`drive://proton/${drive.folder}`));
-    const home = driveModel ?? vaultModel;
-    // Where each model sits in the investigation, for the path bar: under its
-    // archive when the walk starts in Drive, under its question otherwise.
-    const trail = new Map<string, string[]>([[vaultModel.uri.toString(), [investigation.vault]]]);
-    if (driveModel) trail.set(driveModel.uri.toString(), start);
-    const archiveOf = (q: AgentQuestion) => drive?.archives.find((a) => a.snapshot === q.snapshot);
-    const under = (q: AgentQuestion) => (archiveOf(q) ? [...start, archiveOf(q)!.name] : [investigation.vault, q.tag]);
-    const added = new Map<string, number[]>();
-    // What a file is compared with when you Peek at it: the baseline, or the check's previous revision.
-    const baselines = new Map<string, { model: monaco.editor.ITextModel; label: string }>();
-    const verdictsAt = new Map<string, { line: number; verdicts: { verdict: Verdict; uri: monaco.Uri }[] }>();
 
-    const snapshots = investigation.agent.map((q) => {
-      const listing = model(snapshotText(q), snapshotUri(q));
-      trail.set(listing.uri.toString(), under(q));
-      monaco.editor.setModelMarkers(listing, SOURCE, q.changes.flatMap((c, i) =>
-        c.note ? [warn(HEADER + 1 + i, c.note, listing, 4)] : []));
-      for (const c of q.changes) {
-        const file = c.contents === undefined ? undefined : model(c.contents, fileUri(q.snapshot, c.path));
-        const base = c.baseline === undefined ? undefined : model(c.baseline, fileUri('baseline', c.path));
-        if (base) trail.set(base.uri.toString(), [...under(q), 'baseline', c.path]);
-        if (!file) continue;
-        trail.set(file.uri.toString(), archiveOf(q) ? [...under(q), c.path] : [...under(q), q.snapshot, c.path]);
-        added.set(file.uri.toString(), addedLines(c.contents!, c.baseline));
-        if (base) baselines.set(file.uri.toString(), { model: base, label: 'the baseline' });
-        if (c.finding) monaco.editor.setModelMarkers(file, SOURCE, [warn(c.finding.line, c.finding.message, file)]);
-        // The same evidence, judged by each revision of the check; each compares with the one before.
-        let previous: { model: monaco.editor.ITextModel; label: string } | undefined;
-        const verdicts = (c.verdicts ?? []).map((verdict) => {
-          const check = model(verdict.check.contents, checkUri(verdict.revision, verdict.check.path));
-          trail.set(check.uri.toString(), [...under(q), verdict.revision, verdict.check.path]);
-          monaco.editor.setModelMarkers(check, SOURCE, [warn(verdict.check.rule, verdict.check.note, check, 1,
-            verdict.passed ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info)]);
-          if (previous) {
-            baselines.set(check.uri.toString(), previous);
-            added.set(check.uri.toString(), addedLines(verdict.check.contents, previous.model.getValue()));
-          }
-          previous = { model: check, label: verdict.revision };
-          return { verdict, uri: check.uri };
-        });
-        if (verdicts.length) verdictsAt.set(file.uri.toString(), { line: c.finding?.line ?? 1, verdicts });
+    // Create one Monaco model per document. Key every lookup on Monaco's own
+    // `uri.toString()` (recorded here), never on the module's ids: Monaco
+    // percent-encodes characters like `#`, so the two strings differ.
+    const uriById = new Map<string, monaco.Uri>();
+    const docByUri = new Map<string, InvestigationDocument>();
+    const trail = new Map<string, string[]>();
+    const added = new Map<string, number[]>();
+    for (const doc of model.documents) {
+      const uri = monaco.Uri.from(doc.uri);
+      const m = monaco.editor.createModel(doc.text, 'plaintext', uri);
+      models.push(m);
+      uriById.set(doc.id, uri);
+      docByUri.set(uri.toString(), doc);
+      trail.set(uri.toString(), doc.trail);
+      if (doc.addedLines !== undefined) added.set(uri.toString(), doc.addedLines);
+      if (doc.markers.length) {
+        monaco.editor.setModelMarkers(m, SOURCE, doc.markers.map((mk) => ({
+          severity: SEVERITY[mk.severity], source: SOURCE, message: mk.message,
+          startLineNumber: mk.line, startColumn: mk.column, endLineNumber: mk.line, endColumn: mk.endColumn,
+        })));
       }
-      return { q, listing };
-    });
+    }
+    const home = monaco.editor.getModel(uriById.get(model.homeId)!)!;
 
     const editor = monaco.editor.create(host.current!, {
       model: home,
@@ -188,7 +105,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     const markAdded = (e: monaco.editor.ICodeEditor) => {
       const lines = added.get(e.getModel()?.uri.toString() ?? '') ?? [];
       const decorations = lines.map((line) => ({
-        range: new monaco.Range(line, 1, line, 1),
+        range: atLine(line),
         options: { isWholeLine: true, className: 'investigation-added', linesDecorationsClassName: 'investigation-added-gutter' },
       }));
       const existing = marked.get(e);
@@ -207,7 +124,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       markAdded(editor);
       if (selection) {
         const at = 'startLineNumber' in selection ? selection.startLineNumber : selection.lineNumber;
-        editor.setSelection(new monaco.Range(at, 1, at, 1));
+        editor.setSelection(atLine(at));
         editor.revealLineInCenterIfOutsideViewport(at);
       }
       setPath(trail.get(uri.toString()) ?? [uri.path]);
@@ -222,59 +139,32 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       monaco.editor.registerCommand(OPEN, (_accessor, uri: monaco.Uri, line: number) => active?.(uri, { lineNumber: line, column: 1 }));
     }
 
-    // The conflict is derived, never stored: you declared one question; the vault
-    // holds yours plus every question the agent tagged.
-    const declared = 1;
-    const held = declared + investigation.agent.length;
-    const line = 3;
-    // An archive in Drive: what its snapshot found since the previous archive.
-    const findings = (q: AgentQuestion) => q.changes.filter((c) => c.note).length;
-    const archiveLines = (drive?.archives ?? []).map((a, i) => ({ archive: a, line: i + 2, owner: snapshots.find(({ q }) => q.snapshot === a.snapshot) }));
-    if (driveModel) monaco.editor.setModelMarkers(driveModel, SOURCE, archiveLines.flatMap(({ line: at, owner }) =>
-      owner && findings(owner.q) ? [warn(at, `${findings(owner.q)} findings since the last archive.`, driveModel)] : []));
-    if (held !== declared) monaco.editor.setModelMarkers(vaultModel, SOURCE, [warn(line, `Expected ${count(declared)} question, got ${count(held)}.`, vaultModel, 3)]);
-
-    const lens = (lineNumber: number, title: string, id = '', args: unknown[] = []) =>
-      ({ range: new monaco.Range(lineNumber, 1, lineNumber, 1), command: { id, title, arguments: args } });
     disposables.push(monaco.languages.registerCodeLensProvider({ language: 'plaintext' }, {
       provideCodeLenses: (m) => {
-        // The vault: Peek on the snapshots the agent tagged. Each opens on its listing.
-        if (m === vaultModel && held !== declared) {
-          return { lenses: [lens(line, `${count(investigation.agent.length)} more questions, from the agent's snapshots · Peek`, 'editor.action.peekLocations',
-            [vaultModel.uri, { lineNumber: line, column: 3 }, snapshots.map(({ listing }) => ({ uri: listing.uri, range: new monaco.Range(HEADER + 1, 4, HEADER + 1, 4) })), 'peek'])], dispose() {} };
-        }
-        if (m === driveModel) {
-          return { lenses: archiveLines.flatMap(({ line: at, owner }) => owner
-            ? [lens(at, `${findings(owner.q)} findings · open the archive`, OPEN, [owner.listing.uri, HEADER + 1])] : []), dispose() {} };
-        }
-        const lenses = [];
-        // A file the snapshot changed, or a later revision of the check: Peek on what it changed from.
-        const base = baselines.get(m.uri.toString());
-        if (base) lenses.push(lens(1, `changed since ${base.label} · Peek`, 'editor.action.peekLocations', [m.uri, { lineNumber: 1, column: 1 }, [{ uri: base.model.uri, range: new monaco.Range(1, 1, 1, 1) }], 'peek']));
-        else if (added.has(m.uri.toString())) lenses.push(lens(1, 'not in the baseline: every line is new'));
-        // Planted evidence: how each revision of the check judged it. Each opens that check at its rule.
-        const judged = verdictsAt.get(m.uri.toString());
-        for (const { verdict, uri } of judged?.verdicts ?? []) {
-          lenses.push(lens(judged!.line, `${verdict.revision} ${verdict.passed ? '✗ passed' : '✓ failed'}`, OPEN, [uri, verdict.check.rule]));
-        }
+        const doc = docByUri.get(m.uri.toString());
+        if (!doc) return { lenses: [], dispose() {} };
+        const lenses = doc.lenses.map((l) => {
+          const range = atLine(l.line);
+          if (l.peek) {
+            const locations = l.peek.locations.map((loc) => ({ uri: uriById.get(loc.doc)!, range: toRange(loc.range) }));
+            return { range, command: { id: 'editor.action.peekLocations', title: l.title, arguments: [m.uri, { lineNumber: l.peek.anchor.lineNumber, column: l.peek.anchor.column }, locations, 'peek'] } };
+          }
+          if (l.open) {
+            return { range, command: { id: OPEN, title: l.title, arguments: [uriById.get(l.open.doc)!, l.open.line] } };
+          }
+          // A label with no command (e.g. "not in the baseline: every line is new").
+          return { range, command: { id: '', title: l.title, arguments: [] } };
+        });
         return { lenses, dispose() {} };
       },
     }));
 
-    // Go to Definition on a listing line opens that file in the snapshot, at what the check missed.
     disposables.push(monaco.languages.registerDefinitionProvider({ language: 'plaintext' }, {
       provideDefinition: (m, position) => {
-        // An archive in Drive opens on its listing, at the first change.
-        if (m === driveModel) {
-          const opened = archiveLines.find(({ line: at }) => at === position.lineNumber)?.owner;
-          return opened ? { uri: opened.listing.uri, range: new monaco.Range(HEADER + 1, 1, HEADER + 1, 1) } : null;
-        }
-        const owner = snapshots.find(({ listing }) => listing === m);
-        const change = owner?.q.changes[position.lineNumber - HEADER - 1];
-        if (!owner || !change) return null;
-        const uri = change.kind === 'D' ? fileUri('baseline', change.path) : fileUri(owner.q.snapshot, change.path);
-        const at = change.finding?.line ?? 1;
-        return { uri, range: new monaco.Range(at, 1, at, 1) };
+        const doc = docByUri.get(m.uri.toString());
+        const def = doc?.definitions.find((d) => d.line === position.lineNumber);
+        if (!def) return null;
+        return { uri: uriById.get(def.target.doc)!, range: atLine(def.target.line) };
       },
     }));
 
