@@ -2,15 +2,26 @@ import { useEffect, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker.js?worker';
 
-// CIT-372 / CIT-373: the surface of an investigation. You pre-registered one
+// CIT-372 / CIT-373 / CIT-374: the surface of an investigation. You pre-registered one
 // question in the `investigations` vault. An agent, out of sight, tagged a
 // snapshot for each question it asked; each tag is the question's text, and it
 // only took a snapshot when it had something to show, so a snapshot *is* its
 // diff from the baseline. The vault now holds more questions than you declared,
 // so the editor shows a conflict; Peek opens the snapshots behind it, and Go to
-// Definition walks from a snapshot's diff into the planted evidence.
+// Definition walks from a snapshot's diff into the planted evidence, and from
+// there to each revision of the check that judged it.
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
+
+/** How one revision of the check judged a piece of planted evidence. */
+export type Verdict = {
+  /** The revision, e.g. a pull request: `#117`. */
+  revision: string;
+  /** Whether the check passed the planted evidence (a miss) or failed it (caught). */
+  passed: boolean;
+  /** That revision's check, and the line of the rule that decided. */
+  check: { path: string; contents: string; rule: number; note: string };
+};
 
 /** One file in a snapshot's diff from the baseline. */
 export type SnapshotChange = {
@@ -24,6 +35,8 @@ export type SnapshotChange = {
   baseline?: string;
   /** What the check missed, shown where it applies in the file. */
   finding?: { line: number; message: string };
+  /** Each revision of the check on this file, oldest first; shown at the finding. */
+  verdicts?: Verdict[];
 };
 
 export type AgentQuestion = {
@@ -56,9 +69,11 @@ const snapshotText = (q: AgentQuestion) =>
 
 const count = (n: number) => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
 const snapshotUri = (q: AgentQuestion) => monaco.Uri.from({ scheme: 'restic', authority: q.snapshot, path: '/' + q.tag });
+// The revision is in the path, so Peek's title says which check you're looking at.
+const checkUri = (revision: string, path: string) => monaco.Uri.from({ scheme: 'check', path: `/${revision}/${path}` });
 const fileUri = (snapshot: string, path: string) => monaco.Uri.from({ scheme: 'restic', authority: snapshot, path: '/files/' + path });
-const warn = (line: number, message: string, model: monaco.editor.ITextModel, column = 1): monaco.editor.IMarkerData => ({
-  severity: monaco.MarkerSeverity.Warning, source: SOURCE, message,
+const warn = (line: number, message: string, model: monaco.editor.ITextModel, column = 1, severity = monaco.MarkerSeverity.Warning): monaco.editor.IMarkerData => ({
+  severity, source: SOURCE, message,
   startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: model.getLineMaxColumn(line),
 });
 
@@ -72,6 +87,7 @@ const addedLines = (after: string, before = '') => {
 // Definition from a listing (or from inside Peek) lands in the active vault editor.
 let active: ((uri: monaco.Uri, selection?: monaco.IRange | monaco.IPosition) => boolean) | undefined;
 let openerRegistered = false;
+const OPEN = 'investigation.open';
 
 const STYLE = `
 .investigation-added { background: rgba(46, 160, 67, 0.15); }
@@ -97,7 +113,9 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     // Where each model sits in the investigation, for the path bar.
     const trail = new Map<string, string[]>([[vaultModel.uri.toString(), [investigation.vault]]]);
     const added = new Map<string, number[]>();
-    const baselines = new Map<string, monaco.editor.ITextModel>();
+    // What a file is compared with when you Peek at it: the baseline, or the check's previous revision.
+    const baselines = new Map<string, { model: monaco.editor.ITextModel; label: string }>();
+    const verdictsAt = new Map<string, { line: number; verdicts: { verdict: Verdict; uri: monaco.Uri }[] }>();
 
     const snapshots = investigation.agent.map((q) => {
       const listing = model(snapshotText(q), snapshotUri(q));
@@ -111,8 +129,23 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
         if (!file) continue;
         trail.set(file.uri.toString(), [investigation.vault, q.tag, q.snapshot, c.path]);
         added.set(file.uri.toString(), addedLines(c.contents!, c.baseline));
-        if (base) baselines.set(file.uri.toString(), base);
+        if (base) baselines.set(file.uri.toString(), { model: base, label: 'the baseline' });
         if (c.finding) monaco.editor.setModelMarkers(file, SOURCE, [warn(c.finding.line, c.finding.message, file)]);
+        // The same evidence, judged by each revision of the check; each compares with the one before.
+        let previous: { model: monaco.editor.ITextModel; label: string } | undefined;
+        const verdicts = (c.verdicts ?? []).map((verdict) => {
+          const check = model(verdict.check.contents, checkUri(verdict.revision, verdict.check.path));
+          trail.set(check.uri.toString(), [investigation.vault, q.tag, verdict.revision, verdict.check.path]);
+          monaco.editor.setModelMarkers(check, SOURCE, [warn(verdict.check.rule, verdict.check.note, check, 1,
+            verdict.passed ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info)]);
+          if (previous) {
+            baselines.set(check.uri.toString(), previous);
+            added.set(check.uri.toString(), addedLines(verdict.check.contents, previous.model.getValue()));
+          }
+          previous = { model: check, label: verdict.revision };
+          return { verdict, uri: check.uri };
+        });
+        if (verdicts.length) verdictsAt.set(file.uri.toString(), { line: c.finding?.line ?? 1, verdicts });
       }
       return { q, listing };
     });
@@ -164,6 +197,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     if (!openerRegistered) {
       openerRegistered = true;
       monaco.editor.registerEditorOpener({ openCodeEditor: (_source, resource, selection) => active?.(resource, selection) ?? false });
+      monaco.editor.registerCommand(OPEN, (_accessor, uri: monaco.Uri, line: number) => active?.(uri, { lineNumber: line, column: 1 }));
     }
 
     // The conflict is derived, never stored: you declared one question; the vault
@@ -182,11 +216,17 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
           return { lenses: [lens(line, `${count(investigation.agent.length)} more questions, from the agent's snapshots · Peek`, 'editor.action.peekLocations',
             [vaultModel.uri, { lineNumber: line, column: 3 }, snapshots.map(({ listing }) => ({ uri: listing.uri, range: new monaco.Range(HEADER + 1, 4, HEADER + 1, 4) })), 'peek'])], dispose() {} };
         }
-        // A file the snapshot changed: Peek on the baseline it changed from.
+        const lenses = [];
+        // A file the snapshot changed, or a later revision of the check: Peek on what it changed from.
         const base = baselines.get(m.uri.toString());
-        if (base) return { lenses: [lens(1, 'changed since the baseline · Peek', 'editor.action.peekLocations', [m.uri, { lineNumber: 1, column: 1 }, [{ uri: base.uri, range: new monaco.Range(1, 1, 1, 1) }], 'peek'])], dispose() {} };
-        if (added.has(m.uri.toString())) return { lenses: [lens(1, 'not in the baseline: every line is new')], dispose() {} };
-        return { lenses: [], dispose() {} };
+        if (base) lenses.push(lens(1, `changed since ${base.label} · Peek`, 'editor.action.peekLocations', [m.uri, { lineNumber: 1, column: 1 }, [{ uri: base.model.uri, range: new monaco.Range(1, 1, 1, 1) }], 'peek']));
+        else if (added.has(m.uri.toString())) lenses.push(lens(1, 'not in the baseline: every line is new'));
+        // Planted evidence: how each revision of the check judged it. Each opens that check at its rule.
+        const judged = verdictsAt.get(m.uri.toString());
+        for (const { verdict, uri } of judged?.verdicts ?? []) {
+          lenses.push(lens(judged!.line, `${verdict.revision} ${verdict.passed ? '✗ passed' : '✓ failed'}`, OPEN, [uri, verdict.check.rule]));
+        }
+        return { lenses, dispose() {} };
       },
     }));
 
