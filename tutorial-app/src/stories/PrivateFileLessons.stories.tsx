@@ -72,8 +72,13 @@ function playLesson(commit: string, code: string, mark: string): NonNullable<Sto
 
     await step('Alice commit, before Solve', async () => {
       // The Client folds the commit body under its subject by default.
-      const fold = clientDocument(canvasElement)?.querySelector<HTMLElement>('.codicon-folding-collapsed');
-      if (!fold) throw new Error('folded Alice commit not found');
+      // Folding arrives after Monaco renders its first line, especially in
+      // the production build. Wait for it before clicking the commit open.
+      const fold = await waitFor(() => {
+        const control = clientDocument(canvasElement)?.querySelector<HTMLElement>('.codicon-folding-collapsed');
+        if (!control) throw new Error('folded Alice commit not found');
+        return control;
+      });
       clickInFrame(fold);
       await expectClientShows(canvasElement, commit);
       await expect(clientText(canvasElement)).not.toContain(probe);
