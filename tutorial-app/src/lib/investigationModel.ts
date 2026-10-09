@@ -150,8 +150,10 @@ function docId(uri: UriDescriptor): string {
 
 const vaultUri = (vault: string): UriDescriptor => ({ scheme: 'vault', authority: vault, path: '/items' });
 const driveUri = (folder: string): UriDescriptor => ({ scheme: 'drive', authority: 'proton', path: '/' + folder });
-const snapshotUri = (q: AgentQuestion): UriDescriptor => ({ scheme: 'restic', authority: q.snapshot, path: '/' + q.tag });
-const fileUri = (snapshot: string, path: string): UriDescriptor => ({ scheme: 'restic', authority: snapshot, path: '/files/' + path });
+// Everything in a snapshot is `snapshot://<id>/<path>`; the baseline is the snapshot `baseline`.
+// A listing is named by its tag, so Peek's title says which question it answers.
+const snapshotUri = (q: AgentQuestion): UriDescriptor => ({ scheme: 'snapshot', authority: q.snapshot, path: '/' + q.tag });
+const fileUri = (snapshot: string, path: string): UriDescriptor => ({ scheme: 'snapshot', authority: snapshot, path: '/' + path });
 // The revision is in the path, so Peek's title says which check you're looking at.
 const checkUri = (revision: string, path: string): UriDescriptor => ({ scheme: 'check', path: '/' + revision + '/' + path });
 
