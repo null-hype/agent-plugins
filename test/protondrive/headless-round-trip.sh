@@ -103,6 +103,10 @@ proton-drive filesystem upload -d merge -f skip -t "$LOCAL_RUN" /my-files
 # 3. A fresh process reloads the session from pass and lists the
 #    repository's snapshots folder.
 proton-drive filesystem list --json "$REMOTE_RUN/restic-repo/snapshots" > "$EVIDENCE_DIR/list.json"
+# The folder levels above it, so the editor extension (CIT-384) has real
+# `type: "folder"` entries for Drive folder -> repository -> snapshots.
+proton-drive filesystem list --json "$REMOTE_RUN" > "$EVIDENCE_DIR/list-run.json"
+proton-drive filesystem list --json "$REMOTE_RUN/restic-repo" > "$EVIDENCE_DIR/list-restic-repo.json"
 check "the snapshot is listed back from Drive" \
     bash -c "jq -e --arg id \"$SNAPSHOT_ID\" 'map(.name.value // .name) | index(\$id)' \"$EVIDENCE_DIR/list.json\""
 
