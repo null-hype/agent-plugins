@@ -15,6 +15,8 @@ export type ProtonDriveNode = {
   modificationTime: string;
   /** Absent on a folder. */
   activeRevision?: { claimedSize?: number };
+  /** Present on a folder only. */
+  folder?: { isImported: boolean };
 };
 
 /** One line of the Drive pane. */
@@ -49,4 +51,19 @@ export const formatSize = (bytes: number) => {
     unit++;
   }
   return `${unit ? Number(n.toFixed(1)) : n} ${UNITS[unit]}`;
+};
+
+/** What follows an entry's name in the pane: `411 B · 2026-10-09 20:23 UTC`, or `folder · …`. */
+export const describeEntry = (e: DriveEntry) =>
+  `${e.size === undefined ? e.type : formatSize(e.size)} · ${e.modified.slice(0, 16).replace('T', ' ')} UTC`;
+
+/**
+ * The names directly inside `dir` in `proton-drive filesystem download`'s
+ * tree (`find .` of the download folder, one `./path` per line), sorted. An
+ * empty folder isn't recreated locally, so it has no names here.
+ */
+export const downloadedNames = (tree: string, dir: string) => {
+  const prefix = `./${dir.replace(/\/$/, '')}/`;
+  const names = tree.split('\n').filter((line) => line.startsWith(prefix)).map((line) => line.slice(prefix.length).split('/')[0]);
+  return [...new Set(names)].sort();
 };

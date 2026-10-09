@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildInvestigationModel, type InvestigationDocument, type InvestigationModel, type Investigation } from './investigationModel';
 import { forged, inDrive, investigation, planted, RULE, sameText } from '../stories/investigationFixtures';
+import { helloContents, ls, runId, runInDrive } from '../stories/protonDriveFixtures';
 
 // CIT-385: the behaviour of the lens/Peek/definition/marker logic, computed
 // from the stories' investigation data with no Monaco. Exact bytes don't
@@ -196,5 +197,57 @@ describe('buildInvestigationModel — referential integrity', () => {
     const model = buildInvestigationModel(investigation);
     const c117 = find(model, (d) => d.uri.scheme === 'check' && d.uri.path.startsWith('/#117/'));
     expect(c117.text).not.toContain(sameText.trim());
+  });
+});
+
+// CIT-388: a real Drive walk, from the run folder to a file in the snapshot.
+describe('buildInvestigationModel — a real snapshot from Drive', () => {
+  const model = buildInvestigationModel(runInDrive);
+  const byTrailEnd = (last: string) => find(model, (d) => d.trail[d.trail.length - 1] === last);
+  const opens = (doc: InvestigationDocument, title: string) => {
+    const lens = doc.lenses.find((l) => l.title === title);
+    expect(lens, `lens "${title}"`).toBeDefined();
+    expect(doc.definitions.find((d) => d.line === lens!.line)?.target).toEqual(lens!.open);
+    return docs(model).get(lens!.open!.doc)!;
+  };
+
+  it('starts at the run folder, one path step per folder', () => {
+    expect(model.start).toEqual(['Proton Drive', 'my-files', runId]);
+    expect(docs(model).get(model.homeId)!.text).toContain('restic-repo   folder · 2026-10-09 22:05 UTC');
+  });
+
+  it('walks run folder → restic-repo → snapshots → the snapshot → hello.txt, each with ↑ back one level', () => {
+    const home = docs(model).get(model.homeId)!;
+    const repo = opens(home, 'open restic-repo/');
+    expect(repo.parent).toBe(home.id);
+    const snapshots = opens(repo, 'open snapshots/');
+    expect(snapshots.parent).toBe(repo.id);
+    const tree = opens(snapshots, 'open the snapshot · 1 file');
+    expect(tree.uri).toEqual({ scheme: 'snapshot', authority: ls.snapshot.id, path: '/' });
+    expect(tree.parent).toBe(snapshots.id);
+    const file = opens(tree, 'open hello.txt');
+    expect(file.uri).toEqual({ scheme: 'snapshot', authority: ls.snapshot.id, path: '/tmp/tmp.XSDJnYLG2i/hello.txt' });
+    expect(file.parent).toBe(tree.id);
+    expect(file.trail.slice(-3)).toEqual(['tmp', 'tmp.XSDJnYLG2i', 'hello.txt']);
+  });
+
+  it("drops the snapshot label when the name is the snapshot's ID", () => {
+    const snapshots = byTrailEnd('snapshots');
+    expect(snapshots.text).toContain(`${ls.snapshot.id}   taken 2026-10-09 22:05 UTC`);
+    expect(snapshots.text).not.toContain(`snapshot ${ls.snapshot.short_id}`);
+    // A name that isn't the ID keeps it.
+    expect(docs(buildInvestigationModel(inDrive)).get(buildInvestigationModel(inDrive).homeId)!.text).toContain('release-2026-09.tar.gz   snapshot 9f41c2d0 · the baseline');
+  });
+
+  it("hello.txt is what the run wrote, the 47 bytes restic lists", () => {
+    const hello = ls.nodes.find((n) => n.name === 'hello.txt')!;
+    expect(helloContents).toBe(`${runId}\n`);
+    expect(new TextEncoder().encode(helloContents).length).toBe(hello.size);
+  });
+
+  it('only opens what it has: no lens on folders without a listing', () => {
+    const repo = byTrailEnd('restic-repo');
+    expect(repo.lenses.map((l) => l.title)).toEqual(['open snapshots/']);
+    expect(repo.markers).toEqual([]);
   });
 });
