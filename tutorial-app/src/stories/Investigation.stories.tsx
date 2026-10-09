@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
-import InvestigationVault from './InvestigationVault';
+import InvestigationVault, { type Investigation } from './InvestigationVault';
 import { forged, inDrive, investigation, planted, sameText } from './investigationFixtures';
+import { driveEntries, formatSize, type ProtonDriveNode } from '../lib/protonDriveListing';
+import snapshotsListing from './fixtures/protondrive/list-json-restic-snapshots.json';
 
 // CIT-365: what a learner sees when an agent's questions meet the one they
 // pre-registered, and how they walk into the evidence. The investigation data
@@ -168,4 +170,44 @@ export const ArchiveInDrive: Story = {
 export const ArchiveInDriveExplore: Story = {
   name: 'An archive arrives in Proton Drive (explore)',
   args: { investigation: inDrive },
+};
+
+// CIT-386: the Drive pane from a real listing, not a hand-written folder.
+// CIT-378's live round trip listed its restic repository's snapshots with
+// `proton-drive filesystem list --json` (see fixtures/protondrive/README.md).
+// A restic snapshot file is named by its snapshot ID. No agent has asked
+// anything of this repository yet, so the pane has no findings.
+const snapshotsFolder = 'my-files/protondrive-scenario-20261009T202201Z-4de6cd3f/restic-repo/snapshots';
+const [realSnapshot] = driveEntries(snapshotsListing as ProtonDriveNode[]);
+const fromListing: Investigation = {
+  drive: {
+    folder: snapshotsFolder,
+    archives: driveEntries(snapshotsListing as ProtonDriveNode[]).map((e) => ({
+      name: e.name,
+      snapshot: e.name.slice(0, 8),
+      // `2026-10-09 20:23 UTC`, as Drive's own listing would date it.
+      detail: `${e.size === undefined ? e.type : formatSize(e.size)} · ${e.modified.slice(0, 16).replace('T', ' ')} UTC`,
+    })),
+  },
+  vault: 'investigations',
+  question: inDrive.question,
+  agent: [],
+};
+
+export const RealDriveListing: Story = {
+  name: 'The Drive pane from a real filesystem list',
+  args: { investigation: fromListing },
+  play: async ({ canvasElement, step }) => {
+    await step('the path bar is the restic repository\'s snapshots folder on Drive', async () => {
+      await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toMatch(/^Proton Drive {2}› {2}.*\/restic-repo\/snapshots$/));
+    });
+
+    await step('the pane lists the real snapshot, with the size the CLI reported', async () => {
+      await waitFor(() => {
+        const lines = text(canvasElement, '.view-lines');
+        expect(lines).toContain(realSnapshot.name);
+        expect(lines).toContain('411 B · 2026-10-09 20:23 UTC');
+      });
+    });
+  },
 };
