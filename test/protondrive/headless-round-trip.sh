@@ -7,8 +7,11 @@
 # Live round trip (CIT-378):
 #   1. sign in with PROTON_DRIVE_CREDENTIALS_STORE=pass, completing the
 #      printed URL on another device;
-#   2. upload one restic snapshot with `proton-drive filesystem upload`;
-#   3. from a fresh process, list it back with `filesystem list --json`.
+#   2. back up the investigation's baseline and the agent's run as two
+#      restic snapshots and upload the repository with `filesystem upload`;
+#   3. from a fresh process, list it back with `filesystem list --json`;
+#   4. download it with `filesystem download` and read it with restic
+#      (`snapshots`, `diff`, `dump`) from a fresh process.
 #
 # Sign-in needs a person to open the URL, so the live half only runs when
 # PROTON_DRIVE_LIVE=1 is set on the host:
@@ -84,31 +87,42 @@ check "the session is stored in pass" \
 # $LOCAL_RUN holds only the repository, so uploading it to /my-files
 # creates $REMOTE_RUN/restic-repo.
 LOCAL_RUN="$(mktemp -d)/$RUN_ID"
-LOCAL_DATA="$(mktemp -d)"
 mkdir -p "$LOCAL_RUN"
 export RESTIC_REPOSITORY="$LOCAL_RUN/restic-repo"
 RESTIC_PASSWORD="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 export RESTIC_PASSWORD
-echo "$RUN_ID" > "$LOCAL_DATA/hello.txt"
 restic init
-restic backup "$LOCAL_DATA" --tag "$RUN_ID"
-SNAPSHOT_ID="$(restic snapshots --json | jq -r '.[0].id')"
-echo "$SNAPSHOT_ID" > "$EVIDENCE_DIR/snapshot-id.txt"
-check "restic produced a snapshot" bash -c "[ -f \"$RESTIC_REPOSITORY/snapshots/$SNAPSHOT_ID\" ]"
+
+# Two snapshots of the investigation's own files (CIT-389), taken from the
+# ArchiveInDrive story's fixture (test/protondrive/investigation/README.md):
+# the baseline, then the agent's run with the story's changes. Both back up
+# the relative path `inputs` from the same folder, so the snapshot trees hold
+# /inputs/... and `restic diff` compares like with like.
+QUESTION="Does release-2026-10 still keep the private file private?"
+WORK="$(mktemp -d)/release-2026-10"
+mkdir -p "$WORK"
+cp -r "$SCRIPT_FOLDER/investigation/baseline/inputs" "$WORK/"
+(cd "$WORK" && restic backup --host investigations --tag baseline inputs)
+rm -rf "$WORK/inputs"
+cp -r "$SCRIPT_FOLDER/investigation/agent/inputs" "$WORK/"
+(cd "$WORK" && restic backup --host investigations --tag "$QUESTION" inputs)
+BASELINE_ID="$(restic snapshots --json --tag baseline | jq -r '.[0].id')"
+SNAPSHOT_ID="$(restic snapshots --json --tag "$QUESTION" | jq -r '.[0].id')"
+printf 'baseline %s\nagent %s\n' "$BASELINE_ID" "$SNAPSHOT_ID" > "$EVIDENCE_DIR/snapshot-id.txt"
+check "restic produced the baseline and the agent's snapshot" \
+    bash -c "[ -f \"$RESTIC_REPOSITORY/snapshots/$BASELINE_ID\" ] && [ -f \"$RESTIC_REPOSITORY/snapshots/$SNAPSHOT_ID\" ]"
 
 # Strategies are set so a conflict never prompts and hangs the run.
 UPLOADED=1
 proton-drive filesystem upload -d merge -f skip -t "$LOCAL_RUN" /my-files
 
-# 3. A fresh process reloads the session from pass and lists the
-#    repository's snapshots folder.
-proton-drive filesystem list --json "$REMOTE_RUN/restic-repo/snapshots" > "$EVIDENCE_DIR/list.json"
-# The folder levels above it, so the editor extension (CIT-384) has real
-# `type: "folder"` entries for Drive folder -> repository -> snapshots.
+# 3. A fresh process reloads the session from pass and lists each folder
+#    level: run folder -> repository -> snapshots.
 proton-drive filesystem list --json "$REMOTE_RUN" > "$EVIDENCE_DIR/list-run.json"
 proton-drive filesystem list --json "$REMOTE_RUN/restic-repo" > "$EVIDENCE_DIR/list-restic-repo.json"
-check "the snapshot is listed back from Drive" \
-    bash -c "jq -e --arg id \"$SNAPSHOT_ID\" 'map(.name.value // .name) | index(\$id)' \"$EVIDENCE_DIR/list.json\""
+proton-drive filesystem list --json "$REMOTE_RUN/restic-repo/snapshots" > "$EVIDENCE_DIR/list.json"
+check "both snapshots are listed back from Drive" \
+    bash -c "jq -e --arg b \"$BASELINE_ID\" --arg a \"$SNAPSHOT_ID\" 'map(.name.value // .name) | (index(\$b) != null and index(\$a) != null)' \"$EVIDENCE_DIR/list.json\""
 
 # 4. Download the repository back into an empty folder and open it with
 #    restic from a fresh process. Restic files never change once written,
@@ -118,15 +132,25 @@ DOWNLOAD_DIR="$(mktemp -d)"
 proton-drive filesystem download -d merge -f skip "$REMOTE_RUN/restic-repo" "$DOWNLOAD_DIR"
 REPO_COPY="$(dirname "$(dirname "$(find "$DOWNLOAD_DIR" -path "*/snapshots/$SNAPSHOT_ID" | head -1)")")"
 ( cd "$DOWNLOAD_DIR" && find . -type f | sort ) > "$EVIDENCE_DIR/download-tree.txt"
-check "the downloaded repository has the snapshot file" \
-    bash -c "[ -f \"$REPO_COPY/snapshots/$SNAPSHOT_ID\" ]"
-env -i PATH="$PATH" HOME="$HOME" RESTIC_PASSWORD="$RESTIC_PASSWORD" \
-    restic -r "$REPO_COPY" snapshots --json > "$EVIDENCE_DIR/restic-snapshots.json"
-env -i PATH="$PATH" HOME="$HOME" RESTIC_PASSWORD="$RESTIC_PASSWORD" \
-    restic -r "$REPO_COPY" ls --json "$SNAPSHOT_ID" > "$EVIDENCE_DIR/restic-ls.json"
-check "restic opens the downloaded snapshot" \
-    bash -c "jq -e --arg id \"$SNAPSHOT_ID\" 'map(.id) | index(\$id)' \"$EVIDENCE_DIR/restic-snapshots.json\""
-check "restic lists the backed-up file in the downloaded snapshot" \
-    bash -c "jq -e 'select(.struct_type == \"node\" and .name == \"hello.txt\")' \"$EVIDENCE_DIR/restic-ls.json\""
+check "the downloaded repository has both snapshot files" \
+    bash -c "[ -f \"$REPO_COPY/snapshots/$BASELINE_ID\" ] && [ -f \"$REPO_COPY/snapshots/$SNAPSHOT_ID\" ]"
+
+fresh_restic() {
+    env -i PATH="$PATH" HOME="$HOME" RESTIC_PASSWORD="$RESTIC_PASSWORD" restic -r "$REPO_COPY" "$@"
+}
+fresh_restic snapshots --json > "$EVIDENCE_DIR/restic-snapshots.json"
+fresh_restic diff --json "$BASELINE_ID" "$SNAPSHOT_ID" > "$EVIDENCE_DIR/restic-diff.ndjson"
+mkdir -p "$EVIDENCE_DIR/dump"
+for changed in inputs/observations/forged-read.json inputs/canary-reads.txt inputs/run_arms.sh; do
+    mkdir -p "$EVIDENCE_DIR/dump/$(dirname "$changed")"
+    fresh_restic dump "$SNAPSHOT_ID" "/$changed" > "$EVIDENCE_DIR/dump/$changed"
+done
+
+check "restic opens both downloaded snapshots" \
+    bash -c "jq -e --arg b \"$BASELINE_ID\" --arg a \"$SNAPSHOT_ID\" 'map(.id) | (index(\$b) != null and index(\$a) != null)' \"$EVIDENCE_DIR/restic-snapshots.json\""
+check "restic diff shows forged-read.json added and both inputs modified" \
+    bash -c "jq -rs '[.[] | select(.message_type == \"change\") | .modifier + \" \" + .path] | sort | join(\",\")' \"$EVIDENCE_DIR/restic-diff.ndjson\" | grep -Fx '+ /inputs/observations/,+ /inputs/observations/forged-read.json,M /inputs/canary-reads.txt,M /inputs/run_arms.sh'"
+check "restic dump returns the agent's files byte for byte" \
+    diff -r "$SCRIPT_FOLDER/investigation/agent/inputs" "$EVIDENCE_DIR/dump/inputs"
 
 reportResults
