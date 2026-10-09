@@ -1,7 +1,7 @@
 /// Pinned S1/S2 file contents; real-run verification is a separate result.
 module resticS1S2
 
-import "Restic.pkl"
+import "../../../src/cve-2026-66066/questions/restic/Restic.pkl"
 
 S1: Restic.Snapshot = new {
   id = "32e5155ee4528eb5432e2a08ff444ae549fd8a3089844993d433a11c7942eb7f"
