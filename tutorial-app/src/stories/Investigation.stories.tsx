@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
-import InvestigationVault, { type Investigation } from './InvestigationVault';
+import InvestigationVault from './InvestigationVault';
 import { forged, inDrive, investigation, planted, sameText } from './investigationFixtures';
-import { driveEntries, formatSize, type ProtonDriveNode } from '../lib/protonDriveListing';
-import snapshotsListing from './fixtures/protondrive/list-json-restic-snapshots.json';
+import { fromListing, ls, realSnapshot, runId, runInDrive } from './protonDriveFixtures';
 
 // CIT-365: what a learner sees when an agent's questions meet the one they
 // pre-registered, and how they walk into the evidence. The investigation data
@@ -175,31 +174,15 @@ export const ArchiveInDriveExplore: Story = {
 // CIT-386: the Drive pane from a real listing, not a hand-written folder.
 // CIT-378's live round trip listed its restic repository's snapshots with
 // `proton-drive filesystem list --json` (see fixtures/protondrive/README.md).
-// A restic snapshot file is named by its snapshot ID. No agent has asked
-// anything of this repository yet, so the pane has no findings.
-const snapshotsFolder = 'my-files/protondrive-scenario-20261009T202201Z-4de6cd3f/restic-repo/snapshots';
-const [realSnapshot] = driveEntries(snapshotsListing as ProtonDriveNode[]);
-const fromListing: Investigation = {
-  drive: {
-    folder: snapshotsFolder,
-    archives: driveEntries(snapshotsListing as ProtonDriveNode[]).map((e) => ({
-      name: e.name,
-      snapshot: e.name.slice(0, 8),
-      // `2026-10-09 20:23 UTC`, as Drive's own listing would date it.
-      detail: `${e.size === undefined ? e.type : formatSize(e.size)} · ${e.modified.slice(0, 16).replace('T', ' ')} UTC`,
-    })),
-  },
-  vault: 'investigations',
-  question: inDrive.question,
-  agent: [],
-};
-
+// A restic snapshot file is named by its snapshot ID, so the pane doesn't
+// repeat it. No agent has asked anything of this repository yet, so the pane
+// has no findings.
 export const RealDriveListing: Story = {
   name: 'The Drive pane from a real filesystem list',
   args: { investigation: fromListing },
   play: async ({ canvasElement, step }) => {
     await step('the path bar is the restic repository\'s snapshots folder on Drive', async () => {
-      await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toMatch(/^Proton Drive {2}› {2}.*\/restic-repo\/snapshots$/));
+      await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toMatch(/^Proton Drive {2}› {2}my-files {2}› .*restic-repo {2}› {2}snapshots$/));
     });
 
     await step('the pane lists the real snapshot, with the size the CLI reported', async () => {
@@ -207,7 +190,75 @@ export const RealDriveListing: Story = {
         const lines = text(canvasElement, '.view-lines');
         expect(lines).toContain(realSnapshot.name);
         expect(lines).toContain('411 B · 2026-10-09 20:23 UTC');
+        // Its name is its snapshot ID; the pane doesn't say it twice.
+        expect(lines).not.toContain(`snapshot ${realSnapshot.name.slice(0, 8)}`);
       });
     });
   },
+};
+
+// CIT-388: the second live run, from its folder in Drive down to the file
+// restic backed up. Every level is a real listing (see the README for which).
+const path = (root: Element) => text(root, '[data-testid="investigation-path"] span');
+const crumbs = (...steps: string[]) => ['Proton Drive', 'my-files', runId, ...steps].join('  ›  ');
+const hello = ls.nodes.find((n) => n.name === 'hello.txt')!;
+
+export const OpenRealSnapshot: Story = {
+  name: 'Open a real snapshot from Drive',
+  args: { investigation: runInDrive },
+  play: async ({ canvasElement, step }) => {
+    await step('the run folder holds the restic repository', async () => {
+      await waitFor(() => expect(path(canvasElement)).toBe(crumbs()));
+      await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain('restic-repo   folder · 2026-10-09 22:05 UTC'));
+    });
+
+    await step('opening restic-repo lists the repository', async () => {
+      press(await lens(canvasElement, 'open restic-repo/'));
+      await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo')));
+      await waitFor(() => {
+        const lines = text(canvasElement, '.view-lines');
+        for (const name of ['config', 'data', 'index', 'keys', 'snapshots']) expect(lines).toContain(`${name}   `);
+        expect(lines).toMatch(/config +155 B · 2026-10-09 22:05 UTC/);
+      });
+    });
+
+    await step('snapshots holds the snapshot, named by its ID', async () => {
+      press(await lens(canvasElement, 'open snapshots/'));
+      await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo', 'snapshots')));
+      await waitFor(() => {
+        const lines = text(canvasElement, '.view-lines');
+        expect(lines).toContain(`${ls.snapshot.id}   taken 2026-10-09 22:05 UTC`);
+        expect(lines).not.toContain(`snapshot ${ls.snapshot.short_id}`);
+      });
+    });
+
+    await step('the snapshot opens on its tree, as restic ls lists it', async () => {
+      press(await lens(canvasElement, 'open the snapshot · 1 file'));
+      await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo', 'snapshots', ls.snapshot.id)));
+      await waitFor(() => {
+        const lines = text(canvasElement, '.view-lines');
+        expect(lines).toContain(`snapshot ${ls.snapshot.short_id}, as restic ls lists it.`);
+        expect(lines).toMatch(new RegExp(`-rw-r--r-- +47 B {2}${hello.path}`));
+      });
+    });
+
+    await step('hello.txt opens on what the run wrote: its ID', async () => {
+      press(await lens(canvasElement, 'open hello.txt'));
+      await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo', 'snapshots', ls.snapshot.id, 'tmp', 'tmp.XSDJnYLG2i', 'hello.txt')));
+      await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain(runId));
+    });
+
+    await step('↑ goes back up one level, to the tree', async () => {
+      const up = canvasElement.querySelector('[data-testid="investigation-path"] button')!;
+      expect(up.textContent).toBe(`↑ ${ls.snapshot.short_id}…`);
+      press(up);
+      await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo', 'snapshots', ls.snapshot.id)));
+    });
+  },
+};
+
+/** The same run folder with no play function, to explore by hand. */
+export const OpenRealSnapshotExplore: Story = {
+  name: 'Open a real snapshot from Drive (explore)',
+  args: { investigation: runInDrive },
 };

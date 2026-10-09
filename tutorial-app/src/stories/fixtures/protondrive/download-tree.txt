@@ -1,0 +1,6 @@
+./restic-repo/config
+./restic-repo/data/b8/b8fbb43901361ec442bf78877865bd89dfa89e8d27b8a6a52c7699d994d13694
+./restic-repo/data/cb/cb7468e8dbb70ddae6d91fe0617dcb2b1178f5c134bc80abde805984348115ec
+./restic-repo/index/44f92c3e0c450cddebd51b9deb452b00542179b6b25c55411e7d26d08ca7100b
+./restic-repo/keys/025e44467d851c24a4fe94d2ff3d449df3eddfbb03011f328104206a296a514c
+./restic-repo/snapshots/b23bf5a1672f8c132a355b54b17ffd9ca58d717048f38a51c527d595ec378950

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker.js?worker';
 import {
@@ -51,17 +51,20 @@ const STYLE = `
 .investigation-added { background: rgba(46, 160, 67, 0.15); }
 .investigation-added-gutter { border-left: 3px solid #2ea043; margin-left: 3px; }
 .investigation-path { font: 12px system-ui, sans-serif; padding: 4px 8px; background: #f3f3f3; border-bottom: 1px solid #ddd; display: flex; gap: 8px; align-items: center; }
-.investigation-path button { font: inherit; padding: 0 6px; }
+.investigation-path button { font: inherit; padding: 0 6px; white-space: nowrap; }
 `;
 
 export default function InvestigationVault({ investigation, height = 420 }: { investigation: Investigation; height?: number }) {
   const host = useRef<HTMLDivElement>(null);
   const back = useRef<() => void>(() => {});
-  const start = investigation.drive ? ['Proton Drive', investigation.drive.folder] : [investigation.vault];
+  const model = useMemo(() => buildInvestigationModel(investigation), [investigation]);
+  const { start } = model;
   const [path, setPath] = useState<string[]>(start);
+  // Where ↑ goes: the level above in Drive, or home.
+  const homeLabel = investigation.drive ? 'Drive' : 'vault';
+  const [up, setUp] = useState(homeLabel);
 
   useEffect(() => {
-    const model = buildInvestigationModel(investigation);
     const disposables: monaco.IDisposable[] = [];
     const models: monaco.editor.ITextModel[] = [];
 
@@ -128,11 +131,18 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
         editor.revealLineInCenterIfOutsideViewport(at);
       }
       setPath(trail.get(uri.toString()) ?? [uri.path]);
+      const parentId = docByUri.get(uri.toString())?.parent;
+      const parent = parentId === model.homeId ? undefined : model.documents.find((d) => d.id === parentId)?.trail.at(-1);
+      setUp(parent === undefined ? homeLabel : parent.length > 16 ? `${parent.slice(0, 8)}…` : parent);
       editor.focus();
       return true;
     };
     active = show;
-    back.current = () => show(home.uri);
+    // Up one level: a Drive folder's parent, or home.
+    back.current = () => {
+      const parent = docByUri.get(editor.getModel()?.uri.toString() ?? '')?.parent;
+      show(parent ? uriById.get(parent)! : home.uri);
+    };
     if (!openerRegistered) {
       openerRegistered = true;
       monaco.editor.registerEditorOpener({ openCodeEditor: (_source, resource, selection) => active?.(resource, selection) ?? false });
@@ -174,13 +184,13 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       editor.dispose();
       models.forEach((m) => m.dispose());
     };
-  }, [investigation]);
+  }, [model]);
 
   return (
     <div style={{ border: '1px solid #ccc' }}>
       <style>{STYLE}</style>
       <div className="investigation-path" data-testid="investigation-path">
-        {path.length > start.length && <button type="button" onClick={() => back.current()}>↑ {investigation.drive ? 'Drive' : 'vault'}</button>}
+        {path.length > start.length && <button type="button" onClick={() => back.current()}>↑ {up}</button>}
         <span>{path.join('  ›  ')}</span>
       </div>
       <div ref={host} data-testid="investigation-vault" style={{ height }} />
