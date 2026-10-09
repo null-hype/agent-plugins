@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker.js?worker';
 
-// CIT-372 / CIT-373 / CIT-374: the surface of an investigation. You pre-registered one
+// CIT-372 / CIT-373 / CIT-374 / CIT-376: the surface of an investigation. You pre-registered one
 // question in the `investigations` vault. An agent, out of sight, tagged a
 // snapshot for each question it asked; each tag is the question's text, and it
 // only took a snapshot when it had something to show, so a snapshot *is* its
 // diff from the baseline. The vault now holds more questions than you declared,
 // so the editor shows a conflict; Peek opens the snapshots behind it, and Go to
 // Definition walks from a snapshot's diff into the planted evidence, and from
-// there to each revision of the check that judged it.
+// there to each revision of the check that judged it. With a Proton Drive
+// folder, the walk starts where an archive arrived: its restic repository lives
+// on Drive, and the diagnostics land on the archive.
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 
@@ -48,7 +50,15 @@ export type AgentQuestion = {
   changes: SnapshotChange[];
 };
 
+/** A Proton Drive folder of archives; each one was snapshotted with restic when it arrived. */
+export type DriveFolder = {
+  folder: string;
+  archives: { name: string; snapshot: string; baseline?: boolean }[];
+};
+
 export type Investigation = {
+  /** Start in this Drive folder instead of the vault. */
+  drive?: DriveFolder;
   vault: string;
   /** The question you pre-registered. */
   question: string;
@@ -66,6 +76,10 @@ const vaultText = ({ vault, question }: Investigation) =>
 const snapshotText = (q: AgentQuestion) =>
   [`snapshot ${q.snapshot}: ${q.tag}`, `evidence: ${q.evidence}`, '', 'changes since the baseline:',
     ...q.changes.map((c) => `${c.kind}  ${c.path}`)].join('\n') + '\n';
+
+const driveText = ({ folder, archives }: DriveFolder) =>
+  [`/// Proton Drive: /${folder}. Each archive is a restic snapshot.`,
+    ...archives.map((a) => `${a.name}   snapshot ${a.snapshot}${a.baseline ? ' · the baseline' : ''}`)].join('\n') + '\n';
 
 const count = (n: number) => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
 const snapshotUri = (q: AgentQuestion) => monaco.Uri.from({ scheme: 'restic', authority: q.snapshot, path: '/' + q.tag });
@@ -99,7 +113,8 @@ const STYLE = `
 export default function InvestigationVault({ investigation, height = 420 }: { investigation: Investigation; height?: number }) {
   const host = useRef<HTMLDivElement>(null);
   const back = useRef<() => void>(() => {});
-  const [path, setPath] = useState<string[]>([investigation.vault]);
+  const start = investigation.drive ? ['Proton Drive', investigation.drive.folder] : [investigation.vault];
+  const [path, setPath] = useState<string[]>(start);
 
   useEffect(() => {
     const disposables: monaco.IDisposable[] = [];
@@ -110,8 +125,15 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       return m;
     };
     const vaultModel = model(vaultText(investigation), monaco.Uri.parse(`vault://${investigation.vault}/items`));
-    // Where each model sits in the investigation, for the path bar.
+    const { drive } = investigation;
+    const driveModel = drive && model(driveText(drive), monaco.Uri.parse(`drive://proton/${drive.folder}`));
+    const home = driveModel ?? vaultModel;
+    // Where each model sits in the investigation, for the path bar: under its
+    // archive when the walk starts in Drive, under its question otherwise.
     const trail = new Map<string, string[]>([[vaultModel.uri.toString(), [investigation.vault]]]);
+    if (driveModel) trail.set(driveModel.uri.toString(), start);
+    const archiveOf = (q: AgentQuestion) => drive?.archives.find((a) => a.snapshot === q.snapshot);
+    const under = (q: AgentQuestion) => (archiveOf(q) ? [...start, archiveOf(q)!.name] : [investigation.vault, q.tag]);
     const added = new Map<string, number[]>();
     // What a file is compared with when you Peek at it: the baseline, or the check's previous revision.
     const baselines = new Map<string, { model: monaco.editor.ITextModel; label: string }>();
@@ -119,15 +141,15 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
 
     const snapshots = investigation.agent.map((q) => {
       const listing = model(snapshotText(q), snapshotUri(q));
-      trail.set(listing.uri.toString(), [investigation.vault, q.tag]);
+      trail.set(listing.uri.toString(), under(q));
       monaco.editor.setModelMarkers(listing, SOURCE, q.changes.flatMap((c, i) =>
         c.note ? [warn(HEADER + 1 + i, c.note, listing, 4)] : []));
       for (const c of q.changes) {
         const file = c.contents === undefined ? undefined : model(c.contents, fileUri(q.snapshot, c.path));
         const base = c.baseline === undefined ? undefined : model(c.baseline, fileUri('baseline', c.path));
-        if (base) trail.set(base.uri.toString(), [investigation.vault, q.tag, 'baseline', c.path]);
+        if (base) trail.set(base.uri.toString(), [...under(q), 'baseline', c.path]);
         if (!file) continue;
-        trail.set(file.uri.toString(), [investigation.vault, q.tag, q.snapshot, c.path]);
+        trail.set(file.uri.toString(), archiveOf(q) ? [...under(q), c.path] : [...under(q), q.snapshot, c.path]);
         added.set(file.uri.toString(), addedLines(c.contents!, c.baseline));
         if (base) baselines.set(file.uri.toString(), { model: base, label: 'the baseline' });
         if (c.finding) monaco.editor.setModelMarkers(file, SOURCE, [warn(c.finding.line, c.finding.message, file)]);
@@ -135,7 +157,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
         let previous: { model: monaco.editor.ITextModel; label: string } | undefined;
         const verdicts = (c.verdicts ?? []).map((verdict) => {
           const check = model(verdict.check.contents, checkUri(verdict.revision, verdict.check.path));
-          trail.set(check.uri.toString(), [investigation.vault, q.tag, verdict.revision, verdict.check.path]);
+          trail.set(check.uri.toString(), [...under(q), verdict.revision, verdict.check.path]);
           monaco.editor.setModelMarkers(check, SOURCE, [warn(verdict.check.rule, verdict.check.note, check, 1,
             verdict.passed ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info)]);
           if (previous) {
@@ -151,7 +173,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     });
 
     const editor = monaco.editor.create(host.current!, {
-      model: vaultModel,
+      model: home,
       readOnly: true,
       // Read-only editors hide squiggles by default; the findings are the point here.
       renderValidationDecorations: 'on',
@@ -193,7 +215,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       return true;
     };
     active = show;
-    back.current = () => show(vaultModel.uri);
+    back.current = () => show(home.uri);
     if (!openerRegistered) {
       openerRegistered = true;
       monaco.editor.registerEditorOpener({ openCodeEditor: (_source, resource, selection) => active?.(resource, selection) ?? false });
@@ -205,6 +227,11 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     const declared = 1;
     const held = declared + investigation.agent.length;
     const line = 3;
+    // An archive in Drive: what its snapshot found since the previous archive.
+    const findings = (q: AgentQuestion) => q.changes.filter((c) => c.note).length;
+    const archiveLines = (drive?.archives ?? []).map((a, i) => ({ archive: a, line: i + 2, owner: snapshots.find(({ q }) => q.snapshot === a.snapshot) }));
+    if (driveModel) monaco.editor.setModelMarkers(driveModel, SOURCE, archiveLines.flatMap(({ line: at, owner }) =>
+      owner && findings(owner.q) ? [warn(at, `${findings(owner.q)} findings since the last archive.`, driveModel)] : []));
     if (held !== declared) monaco.editor.setModelMarkers(vaultModel, SOURCE, [warn(line, `Expected ${count(declared)} question, got ${count(held)}.`, vaultModel, 3)]);
 
     const lens = (lineNumber: number, title: string, id = '', args: unknown[] = []) =>
@@ -215,6 +242,10 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
         if (m === vaultModel && held !== declared) {
           return { lenses: [lens(line, `${count(investigation.agent.length)} more questions, from the agent's snapshots · Peek`, 'editor.action.peekLocations',
             [vaultModel.uri, { lineNumber: line, column: 3 }, snapshots.map(({ listing }) => ({ uri: listing.uri, range: new monaco.Range(HEADER + 1, 4, HEADER + 1, 4) })), 'peek'])], dispose() {} };
+        }
+        if (m === driveModel) {
+          return { lenses: archiveLines.flatMap(({ line: at, owner }) => owner
+            ? [lens(at, `${findings(owner.q)} findings · open the archive`, OPEN, [owner.listing.uri, HEADER + 1])] : []), dispose() {} };
         }
         const lenses = [];
         // A file the snapshot changed, or a later revision of the check: Peek on what it changed from.
@@ -233,6 +264,11 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     // Go to Definition on a listing line opens that file in the snapshot, at what the check missed.
     disposables.push(monaco.languages.registerDefinitionProvider({ language: 'plaintext' }, {
       provideDefinition: (m, position) => {
+        // An archive in Drive opens on its listing, at the first change.
+        if (m === driveModel) {
+          const opened = archiveLines.find(({ line: at }) => at === position.lineNumber)?.owner;
+          return opened ? { uri: opened.listing.uri, range: new monaco.Range(HEADER + 1, 1, HEADER + 1, 1) } : null;
+        }
         const owner = snapshots.find(({ listing }) => listing === m);
         const change = owner?.q.changes[position.lineNumber - HEADER - 1];
         if (!owner || !change) return null;
@@ -254,7 +290,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     <div style={{ border: '1px solid #ccc' }}>
       <style>{STYLE}</style>
       <div className="investigation-path" data-testid="investigation-path">
-        {path.length > 1 && <button type="button" onClick={() => back.current()}>↑ vault</button>}
+        {path.length > start.length && <button type="button" onClick={() => back.current()}>↑ {investigation.drive ? 'Drive' : 'vault'}</button>}
         <span>{path.join('  ›  ')}</span>
       </div>
       <div ref={host} data-testid="investigation-vault" style={{ height }} />

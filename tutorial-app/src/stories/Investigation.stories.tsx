@@ -217,3 +217,68 @@ export const VerdictAcrossRevisions: Story = {
     });
   },
 };
+
+// CIT-376: the same walk, starting where an archive arrived in Proton Drive. The
+// archive's restic repository lives on Drive; its snapshot holds every finding
+// since last month's archive.
+const archiveQuestion = 'Does release-2026-10 still keep the private file private?';
+const inDrive: Investigation = {
+  drive: {
+    folder: 'investigations',
+    archives: [
+      { name: 'release-2026-09.tar.gz', snapshot: '9f41c2d0', baseline: true },
+      { name: 'release-2026-10.tar.gz', snapshot: '3c0f3a7e' },
+    ],
+  },
+  vault: 'investigations',
+  question: archiveQuestion,
+  agent: [{
+    tag: archiveQuestion,
+    snapshot: '3c0f3a7e',
+    evidence: 'Three findings: a forged read the check passed, a trace with the real read missing, and a crash.',
+    changes: [...forged.changes, ...investigation.agent[1].changes],
+  }],
+};
+
+export const ArchiveInDrive: Story = {
+  name: 'An archive arrives in Proton Drive',
+  args: { investigation: inDrive },
+  play: async ({ canvasElement, step }) => {
+    const input = () => canvasElement.querySelector('.monaco-editor textarea, .monaco-editor .native-edit-context');
+
+    await step('your Drive folder lists last month\'s archive and the one you just uploaded', async () => {
+      await waitFor(() => {
+        for (const a of inDrive.drive!.archives) expect(text(canvasElement, '.view-lines')).toContain(a.name);
+      });
+      expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain('Proton Drive  ›  investigations');
+    });
+
+    await step('a squiggle on the new archive: what changed since the last one', async () => {
+      await waitFor(() => expect(canvasElement.querySelector('.squiggly-warning')).not.toBeNull());
+      key(input(), 'F8', 119);
+      await waitFor(() => expect(text(canvasElement, '.marker-widget')).toContain('3 findings since the last archive.'));
+      key(input(), 'Escape', 27);
+    });
+
+    await step('opening it lists the archive like a tarball, against the previous one', async () => {
+      press(await lens(canvasElement, '3 findings · open the archive'));
+      await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain('investigations  ›  release-2026-10.tar.gz'));
+      await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain(`A  ${planted.path}`));
+      await waitFor(() => expect(canvasElement.querySelectorAll('.squiggly-warning').length).toBe(3));
+    });
+
+    await step('Go to Definition goes into the planted file, with its verdicts', async () => {
+      // The archive opens with the cursor on its first change.
+      key(input(), 'F12', 123);
+      await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain(`release-2026-10.tar.gz  ›  ${planted.path}`));
+      await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain('"matches_dummy_file": true'));
+      await lens(canvasElement, '#120 ✓ failed');
+    });
+  },
+};
+
+/** The same Drive folder with no play function, to explore by hand. */
+export const ArchiveInDriveExplore: Story = {
+  name: 'An archive arrives in Proton Drive (explore)',
+  args: { investigation: inDrive },
+};
