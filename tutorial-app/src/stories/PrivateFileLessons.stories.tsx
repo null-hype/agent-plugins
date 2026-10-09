@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import AcpTracePreview from './AcpTracePreview';
-import { load } from 'js-yaml';
+import { expect, waitFor } from 'storybook/test';
+import { clientDocument, clientText, clickInFrame, editorsReady, expectClientShows, pressClientTab } from './acpTracePlay';
 import AcpTraceBridge from '../components/AcpTraceBridge';
 import tutorialStore, { resetTutorialStore, seedTutorialStore } from '../../.storybook/tutorialkit-store';
 
@@ -34,7 +35,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const chapter = '../content/tutorial/part-5/can-an-upload-read-a-private-file/';
-const all = import.meta.glob<string>('../content/tutorial/part-5/can-an-upload-read-a-private-file/*/{content.mdx,_files/**/*,_solution/**/*}', { query: '?raw', import: 'default', eager: true });
+const all = import.meta.glob<string>('../content/tutorial/part-5/can-an-upload-read-a-private-file/*/{_files,_solution}/**/*', { query: '?raw', import: 'default', eager: true });
 
 /** A lesson's files by their lesson path (`/acp-trace.json`), solved or not. */
 function lessonFiles(lesson: string, solved: boolean): Record<string, string> {
@@ -48,35 +49,76 @@ function lessonFiles(lesson: string, solved: boolean): Record<string, string> {
 
 function seedLesson(lesson: string) {
   return () => {
-    const frontmatter = /^---\n([\s\S]*?)\n---/.exec(all[`${chapter}${lesson}/content.mdx`]);
-    if (!frontmatter) throw new Error(`no frontmatter for ${lesson}`);
-    const data = load(frontmatter[1]) as Record<string, unknown>;
     seedTutorialStore({
-      data,
+      data: {},
       files: lessonFiles(lesson, false),
       solution: lessonFiles(lesson, true),
-      focus: String(data.focus),
+      focus: '/acp-trace.json',
     });
     return resetTutorialStore;
   };
 }
 
+const probe = 'Does the check fail when a read of the private file is forged?';
+
+function playLesson(commit: string, code: string, mark: string): NonNullable<Story['play']> {
+  return async ({ canvasElement, args, step }) => {
+    await editorsReady(canvasElement, 1);
+    // Keep the existing solved control useful for inspecting a solved lesson.
+    if (args.solved) {
+      await expectClientShows(canvasElement, probe);
+      return;
+    }
+
+    await step('Alice commit, before Solve', async () => {
+      // The Client folds the commit body under its subject by default.
+      const fold = clientDocument(canvasElement)?.querySelector<HTMLElement>('.codicon-folding-collapsed');
+      if (!fold) throw new Error('folded Alice commit not found');
+      clickInFrame(fold);
+      await expectClientShows(canvasElement, commit);
+      await expect(clientText(canvasElement)).not.toContain(probe);
+    });
+    await step('Solve offers the probe', async () => {
+      tutorialStore.solve();
+      await expectClientShows(canvasElement, probe);
+    });
+    await step('Tab reveals the finding', async () => {
+      pressClientTab(canvasElement);
+      await waitFor(() => {
+        const lens = Array.from(clientDocument(canvasElement)?.querySelectorAll<HTMLElement>('.codelens-decoration a') ?? [])
+          .find((el) => el.textContent?.includes(code));
+        if (!lens) throw new Error(`finding lens ${code} not shown`);
+        expect(lens).toBeVisible();
+        expect(lens.textContent).toContain(mark);
+      });
+    });
+    await step('Reset restores the starter', async () => {
+      tutorialStore.reset();
+      await waitFor(() => expect(clientText(canvasElement)).not.toContain(probe));
+    });
+  };
+}
+
 export const PR117: Story = {
+  play: playLesson('Alice, #117:', 'review-1.finding-1.forged-read', '✗'),
   name: '#117: Can the check tell a real read of the private file from a forged one?',
   beforeEach: seedLesson('1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
 };
 
 export const PR118: Story = {
+  play: playLesson('Alice, #118:', 'review-2.gap-1.forged-read', '✗'),
   name: '#118: Can the strengthened check tell a real read of the private file from a forged one?',
   beforeEach: seedLesson('2-can-the-strengthened-check-tell-a-real-read-of-the-private-file-from-a-forged-one'),
 };
 
 export const PR120: Story = {
+  play: playLesson('Alice, #120:', 'review-2.gap-1.forged-read', 'ℹ'),
   name: '#120: Can the check tell a real read of the private file from a mention of one?',
   beforeEach: seedLesson('3-can-the-check-tell-a-real-read-of-the-private-file-from-a-mention-of-one'),
 };
 
 export const CC23E89: Story = {
+  play: playLesson('Alice, cc23e89', 'review-2.gap-1.forged-read', 'ℹ'),
   name: 'cc23e89: Does the check require a real read of the private file?',
   beforeEach: seedLesson('4-does-the-check-require-a-real-read-of-the-private-file'),
 };

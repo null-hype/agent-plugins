@@ -9,7 +9,7 @@ const port = Number(process.env.STORYBOOK_PORT || 6006);
 export default defineConfig({
   testDir: './tests',
   outputDir: '/tmp/agent-plugins-replay-tests',
-  testMatch: ['replay-peek.spec.ts', 'private-file-lessons.spec.ts'],
+  testMatch: ['replay-peek.spec.ts', 'private-file-lessons.spec.ts', 'private-file-interactions.spec.ts'],
   timeout: 60_000,
   expect: { timeout: 15_000 },
   workers: 1,
