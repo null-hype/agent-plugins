@@ -1,0 +1,14 @@
+amends "pkl:test"
+
+import "S1S2.pkl"
+
+facts {
+  ["pinned transition derives the added S2 diagnostics from the files"] {
+    S1S2.changes.length == 24
+    S1S2.changes.filter((c) -> c.kind == "added").map((c) -> c.path) ==
+      List("/bundle/inputs/diagnose.pkl", "/bundle/inputs/reports/cit294.test.xml", "/bundle/inputs/reports/diagnostics.json")
+    S1S2.changes.filter((c) -> c.kind == "modified").length == 21
+    S1S2.S1.takenAt.isEmpty
+    S1S2.S2.takenAt.isEmpty
+  }
+}
