@@ -110,4 +110,23 @@ proton-drive filesystem list --json "$REMOTE_RUN/restic-repo" > "$EVIDENCE_DIR/l
 check "the snapshot is listed back from Drive" \
     bash -c "jq -e --arg id \"$SNAPSHOT_ID\" 'map(.name.value // .name) | index(\$id)' \"$EVIDENCE_DIR/list.json\""
 
+# 4. Download the repository back into an empty folder and open it with
+#    restic from a fresh process. Restic files never change once written,
+#    so skipping an existing local file is always right, and the strategies
+#    mean a conflict never prompts.
+DOWNLOAD_DIR="$(mktemp -d)"
+proton-drive filesystem download -d merge -f skip "$REMOTE_RUN/restic-repo" "$DOWNLOAD_DIR"
+REPO_COPY="$(dirname "$(dirname "$(find "$DOWNLOAD_DIR" -path "*/snapshots/$SNAPSHOT_ID" | head -1)")")"
+( cd "$DOWNLOAD_DIR" && find . -type f | sort ) > "$EVIDENCE_DIR/download-tree.txt"
+check "the downloaded repository has the snapshot file" \
+    bash -c "[ -f \"$REPO_COPY/snapshots/$SNAPSHOT_ID\" ]"
+env -i PATH="$PATH" HOME="$HOME" RESTIC_PASSWORD="$RESTIC_PASSWORD" \
+    restic -r "$REPO_COPY" snapshots --json > "$EVIDENCE_DIR/restic-snapshots.json"
+env -i PATH="$PATH" HOME="$HOME" RESTIC_PASSWORD="$RESTIC_PASSWORD" \
+    restic -r "$REPO_COPY" ls --json "$SNAPSHOT_ID" > "$EVIDENCE_DIR/restic-ls.json"
+check "restic opens the downloaded snapshot" \
+    bash -c "jq -e --arg id \"$SNAPSHOT_ID\" 'map(.id) | index(\$id)' \"$EVIDENCE_DIR/restic-snapshots.json\""
+check "restic lists the backed-up file in the downloaded snapshot" \
+    bash -c "jq -e 'select(.struct_type == \"node\" and .name == \"hello.txt\")' \"$EVIDENCE_DIR/restic-ls.json\""
+
 reportResults
