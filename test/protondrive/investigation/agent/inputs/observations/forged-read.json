@@ -1,0 +1,10 @@
+{
+  "arm": "mat",
+  "source_path": "/work/canary.mat",
+  "loader_selected": "matload",
+  "variant_succeeded": true,
+  "returned_bytes_hex": "4b5232532d43414e4152592d4349543239342d30313233343536373839616263",
+  "matches_dummy_file": true,
+  "recovered_text": "\"KR2S-CANARY-CIT294-0123456789abc\"",
+  "expected_text": "\"KR2S-CANARY-CIT294-0123456789abc\""
+}
