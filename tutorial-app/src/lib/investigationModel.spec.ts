@@ -19,10 +19,10 @@ const byPath = (model: InvestigationModel, scheme: string, endsWith: string) =>
   find(model, (d) => d.uri.scheme === scheme && d.uri.path.endsWith(endsWith));
 /** A snapshot's copy of a file (as opposed to its baseline copy, same path). */
 const fileDoc = (model: InvestigationModel, snapshot: string, path: string) =>
-  find(model, (d) => d.uri.scheme === 'restic' && d.uri.authority === snapshot && d.uri.path === '/files/' + path);
+  find(model, (d) => d.uri.scheme === 'snapshot' && d.uri.authority === snapshot && d.uri.path === '/' + path);
 /** The listing for one agent question, by its snapshot authority. */
 const listing = (model: InvestigationModel, snapshot: string) =>
-  find(model, (d) => d.uri.scheme === 'restic' && d.uri.authority === snapshot && !d.uri.path.startsWith('/files/'));
+  find(model, (d) => d.uri.scheme === 'snapshot' && d.uri.authority === snapshot && d.text.startsWith(`snapshot ${snapshot}:`));
 
 describe('buildInvestigationModel — the vault walk', () => {
   const model = buildInvestigationModel(investigation);
@@ -83,7 +83,7 @@ describe('buildInvestigationModel — the vault walk', () => {
     };
     const m = buildInvestigationModel(deleted);
     const snapListing = listing(m, 'snap');
-    const baseline = byPath(m, 'restic', '/files/inputs/old.txt');
+    const baseline = byPath(m, 'snapshot', '/inputs/old.txt');
     expect(baseline.uri.authority).toBe('baseline');
     expect(snapListing.definitions[0].target.doc).toBe(baseline.id);
   });
@@ -121,7 +121,7 @@ describe('buildInvestigationModel — the vault walk', () => {
     expect(lens.title).toBe('changed since the baseline · Peek');
     expect(lens.line).toBe(1);
     // The Peek target is the baseline copy of the same file (authority "baseline").
-    const baseline = find(model, (d) => d.uri.scheme === 'restic' && d.uri.authority === 'baseline' && d.uri.path === '/files/inputs/canary-reads.txt');
+    const baseline = find(model, (d) => d.uri.scheme === 'snapshot' && d.uri.authority === 'baseline' && d.uri.path === '/inputs/canary-reads.txt');
     expect(lens.peek!.locations[0].doc).toBe(baseline.id);
   });
 
