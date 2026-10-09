@@ -23,9 +23,27 @@ const forgedRead = `{
   "variant_succeeded": true,
   "returned_bytes_hex": "4b5232532d43414e4152592d4349543239342d30313233343536373839616263",
   "matches_dummy_file": true,
-  "recovered_text": "\\"KR2S-CANARY-CIT294-0123456789abc\\""
+  "recovered_text": "\\"KR2S-CANARY-CIT294-0123456789abc\\"",
+  "expected_text": "\\"KR2S-CANARY-CIT294-0123456789abc\\""
 }
 `;
+
+// The check, as each pull request left it: the rule that decides whether an
+// observation counts as a real read of the private file.
+const reconcile = (lines: string[]) => [
+  '/// Does an observation show a real read of the private file?',
+  'module cit294.Reconcile',
+  '',
+  'import "Observation.pkl"',
+  '',
+  'function readPrivateFile(o: Observation.Observed, trace: String): Boolean =',
+  ...lines,
+  '',
+].join('\n');
+const matches = '  o.matches_dummy_file == true';
+const sameText = '  && o.recovered_text == o.expected_text';
+const traced = '  && trace.contains("openat(AT_FDCWD</app>, \\"/work/dummy-canary.txt\\"")';
+const RULE = 6;
 
 const investigation: Investigation = {
   vault: 'investigations',
@@ -42,6 +60,14 @@ const investigation: Investigation = {
           note: "Shouldn't be here: a forged read of the private file, and the check still passed (28 of 28).",
           contents: forgedRead,
           finding: { line: 7, message: 'This read never happened: no process opened /work/dummy-canary.txt (see canary-reads.txt).' },
+          verdicts: [
+            { revision: '#117', passed: true, check: { path: 'inputs/Reconcile.pkl', rule: RULE, contents: reconcile([matches]),
+              note: 'Takes the observation at its word: a forged one passes.' } },
+            { revision: '#118', passed: true, check: { path: 'inputs/Reconcile.pkl', rule: RULE, contents: reconcile([matches, sameText]),
+              note: 'Stronger, but still only reads the observation: a forged one that copies the text passes.' } },
+            { revision: '#120', passed: false, check: { path: 'inputs/Reconcile.pkl', rule: RULE, contents: reconcile([matches, sameText, traced]),
+              note: 'Requires the trace to show the read: a forged observation fails.' } },
+          ],
         },
         {
           kind: 'M',
@@ -130,29 +156,64 @@ export const AgentAskedTwoMore: Story = {
   play: async ({ canvasElement, step }) => openThePeek(canvasElement, step),
 };
 
+/** Slice 2: from Peek into the planted file. */
+async function intoTheEvidence(canvasElement: HTMLElement, step: (name: string, fn: () => Promise<void>) => Promise<void> | void) {
+  await step("the planted file's line in the diff is squiggled: it shouldn't be there", async () => {
+    await waitFor(() => expect(canvasElement.querySelector('.peekview-widget .squiggly-warning')).not.toBeNull());
+  });
+
+  await step('Go to Definition on it opens the planted file, at the forged read', async () => {
+    // Peek opens with the cursor on the first changed file.
+    key(canvasElement.querySelector('.peekview-widget .monaco-editor textarea, .peekview-widget .monaco-editor .native-edit-context'), 'F12', 123);
+    await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain(planted.path));
+    await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain('"matches_dummy_file": true'));
+    expect(canvasElement.querySelector('.peekview-widget')).toBeNull();
+  });
+
+  await step("it's all new since the baseline, and the forged read is squiggled", async () => {
+    await waitFor(() => expect(canvasElement.querySelectorAll('.investigation-added').length).toBeGreaterThan(0));
+    await lens(canvasElement, 'not in the baseline');
+    const input = canvasElement.querySelector('.monaco-editor textarea, .monaco-editor .native-edit-context');
+    key(input, 'F8', 119);
+    await waitFor(() => expect(text(canvasElement, '.marker-widget')).toContain(planted.finding!.message));
+    key(input, 'Escape', 27);
+  });
+}
+
 export const IntoTheEvidence: Story = {
   name: 'From Peek into the evidence',
   play: async ({ canvasElement, step }) => {
     await openThePeek(canvasElement, step);
+    await intoTheEvidence(canvasElement, step);
+  },
+};
 
-    await step("the planted file's line in the diff is squiggled: it shouldn't be there", async () => {
-      await waitFor(() => expect(canvasElement.querySelector('.peekview-widget .squiggly-warning')).not.toBeNull());
+export const VerdictAcrossRevisions: Story = {
+  name: 'The same evidence across #117, #118 and #120',
+  play: async ({ canvasElement, step }) => {
+    await openThePeek(canvasElement, step);
+    await intoTheEvidence(canvasElement, step);
+
+    await step('each revision of the check has a verdict on the forged read', async () => {
+      for (const label of ['#117 ✗ passed', '#118 ✗ passed', '#120 ✓ failed']) await lens(canvasElement, label);
     });
 
-    await step('Go to Definition on it opens the planted file, at the forged read', async () => {
-      // Peek opens with the cursor on the first changed file.
-      key(canvasElement.querySelector('.peekview-widget .monaco-editor textarea, .peekview-widget .monaco-editor .native-edit-context'), 'F12', 123);
-      await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain(planted.path));
-      await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain('"matches_dummy_file": true'));
-      expect(canvasElement.querySelector('.peekview-widget')).toBeNull();
+    await step("#120's verdict opens its check, at the rule that caught the forgery", async () => {
+      press(await lens(canvasElement, '#120 ✓ failed'));
+      await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain('#120  ›  inputs/Reconcile.pkl'));
+      await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain('trace.contains('));
+      // The line #120 added since #118 is marked.
+      await waitFor(() => expect(canvasElement.querySelectorAll('.investigation-added').length).toBe(1));
     });
 
-    await step("it's all new since the baseline, and the forged read is squiggled", async () => {
-      await waitFor(() => expect(canvasElement.querySelectorAll('.investigation-added').length).toBeGreaterThan(0));
-      await lens(canvasElement, 'not in the baseline');
-      const input = canvasElement.querySelector('.monaco-editor textarea, .monaco-editor .native-edit-context');
-      key(input, 'F8', 119);
-      await waitFor(() => expect(text(canvasElement, '.marker-widget')).toContain(planted.finding!.message));
+    await step('Peek shows the check as #118 left it, without the trace', async () => {
+      press(await lens(canvasElement, 'changed since #118 · Peek'));
+      await waitFor(() => {
+        const peek = text(canvasElement, '.peekview-widget');
+        expect(peek).toContain('#118/inputs');
+        expect(peek).toContain(sameText.trim());
+        expect(peek).not.toContain('trace.contains(');
+      });
     });
   },
 };
