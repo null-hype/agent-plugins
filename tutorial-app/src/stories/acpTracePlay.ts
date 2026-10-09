@@ -4,11 +4,11 @@ import { waitFor } from 'storybook/test';
 // (Client, Agent). Copied from AcpTrace.stories.tsx, which still carries its
 // own copies; deduplicating the two is a follow-up.
 
-export const editorsReady = (canvasElement: HTMLElement) =>
+export const editorsReady = (canvasElement: HTMLElement, paneCount = 2) =>
 	waitFor(
 		() => {
 			const frames = Array.from(canvasElement.querySelectorAll('iframe'));
-			if (frames.length < 2) throw new Error('expected two preview iframes (client, agent)');
+			if (frames.length < paneCount) throw new Error(`expected ${paneCount} preview iframe(s)`);
 			for (const frame of frames) {
 				if (!frame.contentDocument?.querySelector('.monaco-editor .view-line')) {
 					throw new Error('Monaco has not rendered in every pane yet');
@@ -36,3 +36,18 @@ export const clickInFrame = (el: HTMLElement) => {
 		el.dispatchEvent(new win.MouseEvent(type, { bubbles: true, cancelable: true, view: win }));
 	}
 };
+
+// Monaco listens in the iframe's realm. Tab's legacy keyCode is needed by its
+// keybinding service; userEvent.keyboard in the parent targets the wrong editor.
+export function pressClientTab(canvasElement: HTMLElement) {
+  const doc = clientDocument(canvasElement);
+  const input = doc?.querySelector<HTMLElement>('[role="textbox"][aria-label="Editor content"]');
+  if (!input) throw new Error('Client editor input not found');
+  input.focus();
+  const win = doc!.defaultView!;
+  for (const type of ['keydown', 'keyup']) {
+    input.dispatchEvent(new win.KeyboardEvent(type, {
+      key: 'Tab', code: 'Tab', keyCode: 9, which: 9, bubbles: true, cancelable: true,
+    }));
+  }
+}
