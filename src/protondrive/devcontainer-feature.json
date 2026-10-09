@@ -1,0 +1,13 @@
+{
+    "name": "Proton Drive CLI",
+    "id": "protondrive",
+    "version": "1.0.0",
+    "description": "Installs a pinned, checksum-verified Proton Drive CLI (proton-drive) that keeps its session in Unix pass (GPG) instead of a desktop keyring, so it works in a headless container. Sign-in happens at runtime with `proton-drive auth login`.",
+    "options": {},
+    "containerEnv": {
+        "PROTON_DRIVE_CREDENTIALS_STORE": "pass"
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
