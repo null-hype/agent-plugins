@@ -47,9 +47,15 @@ jobs:
           npx playwright install --with-deps chromium
           npx playwright test --config=playwright.investigation.config.ts
 
+      # This deploy publishes only non-draft lessons (unlike the Netlify deploy
+      # preview, which shows drafts). See src/content/config.ts.
       - name: Build TutorialKit
         working-directory: tutorial-app
-        run: npm run build
+        env:
+          CONTEXT: production
+        run: |
+          npm run build
+          node scripts/prune-drafts.mjs dist
 
       - name: Deploy PR preview to existing Netlify site
         id: deploy
