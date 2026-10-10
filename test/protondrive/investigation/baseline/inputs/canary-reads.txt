@@ -1,0 +1,5 @@
+### ARM: mat-unblocked
+== strace openat evidence for the canary/control file ==
+[pid    10] openat(AT_FDCWD</app>, "/work/canary.mat", O_RDONLY|O_CLOEXEC) = 6</work/canary.mat>
+[pid    16] openat(AT_FDCWD</app>, "/work/dummy-canary.txt", O_RDONLY) = 14</work/dummy-canary.txt>
+  "source_path": "/work/canary.mat",
