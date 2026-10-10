@@ -61,3 +61,32 @@ Opening the downloaded copy from a fresh process (`env -i` with only
 `struct_type: "snapshot"`, and each later line is a `struct_type: "node"`.
 These two files are unscrubbed: they hold only the throwaway container's
 hostname, the `vscode` user and a temporary path.
+
+## Third live run: the investigation's own snapshots (2026-10-10)
+
+Run ID `protondrive-scenario-20261010T013552Z-fefe3f6f`, same CLI version,
+restic 0.18.1. For CIT-389 this run backs up `../investigation/`, the
+`ArchiveInDrive` fixture's inputs, instead of `hello.txt`:
+
+| Snapshot | ID | Tag |
+| --- | --- | --- |
+| baseline | `b76f4b6fffe684cf21fb249577a929f8da682d8de0634f771844ce07c10cd98a` | `baseline` |
+| agent | `3b98922e5898a677cdc50c07b2d7f8b89fdfee32ad43cf21176ffcc9c4a0e687` | `Does release-2026-10 still keep the private file private?` |
+
+Everything is in `investigation/`, apart from the two runs above:
+
+| Fixture | Command |
+| --- | --- |
+| `list-json-run-folder.json` | `proton-drive filesystem list --json /my-files/<run-id>` |
+| `list-json-restic-repo.json` | `proton-drive filesystem list --json /my-files/<run-id>/restic-repo` |
+| `list-json-restic-snapshots.json` | `proton-drive filesystem list --json /my-files/<run-id>/restic-repo/snapshots` |
+| `download-tree.txt` | files that arrived from `proton-drive filesystem download -d merge -f skip` |
+| `restic-snapshots.json` | `restic -r "$DOWNLOAD_DIR/restic-repo" snapshots --json` |
+| `restic-diff.ndjson` | `restic -r "$DOWNLOAD_DIR/restic-repo" diff --json <baseline> <agent>` |
+| `dump/inputs/...` | `restic -r "$DOWNLOAD_DIR/restic-repo" dump <agent> /inputs/<path>` for each changed file |
+
+The listings are scrubbed as in run 2. The two snapshot files are
+`BASELINE_SNAPSHOT_NODE_ID` and `AGENT_SNAPSHOT_NODE_ID`, and their revisions
+`*_REVISION_ID`. The restic files are unscrubbed; they hold only the
+`investigations` host name, the `vscode` user and a temporary path. The
+dumped files are byte for byte `../investigation/agent/inputs/`.
