@@ -9,6 +9,8 @@
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "storybook:stack": "storybook dev -p 6007 -c .storybook-stack",
+    "build-storybook:stack": "storybook build -c .storybook-stack -o storybook-static-stack",
     "replay:generate": "tsx tests/rails-probes/generate.ts",
     "predev": "npm run replay:generate",
     "prebuild": "npm run replay:generate",
