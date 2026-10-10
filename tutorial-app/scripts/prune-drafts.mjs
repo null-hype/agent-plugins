@@ -24,16 +24,21 @@ function frontmatter(dir) {
   return (match && yaml.load(match[1])) || {};
 }
 
-// A draft is a child id listed under `drafts` in its parent's meta.md. Its
+// A draft is a child id listed under `drafts` in a tutorial or part meta.md,
+// the two levels src/content/config.ts filters (`parts` and `chapters`). Its
 // built payloads are named from the id path, e.g. `part-4-<chapter>-<lesson>-files.json`.
+// Children come from the filesystem, not the order arrays: TutorialKit finds
+// directories a meta.md leaves out of `parts`/`chapters` (part-0, part-1).
 function draftPrefixes(dir, segments) {
   const prefixes = [];
   const meta = frontmatter(dir);
-  for (const draft of meta.drafts ?? []) prefixes.push([...segments, draft].join('-') + '-');
-  for (const id of [...(meta.parts ?? []), ...(meta.chapters ?? []), ...(meta.lessons ?? [])]) {
-    if (meta.drafts?.includes(id)) continue;
-    const child = join(dir, id);
-    if (existsSync(child)) prefixes.push(...draftPrefixes(child, [...segments, id]));
+  const drafts = meta.drafts ?? [];
+  if (meta.type === 'tutorial' || meta.type === 'part') {
+    for (const draft of drafts) prefixes.push([...segments, draft].join('-') + '-');
+  }
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || drafts.includes(entry.name)) continue;
+    prefixes.push(...draftPrefixes(join(dir, entry.name), [...segments, entry.name]));
   }
   return prefixes;
 }
