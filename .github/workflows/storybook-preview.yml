@@ -2,7 +2,7 @@ name: Storybook PR Preview
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, development]
     paths:
       - 'tutorial-app/**'
       - '.github/workflows/storybook-preview.yml'
