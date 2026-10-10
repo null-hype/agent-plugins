@@ -14,6 +14,8 @@
 // stable `id` (see `docId`), so a lens or definition target names a document
 // without the adapter having to match URI strings.
 
+import { formatSize } from './protonDriveListing';
+
 /** How one revision of the check judged a piece of planted evidence. */
 export type Verdict = {
   /** The revision, e.g. a pull request: `#117`. */
@@ -49,11 +51,34 @@ export type AgentQuestion = {
   changes: SnapshotChange[];
 };
 
-/** A Proton Drive folder of archives; each one was snapshotted with restic when it arrived. */
+/** A restic snapshot's tree, as `restic ls` lists it; it opens from the snapshot's file in Drive. */
+export type SnapshotTree = {
+  id: string;
+  /** One line on the snapshot: when, by whom, what it backed up. */
+  summary: string;
+  /** Each node `restic ls` lists; one with `contents` opens. */
+  nodes: { path: string; permissions?: string; size?: number; contents?: string }[];
+};
+
+/** One entry in a Drive folder. */
+export type DriveItem = {
+  name: string;
+  /** The restic snapshot this archive is; not shown when the name already is its ID. */
+  snapshot?: string;
+  baseline?: boolean;
+  /** Follows the entry, e.g. its size from `filesystem list --json`. */
+  detail?: string;
+  /** A folder that opens on its own listing. */
+  open?: DriveFolder;
+  /** A restic snapshot file that opens on its tree. */
+  tree?: SnapshotTree;
+};
+
+/** A Proton Drive folder: archives, each snapshotted with restic when it arrived, or a real listing. */
 export type DriveFolder = {
+  /** Its path under Drive, e.g. `my-files/<run-id>`; each segment is a step in the path bar. */
   folder: string;
-  /** `detail` follows the entry, e.g. its size from `filesystem list --json`. */
-  archives: { name: string; snapshot: string; baseline?: boolean; detail?: string }[];
+  archives: DriveItem[];
 };
 
 export type Investigation = {
@@ -126,6 +151,8 @@ export interface InvestigationDocument {
   markers: Marker[];
   lenses: Lens[];
   definitions: Definition[];
+  /** Where the path bar's ↑ goes from here; the home document when absent. */
+  parent?: string;
   /**
    * Lines new since this document's diff baseline, for the "added" gutter.
    * `undefined` means "no diff information" (the oldest check revision): no
@@ -167,8 +194,21 @@ const snapshotText = (q: AgentQuestion) =>
     ...q.changes.map((c) => `${c.kind}  ${c.path}`)].join('\n') + '\n';
 
 const driveText = ({ folder, archives }: DriveFolder) =>
-  [`/// Proton Drive: /${folder}. Each archive is a restic snapshot.`,
-    ...archives.map((a) => `${a.name}   snapshot ${a.snapshot}${a.baseline ? ' · the baseline' : ''}${a.detail ? ` · ${a.detail}` : ''}`)].join('\n') + '\n';
+  [`/// Proton Drive: /${folder}.${archives.some((a) => a.snapshot) ? ' Each archive is a restic snapshot.' : ''}`,
+    ...archives.map((a) => {
+      const about = [a.snapshot && !a.name.startsWith(a.snapshot) ? `snapshot ${a.snapshot}` : '', a.baseline ? 'the baseline' : '', a.detail ?? ''].filter(Boolean).join(' · ');
+      // Names in one column, like `ls -l`.
+      return about ? `${a.name.padEnd(Math.max(...archives.map((b) => b.name.length)))}   ${about}` : a.name;
+    })].join('\n') + '\n';
+
+const TREE_HEADER = 3; // lines above a snapshot's tree
+const treeUri = (tree: SnapshotTree, path = '/'): UriDescriptor => ({ scheme: 'snapshot', authority: tree.id, path });
+// A snapshot's tree reads like `restic ls -l`.
+const treeText = (tree: SnapshotTree) =>
+  [`/// snapshot ${tree.id.slice(0, 8)}, as restic ls lists it.`, tree.summary, '',
+    ...tree.nodes.map((n) => `${(n.permissions ?? '').padEnd(12)}${n.size === undefined ? ''.padStart(8) : formatSize(n.size).padStart(8)}  ${n.path}`)].join('\n') + '\n';
+const basename = (path: string) => path.split('/').pop() ?? path;
+const crumbs = (folder: string) => ['Proton Drive', ...folder.split('/').filter(Boolean)];
 
 const count = (n: number) => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
 
@@ -187,7 +227,7 @@ const addedLinesOf = (after: string, before = '') => {
 /** Compute the full editor-agnostic model for an investigation. */
 export function buildInvestigationModel(investigation: Investigation): InvestigationModel {
   const { drive } = investigation;
-  const start = drive ? ['Proton Drive', drive.folder] : [investigation.vault];
+  const start = drive ? crumbs(drive.folder) : [investigation.vault];
 
   // Documents, built once and cross-referenced by id.
   const docs = new Map<string, InvestigationDocument>();
@@ -199,13 +239,34 @@ export function buildInvestigationModel(investigation: Investigation): Investiga
   };
 
   const vaultDoc = add(vaultUri(investigation.vault), vaultText(investigation), [investigation.vault]);
-  const driveDoc = drive ? add(driveUri(drive.folder), driveText(drive), start) : undefined;
+  // Drive folders, each folder it opens, and each snapshot tree in them. These
+  // are for navigating, so the diff lenses below leave them alone.
+  const folders: { folder: DriveFolder; doc: InvestigationDocument }[] = [];
+  const navigation = new Set<InvestigationDocument>();
+  const addFolder = (folder: DriveFolder, parent?: InvestigationDocument): InvestigationDocument => {
+    const doc = add(driveUri(folder.folder), driveText(folder), crumbs(folder.folder));
+    doc.parent = parent?.id;
+    folders.push({ folder, doc });
+    navigation.add(doc);
+    for (const a of folder.archives) if (a.open) addFolder(a.open, doc);
+    return doc;
+  };
+  const driveDoc = drive ? addFolder(drive) : undefined;
   const home = driveDoc ?? vaultDoc;
 
-  const archiveOf = (q: AgentQuestion) => drive?.archives.find((a) => a.snapshot === q.snapshot);
+  const archiveOf = (q: AgentQuestion) => {
+    for (const { folder } of folders) {
+      const archive = folder.archives.find((a) => a.snapshot === q.snapshot);
+      if (archive) return { archive, trail: crumbs(folder.folder) };
+    }
+    return undefined;
+  };
   // Where a model sits in the investigation: under its archive when the walk
   // starts in Drive, under its question otherwise.
-  const under = (q: AgentQuestion) => (archiveOf(q) ? [...start, archiveOf(q)!.name] : [investigation.vault, q.tag]);
+  const under = (q: AgentQuestion) => {
+    const found = archiveOf(q);
+    return found ? [...found.trail, found.archive.name] : [investigation.vault, q.tag];
+  };
 
   // What a document is compared with when you Peek at it, and the diff gutter.
   const baselineOf = new Map<string, { doc: string; label: string }>();
@@ -253,18 +314,39 @@ export function buildInvestigationModel(investigation: Investigation): Investiga
 
   // An archive in Drive: what its snapshot found since the previous archive.
   const findings = (q: AgentQuestion) => q.changes.filter((c) => c.note).length;
-  const archiveLines = (drive?.archives ?? []).map((a, i) => ({
-    archive: a, line: i + 2, owner: snapshots.find(({ q }) => q.snapshot === a.snapshot),
-  }));
-
-  if (driveDoc) {
-    driveDoc.markers = archiveLines.flatMap(({ line, owner }) =>
-      owner && findings(owner.q) ? [warn(line, `${findings(owner.q)} findings since the last archive.`, driveDoc.text)] : []);
-    // The vault: Peek on the agent's snapshots. An archive in Drive opens on its listing.
-    driveDoc.lenses = archiveLines.flatMap(({ line, owner }) =>
-      owner ? [{ line, title: `${findings(owner.q)} findings · open the archive`, open: { doc: owner.listing.id, line: HEADER + 1 } }] : []);
-    driveDoc.definitions = archiveLines.flatMap(({ line, owner }) =>
-      owner ? [{ line, target: { doc: owner.listing.id, line: HEADER + 1 } }] : []);
+  for (const { folder, doc: folderDoc } of folders) {
+    const archiveLines = folder.archives.map((a, i) => ({
+      archive: a, line: i + 2, owner: a.snapshot === undefined ? undefined : snapshots.find(({ q }) => q.snapshot === a.snapshot),
+    }));
+    folderDoc.markers = archiveLines.flatMap(({ line, owner }) =>
+      owner && findings(owner.q) ? [warn(line, `${findings(owner.q)} findings since the last archive.`, folderDoc.text)] : []);
+    // An archive opens on its listing; a folder on its own; a snapshot file on its tree.
+    const opens = archiveLines.flatMap(({ archive: a, line, owner }): { line: number; title: string; target: { doc: string; line: number } }[] => {
+      if (owner) return [{ line, title: `${findings(owner.q)} findings · open the archive`, target: { doc: owner.listing.id, line: HEADER + 1 } }];
+      if (a.open) {
+        const child = folders.find(({ folder: f }) => f === a.open)!.doc;
+        return [{ line, title: `open ${a.name}/`, target: { doc: child.id, line: a.open.archives.length ? 2 : 1 } }];
+      }
+      if (a.tree) {
+        const tree = add(treeUri(a.tree), treeText(a.tree), [...crumbs(folder.folder), a.name]);
+        tree.parent = folderDoc.id;
+        navigation.add(tree);
+        // Each file the snapshot holds opens at `snapshot://<id>/<its path>`.
+        a.tree.nodes.forEach((n, i) => {
+          if (n.contents === undefined) return;
+          const file = add(treeUri(a.tree!, n.path), n.contents, [...tree.trail, ...n.path.split('/').filter(Boolean)]);
+          file.parent = tree.id;
+          navigation.add(file);
+          tree.lenses.push({ line: TREE_HEADER + 1 + i, title: `open ${basename(n.path)}`, open: { doc: file.id, line: 1 } });
+          tree.definitions.push({ line: TREE_HEADER + 1 + i, target: { doc: file.id, line: 1 } });
+        });
+        const files = a.tree.nodes.filter((n) => n.size !== undefined).length;
+        return [{ line, title: `open the snapshot · ${files} file${files === 1 ? '' : 's'}`, target: { doc: tree.id, line: TREE_HEADER + 1 } }];
+      }
+      return [];
+    });
+    folderDoc.lenses = opens.map(({ line, title, target }) => ({ line, title, open: target }));
+    folderDoc.definitions = opens.map(({ line, target }) => ({ line, target }));
   }
 
   if (held !== declared) {
@@ -281,7 +363,7 @@ export function buildInvestigationModel(investigation: Investigation): Investiga
 
   // Per-document lenses that depend on the diff/verdict maps built above.
   for (const doc of docs.values()) {
-    if (doc === vaultDoc || doc === driveDoc) continue;
+    if (doc === vaultDoc || navigation.has(doc)) continue;
     const lenses: Lens[] = [];
     const base = baselineOf.get(doc.id);
     // A file the snapshot changed, or a later check revision: Peek on what it changed from.
