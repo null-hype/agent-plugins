@@ -1,0 +1,195 @@
+[
+  {
+    "uid": "VOLUME_ID~INDEX_NODE_ID",
+    "parentUid": "VOLUME_ID~RESTIC_REPO_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "index"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "folder",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T22:05:19.000Z",
+    "modificationTime": "2026-10-09T22:05:19.000Z",
+    "folder": {
+      "isImported": false
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  },
+  {
+    "uid": "VOLUME_ID~SNAPSHOTS_NODE_ID",
+    "parentUid": "VOLUME_ID~RESTIC_REPO_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "snapshots"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "folder",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T22:05:20.000Z",
+    "modificationTime": "2026-10-09T22:05:20.000Z",
+    "folder": {
+      "isImported": false
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  },
+  {
+    "uid": "VOLUME_ID~DATA_NODE_ID",
+    "parentUid": "VOLUME_ID~RESTIC_REPO_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "data"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "folder",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T22:05:21.000Z",
+    "modificationTime": "2026-10-09T22:05:21.000Z",
+    "folder": {
+      "isImported": false
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  },
+  {
+    "uid": "VOLUME_ID~KEYS_NODE_ID",
+    "parentUid": "VOLUME_ID~RESTIC_REPO_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "keys"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "folder",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T22:05:22.000Z",
+    "modificationTime": "2026-10-09T22:05:22.000Z",
+    "folder": {
+      "isImported": false
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  },
+  {
+    "uid": "VOLUME_ID~CONFIG_NODE_ID",
+    "parentUid": "VOLUME_ID~RESTIC_REPO_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "config"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "file",
+    "mediaType": "application/octet-stream",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T22:05:22.000Z",
+    "modificationTime": "2026-10-09T22:05:22.000Z",
+    "totalStorageSize": 234,
+    "activeRevision": {
+      "uid": "VOLUME_ID~CONFIG_NODE_ID~CONFIG_REVISION_ID",
+      "state": "active",
+      "creationTime": "2026-10-09T22:05:22.000Z",
+      "contentAuthor": {
+        "ok": true,
+        "value": "drive-user@example.com"
+      },
+      "storageSize": 234,
+      "isImported": false,
+      "claimedSize": 155,
+      "claimedModificationTime": "2026-10-09T22:05:08.672Z",
+      "claimedDigests": {
+        "sha1": "1877ab0f85400f90092b17baceb210d4b71c9767",
+        "sha1Verified": false
+      },
+      "claimedAdditionalMetadata": {
+        "Media": {}
+      }
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  },
+  {
+    "uid": "VOLUME_ID~LOCKS_NODE_ID",
+    "parentUid": "VOLUME_ID~RESTIC_REPO_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "locks"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "folder",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T22:05:20.000Z",
+    "modificationTime": "2026-10-09T22:05:20.000Z",
+    "folder": {
+      "isImported": false
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  }
+]
