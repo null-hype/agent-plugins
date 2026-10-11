@@ -1,0 +1,79 @@
+/// CIT-397: the story replayed from the user's point of view, read back from
+/// the Playwright trace `replay.sh` leaves in `cases/<hash>/replay.trace`.
+///
+/// The trace holds each user action (goto, hover, click) and, after it, the
+/// aria snapshots playwright-cli took: what the user was shown. A keyframe is
+/// an action and the last snapshot before the next action. Each snapshot line
+/// becomes an element shaped like the sketch's (`type = "text"`, `text`), so
+/// what the user saw and what the sketch drew are compared the same way.
+///
+///   pkl eval -p hash=fddf74bea9 Replay.pkl
+module Replay
+
+import "pkl:json"
+
+hash: String = read("prop:hash")
+
+local parser = new json.Parser {}
+local events = read("cases/\(hash)/replay.trace").text.split("\n")
+  .filter((l) -> l.startsWith(#"{"type":"before""#) || l.startsWith(#"{"type":"after""#))
+  .map((l) -> parser.parse(l) as Dynamic)
+
+local userActions = Set("goto", "hover", "click")
+local isAction = (e) -> e.type == "before" && userActions.contains(e.method)
+local results = events
+  .filter((e) -> e.type == "after" && e.getPropertyOrNull("result")?.getPropertyOrNull("snapshot") != null)
+  .toMap((e) -> e.callId, (e) -> e.result.snapshot as String)
+
+/// One element of a keyframe, the same shape as an element of sketch.json.
+class Element {
+  type: "text"
+  role: String
+  text: String
+}
+
+/// `- role "name" [attrs]: value`, as playwright-cli writes aria snapshots.
+local line = Regex(#"^\s*- '?([a-z]+)(?: "((?:[^"\\]|\\.)*)")?(?: \[[^\]]*\])*'?(?::(?: (.*))?)?$"#)
+local function unquote(s: String): String =
+  if (s.startsWith("\"")) parser.parse(s) as String
+  else if (s.startsWith("'")) s.substring(1, s.length - 1).replaceAll("''", "'")
+  else s
+local function elements(snapshot: String): List<Element> =
+  snapshot.split("\n")
+    .map((l) -> line.matchEntire(l))
+    .filterNonNull()
+    .map((m) -> let (shown = m.groups[2]?.value?.replaceAll("''", "'") ?? (if (m.groups[3] == null) null else unquote(m.groups[3]!!.value)))
+      if (shown == null || shown.isEmpty) null else new Element { type = "text"; role = m.groups[1]!!.value; text = shown })
+    .filterNonNull() as List<Element>
+
+class Keyframe {
+  /// What the user did: `goto <url>`, `hover <selector>`, `click <selector>`.
+  action: String
+  elements: List<Element>
+}
+
+local actionAt = events.toList().mapIndexed((i, e) -> if (isAction.apply(e)) i else -1).filter((i) -> i >= 0)
+
+keyframes: List<Keyframe> = actionAt.mapIndexed((n, i) ->
+  let (until = if (n + 1 < actionAt.length) actionAt[n + 1] else events.length)
+  let (a = events[i])
+  let (shots = events.sublist(i, until).filter((e) -> e.type == "before" && e.method == "ariaSnapshot")
+      .map((e) -> results.getOrNull(e.callId)).filterNonNull().filter((s) -> !s.isEmpty))
+    new Keyframe {
+      action = "\(a.method) \(a.params.getPropertyOrNull("url") ?? a.params.selector)"
+      elements = if (shots.isEmpty) List() else elements(shots.last)
+    }
+)
+
+/// Each text the sketch draws, and whether the user was shown exactly that
+/// text in any keyframe: the sketch's elements and the replay's are the same
+/// shape, so this is a plain comparison.
+seen: Mapping<String, Boolean> = new {
+  for (e in (parser.parse(read("cases/\(hash)/sketch.json").text) as Listing)) {
+    when (e.getPropertyOrNull("type") == "text") {
+      [e.id] = keyframes.any((k) -> k.elements.any((s) -> s.text == e.text))
+    }
+  }
+}
+
+output { renderer = new JsonRenderer {} }

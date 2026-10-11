@@ -1,0 +1,51 @@
+/// CIT-397: the replay's keyframes against the case's evidence. A pass says
+/// the user was shown the frame, step by step; it says nothing about whether
+/// any claim holds.
+///
+///   pkl test -p hash=fddf74bea9 Replay.test.pkl
+amends "pkl:test"
+
+import "pkl:json"
+import "Replay.pkl"
+
+local dir = "cases/\(Replay.hash)/"
+local parser = new json.Parser {}
+local function load(file: String) = (parser.parse(read(dir + file).text) as Listing).toList()
+
+local commit = read(dir + "commit.txt").text.trimEnd().split("\n").filter((l) -> !l.isEmpty)
+local alerts = load("vale.json")
+local recordings = load("recordings.json")
+local frame = parser.parse(read(dir + "frame.json").text) as Dynamic
+local lensTitles = (frame.model.documents[0].lenses as Listing).toList().map((l) -> l.title)
+local always = (frame.claims as Listing).toList().find((c) -> c.word == "always")
+
+local k = Replay.keyframes
+local function texts(n: Int) = k[n].elements.map((e) -> e.text)
+
+facts {
+  ["the user did four things, and the story's play function none"] {
+    k.map((f) -> f.action.split(" ").first) == List("goto", "hover", "click", "click")
+    k[0].action.contains("embed=true")
+  }
+  ["opening the story shows the author's message, line by line"] {
+    texts(0).filter((t) -> commit.contains(t)) == commit
+  }
+  ["each claim shows the lenses the frame computed, and no others"] {
+    texts(0).filter((t) -> t.contains(" · ")).toSet() == lensTitles.toSet()
+  }
+  ["pointing at a flagged word shows Vale's message for it"] {
+    let (vale = alerts.find((a) -> a.Match == "always"))
+      k[1].elements.any((e) -> e.role == "tooltip" && e.text.startsWith(vale.Message))
+  }
+  ["the Jev lens opens the payload its digest names, not yet sent"] {
+    texts(2).contains("rails/rails › \(Replay.hash) › jev payload › \(always.digest.take(19))…")
+    texts(2).contains(#""type": "noul","#)
+    texts(2).contains("pinned before the call · not sent yet")
+  }
+  ["going back shows the message again, as it was"] {
+    texts(3) == texts(0)
+  }
+  ["no score is shown without a recording"] {
+    recordings.isEmpty.implies(!k.any((f) -> f.elements.any((e) -> e.text.matches(Regex(#".*Jev \d.*"#)))))
+  }
+}
