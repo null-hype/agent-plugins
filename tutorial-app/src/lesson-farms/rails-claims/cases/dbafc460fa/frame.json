@@ -1,0 +1,99 @@
+{
+  "hash": "dbafc460fa",
+  "claims": [
+    {
+      "line": 7,
+      "word": "always",
+      "check": "Claims.Absolute",
+      "sentence": "- No need to check `SecureRandom.method(:alphanumeric).parameters.size` in Ruby 3.3+ because it is always 2 https://github.com/ruby/securerandom/pull/36",
+      "payload": {
+        "state": {
+          "repo": "rails/rails",
+          "commit": "dbafc460fa",
+          "message": "Remove Ruby < 3.3 compatibility code\n\nThis commit removes Ruby < 3.3 compatibility code since Rails main\nbranch requires Ruby 3.3.\n\n- No need to check `SecureRandom.method(:alphanumeric).parameters.size`\n  in Ruby 3.3+ because it is always 2\nhttps://github.com/ruby/securerandom/pull/36\n\n- Ruby 3.3 introduces `Range#overlap?`\nhttps://bugs.ruby-lang.org/issues/19839\n\n- Ruby 3.3 introcuces `Fiber#kill`\nhttps://bugs.ruby-lang.org/issues/595\n\nRefer to https://github.com/rails/rails/pull/56511"
+        },
+        "model": "jev-latest",
+        "questions": {
+          "claim": {
+            "type": "noul",
+            "instructions": "The author of this commit wrote: \"- No need to check `SecureRandom.method(:alphanumeric).parameters.size` in Ruby 3.3+ because it is always 2 https://github.com/ruby/securerandom/pull/36\". Taking \"always\" literally, does the claim hold as written?"
+          }
+        }
+      },
+      "digest": "sha256:6ccdf01bc67486509619bc4fa62439b101638ae888586f5b0b0fb39144de18b9"
+    }
+  ],
+  "model": {
+    "documents": [
+      {
+        "id": "commit://rails/dbafc460fa/COMMIT_EDITMSG",
+        "uri": {
+          "scheme": "commit",
+          "authority": "rails",
+          "path": "/dbafc460fa/COMMIT_EDITMSG"
+        },
+        "text": "Remove Ruby < 3.3 compatibility code\n\nThis commit removes Ruby < 3.3 compatibility code since Rails main\nbranch requires Ruby 3.3.\n\n- No need to check `SecureRandom.method(:alphanumeric).parameters.size`\n  in Ruby 3.3+ because it is always 2\nhttps://github.com/ruby/securerandom/pull/36\n\n- Ruby 3.3 introduces `Range#overlap?`\nhttps://bugs.ruby-lang.org/issues/19839\n\n- Ruby 3.3 introcuces `Fiber#kill`\nhttps://bugs.ruby-lang.org/issues/595\n\nRefer to https://github.com/rails/rails/pull/56511\n",
+        "trail": [
+          "rails/rails",
+          "dbafc460fa",
+          "COMMIT_EDITMSG"
+        ],
+        "markers": [
+          {
+            "line": 7,
+            "column": 30,
+            "endColumn": 36,
+            "message": "Absolute claim: 'always'. Ask whether it holds. (Claims.Absolute)",
+            "severity": "warning"
+          }
+        ],
+        "lenses": [
+          {
+            "line": 7,
+            "title": "always · Jev: no recording for sha256:6ccdf01bc674…",
+            "open": {
+              "doc": "jev://payload/sha256:6ccdf01bc67486509619bc4fa62439b101638ae888586f5b0b0fb39144de18b9",
+              "line": 1
+            }
+          },
+          {
+            "line": 7,
+            "title": "always · Peek: no snapshots"
+          }
+        ],
+        "definitions": []
+      },
+      {
+        "id": "jev://payload/sha256:6ccdf01bc67486509619bc4fa62439b101638ae888586f5b0b0fb39144de18b9",
+        "uri": {
+          "scheme": "jev",
+          "authority": "payload",
+          "path": "/sha256:6ccdf01bc67486509619bc4fa62439b101638ae888586f5b0b0fb39144de18b9"
+        },
+        "text": "{\n  \"state\": {\n    \"repo\": \"rails/rails\",\n    \"commit\": \"dbafc460fa\",\n    \"message\": \"Remove Ruby < 3.3 compatibility code\\n\\nThis commit removes Ruby < 3.3 compatibility code since Rails main\\nbranch requires Ruby 3.3.\\n\\n- No need to check `SecureRandom.method(:alphanumeric).parameters.size`\\n  in Ruby 3.3+ because it is always 2\\nhttps://github.com/ruby/securerandom/pull/36\\n\\n- Ruby 3.3 introduces `Range#overlap?`\\nhttps://bugs.ruby-lang.org/issues/19839\\n\\n- Ruby 3.3 introcuces `Fiber#kill`\\nhttps://bugs.ruby-lang.org/issues/595\\n\\nRefer to https://github.com/rails/rails/pull/56511\"\n  },\n  \"model\": \"jev-latest\",\n  \"questions\": {\n    \"claim\": {\n      \"type\": \"noul\",\n      \"instructions\": \"The author of this commit wrote: \\\"- No need to check `SecureRandom.method(:alphanumeric).parameters.size` in Ruby 3.3+ because it is always 2 https://github.com/ruby/securerandom/pull/36\\\". Taking \\\"always\\\" literally, does the claim hold as written?\"\n    }\n  }\n}\n",
+        "trail": [
+          "rails/rails",
+          "dbafc460fa",
+          "jev payload",
+          "sha256:6ccdf01bc674…"
+        ],
+        "markers": [],
+        "lenses": [
+          {
+            "line": 1,
+            "title": "pinned before the call · not sent yet"
+          }
+        ],
+        "definitions": []
+      }
+    ],
+    "homeId": "commit://rails/dbafc460fa/COMMIT_EDITMSG",
+    "start": [
+      "rails/rails",
+      "dbafc460fa",
+      "COMMIT_EDITMSG"
+    ]
+  },
+  "elements": {},
+  "undrawn": []
+}

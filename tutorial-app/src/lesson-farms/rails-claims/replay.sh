@@ -2,12 +2,14 @@
 # CIT-397: replay the story as a user would, with playwright-cli, and keep the
 # trace as cases/<hash>/replay.trace. Replay.pkl reads the keyframes from it.
 #
-#   replay.sh <hash>      (Storybook serving on $STORYBOOK_URL, default :6006)
+#   replay.sh <hash> <story> <word> <phrase>
+#     e.g. replay.sh fddf74bea9 yjit-always-available always 'always available'
+#     (Storybook serving on $STORYBOOK_URL, default :6006)
 #
 # The story is opened with embed=true, so its play function does not run:
 # every step below is the user's, not the story's.
 set -euo pipefail
-hash=$1
+hash=$1 story=$2 word=$3 phrase=$4
 here=$(cd "$(dirname "$0")" && pwd)
 cli=${PLAYWRIGHT_CLI:-$here/../../../node_modules/.bin/playwright-cli}
 url=${STORYBOOK_URL:-http://127.0.0.1:6006}
@@ -23,15 +25,30 @@ echo '{"browser":{"browserName":"chromium","launchOptions":{"channel":"chromium"
 pw open
 pw tracing-start
 # 1. Open the story.
-pw goto "$url/iframe.html?id=investigations-rails-commit-claims--the-frame-the-evidence-supports&viewMode=story&embed=true"
+pw goto "$url/iframe.html?id=investigations-rails-commit-claims--$story&viewMode=story&embed=true"
 wait_for "getByRole('button', { name: /Jev/ }).first()"
 pw snapshot
-# 2. Point at a flagged word.
-pw hover "text=always available"
+# 2. Point at the flagged word, on the line the phrase picks out. A line is
+# one span, so hovering the phrase itself would land mid-line.
+pw run-code "async page => {
+  const line = page.locator('.view-line', { hasText: '$phrase' });
+  const position = await line.evaluate((el, word) => {
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n; (n = walk.nextNode());) {
+      const i = n.textContent.indexOf(word);
+      if (i < 0) continue;
+      const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + word.length);
+      const w = r.getBoundingClientRect(), l = el.getBoundingClientRect();
+      return { x: w.x - l.x + w.width / 2, y: w.y - l.y + w.height / 2 };
+    }
+    throw new Error('no ' + word + ' on the line');
+  }, '$word');
+  await line.hover({ position });
+}"
 wait_for "getByRole('tooltip')"
 pw snapshot
 # 3. Follow its Jev lens.
-pw click "getByRole('button', { name: /always · Jev/ })"
+pw click "getByRole('button', { name: /$word · Jev/ })"
 wait_for "getByText('pinned before the call')"
 pw snapshot
 # 4. Go back to the commit message.
