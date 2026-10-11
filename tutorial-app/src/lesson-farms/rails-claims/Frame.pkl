@@ -18,7 +18,8 @@
 /// named as a culprit is joined in only at the aggregate step, across cases.
 ///
 /// Evaluate with `pkl eval -f json -p hash=fddf74bea9 Frame.pkl`;
-/// `railsClaims.spec.ts` keeps `cases/<hash>/frame.json` current.
+/// `dagger call rails-claim --hash <hash>` (run-case.mjs) re-records
+/// `cases/<hash>/frame.json` and fails if it drifts.
 module Frame
 
 import "pkl:json"

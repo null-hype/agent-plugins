@@ -1,0 +1,46 @@
+{
+ "commit": {
+  "path": "rails/rails  ›  fddf74bea9  ›  COMMIT_EDITMSG",
+  "uri": "commit://rails/fddf74bea9/COMMIT_EDITMSG",
+  "text": "Remove unnecessary `defined?` check for RubyVM::YJIT.enable\n\nSince Rails main branch now requires Ruby 3.3.0,\n`RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\n\n```ruby\n$ ruby -ve 'p defined?(RubyVM::YJIT.enable)'\nruby 3.3.0 (2023-12-25 revision 5124f9ac75) [x86_64-linux]\n\"method\"\n```\n\nRefer to\nhttps://github.com/rails/rails/pull/56511\n\nhttps://www.ruby-lang.org/en/news/2023/12/25/ruby-3-3-0-released/\n> Add RubyVM::YJIT.enable that can enable YJIT at run-time\n",
+  "markers": [
+   {
+    "line": 1,
+    "column": 8,
+    "endColumn": 19,
+    "message": "Absolute claim: 'unnecessary'. Ask whether it holds. (Claims.Absolute)"
+   },
+   {
+    "line": 4,
+    "column": 26,
+    "endColumn": 32,
+    "message": "Absolute claim: 'always'. Ask whether it holds. (Claims.Absolute)"
+   },
+   {
+    "line": 4,
+    "column": 71,
+    "endColumn": 80,
+    "message": "Absolute claim: 'no longer'. Ask whether it holds. (Claims.Absolute)"
+   }
+  ],
+  "squiggles": 3,
+  "lenses": [
+   "unnecessary · Jev: no recording for sha256:09d0b6373e4b…",
+   "unnecessary · Peek: no snapshots",
+   "always · Jev: no recording for sha256:9baa2373dadb…",
+   "always · Peek: no snapshots",
+   "no longer · Jev: no recording for sha256:09cc00d29f16…",
+   "no longer · Peek: no snapshots"
+  ]
+ },
+ "payload": {
+  "path": "rails/rails  ›  fddf74bea9  ›  jev payload  ›  sha256:9baa2373dadb…",
+  "uri": "jev://payload/sha256:9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98",
+  "text": "{\n  \"state\": {\n    \"repo\": \"rails/rails\",\n    \"commit\": \"fddf74bea9\",\n    \"message\": \"Remove unnecessary `defined?` check for RubyVM::YJIT.enable\\n\\nSince Rails main branch now requires Ruby 3.3.0,\\n`RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\\n\\n```ruby\\n$ ruby -ve 'p defined?(RubyVM::YJIT.enable)'\\nruby 3.3.0 (2023-12-25 revision 5124f9ac75) [x86_64-linux]\\n\\\"method\\\"\\n```\\n\\nRefer to\\nhttps://github.com/rails/rails/pull/56511\\n\\nhttps://www.ruby-lang.org/en/news/2023/12/25/ruby-3-3-0-released/\\n> Add RubyVM::YJIT.enable that can enable YJIT at run-time\"\n  },\n  \"model\": \"jev-latest\",\n  \"questions\": {\n    \"claim\": {\n      \"type\": \"noul\",\n      \"instructions\": \"The author of this commit wrote: \\\"Since Rails main branch now requires Ruby 3.3.0, `RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\\\". Taking \\\"always\\\" literally, does the claim hold as written?\"\n    }\n  }\n}\n",
+  "markers": [],
+  "squiggles": 0,
+  "lenses": [
+   "pinned before the call · not sent yet"
+  ]
+ }
+}
