@@ -13,8 +13,12 @@ cli=${PLAYWRIGHT_CLI:-$here/../../../node_modules/.bin/playwright-cli}
 url=${STORYBOOK_URL:-http://127.0.0.1:6006}
 work=$(mktemp -d)
 cd "$work"
-pw() { "$cli" -s="replay-$hash" "$@" >/dev/null; }
+# Quiet unless a command fails; playwright-cli reports errors on stdout.
+pw() { local out; out=$("$cli" -s="replay-$hash" "$@" 2>&1) || { echo "playwright-cli $1: $out" >&2; return 1; }; }
 wait_for() { pw run-code "async page => { await page.$1.waitFor(); }"; }
+# Chromium, not playwright-cli's default Chrome channel (none on linux/arm64).
+mkdir .playwright
+echo '{"browser":{"browserName":"chromium","launchOptions":{"channel":"chromium"}}}' > .playwright/cli.config.json
 
 pw open
 pw tracing-start

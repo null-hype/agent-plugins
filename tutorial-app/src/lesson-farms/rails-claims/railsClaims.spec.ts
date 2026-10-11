@@ -2,10 +2,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
 
-// CIT-395: every value the story shows comes from frame.json. Re-recording the
-// evidence (Vale, Frame.pkl, the browser) and running the case's facts is the
-// Dagger check (`dagger call rails-claim --hash <hash> check`, CIT-397), not
-// this spec.
+// CIT-395: every value the story shows comes from frame.json. The case's
+// facts run in the Dagger check (`dagger check check-rails-claims`, CIT-397),
+// not this spec.
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
