@@ -32,7 +32,7 @@ wait_for "getByRole('tooltip')"
 pw snapshot
 # 3. Follow its Jev lens.
 pw click "getByRole('button', { name: /always · Jev/ })"
-wait_for "getByText('not sent yet')"
+wait_for "getByText('pinned before the call')"
 pw snapshot
 # 4. Go back to the commit message.
 pw click "getByRole('button', { name: '↑ COMMIT_EDITMSG' })"

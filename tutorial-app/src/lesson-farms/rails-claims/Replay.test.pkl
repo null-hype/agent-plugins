@@ -17,7 +17,9 @@ local alerts = load("vale.json")
 local recordings = load("recordings.json")
 local frame = parser.parse(read(dir + "frame.json").text) as Dynamic
 local lensTitles = (frame.model.documents[0].lenses as Listing).toList().map((l) -> l.title)
-local always = (frame.claims as Listing).toList().find((c) -> c.word == "always")
+local claims = (frame.claims as Listing).toList()
+local always = claims.find((c) -> c.word == "always")
+local function recorded(c) = recordings.any((r) -> r.digest == c.digest)
 
 local k = Replay.keyframes
 local function texts(n: Int) = k[n].elements.map((e) -> e.text)
@@ -37,15 +39,25 @@ facts {
     let (vale = alerts.find((a) -> a.Match == "always"))
       k[1].elements.any((e) -> e.role == "tooltip" && e.text.startsWith(vale.Message))
   }
-  ["the Jev lens opens the payload its digest names, not yet sent"] {
+  ["the Jev lens opens the payload its digest names"] {
     texts(2).contains("rails/rails › \(Replay.hash) › jev payload › \(always.digest.take(19))…")
     texts(2).contains(#""type": "noul","#)
-    texts(2).contains("pinned before the call · not sent yet")
+    texts(2).contains("pinned before the call · " + if (recorded(always)) "recorded" else "not sent yet")
+  }
+  ["Jev was sent exactly the payload each claim pinned"] {
+    recordings.map((r) -> r.digest).toSet() == claims.map((c) -> c.digest).toSet()
+    recordings.every((r) -> r.request == claims.find((c) -> c.digest == r.digest).payload)
+  }
+  ["each Jev lens shows the score recorded for its payload"] {
+    recordings.every((r) ->
+      let (c = claims.find((c) -> c.digest == r.digest))
+        texts(0).any((t) -> t.startsWith("\(c.word) · Jev \(r.score) ")))
   }
   ["going back shows the message again, as it was"] {
     texts(3) == texts(0)
   }
-  ["no score is shown without a recording"] {
-    recordings.isEmpty.implies(!k.any((f) -> f.elements.any((e) -> e.text.matches(Regex(#".*Jev \d.*"#)))))
+  ["no score is shown that Jev did not give"] {
+    k.every((f) -> f.elements.every((e) ->
+      !e.text.matches(Regex(#".*Jev \d.*"#)) || recordings.any((r) -> e.text.contains("Jev \(r.score) "))))
   }
 }
