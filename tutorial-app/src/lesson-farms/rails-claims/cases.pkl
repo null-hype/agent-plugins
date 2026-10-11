@@ -1,9 +1,8 @@
-/// CIT-397: the cases, one Rails commit each, by full sha (git fetches a
-/// single commit only by its full sha). Adding a case is adding a line (and
-/// its `cases/<first 10 of the sha>/` directory). `CheckRailsClaims` runs one
-/// case per line; a control commit is a case like any other.
+/// CIT-397: the cases, one Rails commit each, by its `cases/<hash>/`
+/// directory. Adding a case is adding a line. `CheckRailsClaims` replays
+/// each one; a control commit is a case like any other.
 module cases
 
 cases: List<String> = List(
-  "fddf74bea91fb3f6f47551bb13eb0ca4e594288f"
+  "fddf74bea9"
 )
