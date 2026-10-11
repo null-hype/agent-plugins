@@ -17,8 +17,8 @@
 /// The case never reads its outcome. Whether the commit was later reverted or
 /// named as a culprit is joined in only at the aggregate step, across cases.
 ///
-/// Evaluate with `pkl eval -f json -p hash=fddf74bea9 Frame.pkl`;
-/// `railsClaims.spec.ts` keeps `cases/<hash>/frame.json` current.
+/// Evaluate with
+/// `pkl eval -f json -p hash=fddf74bea9 Frame.pkl > cases/fddf74bea9/frame.json`.
 module Frame
 
 import "pkl:json"
