@@ -7,12 +7,12 @@ package main
 // replay.sh steps through the case's story as a user with playwright-cli and
 // keeps the trace; Replay.test.pkl reads the keyframes from that trace and
 // checks them against the case's evidence.
-// The cases are listed in tutorial-app/src/lesson-farms/rails-claims/cases.pkl.
+// Each case is a check named like its story, e.g. `dagger check
+// yjit-always-available` replays story yjit-always-available.
 
 import (
 	"context"
 	"dagger/agent-plugins/internal/dagger"
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -34,7 +34,7 @@ const (
 func railsClaimsRecordings(ctx context.Context, source *dagger.Directory, hash string, typesafeApiKey *dagger.Secret) (*dagger.File, error) {
 	claims := "tutorial-app/src/lesson-farms/rails-claims/"
 	read := []string{"src/jev/jev", "src/jev/jev_pkl.py", "src/jev/pkl/Jev.pkl", claims + "Frame.pkl", claims + "Payloads.pkl", claims + "ask.sh"}
-	for _, f := range []string{"commit.txt", "vale.json", "recordings.json", "snapshots.json", "sketch.json"} {
+	for _, f := range []string{"commit.txt", "vale.json", "recordings.json", "snapshots.json"} {
 		read = append(read, claims+"cases/"+hash+"/"+f)
 	}
 	c := pkl(dag.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).From(jevClientImage), railsClaimsPklVersion).
@@ -83,25 +83,21 @@ func railsClaimsApp(ctx context.Context, source *dagger.Directory) (*dagger.Cont
 		WithDirectory("/workspace/jev-playwright", source.Directory("jev-playwright"), dagger.ContainerWithDirectoryOpts{Include: []string{"package.json", "*.mjs", "*.ts", "*.pcf", "pkl/**", "fixtures/**"}}), nil
 }
 
-// RailsClaim asks Jev each of one case's claims, replays the case's story as a
-// user and runs Replay.test.pkl on the trace. It fails when a step fails or a
-// fact does not hold.
-func (m *AgentPlugins) RailsClaim(
-	ctx context.Context,
-	// +defaultPath="/"
-	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git", "**/replay.trace"]
-	source *dagger.Directory,
-	// The case, its directory under cases/ (as listed in cases.pkl).
-	hash string,
-	typesafeApiKey *dagger.Secret,
-) (string, error) {
+// railsClaim asks Jev each of one case's claims, replays the case's story as
+// a user, following the lens on word from the phrase it flags, and runs
+// Replay.test.pkl on the trace. It fails when a step fails or a fact does not
+// hold.
+func railsClaim(ctx context.Context, source *dagger.Directory, typesafeApiKey *dagger.Secret, hash, story, word, phrase string) error {
+	if typesafeApiKey == nil {
+		return fmt.Errorf("TYPESAFE_API_KEY is needed: run under pass-cli run --env-file .env")
+	}
 	app, err := railsClaimsApp(ctx, source)
 	if err != nil {
-		return "", err
+		return err
 	}
 	recordings, err := railsClaimsRecordings(ctx, source, hash, typesafeApiKey)
 	if err != nil {
-		return "", err
+		return err
 	}
 	case_ := "cases/" + hash + "/"
 	app = app.WithWorkdir(railsClaimsDir).
@@ -111,43 +107,42 @@ func (m *AgentPlugins) RailsClaim(
 		// 0.0.0.0 with no allowedHosts: Storybook accepts the service hostname.
 		Args: []string{"npx", "storybook", "dev", "-p", "6006", "--host", "0.0.0.0", "--no-open", "--ci"},
 	})
-	return app.
+	_, err = app.
 		WithServiceBinding("storybook", storybook).
 		WithEnvVariable("STORYBOOK_URL", "http://storybook:6006").
-		WithExec([]string{"./replay.sh", hash}).
-		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "Replay.test.pkl"}).
-		Stdout(ctx)
+		WithExec([]string{"./replay.sh", hash, story, word, phrase}).
+		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "-p", "word=" + word, "Replay.test.pkl"}).
+		Sync(ctx)
+	return err
 }
 
-// CheckRailsClaims: every case in cases.pkl, replayed, shows the user its frame.
+// YjitAlwaysAvailable: rails fddf74bea9, "`RubyVM::YJIT.enable` is always
+// available", reverted the next day. Story yjit-always-available.
 // +check
-func (m *AgentPlugins) CheckRailsClaims(
+func (m *AgentPlugins) YjitAlwaysAvailable(
 	ctx context.Context,
 	// +defaultPath="/"
 	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git", "**/replay.trace"]
 	source *dagger.Directory,
-	// Defaults to env://TYPESAFE_API_KEY through .env; there is no run without it.
+	// Defaults to env://TYPESAFE_API_KEY through .env.
 	// +optional
 	typesafeApiKey *dagger.Secret,
 ) error {
-	if typesafeApiKey == nil {
-		return fmt.Errorf("TYPESAFE_API_KEY is needed: run under pass-cli run --env-file .env")
-	}
-	listed, err := pkl(dag.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).From(nodeImage), railsClaimsPklVersion).
-		WithFile("/cases.pkl", source.File("tutorial-app/src/lesson-farms/rails-claims/cases.pkl")).
-		WithExec([]string{"pkl", "eval", "-x", "new JsonRenderer {}.renderValue(cases)", "/cases.pkl"}).
-		Stdout(ctx)
-	if err != nil {
-		return err
-	}
-	var cases []string
-	if err := json.Unmarshal([]byte(listed), &cases); err != nil {
-		return fmt.Errorf("cases.pkl: %w", err)
-	}
-	for _, hash := range cases {
-		if _, err := m.RailsClaim(ctx, source, hash, typesafeApiKey); err != nil {
-			return fmt.Errorf("case %s: %w", hash, err)
-		}
-	}
-	return nil
+	return railsClaim(ctx, source, typesafeApiKey, "fddf74bea9", "yjit-always-available", "always", "always available")
+}
+
+// SecurerandomAlwaysTwo, the control: rails dbafc460fa, same author, day and
+// argument, "because it is always 2", never reverted. Story
+// securerandom-always-two.
+// +check
+func (m *AgentPlugins) SecurerandomAlwaysTwo(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git", "**/replay.trace"]
+	source *dagger.Directory,
+	// Defaults to env://TYPESAFE_API_KEY through .env.
+	// +optional
+	typesafeApiKey *dagger.Secret,
+) error {
+	return railsClaim(ctx, source, typesafeApiKey, "dbafc460fa", "securerandom-always-two", "always", "always 2")
 }

@@ -33,7 +33,10 @@ local lines = message.split("\n")
 local alerts = (parser.parse(read(dir + "vale.json").text) as Listing).toList()
 local recordings = (parser.parse(read(dir + "recordings.json").text) as Listing).toList()
 local snapshots = (parser.parse(read(dir + "snapshots.json").text) as Listing).toList()
-local sketch = (parser.parse(read(dir + "sketch.json").text) as Listing).toList()
+// Only fddf74bea9 has a hand-drawn sketch; for any other case there is
+// nothing to mark.
+local sketchFile = read?(dir + "sketch.json")
+local sketch = if (sketchFile == null) List() else (parser.parse(sketchFile.text) as Listing).toList()
 
 /// The sentence a flagged line belongs to: its paragraph, re-joined. The
 /// question is asked of the author's own words, not a rewrite of them.
@@ -41,7 +44,7 @@ local function sentenceAt(n: Int): String =
   let (i = n - 1)
   let (start = (lines.take(i).findLastIndexOrNull((l) -> l.trim().isEmpty) ?? -1) + 1)
   let (end = i + (lines.drop(i).findIndexOrNull((l) -> l.trim().isEmpty) ?? (lines.length - i)))
-    lines.sublist(start, end).join(" ")
+    lines.sublist(start, end).map((l) -> l.trim()).join(" ")
 
 /// One claim question per Vale alert, as the Jev payload that would be sent.
 /// Its digest is computed here, before any call, so a recording can only be
@@ -160,7 +163,7 @@ class Element {
   evidence: String
 }
 
-elements: Mapping<String, Element> = new {
+elements: Mapping<String, Element> = if (sketch.isEmpty) new {} else new {
   ["l1"] {
     claim = "the subject line is the author's"
     status = if (texts["l1"] == lines[0]) "proven" else "contradicted"
@@ -211,7 +214,7 @@ elements: Mapping<String, Element> = new {
 }
 
 /// What the evidence shows that the sketch does not draw.
-undrawn: List<String> = claims
+undrawn: List<String> = if (sketch.isEmpty) List() else claims
   .filter((c) -> !drawnWords.contains(c.word))
   .map((c) -> "Vale also flags \"\(c.word)\" on line \(c.line)") +
   (if (claims.filter((c) -> drawnWords.contains(c.word)).map((c) -> c.line).toSet().length == 1)
