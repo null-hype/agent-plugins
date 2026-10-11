@@ -6,6 +6,7 @@ import {
   type DocumentRange,
   type Investigation,
   type InvestigationDocument,
+  type InvestigationModel,
   type Severity,
 } from '../lib/investigationModel';
 
@@ -54,14 +55,19 @@ const STYLE = `
 .investigation-path button { font: inherit; padding: 0 6px; }
 `;
 
-export default function InvestigationVault({ investigation, height = 420 }: { investigation: Investigation; height?: number }) {
+// CIT-395: a caller with a model computed elsewhere (Frame.pkl's `model`, for
+// a Rails commit) passes it as `model` in place of an `investigation`.
+type Props = { height?: number } & ({ investigation: Investigation; model?: never } | { model: InvestigationModel; investigation?: never });
+
+export default function InvestigationVault({ investigation, model: given, height = 420 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const back = useRef<() => void>(() => {});
-  const start = investigation.drive ? ['Proton Drive', investigation.drive.folder] : [investigation.vault];
+  const start = given?.start ?? (investigation!.drive ? ['Proton Drive', investigation!.drive.folder] : [investigation!.vault]);
+  const home = given ? start[start.length - 1] : investigation!.drive ? 'Drive' : 'vault';
   const [path, setPath] = useState<string[]>(start);
 
   useEffect(() => {
-    const model = buildInvestigationModel(investigation);
+    const model = given ?? buildInvestigationModel(investigation!);
     const disposables: monaco.IDisposable[] = [];
     const models: monaco.editor.ITextModel[] = [];
 
@@ -174,13 +180,13 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       editor.dispose();
       models.forEach((m) => m.dispose());
     };
-  }, [investigation]);
+  }, [investigation, given]);
 
   return (
     <div style={{ border: '1px solid #ccc' }}>
       <style>{STYLE}</style>
       <div className="investigation-path" data-testid="investigation-path">
-        {path.length > start.length && <button type="button" onClick={() => back.current()}>↑ {investigation.drive ? 'Drive' : 'vault'}</button>}
+        {path.length > start.length && <button type="button" onClick={() => back.current()}>↑ {home}</button>}
         <span>{path.join('  ›  ')}</span>
       </div>
       <div ref={host} data-testid="investigation-vault" style={{ height }} />
