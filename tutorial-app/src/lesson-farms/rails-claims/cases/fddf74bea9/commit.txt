@@ -1,0 +1,16 @@
+Remove unnecessary `defined?` check for RubyVM::YJIT.enable
+
+Since Rails main branch now requires Ruby 3.3.0,
+`RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.
+
+```ruby
+$ ruby -ve 'p defined?(RubyVM::YJIT.enable)'
+ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [x86_64-linux]
+"method"
+```
+
+Refer to
+https://github.com/rails/rails/pull/56511
+
+https://www.ruby-lang.org/en/news/2023/12/25/ruby-3-3-0-released/
+> Add RubyVM::YJIT.enable that can enable YJIT at run-time

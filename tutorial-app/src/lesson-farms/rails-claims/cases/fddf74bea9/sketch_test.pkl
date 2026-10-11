@@ -1,0 +1,35 @@
+/// CIT-395's acceptance check, verbatim from the issue comment "Acceptance
+/// check files". Before the run: 3 facts pass, 2 fail (recording, peek states).
+amends "pkl:test"
+import "pkl:json"
+
+local parser = new json.Parser {}
+local elements = (parser.parse(read("sketch.json").text) as Listing).toList()
+local texts = elements
+  .filter((e) -> e.getPropertyOrNull("type") == "text")
+  .toMap((e) -> e.id, (e) -> e.text)
+local ids = elements.map((e) -> e.getPropertyOrNull("id")).filterNonNull()
+local commit = read("commit.txt").text.split("\n")
+local recordings = (parser.parse(read("recordings.json").text) as Listing).toList()
+local snapshots = (parser.parse(read("snapshots.json").text) as Listing).toList()
+
+facts {
+  ["subject line is the real commit subject"] {
+    texts["l1"] == commit[0]
+  }
+  ["highlighted lines are the real sentence"] {
+    List(texts["l3"], texts["l4"], texts["l5"]).join(" ") == List(commit[2], commit[3]).join(" ")
+  }
+  ["every highlight sits on a line containing the flagged word"] {
+    ids.contains("h4") && texts["l4"].contains("always")
+    ids.contains("h5") && texts["l5"].contains("no longer")
+  }
+  ["the score has a recording for its payload digest"] {
+    texts["p4"].startsWith("Jev ")
+    recordings.any((r) -> r.digest.startsWith("9f2c"))
+  }
+  ["both peek states exist as snapshots"] {
+    ids.contains("by") && snapshots.any((s) -> s.branch == "yes")
+    ids.contains("bn") && snapshots.any((s) -> s.branch == "no")
+  }
+}

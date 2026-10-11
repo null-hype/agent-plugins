@@ -1,0 +1,12 @@
+extends: existence
+message: "Absolute claim: '%s'. Ask whether it holds."
+level: warning
+ignorecase: true
+tokens:
+  - always
+  - never
+  - unnecessary
+  - no longer
+  - unaffected
+  - every
+  - guaranteed
