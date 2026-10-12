@@ -504,6 +504,19 @@ func withPlaywright(c *dagger.Container) *dagger.Container {
 		WithExec([]string{"chmod", "-R", "a+rX", "/opt/ms-playwright"})
 }
 
+// pklVersion pins the Pkl CLI, matching railsProbesPklVersion in the root
+// .dagger module: tutorial-app's replay:generate shells out to pkl before
+// Storybook starts, so a container-use env without it can't serve a story.
+const pklVersion = "0.32.1"
+
+// withPkl installs the Pkl CLI onto c, for whichever arch c runs.
+func withPkl(c *dagger.Container) *dagger.Container {
+	return withAptPackages(c, "curl", "ca-certificates").
+		WithExec([]string{"sh", "-c", "arch=$(uname -m | sed 's/x86_64/amd64/') && " +
+			"curl -fsSL -o /usr/local/bin/pkl https://github.com/apple/pkl/releases/download/" + pklVersion + "/pkl-linux-$arch && " +
+			"chmod 0755 /usr/local/bin/pkl"})
+}
+
 // Playwright is the slim second image: the Playwright CLI with Chromium, plus
 // pass-cli and restic, and none of the rest of the chain (tailscale, docker,
 // gcloud, devpod) that a browser-automation box has no use for. It branches
@@ -517,7 +530,7 @@ func (m *DevenvBase) Playwright(
 }
 
 // PlaywrightAgent is the fourth published image: git, gh, Playwright with
-// Chromium, pass-cli and the Claude Code CLI -- the container-use env base
+// Chromium, pkl, pass-cli and the Claude Code CLI -- the container-use env base
 // for agent work that needs to drive a browser and open a PR. Playwright
 // (above) stays as the plain browser image for non-agent use; this is
 // additive, not a replacement.
@@ -532,10 +545,10 @@ func (m *DevenvBase) PlaywrightAgent(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withClaude(withPlaywright(withGh(withGit(withPassCli(m.Base(platform))))))
+	return withClaude(withPkl(withPlaywright(withGh(withGit(withPassCli(m.Base(platform)))))))
 }
 
-// CheckPlaywrightAgent asserts git, gh and claude are installed and runnable,
+// CheckPlaywrightAgent asserts git, gh, pkl and claude are installed and runnable,
 // and that the image can actually drive a browser -- as a non-root user, the
 // same reachability trap withClaude and withContainerUse both hit.
 // +check
@@ -547,6 +560,7 @@ func (m *DevenvBase) CheckPlaywrightAgent(ctx context.Context) error {
 	if err := runToolChecks(ctx, base, []toolCheck{
 		{"git", "--version", "git version"},
 		{"gh", "--version", "gh version"},
+		{"pkl", "--version", "Pkl " + pklVersion},
 	}); err != nil {
 		return err
 	}

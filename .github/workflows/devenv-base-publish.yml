@@ -21,7 +21,7 @@ jobs:
 
       # main.go/checks.go/dagger.json/go.{mod,sum} feed every image (they
       # hold the shared Base/PassCli/.../Devpod chain everything else layers
-      # onto), so a change there re-publishes all five. keepalive/** and
+      # onto), so a change there re-publishes all six. keepalive/** and
       # linear-agent/** only feed their own image on top of that chain.
       - uses: dorny/paths-filter@v3
         id: filter
@@ -44,7 +44,7 @@ jobs:
       - id: set
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ steps.filter.outputs.common }}" = "true" ]; then
-            targets='["publish","publish-playwright","publish-agent","publish-keepalive","publish-linear-agent"]'
+            targets='["publish","publish-playwright","publish-agent","publish-playwright-agent","publish-keepalive","publish-linear-agent"]'
           else
             targets=$(jq -nc \
               --argjson keepalive '${{ steps.filter.outputs.keepalive == 'true' }}' \
