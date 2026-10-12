@@ -1,0 +1,13 @@
+{
+    "name": "Rails cases",
+    "id": "rails-cases",
+    "version": "0.1.0",
+    "description": "Installs replay.sh, which replays one rails-claims story as a user with Playwright Test, against a live Storybook or a HAR.",
+    "containerEnv": {
+        "RAILS_CASES_HOME": "/usr/local/share/rails-cases"
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils",
+        "ghcr.io/devcontainers/features/node"
+    ]
+}
