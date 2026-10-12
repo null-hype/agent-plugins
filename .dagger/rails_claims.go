@@ -131,6 +131,41 @@ func (m *AgentPlugins) YjitAlwaysAvailable(
 	return railsClaim(ctx, source, typesafeApiKey, "fddf74bea9", "yjit-always-available", "always", "always available")
 }
 
+// CIT-401: a case replayed with the rails-cases feature. Jev is asked and the
+// frame rendered as above; Storybook is built and served statically, and the
+// feature's replay.sh steps through the one story, recording what it loaded
+// into /replay/replay.har. The feature's scenario replays from that HAR.
+func railsCase(ctx context.Context, source *dagger.Directory, typesafeApiKey *dagger.Secret, hash, story, word, phrase string) (*dagger.Container, error) {
+	if typesafeApiKey == nil {
+		return nil, fmt.Errorf("TYPESAFE_API_KEY is needed: run under pass-cli run --env-file .env")
+	}
+	app, err := railsClaimsApp(ctx, source)
+	if err != nil {
+		return nil, err
+	}
+	recordings, err := railsClaimsRecordings(ctx, source, hash, typesafeApiKey)
+	if err != nil {
+		return nil, err
+	}
+	case_ := "cases/" + hash + "/"
+	storybook := app.WithWorkdir(railsClaimsDir).
+		WithFile(case_+"recordings.json", recordings).
+		WithExec([]string{"pkl", "eval", "-f", "json", "-p", "hash=" + hash, "-o", case_ + "frame.json", "Frame.pkl"}).
+		WithWorkdir("/workspace/tutorial-app").
+		WithExec([]string{"npx", "storybook", "build", "-o", "/storybook"}).
+		WithExposedPort(6006).
+		AsService(dagger.ContainerAsServiceOpts{Args: []string{"npx", "--yes", "http-server@14.1.1", "/storybook", "-p", "6006", "-s"}})
+	return dag.Container().From(railsClaimsImage).
+		WithDirectory("/tmp/rails-cases", source.Directory("src/rails-cases")).
+		WithWorkdir("/tmp/rails-cases").
+		WithExec([]string{"./install.sh"}).
+		WithEnvVariable("RAILS_CASES_HOME", "/usr/local/share/rails-cases").
+		WithServiceBinding("storybook", storybook).
+		WithEnvVariable("STORYBOOK_URL", "http://storybook:6006").
+		WithWorkdir("/replay").
+		WithExec([]string{"/usr/local/share/rails-cases/replay.sh", "replay.har", story, word, phrase}), nil
+}
+
 // SecurerandomAlwaysTwo, the control: rails dbafc460fa, same author, day and
 // argument, "because it is always 2", never reverted. Story
 // securerandom-always-two.
@@ -144,5 +179,28 @@ func (m *AgentPlugins) SecurerandomAlwaysTwo(
 	// +optional
 	typesafeApiKey *dagger.Secret,
 ) error {
-	return railsClaim(ctx, source, typesafeApiKey, "dbafc460fa", "securerandom-always-two", "always", "always 2")
+	c, err := railsCase(ctx, source, typesafeApiKey, "dbafc460fa", "securerandom-always-two", "always", "always 2")
+	if err != nil {
+		return err
+	}
+	_, err = c.Sync(ctx)
+	return err
+}
+
+// SecurerandomAlwaysTwoHar is what the SecurerandomAlwaysTwo replay loaded,
+// for the rails-cases scenario to replay from.
+func (m *AgentPlugins) SecurerandomAlwaysTwoHar(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git", "**/replay.trace"]
+	source *dagger.Directory,
+	// Defaults to env://TYPESAFE_API_KEY through .env.
+	// +optional
+	typesafeApiKey *dagger.Secret,
+) (*dagger.Directory, error) {
+	c, err := railsCase(ctx, source, typesafeApiKey, "dbafc460fa", "securerandom-always-two", "always", "always 2")
+	if err != nil {
+		return nil, err
+	}
+	return c.Directory("/replay"), nil
 }
