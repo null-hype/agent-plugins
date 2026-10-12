@@ -1,0 +1,8 @@
+{
+    "securerandom-always-two": {
+        "image": "mcr.microsoft.com/playwright:v1.59.1-noble",
+        "features": {
+            "rails-cases": {}
+        }
+    }
+}
