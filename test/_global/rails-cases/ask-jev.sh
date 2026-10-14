@@ -4,10 +4,11 @@
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 case_=${RAILS_CASE:?} hash=${RAILS_CASE_HASH:?}
-evidence=/tmp/rails-cases/$case_
+evidence="$here/../rails-cases-captures/$case_"
+[ ! -e "$evidence" ] || { echo "capture already exists: $evidence" >&2; exit 1; }
 : "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:?The global capture requires a Proton Pass token}"
 export PROTON_PASS_KEY_PROVIDER=fs PROTON_PASS_SESSION_DIR=/tmp/pass-agent-rails-cases
-export PROTON_PASS_AGENT_REASON="rails-cases $case_: capture and select Jev evidence"
+export PROTON_PASS_AGENT_REASON="rails-cases $case_: capture candidate Jev evidence"
 pass-cli login
 work=$(mktemp -d)
 trap 'rm -rf "$work"; pass-cli logout >/dev/null 2>&1 || true' EXIT
@@ -28,17 +29,5 @@ for out in "$evidence"/jev/*/; do
         '{digest: $digest, score: $answer[0].probabilities.claim, request: $request[0]}'
 done | jq -s . > "$evidence/recordings.json"
 jq -e 'length > 0 and all(.score | type == "number" and . >= 0 and . <= 1)' "$evidence/recordings.json" >/dev/null
-pass-cli run --env-file "$here/.env" -- bash -euo pipefail -c '
-    export GOOGLE_APPLICATION_CREDENTIALS=$3/gcp-service-account.json
-    (umask 077; printf %s "$GCP_SERVICE_ACCOUNT_KEY" > "$GOOGLE_APPLICATION_CREDENTIALS")
-    restic backup "$1" --tag "$2" --json
-' bash "$evidence" "$case_" "$work" > "$work/backup.json"
-snapshot=$(jq -ers 'map(select(.message_type=="summary")) | .[-1].snapshot_id | select(type == "string" and length > 0)' "$work/backup.json")
-selected="$here/../rails-cases-captures/$case_"
-pass-cli run --env-file "$here/.env" -- "$RAILS_CASES_HOME/refresh.sh" "$case_" "$snapshot" "$selected"
-printf '[]\n' > "$selected/snapshots.json"
-pkl test -p hash="$hash" -p case="$selected" "$here/Recordings.test.pkl"
-# Selecting the same snapshot twice must produce identical bytes.
-pass-cli run --env-file "$here/.env" -- "$RAILS_CASES_HOME/refresh.sh" "$case_" "$snapshot" "$work/again"
-for file in commit.txt vale.json recordings.json; do cmp "$selected/$file" "$work/again/$file"; done
-printf '%s: selected snapshot %s\n' "$case_" "$snapshot"
+pkl test -p hash="$hash" -p case="$evidence" "$here/Recordings.test.pkl"
+printf "%s: candidate evidence in %s; review before committing local fixtures\n" "$case_" "$evidence"

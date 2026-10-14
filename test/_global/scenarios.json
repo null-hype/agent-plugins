@@ -123,7 +123,9 @@
             "rails-cases": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "RAILS_CASE": "yjit-always-available",
+            "RAILS_CASE_HASH": "fddf74bea9"
         }
     },
     "securerandom-always-two": {
@@ -134,7 +136,9 @@
             "rails-cases": {}
         },
         "containerEnv": {
-            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
+            "RAILS_CASE": "securerandom-always-two",
+            "RAILS_CASE_HASH": "dbafc460fa"
         }
     },
     "rails-experiment": {

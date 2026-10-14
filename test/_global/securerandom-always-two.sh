@@ -1,4 +1,3 @@
 #!/bin/bash
-# CIT-404: the global run for case securerandom-always-two (rails dbafc460fa); see rails-cases/ask-jev.sh.
-export RAILS_CASE=securerandom-always-two RAILS_CASE_HASH=dbafc460fa
+set -euo pipefail
 source "$(dirname "$0")/rails-cases/ask-jev.sh"
