@@ -2,7 +2,7 @@
     "name": "Rails cases",
     "id": "rails-cases",
     "version": "0.2.0",
-    "description": "Installs the Pkl modules that read a rails-claims case's fixtures, and replay.sh, which replays one case's story as a user with Playwright Test, against a live Storybook or a HAR.",
+    "description": "Installs the Rails Pkl experiment ontology, proposer/challenger review command, and case replay against a live Storybook or HAR.",
     "containerEnv": {
         "RAILS_CASES_HOME": "/usr/local/share/rails-cases"
     },
