@@ -1,0 +1,31 @@
+amends "pkl:test"
+import "pkl:json"
+local parser = new json.Parser {}
+local runs = read("prop:runs")
+local function load(case: String, name: String) = parser.parse(read(runs + "/" + case + "/" + name + ".json").text)
+facts {
+  ["neither agent accepts the proposal"] {
+    for (case in List("control", "counterexample")) {
+      load(case, "review").decision == "pending-human-review"
+      load(case, "proposal").expected
+      load(case, "challenge").probe == "all-runtimes"
+    }
+  }
+  ["the counterexample produces a reviewable expected-file diff"] {
+    read(runs + "/counterexample/expected.patch").text.contains("-    false")
+    read(runs + "/counterexample/expected.patch").text.contains("+    true")
+    load("control", "review").baseline_sha256 == read("control-expected.pcf").text.sha256
+    load("counterexample", "review").baseline_sha256 == read("counterexample-expected.pcf").text.sha256
+  }
+}
+examples {
+  ["accepted and proposed checks distinguish control from counterexample"] {
+    for (case in List("control", "counterexample")) {
+      new Dynamic {
+        id = case
+        accepted = load(case, "review").checks.accepted
+        proposed = load(case, "review").checks.candidate
+      }
+    }
+  }
+}

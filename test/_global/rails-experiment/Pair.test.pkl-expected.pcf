@@ -1,0 +1,14 @@
+examples {
+  ["accepted and proposed checks distinguish control from counterexample"] {
+    new {
+      id = "control"
+      accepted = 0
+      proposed = 0
+    }
+    new {
+      id = "counterexample"
+      accepted = 0
+      proposed = 1
+    }
+  }
+}
