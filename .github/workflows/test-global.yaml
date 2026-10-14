@@ -139,7 +139,7 @@ jobs:
           path: /tmp/rails-experiment-image.tar.gz
           compression-level: 0
 
-      - name: "Upload selected rails-case captures"
+      - name: "Upload candidate rails-case evidence"
         if: always()
         uses: actions/upload-artifact@v4
         with:

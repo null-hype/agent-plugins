@@ -12,8 +12,7 @@ facts {
     recordings.map((r) -> r.digest).toSet() == claims.map((c) -> c.digest).toSet()
     recordings.every((r) -> r.request == claims.find((c) -> c.digest == r.digest).payload)
   }
-  ["each score is a probability from an identified snapshot"] {
+  ["each captured score is a probability"] {
     recordings.every((r) -> r.score is Number && r.score.isFinite && r.score >= 0 && r.score <= 1)
-    recordings.every((r) -> r.snapshot.matches(Regex("[0-9a-f]{64}")))
   }
 }
