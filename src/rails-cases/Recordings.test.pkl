@@ -1,0 +1,17 @@
+/// A selected capture must answer exactly the current pinned requests.
+amends "pkl:test"
+import "pkl:json"
+import "Frame.pkl"
+local recordings = (new json.Parser {}.parse(read(read("prop:case") + "/recordings.json").text) as Listing).toList()
+facts {
+  ["Jev was sent exactly the payload each claim pinned"] {
+    !Frame.claims.isEmpty
+    recordings.length == Frame.claims.length
+    recordings.map((r) -> r.digest).toSet() == Frame.claims.map((c) -> c.digest).toSet()
+    recordings.every((r) -> r.request == Frame.claims.find((c) -> c.digest == r.digest).payload)
+  }
+  ["each score is a probability from an identified snapshot"] {
+    recordings.every((r) -> r.score is Number && r.score.isFinite && r.score >= 0 && r.score <= 1)
+    recordings.every((r) -> r.snapshot.matches(Regex("[0-9a-f]{64}")))
+  }
+}

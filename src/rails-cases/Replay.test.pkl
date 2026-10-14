@@ -1,0 +1,61 @@
+/// CIT-397: the replay's keyframes against the case's evidence. A pass says
+/// the user was shown the frame, step by step; it says nothing about whether
+/// any claim holds.
+///
+///   pkl test -p hash=fddf74bea9 -p case=<fixtures> -p word=always Replay.test.pkl
+amends "pkl:test"
+
+import "pkl:json"
+import "Replay.pkl"
+import "Frame.pkl"
+
+local dir = read("prop:case") + "/"
+local parser = new json.Parser {}
+local function load(file: String) = (parser.parse(read(dir + file).text) as Listing).toList()
+
+// An aria snapshot drops a line's indentation, so the message is compared trimmed.
+local commit = read(dir + "commit.txt").text.trimEnd().split("\n").map((l) -> l.trim()).filter((l) -> !l.isEmpty)
+local alerts = load("vale.json")
+local recordings = load("recordings.json")
+local lensTitles = Frame.model.documents[0].lenses.map((l) -> l.title)
+local claims = Frame.claims
+local word = read("prop:word")
+local followed = claims.find((c) -> c.word == word)
+local function recorded(c) = recordings.any((r) -> r.digest == c.digest)
+
+local k = Replay.keyframes
+local function texts(n: Int) = k[n].elements.map((e) -> e.text)
+
+facts {
+  ["the user did four things, and the story's play function none"] {
+    k.map((f) -> f.action.split(" ").first) == List("goto", "hover", "click", "click")
+    k[0].action.contains("embed=true")
+  }
+  ["opening the story shows the author's message, line by line"] {
+    texts(0).filter((t) -> commit.contains(t)) == commit
+  }
+  ["each claim shows the lenses the frame computed, and no others"] {
+    texts(0).filter((t) -> t.contains(" · ")).toSet() == lensTitles.toSet()
+  }
+  ["pointing at a flagged word shows Vale's message for it"] {
+    let (vale = alerts.find((a) -> a.Match == word))
+      k[1].elements.any((e) -> e.role == "tooltip" && e.text.startsWith(vale.Message))
+  }
+  ["the Jev lens opens the payload its digest names"] {
+    texts(2).contains("rails/rails › \(Replay.hash) › jev payload › \(followed.digest.take(19))…")
+    texts(2).contains(#""type": "noul","#)
+    texts(2).contains("pinned before the call · " + if (recorded(followed)) "recorded" else "not sent yet")
+  }
+  ["each Jev lens shows the score recorded for its payload"] {
+    recordings.every((r) ->
+      let (c = claims.find((c) -> c.digest == r.digest))
+        texts(0).any((t) -> t.startsWith("\(c.word) · Jev \(r.score) ")))
+  }
+  ["going back shows the message again, as it was"] {
+    texts(3) == texts(0)
+  }
+  ["no score is shown that Jev did not give"] {
+    k.every((f) -> f.elements.every((e) ->
+      !e.text.matches(Regex(#".*Jev \d.*"#)) || recordings.any((r) -> e.text.contains("Jev \(r.score) "))))
+  }
+}
