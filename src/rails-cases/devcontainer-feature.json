@@ -6,11 +6,10 @@
     "containerEnv": {
         "RAILS_CASES_HOME": "/usr/local/share/rails-cases"
     },
-    "installsAfter": [
-        "ghcr.io/devcontainers/features/common-utils",
-        "ghcr.io/devcontainers/features/node"
-    ],
     "dependsOn": {
         "ghcr.io/devcontainers/features/node:1": {}
-    }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
 }
