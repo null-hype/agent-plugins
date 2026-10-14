@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prove that an accepted recording cannot silently answer a changed request.
 set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
 fixtures=$1 hash=$2
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -17,7 +18,7 @@ elif mutation == 'score': records[0]['score'] = 2
 elif mutation == 'snapshot': records[0]['snapshot'] = 'latest'
 with open(target, 'w') as out: json.dump(records, out)
 PY
-    if pkl test -p hash="$hash" -p case="$work" "$RAILS_CASES_HOME/Recordings.test.pkl" > "$work/result" 2>&1; then
+    if pkl test -p hash="$hash" -p case="$work" "$here/Recordings.test.pkl" > "$work/result" 2>&1; then
         echo "unexpectedly accepted $mutation recordings" >&2
         exit 1
     fi

@@ -1,7 +1,7 @@
 /// A selected capture must answer exactly the current pinned requests.
 amends "pkl:test"
 import "pkl:json"
-import "Frame.pkl"
+import "/usr/local/share/rails-cases/Frame.pkl"
 local parser = new json.Parser {}
 local claims = (parser.parse(new JsonRenderer {}.renderValue(Frame.claims)) as Listing).toList()
 local recordings = (parser.parse(read(read("prop:case") + "/recordings.json").text) as Listing).toList()

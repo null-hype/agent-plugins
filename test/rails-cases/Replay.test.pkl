@@ -6,8 +6,8 @@
 amends "pkl:test"
 
 import "pkl:json"
-import "Replay.pkl"
-import "Frame.pkl"
+import "/usr/local/share/rails-cases/Replay.pkl"
+import "/usr/local/share/rails-cases/Frame.pkl"
 
 local dir = read("prop:case") + "/"
 local parser = new json.Parser {}
