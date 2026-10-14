@@ -1,0 +1,9 @@
+{
+  "id": "proposer",
+  "version": "0.1.0",
+  "name": "Proposer",
+  "description": "Runs the proposer role against a Pkl-rendered experiment request; emits a proposal for review, never acceptance.",
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  }
+}

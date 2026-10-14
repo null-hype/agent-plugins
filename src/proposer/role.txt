@@ -1,0 +1,4 @@
+Propose an expectation for the supplied experiment. Use its ontology, task,
+and evidence; distinguish what should hold from what has been observed.
+Return only the structured proposal requested by the experiment. Do not
+claim human approval, change the accepted baseline, or invent evidence.
