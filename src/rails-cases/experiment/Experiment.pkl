@@ -1,0 +1,78 @@
+/// The first experiment: universal availability versus one working example.
+/// Fixtures explicitly supply the scope and observations; no platform facts
+/// are inferred from an agent's prose.
+module RailsExperiment
+
+import "pkl:json"
+
+class Observation {
+  runtime: String(!isEmpty)
+  available: Boolean
+}
+
+class Proposal {
+  claim: "yjit-available"
+  expected: Boolean
+  rationale: String(!isEmpty)
+}
+
+class Challenge {
+  claim: "yjit-available"
+  alternative: String(!isEmpty)
+  question: String(!isEmpty)
+  probe: "all-runtimes" | "example-runtime"
+}
+
+id: String(!isEmpty)
+source: String(!isEmpty)
+claim: String = "RubyVM::YJIT.enable is available in every runtime in scope."
+task: String = "Propose that the claim should hold: expected=true. A counterexample may make the test fail; do not conceal it by changing the expectation."
+scope: List<String>(!isEmpty)
+observations: List<Observation>(!isEmpty)
+observed: Boolean = observations.every((o) -> o.available)
+
+local renderer = new JsonRenderer {}
+local proposalPath = read?("prop:proposal")
+local proposalText = if (proposalPath == null) "No proposal supplied." else read(proposalPath).text
+
+ontology {
+  claim = module.claim
+  scope = module.scope
+  evidence = observations
+  probes {
+    ["all-runtimes"] = "Check availability for every runtime in scope. One unavailable runtime refutes the universal claim."
+    ["example-runtime"] = "Check only the first runtime. This establishes availability in that example."
+  }
+}
+
+// Schemas guide model output; the classes above validate it before use.
+proposalSchema {
+  type = "object"
+  additionalProperties = false
+  required = List("claim", "expected", "rationale")
+  properties {
+    claim { type = "string"; enum = List("yjit-available") }
+    expected { type = "boolean" }
+    rationale { type = "string"; minLength = 1 }
+  }
+}
+challengeSchema {
+  type = "object"
+  additionalProperties = false
+  required = List("claim", "alternative", "question", "probe")
+  properties {
+    claim { type = "string"; enum = List("yjit-available") }
+    alternative { type = "string"; minLength = 1 }
+    question { type = "string"; minLength = 1 }
+    probe { type = "string"; enum = List("all-runtimes", "example-runtime") }
+  }
+}
+
+proposerRequest {
+  prompt = "\(task)\nSource: \(source)\nOntology and evidence:\n\(renderer.renderValue(ontology))"
+  schema = proposalSchema
+}
+challengerRequest {
+  prompt = "Find a discriminating question for this proposal.\n\(proposalText)\nSource: \(source)\nOntology and evidence:\n\(renderer.renderValue(ontology))"
+  schema = challengeSchema
+}

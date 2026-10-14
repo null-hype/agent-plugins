@@ -1,0 +1,19 @@
+amends "pkl:test"
+import "pkl:json"
+local evidence = new json.Parser {}.parse(read(read("prop:evidence")).text)
+local scope = evidence.scope.toList()
+local observations = evidence.observations.toList()
+facts {
+  ["every runtime in scope has exactly one observation"] {
+    !scope.isEmpty
+    scope.toSet().length == scope.length
+    observations.length == scope.length
+    observations.map((o) -> o.runtime).toSet() == scope.toSet()
+    observations.every((o) -> o.available is Boolean)
+  }
+}
+examples {
+  ["claim holds across the stated scope"] {
+    observations.every((o) -> o.available)
+  }
+}
