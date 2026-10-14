@@ -1,6 +1,6 @@
 amends "pkl:test"
 import "pkl:json"
-import "Experiment.pkl"
+import "/usr/local/share/rails-cases/experiment/Experiment.pkl"
 local proposal = (new json.Parser {}.parse(read(read("prop:proposal")).text) as Dynamic).toTyped(Experiment.Proposal)
 facts {
   ["the proposer expresses the requested claim without accepting it"] {

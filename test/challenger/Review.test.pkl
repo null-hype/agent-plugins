@@ -1,5 +1,5 @@
 amends "pkl:test"
-import "Review.pkl"
+import "/usr/local/share/rails-cases/experiment/Review.pkl"
 
 facts {
   ["the proposal expresses the requested expectation"] {

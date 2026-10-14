@@ -22,11 +22,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("case", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--checks", type=Path, required=True, help="scenario directory containing its Pkl assertions")
     parser.add_argument("--role", choices=["proposer", "challenger", "pair"], default="pair")
     parser.add_argument("--proposal", type=Path, help="proposal to challenge when running only the challenger")
     parser.add_argument("--baseline", type=Path, help="accepted Claim.test.pkl-expected.pcf; read only")
     args = parser.parse_args()
     contract = Path(os.environ.get("RAILS_CASES_HOME", "/usr/local/share/rails-cases")) / "experiment"
+    checks = args.checks.resolve(strict=True)
     case = args.case.resolve(strict=True)
     baseline = args.baseline.resolve(strict=True) if args.baseline else None
     if args.role == "pair" and baseline is None:
@@ -55,12 +57,12 @@ def main():
     if args.role != "challenger":
         invoke("proposer")
     props = ["-p", f"proposal={proposal}"]
-    run(["pkl", "test", *props, str(contract / "Proposal.test.pkl")], output / "proposal-check.txt")
+    run(["pkl", "test", *props, str(checks / "Proposal.test.pkl")], output / "proposal-check.txt")
     if args.role == "proposer":
         return 0
     invoke("challenger")
     props += ["-p", f"challenge={output / 'challenge.json'}"]
-    run(["pkl", "test", *props, str(contract / "Review.test.pkl")], output / "review-check.txt")
+    run(["pkl", "test", *props, str(checks / "Review.test.pkl")], output / "review-check.txt")
     if args.role == "challenger":
         return 0
 
@@ -71,7 +73,7 @@ def main():
     candidate = output / "candidate"
     for directory in (accepted, candidate):
         directory.mkdir()
-        shutil.copyfile(contract / "Claim.test.pkl", directory / "Claim.test.pkl")
+        shutil.copyfile(checks / "Claim.test.pkl", directory / "Claim.test.pkl")
     expected_name = "Claim.test.pkl-expected.pcf"
     (accepted / expected_name).write_bytes(accepted_bytes)
     run(["pkl", "eval", "-f", "pcf", "-x", "candidate", *props, str(contract / "Review.pkl")], candidate / expected_name)

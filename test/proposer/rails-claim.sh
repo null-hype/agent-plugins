@@ -9,4 +9,4 @@ trap 'pass-cli logout >/dev/null 2>&1 || true' EXIT
 pass-cli login
 pass-cli info
 work=$(mktemp -d)
-pass-cli run --env-file "$here/agent.env" -- rails-experiment "$here/Case.pkl" "$work/proposer" --role proposer
+pass-cli run --env-file "$here/agent.env" -- rails-experiment "$here/Case.pkl" "$work/proposer" --checks "$here" --role proposer

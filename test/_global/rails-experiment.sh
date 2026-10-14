@@ -14,7 +14,7 @@ for case in control counterexample; do
     status=0
     pass-cli info
     pass-cli run --env-file "$here/agent.env" -- rails-experiment \
-        "$here/$case.pkl" "$work/$case" --baseline "$here/$case-expected.pcf" || status=$?
+        "$here/$case.pkl" "$work/$case" --checks "$here" --baseline "$here/$case-expected.pcf" || status=$?
     if [ "$case" = control ]; then test "$status" -eq 0; else test "$status" -eq 1; fi
 done
 pkl test -p runs="$work" "$here/Pair.test.pkl"
