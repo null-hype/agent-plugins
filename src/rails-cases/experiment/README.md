@@ -13,3 +13,17 @@ the counterexample has only the first available. The proposer is asked to
 express universal availability; the challenger must choose the probe that can
 refute it. Humans still assess the quality of the question and alternative.
 
+With the three features installed and Claude credentials supplied by the caller:
+
+```sh
+rails-experiment /cases/counterexample.pkl /output/new-proposal \
+  --baseline /cases/counterexample-expected.pcf
+```
+
+The output directory must not exist. It receives the model responses, Pkl
+checks, captured evidence, a candidate `Claim.test.pkl-expected.pcf`,
+`expected.patch`, and a `review.json` with content hashes and a pending human
+decision. The accepted file is only read. Exit 1 for this counterexample is the
+expected disagreement, not permission to overwrite the accepted expectation.
+The control exits 0. Invalid agent responses fail before candidate generation.
+
