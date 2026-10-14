@@ -27,3 +27,8 @@ decision. The accepted file is only read. Exit 1 for this counterexample is the
 expected disagreement, not permission to overwrite the accepted expectation.
 The control exits 0. Invalid agent responses fail before candidate generation.
 
+Local scenarios live in `test/proposer` and `test/challenger`. The global
+`rails-experiment` scenario runs both agents on the claim/control pair and
+checks the results against `Pair.test.pkl-expected.pcf`. Its success means the
+pair discriminated: the candidate check itself must fail on the counterexample.
+

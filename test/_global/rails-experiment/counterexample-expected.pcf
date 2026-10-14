@@ -1,0 +1,5 @@
+examples {
+  ["claim holds across the stated scope"] {
+    false
+  }
+}
