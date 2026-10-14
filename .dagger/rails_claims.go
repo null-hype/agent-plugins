@@ -61,7 +61,7 @@ func railsClaimsApp(ctx context.Context, source *dagger.Directory) (*dagger.Cont
 
 // CIT-401: a case replayed with the rails-cases feature. The frame is
 // rendered as above; Storybook is built and served statically, and the
-// feature's replay.sh steps through the one story, recording what it loaded
+// scenario's replay.sh steps through the one story, recording what it loaded
 // into /replay/replay.har. The feature's scenario replays from that HAR.
 func railsCase(ctx context.Context, source *dagger.Directory, hash, story, word, phrase string) (*dagger.Container, error) {
 	app, err := railsClaimsApp(ctx, source)
@@ -69,7 +69,7 @@ func railsCase(ctx context.Context, source *dagger.Directory, hash, story, word,
 		return nil, err
 	}
 	storybook := app.WithWorkdir(railsCasesHome).
-		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, "Recordings.test.pkl"}).
+		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, railsCaseFixtures + "Recordings.test.pkl"}).
 		WithExec([]string{"pkl", "eval", "-f", "json", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, "-o", railsClaimsDir + "/cases/" + hash + "/frame.json", "Frame.pkl"}).
 		WithWorkdir("/workspace/tutorial-app").
 		WithExec([]string{"npx", "storybook", "build", "-o", "/storybook"}).
@@ -81,13 +81,16 @@ func railsCase(ctx context.Context, source *dagger.Directory, hash, story, word,
 		WithExec([]string{"./install.sh"}).
 		WithFile("/usr/local/bin/pkl", app.File("/usr/local/bin/pkl")).
 		WithFile("/usr/local/share/jev/pkl/Jev.pkl", source.File("src/jev/pkl/Jev.pkl")).
+		WithDirectory("/tests", source.Directory("test/rails-cases")).
+		WithWorkdir("/tests").
+		WithExec([]string{"npm", "install", "--ignore-scripts", "--no-audit", "--no-fund"}).
 		WithDirectory("/replay", source.Directory("test/rails-cases/"+story)).
 		WithEnvVariable("RAILS_CASES_HOME", railsCasesHome).
 		WithServiceBinding("storybook", storybook).
 		WithEnvVariable("STORYBOOK_URL", "http://storybook:6006").
 		WithWorkdir("/replay").
-		WithExec([]string{railsCasesHome + "/replay.sh", "replay.har", story, word, phrase}).
-		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "-p", "case=/replay", "-p", "word=" + word, railsCasesHome + "/Replay.test.pkl"}), nil
+		WithExec([]string{"/tests/replay.sh", "replay.har", story, word, phrase}).
+		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "-p", "case=/replay", "-p", "word=" + word, "/tests/Replay.test.pkl"}), nil
 }
 
 // SecurerandomAlwaysTwo, the control: rails dbafc460fa, same author, day and

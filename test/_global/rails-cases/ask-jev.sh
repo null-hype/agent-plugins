@@ -37,7 +37,7 @@ snapshot=$(jq -ers 'map(select(.message_type=="summary")) | .[-1].snapshot_id | 
 selected="$here/../rails-cases-captures/$case_"
 pass-cli run --env-file "$here/.env" -- "$RAILS_CASES_HOME/refresh.sh" "$case_" "$snapshot" "$selected"
 printf '[]\n' > "$selected/snapshots.json"
-pkl test -p hash="$hash" -p case="$selected" "$RAILS_CASES_HOME/Recordings.test.pkl"
+pkl test -p hash="$hash" -p case="$selected" "$here/Recordings.test.pkl"
 # Selecting the same snapshot twice must produce identical bytes.
 pass-cli run --env-file "$here/.env" -- "$RAILS_CASES_HOME/refresh.sh" "$case_" "$snapshot" "$work/again"
 for file in commit.txt vale.json recordings.json; do cmp "$selected/$file" "$work/again/$file"; done
