@@ -1,0 +1,18 @@
+module RailsReview
+
+import "pkl:json"
+import "Experiment.pkl" as experiment
+
+local parser = new json.Parser {}
+proposal: experiment.Proposal = (parser.parse(read(read("prop:proposal")).text) as Dynamic).toTyped(experiment.Proposal)
+challenge: experiment.Challenge = (parser.parse(read(read("prop:challenge")).text) as Dynamic).toTyped(experiment.Challenge)
+
+/// The same pkl:test example shape as Vaults.test.pkl-expected.pcf.
+/// Rendering this does not install it as the accepted expectation.
+candidate {
+  examples {
+    ["claim holds across the stated scope"] {
+      proposal.expected
+    }
+  }
+}
