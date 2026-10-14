@@ -11,4 +11,4 @@ here=$(cd "$(dirname "$0")" && pwd)
 har=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 export REPLAY_HAR=$har REPLAY_STORY=$2 REPLAY_WORD=$3 REPLAY_PHRASE=$4
 cd "$here"
-exec npx playwright test
+exec npx --no-install playwright test

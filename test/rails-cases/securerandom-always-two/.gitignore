@@ -1,3 +1,9 @@
-# Recorded by `dagger call securerandom-always-two-har`; not committed (CIT-401).
+# CI exports the replay here; only accepted source evidence belongs in Git.
 *
 !.gitignore
+!commit.txt
+!vale.json
+!snapshots.json
+!recordings.json
+!sketch.json
+!sketch_test.pkl

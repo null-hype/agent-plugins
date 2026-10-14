@@ -7,7 +7,7 @@
 ///
 /// * `model`: the editor-agnostic `InvestigationModel` (see
 ///   `src/lib/investigationModel.ts`) that `InvestigationVault` renders. Every
-///   marker and lens comes from a file in `cases/<hash>/`; a value with no
+///   marker and lens comes from a file in the case's fixture directory; a value with no
 ///   evidence behind it is shown as missing ("no recording for ..."), never
 ///   filled in. There is no score in this module and none in the story.
 /// * `elements`: each element of the sketch marked proven, unproven or
@@ -18,15 +18,17 @@
 /// named as a culprit is joined in only at the aggregate step, across cases.
 ///
 /// Evaluate with
-/// `pkl eval -f json -p hash=fddf74bea9 Frame.pkl > cases/fddf74bea9/frame.json`.
+/// `pkl eval -f json -p hash=fddf74bea9 -p case=<fixtures> -o <story's cases>/fddf74bea9/frame.json Frame.pkl`
+/// where the jev feature has installed Jev.pkl (CIT-404).
 module Frame
 
 import "pkl:json"
-import "../../../../src/jev/pkl/Jev.pkl" as jev
+import "/usr/local/share/jev/pkl/Jev.pkl" as jev
 
 hash: String = read("prop:hash")
 
-local dir = "cases/\(hash)/"
+/// The case's fixture directory (`-p case=`), e.g. test/rails-cases/yjit-always-available.
+local dir = read("prop:case") + "/"
 local parser = new json.Parser {}
 local message = read(dir + "commit.txt").text.trimEnd()
 local lines = message.split("\n")

@@ -1,0 +1,9 @@
+// Constructed evidence, not a measurement of a real Ruby distribution.
+amends "/usr/local/share/rails-cases/experiment/Experiment.pkl"
+id = "counterexample"
+source = "constructed claim/control for the Rails YJIT availability claim"
+scope = List("example-runtime", "other-runtime")
+observations = List(
+  new Observation { runtime = "example-runtime"; available = true },
+  new Observation { runtime = "other-runtime"; available = false }
+)

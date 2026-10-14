@@ -1,0 +1,57 @@
+/// Read the installed replay's action/snapshot pairs from keyframes.json.
+/// AI-mode snapshots include the editor text as well as accessible controls.
+/// pkl eval -p hash=<commit> -p case=<fixtures> Replay.pkl
+module Replay
+
+import "pkl:json"
+
+hash: String = read("prop:hash")
+
+local parser = new json.Parser {}
+local dir = read("prop:case") + "/"
+/// One element of a keyframe, the same shape as an element of sketch.json.
+class Element {
+  type: "text"
+  role: String
+  text: String
+}
+
+/// `- role "name" [attrs]: value`, as playwright-cli writes aria snapshots.
+local line = Regex(#"^\s*- '?([a-z]+)(?: "((?:[^"\\]|\\.)*)")?(?: \[[^\]]*\])*'?(?::(?: (.*))?)?$"#)
+local function unquote(s: String): String =
+  if (s.startsWith("\"")) parser.parse(s) as String
+  else if (s.startsWith("'")) s.substring(1, s.length - 1).replaceAll("''", "'")
+  else s
+local function elements(snapshot: String): List<Element> =
+  snapshot.split("\n")
+    .map((l) -> line.matchEntire(l))
+    .filterNonNull()
+    .map((m) -> let (shown = m.groups[2]?.value?.replaceAll("''", "'") ?? (if (m.groups[3] == null) null else unquote(m.groups[3]!!.value)))
+      if (shown == null || shown.isEmpty) null else new Element { type = "text"; role = m.groups[1]!!.value; text = shown })
+    .filterNonNull() as List<Element>
+
+class Keyframe {
+  /// What the user did: `goto <url>`, `hover <selector>`, `click <selector>`.
+  action: String
+  elements: List<Element>
+}
+
+// The installed replay records one AI-mode aria snapshot after each action.
+local captured = (parser.parse(read(dir + "keyframes.json").text) as Listing).toList()
+keyframes: List<Keyframe> = captured.map((f) -> new Keyframe {
+  action = f.action
+  elements = elements(f.snapshot)
+})
+
+/// Each text the sketch draws, and whether the user was shown exactly that
+/// text in any keyframe: the sketch's elements and the replay's are the same
+/// shape, so this is a plain comparison.
+seen: Mapping<String, Boolean> = new {
+  for (e in (parser.parse(read?(dir + "sketch.json")?.text ?? "[]") as Listing)) {
+    when (e.getPropertyOrNull("type") == "text") {
+      [e.id] = keyframes.any((k) -> k.elements.any((s) -> s.text == e.text))
+    }
+  }
+}
+
+output { renderer = new JsonRenderer {} }

@@ -1,13 +1,10 @@
 {
     "name": "Rails cases",
     "id": "rails-cases",
-    "version": "0.1.0",
-    "description": "Installs replay.sh, which replays one rails-claims story as a user with Playwright Test, against a live Storybook or a HAR.",
+    "version": "0.2.0",
+    "description": "Installs the Rails Pkl ontology and proposer/challenger review command.",
     "containerEnv": {
         "RAILS_CASES_HOME": "/usr/local/share/rails-cases"
-    },
-    "dependsOn": {
-        "ghcr.io/devcontainers/features/node:1": {}
     },
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"

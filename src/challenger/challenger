@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Input is the experiment's Pkl-rendered {prompt, schema} request.
+set -euo pipefail
+if [ "${1:-}" = --help ]; then
+    echo 'usage: challenger <request.json>; Claude credentials are supplied by the caller'
+    exit 0
+fi
+[ "$#" -eq 1 ] || { echo 'usage: challenger <request.json>' >&2; exit 2; }
+prompt=$(jq -er '.prompt | select(type == "string" and length > 0)' "$1")
+schema=$(jq -ec '.schema | select(type == "object")' "$1")
+# Fresh turns with explicit context only. These roles produce data, not side effects.
+exec claude -p --model "${EXPERIMENT_MODEL:-haiku}" \
+    --setting-sources '' --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    --tools '' --disable-slash-commands --no-session-persistence \
+    --system-prompt "$(cat /usr/local/share/challenger/role.txt)" \
+    --output-format json --json-schema "$schema" "$prompt"

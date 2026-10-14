@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Run installed roles against a Pkl experiment; write only a fresh proposal directory."""
+import argparse
+import difflib
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+
+def run(argv, output=None):
+    result = subprocess.run(argv, text=True, stdout=subprocess.PIPE)
+    if output:
+        output.write_text(result.stdout)
+    result.check_returncode()
+    return result.stdout
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("case", type=Path)
+    parser.add_argument("output", type=Path)
+    parser.add_argument("--checks", type=Path, required=True, help="scenario directory containing its Pkl assertions")
+    parser.add_argument("--role", choices=["proposer", "challenger", "pair"], default="pair")
+    parser.add_argument("--proposal", type=Path, help="proposal to challenge when running only the challenger")
+    parser.add_argument("--baseline", type=Path, help="accepted Claim.test.pkl-expected.pcf; read only")
+    args = parser.parse_args()
+    contract = Path(os.environ.get("RAILS_CASES_HOME", "/usr/local/share/rails-cases")) / "experiment"
+    checks = args.checks.resolve(strict=True)
+    case = args.case.resolve(strict=True)
+    baseline = args.baseline.resolve(strict=True) if args.baseline else None
+    if args.role == "pair" and baseline is None:
+        parser.error("--baseline is required for a pair")
+    if args.role == "challenger" and args.proposal is None:
+        parser.error("--proposal is required for challenger")
+    output = args.output.resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    evidence = output / "evidence.json"
+    run(["pkl", "eval", "-f", "json", str(case)], evidence)
+    proposal = output / "proposal.json"
+    if args.role == "challenger":
+        shutil.copyfile(args.proposal, proposal)
+
+    def invoke(role):
+        request = output / f"{role}-request.json"
+        options = ["-p", f"proposal={proposal}"] if role == "challenger" else []
+        run(["pkl", "eval", "-f", "json", "-x", f"{role}Request", *options, str(case)], request)
+        envelope = output / f"{role}-response.json"
+        raw = json.loads(run([role, str(request)], envelope))
+        if raw.get("is_error") or raw.get("subtype") != "success" or "structured_output" not in raw:
+            raise RuntimeError(f"{role} did not return a successful structured response; see {envelope}")
+        target = proposal if role == "proposer" else output / "challenge.json"
+        target.write_text(json.dumps(raw["structured_output"], indent=2) + "\n")
+
+    if args.role != "challenger":
+        invoke("proposer")
+    props = ["-p", f"proposal={proposal}"]
+    run(["pkl", "test", *props, str(checks / "Proposal.test.pkl")], output / "proposal-check.txt")
+    if args.role == "proposer":
+        return 0
+    invoke("challenger")
+    props += ["-p", f"challenge={output / 'challenge.json'}"]
+    run(["pkl", "test", *props, str(checks / "Review.test.pkl")], output / "review-check.txt")
+    if args.role == "challenger":
+        return 0
+
+    # Only the candidate copy gets an agent-proposed expectation. The accepted
+    # file is never overwritten, even when its check or the candidate fails.
+    accepted_bytes = baseline.read_bytes()
+    accepted = output / "accepted"
+    candidate = output / "candidate"
+    for directory in (accepted, candidate):
+        directory.mkdir()
+        shutil.copyfile(checks / "Claim.test.pkl", directory / "Claim.test.pkl")
+    expected_name = "Claim.test.pkl-expected.pcf"
+    (accepted / expected_name).write_bytes(accepted_bytes)
+    run(["pkl", "eval", "-f", "pcf", "-x", "candidate", *props, str(contract / "Review.pkl")], candidate / expected_name)
+    (output / "expected.patch").write_text("".join(difflib.unified_diff(
+        accepted_bytes.decode().splitlines(keepends=True),
+        (candidate / expected_name).read_text().splitlines(keepends=True),
+        fromfile=f"a/{expected_name}", tofile=f"b/{expected_name}",
+    )))
+    statuses = {}
+    for name, directory in (("accepted", accepted), ("candidate", candidate)):
+        result = subprocess.run(["pkl", "test", "-p", f"evidence={evidence}", str(directory / "Claim.test.pkl")],
+                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        (output / f"{name}-check.txt").write_text(result.stdout)
+        statuses[name] = result.returncode
+    if baseline.read_bytes() != accepted_bytes:
+        raise RuntimeError("accepted baseline changed during the experiment")
+    report = {
+        "case": json.loads(evidence.read_text())["id"],
+        "baseline_sha256": hashlib.sha256(accepted_bytes).hexdigest(),
+        "evidence_sha256": hashlib.sha256(evidence.read_bytes()).hexdigest(),
+        "proposal_sha256": hashlib.sha256(proposal.read_bytes()).hexdigest(),
+        "challenge_sha256": hashlib.sha256((output / "challenge.json").read_bytes()).hexdigest(),
+        "checks": statuses,
+        "decision": "pending-human-review",
+    }
+    (output / "review.json").write_text(json.dumps(report, indent=2) + "\n")
+    return statuses["accepted"] or statuses["candidate"]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

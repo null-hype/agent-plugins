@@ -12,6 +12,7 @@ export default defineConfig({
   reporter: 'line',
   use: {
     ...devices['Desktop Chrome'],
+    serviceWorkers: 'block',
     launchOptions: { args: live && live !== 'storybook' ? [`--host-resolver-rules=MAP storybook ${live}`] : [] },
   },
 });

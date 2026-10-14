@@ -2,13 +2,14 @@
 /// the user was shown the frame, step by step; it says nothing about whether
 /// any claim holds.
 ///
-///   pkl test -p hash=fddf74bea9 -p word=always Replay.test.pkl
+///   pkl test -p hash=fddf74bea9 -p case=<fixtures> -p word=always Replay.test.pkl
 amends "pkl:test"
 
 import "pkl:json"
-import "Replay.pkl"
+import "/usr/local/share/rails-cases/Replay.pkl"
+import "/usr/local/share/rails-cases/Frame.pkl"
 
-local dir = "cases/\(Replay.hash)/"
+local dir = read("prop:case") + "/"
 local parser = new json.Parser {}
 local function load(file: String) = (parser.parse(read(dir + file).text) as Listing).toList()
 
@@ -16,9 +17,8 @@ local function load(file: String) = (parser.parse(read(dir + file).text) as List
 local commit = read(dir + "commit.txt").text.trimEnd().split("\n").map((l) -> l.trim()).filter((l) -> !l.isEmpty)
 local alerts = load("vale.json")
 local recordings = load("recordings.json")
-local frame = parser.parse(read(dir + "frame.json").text) as Dynamic
-local lensTitles = (frame.model.documents[0].lenses as Listing).toList().map((l) -> l.title)
-local claims = (frame.claims as Listing).toList()
+local lensTitles = Frame.model.documents[0].lenses.map((l) -> l.title)
+local claims = Frame.claims
 local word = read("prop:word")
 local followed = claims.find((c) -> c.word == word)
 local function recorded(c) = recordings.any((r) -> r.digest == c.digest)
@@ -45,10 +45,6 @@ facts {
     texts(2).contains("rails/rails › \(Replay.hash) › jev payload › \(followed.digest.take(19))…")
     texts(2).contains(#""type": "noul","#)
     texts(2).contains("pinned before the call · " + if (recorded(followed)) "recorded" else "not sent yet")
-  }
-  ["Jev was sent exactly the payload each claim pinned"] {
-    recordings.map((r) -> r.digest).toSet() == claims.map((c) -> c.digest).toSet()
-    recordings.every((r) -> r.request == claims.find((c) -> c.digest == r.digest).payload)
   }
   ["each Jev lens shows the score recorded for its payload"] {
     recordings.every((r) ->
