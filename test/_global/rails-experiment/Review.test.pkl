@@ -1,0 +1,16 @@
+amends "pkl:test"
+import "/usr/local/share/rails-cases/experiment/Review.pkl"
+
+facts {
+  ["the proposal expresses the requested expectation"] {
+    Review.proposal.claim == "yjit-available"
+    Review.proposal.expected
+    !Review.proposal.rationale.isEmpty
+  }
+  ["the challenge can distinguish a universal claim from one example"] {
+    Review.challenge.claim == Review.proposal.claim
+    Review.challenge.probe == "all-runtimes"
+    !Review.challenge.alternative.isEmpty
+    !Review.challenge.question.isEmpty
+  }
+}

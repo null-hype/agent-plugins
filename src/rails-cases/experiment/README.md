@@ -17,8 +17,12 @@ With the three features installed and Claude credentials supplied by the caller:
 
 ```sh
 rails-experiment /cases/counterexample.pkl /output/new-proposal \
-  --baseline /cases/counterexample-expected.pcf
+  --checks /cases --baseline /cases/counterexample-expected.pcf
 ```
+
+The scenario supplies its assertions through `--checks`: `Proposal.test.pkl`,
+`Review.test.pkl`, and (for a pair) `Claim.test.pkl`. These live under
+`test/`; installing the feature installs the ontology and command.
 
 The output directory must not exist. It receives the model responses, Pkl
 checks, captured evidence, a candidate `Claim.test.pkl-expected.pcf`,

@@ -1,0 +1,11 @@
+amends "pkl:test"
+import "pkl:json"
+import "/usr/local/share/rails-cases/experiment/Experiment.pkl"
+local proposal = (new json.Parser {}.parse(read(read("prop:proposal")).text) as Dynamic).toTyped(Experiment.Proposal)
+facts {
+  ["the proposer expresses the requested claim without accepting it"] {
+    proposal.claim == "yjit-available"
+    proposal.expected
+    !proposal.rationale.isEmpty
+  }
+}

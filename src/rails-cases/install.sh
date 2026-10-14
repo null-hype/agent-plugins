@@ -5,7 +5,7 @@ rails_cases_home=/usr/local/share/rails-cases
 mkdir -p "$rails_cases_home"
 cp *.pkl "$rails_cases_home/"
 mkdir -p "$rails_cases_home/experiment"
-cp experiment/* "$rails_cases_home/experiment/"
+cp experiment/Experiment.pkl experiment/Review.pkl "$rails_cases_home/experiment/"
 install -m 0755 experiment/rails-experiment /usr/local/bin/rails-experiment
 # The experiment is independent of the Jev transport and uses Pkl directly.
 if ! command -v python3 >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
