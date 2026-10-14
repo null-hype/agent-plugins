@@ -1,7 +1,7 @@
 package main
 
 // CIT-404: render committed evidence and replay it through the installed
-// rails-cases feature. Only the global scenarios ask Jev.
+// rails-cases ontology and scenario-owned browser tests. Only global scenarios ask Jev.
 
 import (
 	"context"
@@ -19,10 +19,10 @@ const (
 	railsClaimsPklVersion = "0.32.1"
 	// Where the rails-cases and jev features install their Pkl modules.
 	railsCasesHome = "/usr/local/share/rails-cases"
-	// Each case's local fixtures, test/rails-cases/<case>, refreshed from the
-	// case's global run (CIT-404).
+	// Reviewed evidence lives beside the local scenarios in test/rails-cases/<case>.
 	railsCaseFixtures = "/workspace/test/rails-cases/"
-	// The story's copy of each case's frame, and the playwright-cli replay.
+	// Storybook imports generated frame.json files from this application directory.
+	// It is an application build output, not the installed feature or evidence store.
 	railsClaimsDir = "/workspace/tutorial-app/src/lesson-farms/rails-claims"
 )
 

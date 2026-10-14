@@ -105,6 +105,16 @@ jobs:
           args: yjit-always-available-har export --path test/rails-cases/yjit-always-available
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
+      - name: "Retain generated Rails browser replay evidence"
+        if: always() && matrix.features == 'rails-cases'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rails-browser-replays
+          path: |
+            test/rails-cases/*/replay.har
+            test/rails-cases/*/snapshots.json
+          if-no-files-found: ignore
+
       - name: "Generating tests for '${{ matrix.features }}' scenarios"
         # These two live-agent scenarios need credentials and run before their
         # composition in test-global.yaml (scenario=rails-experiment).
