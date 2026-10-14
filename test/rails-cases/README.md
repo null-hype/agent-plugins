@@ -1,7 +1,12 @@
 # Rails evidence and replay scenarios
 
 The installed feature supplies the Pkl ontology and experiment command.
-Browser specs, Pkl assertions, and accepted case evidence live in `test/`.
+Browser specs, Pkl assertions, and captured case evidence live in `test/`.
+
+The YJIT confidence experiment uses the ordinary local feature scenario; see
+[yjit-always-available/EXPERIMENT.md](yjit-always-available/EXPERIMENT.md).
+Its committed expectation can fail without any candidate or promotion step.
+The browser-only YJIT replay is separately named `yjit-browser-replay`.
 
 ## Jev evidence
 
@@ -17,8 +22,8 @@ Browser specs, Pkl assertions, and accepted case evidence live in `test/`.
    in Git. Human review accepts or rejects that diff. There is no separate
    refresh command and no automatic overwrite of accepted evidence.
 
-The committed recordings are currently empty. They are not valid captured
-evidence: the replay checks must fail until a real capture is reviewed.
+The YJIT recordings contain a real capture from 2026-10-14. The SecureRandom
+recordings remain empty; that case has no captured baseline.
 The request and probability checks remain required; no sample scores are
 invented to make replay pass. Archiving agent sessions with restic remains
 independent of accepting these fixtures.

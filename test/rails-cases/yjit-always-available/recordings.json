@@ -1,1 +1,56 @@
-[]
+[
+  {
+    "digest": "sha256:09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d",
+    "score": 0.75,
+    "request": {
+      "state": {
+        "repo": "rails/rails",
+        "commit": "fddf74bea9",
+        "message": "Remove unnecessary `defined?` check for RubyVM::YJIT.enable\n\nSince Rails main branch now requires Ruby 3.3.0,\n`RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\n\n```ruby\n$ ruby -ve 'p defined?(RubyVM::YJIT.enable)'\nruby 3.3.0 (2023-12-25 revision 5124f9ac75) [x86_64-linux]\n\"method\"\n```\n\nRefer to\nhttps://github.com/rails/rails/pull/56511\n\nhttps://www.ruby-lang.org/en/news/2023/12/25/ruby-3-3-0-released/\n> Add RubyVM::YJIT.enable that can enable YJIT at run-time"
+      },
+      "model": "jev-latest",
+      "questions": {
+        "claim": {
+          "type": "noul",
+          "instructions": "The author of this commit wrote: \"Since Rails main branch now requires Ruby 3.3.0, `RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\". Taking \"no longer\" literally, does the claim hold as written?"
+        }
+      }
+    }
+  },
+  {
+    "digest": "sha256:09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954",
+    "score": 0.83,
+    "request": {
+      "state": {
+        "repo": "rails/rails",
+        "commit": "fddf74bea9",
+        "message": "Remove unnecessary `defined?` check for RubyVM::YJIT.enable\n\nSince Rails main branch now requires Ruby 3.3.0,\n`RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\n\n```ruby\n$ ruby -ve 'p defined?(RubyVM::YJIT.enable)'\nruby 3.3.0 (2023-12-25 revision 5124f9ac75) [x86_64-linux]\n\"method\"\n```\n\nRefer to\nhttps://github.com/rails/rails/pull/56511\n\nhttps://www.ruby-lang.org/en/news/2023/12/25/ruby-3-3-0-released/\n> Add RubyVM::YJIT.enable that can enable YJIT at run-time"
+      },
+      "model": "jev-latest",
+      "questions": {
+        "claim": {
+          "type": "noul",
+          "instructions": "The author of this commit wrote: \"Remove unnecessary `defined?` check for RubyVM::YJIT.enable\". Taking \"unnecessary\" literally, does the claim hold as written?"
+        }
+      }
+    }
+  },
+  {
+    "digest": "sha256:9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98",
+    "score": 0.48,
+    "request": {
+      "state": {
+        "repo": "rails/rails",
+        "commit": "fddf74bea9",
+        "message": "Remove unnecessary `defined?` check for RubyVM::YJIT.enable\n\nSince Rails main branch now requires Ruby 3.3.0,\n`RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\n\n```ruby\n$ ruby -ve 'p defined?(RubyVM::YJIT.enable)'\nruby 3.3.0 (2023-12-25 revision 5124f9ac75) [x86_64-linux]\n\"method\"\n```\n\nRefer to\nhttps://github.com/rails/rails/pull/56511\n\nhttps://www.ruby-lang.org/en/news/2023/12/25/ruby-3-3-0-released/\n> Add RubyVM::YJIT.enable that can enable YJIT at run-time"
+      },
+      "model": "jev-latest",
+      "questions": {
+        "claim": {
+          "type": "noul",
+          "instructions": "The author of this commit wrote: \"Since Rails main branch now requires Ruby 3.3.0, `RubyVM::YJIT.enable` is always available and the `defined?` guard is no longer necessary.\". Taking \"always\" literally, does the claim hold as written?"
+        }
+      }
+    }
+  }
+]
