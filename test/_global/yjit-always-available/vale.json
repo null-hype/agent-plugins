@@ -1,0 +1,32 @@
+[
+ {
+  "Check": "Claims.Absolute",
+  "Line": 1,
+  "Span": [
+   8,
+   18
+  ],
+  "Match": "unnecessary",
+  "Message": "Absolute claim: 'unnecessary'. Ask whether it holds."
+ },
+ {
+  "Check": "Claims.Absolute",
+  "Line": 4,
+  "Span": [
+   26,
+   31
+  ],
+  "Match": "always",
+  "Message": "Absolute claim: 'always'. Ask whether it holds."
+ },
+ {
+  "Check": "Claims.Absolute",
+  "Line": 4,
+  "Span": [
+   71,
+   79
+  ],
+  "Match": "no longer",
+  "Message": "Absolute claim: 'no longer'. Ask whether it holds."
+ }
+]

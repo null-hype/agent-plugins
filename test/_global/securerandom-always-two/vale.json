@@ -1,0 +1,12 @@
+[
+ {
+  "Check": "Claims.Absolute",
+  "Line": 7,
+  "Span": [
+   30,
+   35
+  ],
+  "Match": "always",
+  "Message": "Absolute claim: 'always'. Ask whether it holds."
+ }
+]

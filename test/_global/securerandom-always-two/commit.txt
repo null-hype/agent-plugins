@@ -1,0 +1,16 @@
+Remove Ruby < 3.3 compatibility code
+
+This commit removes Ruby < 3.3 compatibility code since Rails main
+branch requires Ruby 3.3.
+
+- No need to check `SecureRandom.method(:alphanumeric).parameters.size`
+  in Ruby 3.3+ because it is always 2
+https://github.com/ruby/securerandom/pull/36
+
+- Ruby 3.3 introduces `Range#overlap?`
+https://bugs.ruby-lang.org/issues/19839
+
+- Ruby 3.3 introcuces `Fiber#kill`
+https://bugs.ruby-lang.org/issues/595
+
+Refer to https://github.com/rails/rails/pull/56511
