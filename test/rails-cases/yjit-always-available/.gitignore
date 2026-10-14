@@ -1,0 +1,9 @@
+# CI exports the replay here; only accepted source evidence belongs in Git.
+*
+!.gitignore
+!commit.txt
+!vale.json
+!snapshots.json
+!recordings.json
+!sketch.json
+!sketch_test.pkl

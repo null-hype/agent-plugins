@@ -1,9 +1,9 @@
 #!/bin/bash
-# CIT-401: the control's story, replayed with no Storybook and no Jev: every
-# response comes from replay.har. Record it with
-#   pass-cli run --env-file .env -- dagger call securerandom-always-two-har export --path test/rails-cases/securerandom-always-two
-# The scenario's folder is the generated .devcontainer.
-set -e
-har=.devcontainer/replay.har
-[ -f "$har" ] || { echo "no $har: record it (see above)" >&2; exit 1; }
-"$RAILS_CASES_HOME/replay.sh" "$har" securerandom-always-two always 'always 2'
+# A keyless replay of the CI-built Storybook, using only the selected fixtures.
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+fixtures="$here/securerandom-always-two"
+pkl test -p hash=dbafc460fa -p case="$fixtures" "$RAILS_CASES_HOME/Recordings.test.pkl"
+test -f "$fixtures/replay.har" || { echo "Export securerandom-always-two-har in CI before running this scenario" >&2; exit 1; }
+"$RAILS_CASES_HOME/replay.sh" "$fixtures/replay.har" securerandom-always-two always 'always 2'
+pkl test -p hash=dbafc460fa -p case="$fixtures" -p word=always "$RAILS_CASES_HOME/Replay.test.pkl"
