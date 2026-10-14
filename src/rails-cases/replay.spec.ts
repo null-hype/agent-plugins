@@ -11,6 +11,7 @@ const live = !!process.env.STORYBOOK_URL;
 const origin = 'http://storybook:6006';
 
 test(`${story}: follow the ${word} lens and back`, async ({ context, page }) => {
+  if (!live) await context.route('**/*', route => route.abort());
   await context.routeFromHAR(har!, { url: `${origin}/**`, update: live, notFound: 'abort' });
   const frames: { action: string; snapshot: string }[] = [];
   const capture = async (action: string) => {
