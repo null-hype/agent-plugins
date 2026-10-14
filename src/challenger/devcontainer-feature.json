@@ -1,0 +1,9 @@
+{
+  "id": "challenger",
+  "version": "0.1.0",
+  "name": "Challenger",
+  "description": "Runs the challenger role against a Pkl-rendered experiment request; emits a proposal for review, never acceptance.",
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  }
+}
