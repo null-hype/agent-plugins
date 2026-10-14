@@ -1,0 +1,5 @@
+{
+  "claim": "yjit-available",
+  "expected": true,
+  "rationale": "The task proposes universal availability; a counterexample must remain visible."
+}
