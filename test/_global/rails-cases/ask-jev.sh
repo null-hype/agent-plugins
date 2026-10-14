@@ -21,7 +21,7 @@ pass-cli run --env-file "$here/.env" -- bash -euo pipefail -c '
     for dir in "$1"/*/; do
         out=$2/jev/$(basename "$dir")
         mkdir -p "$out"
-        jev -q "$dir/questions.json" --request-out "$out/request.json" "$dir/payload.json" > "$out/answer.json"
+        jev -q "$dir/questions.json" --request-out "$out/request.json" --response-out "$out/response.json" "$dir/payload.json" > "$out/answer.json"
     done
 ' bash "$work/payloads" "$evidence"
 for out in "$evidence"/jev/*/; do
