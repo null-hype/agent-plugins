@@ -1,0 +1,10 @@
+{
+  "name": "Rails proposer/challenger experiment",
+  "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+  "features": {
+    "../../src/proposer": {},
+    "../../src/challenger": {},
+    "../../src/rails-cases": {},
+    "../../src/pass-cli": {}
+  }
+}

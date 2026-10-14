@@ -33,6 +33,9 @@ local envFiles: Listing<String> = new {
   // the devcontainer-level env files above.
   "../../../../.env"
   "../../../../test/_global/rails-cases/.env"
+  "../../../../test/_global/rails-experiment/agent.env"
+  "../../../../test/proposer/agent.env"
+  "../../../../test/challenger/agent.env"
   "../../../../test/pass-cli/restic-backup/.env"
   "../../../../test/_global/jin-81-pass-cli/.env"
   "../../../../test/_global/jin-90-dead-drop/.env"

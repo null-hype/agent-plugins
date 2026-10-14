@@ -32,3 +32,10 @@ Local scenarios live in `test/proposer` and `test/challenger`. The global
 checks the results against `Pair.test.pkl-expected.pcf`. Its success means the
 pair discriminated: the candidate check itself must fail on the counterexample.
 
+Run the existing manual **CI - Test Global Scenarios** workflow with
+`scenario=rails-experiment`. It runs the local role scenarios, then the global
+composition, retains review artifacts, and builds the same feature composition
+from `.devcontainer/rails-experiment/devcontainer.json` into an image artifact.
+It does not publish an image, create Linear issues, or accept expectations.
+Load the image artifact with `docker load` to reuse the installed commands;
+provide case files and credentials at runtime, not at build time.
