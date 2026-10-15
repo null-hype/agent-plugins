@@ -9,7 +9,7 @@
 // thin adapter that turns this into Monaco models/providers; a VS Code adapter
 // over the same model is step 2.
 //
-// Positions are 1-based and ranges end-inclusive (Monaco's convention); the VS
+// Positions are 1-based and ranges end-exclusive (Monaco's convention); the VS
 // Code adapter shifts to 0-based. Documents cross-reference each other by a
 // stable `id` (see `docId`), so a lens or definition target names a document
 // without the adapter having to match URI strings.
@@ -100,7 +100,7 @@ export interface UriDescriptor {
   path: string;
 }
 
-/** A 1-based, end-inclusive range. */
+/** A 1-based, end-exclusive range. */
 export interface DocumentRange {
   startLineNumber: number;
   startColumn: number;
@@ -178,9 +178,9 @@ function docId(uri: UriDescriptor): string {
 
 const vaultUri = (vault: string): UriDescriptor => ({ scheme: 'vault', authority: vault, path: '/items' });
 const driveUri = (folder: string): UriDescriptor => ({ scheme: 'drive', authority: 'proton', path: '/' + folder });
-// Everything in a snapshot is `snapshot://<id>/<path>`; the baseline is the snapshot `baseline`.
-// A listing is named by its tag, so Peek's title says which question it answers.
-const snapshotUri = (q: AgentQuestion): UriDescriptor => ({ scheme: 'snapshot', authority: q.snapshot, path: '/' + q.tag });
+// Files keep snapshot://<id>/<path>. Listings use a separate scheme so a
+// question equal to a file path cannot overwrite that file (or vice versa).
+const snapshotUri = (q: AgentQuestion): UriDescriptor => ({ scheme: 'snapshot-listing', authority: q.snapshot, path: '/' + q.tag });
 const fileUri = (snapshot: string, path: string): UriDescriptor => ({ scheme: 'snapshot', authority: snapshot, path: '/' + path });
 // The revision is in the path, so Peek's title says which check you're looking at.
 const checkUri = (revision: string, path: string): UriDescriptor => ({ scheme: 'check', path: '/' + revision + '/' + path });
@@ -277,13 +277,13 @@ export function buildInvestigationModel(investigation: Investigation): Investiga
     listing.markers = q.changes.flatMap((c, i) => (c.note ? [warn(HEADER + 1 + i, c.note, listing.text, 4)] : []));
     // Go to Definition on a listing line opens that file in the snapshot, at what the check missed.
     listing.definitions = q.changes.map((c, i) => {
-      const uri = c.kind === 'D' ? fileUri('baseline', c.path) : fileUri(q.snapshot, c.path);
+      const uri = c.kind === 'D' ? fileUri(`baseline-${q.snapshot}`, c.path) : fileUri(q.snapshot, c.path);
       return { line: HEADER + 1 + i, target: { doc: docId(uri), line: c.finding?.line ?? 1 } };
     });
 
     for (const c of q.changes) {
       const file = c.contents === undefined ? undefined : add(fileUri(q.snapshot, c.path), c.contents, archiveOf(q) ? [...under(q), c.path] : [...under(q), q.snapshot, c.path]);
-      const base = c.baseline === undefined ? undefined : add(fileUri('baseline', c.path), c.baseline, [...under(q), 'baseline', c.path]);
+      const base = c.baseline === undefined ? undefined : add(fileUri(`baseline-${q.snapshot}`, c.path), c.baseline, [...under(q), 'baseline', c.path]);
       if (!file) continue;
       file.addedLines = addedLinesOf(c.contents!, c.baseline);
       if (base) baselineOf.set(file.id, { doc: base.id, label: 'the baseline' });

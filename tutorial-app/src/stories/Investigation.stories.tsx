@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import InvestigationVault from './InvestigationVault';
 import { forged, inDrive, investigation, planted, sameText } from './investigationFixtures';
 import { fromListing, ls, realSnapshot, runId, runInDrive } from './protonDriveFixtures';
@@ -11,7 +11,7 @@ import { fromListing, ls, realSnapshot, runId, runInDrive } from './protonDriveF
 const meta = {
   title: 'Investigations/Pre-registered question',
   component: InvestigationVault,
-  parameters: { layout: 'padded' },
+  parameters: { layout: 'padded', docs: { description: { component: 'Sample data: authored verdicts and simplified rule snippets illustrate navigation. These are not measured results from executing #117, #118 or #120.' } } },
   args: { investigation },
 } satisfies Meta<typeof InvestigationVault>;
 export default meta;
@@ -28,6 +28,7 @@ const key = (target: Element | null, name: string, keyCode: number) => {
   (target as HTMLElement | null)?.focus();
   target?.dispatchEvent(new KeyboardEvent('keydown', { key: name, code: name, keyCode, bubbles: true, cancelable: true }));
 };
+const peekButton = (root: HTMLElement) => within(root).findByRole('button', { name: /snapshots · Peek$/ }, { timeout: 5000 });
 const lens = (root: Element, label: string) => waitFor(() => {
   const found = Array.from(root.querySelectorAll('.codelens-decoration a, .codelens-decoration span')).find((a) => a.textContent?.includes(label));
   if (!found) throw new Error(`lens "${label}" not shown`);
@@ -38,6 +39,7 @@ const lens = (root: Element, label: string) => waitFor(() => {
 async function openThePeek(canvasElement: HTMLElement, step: (name: string, fn: () => Promise<void>) => Promise<void> | void) {
   await step('the vault shows the question you pre-registered', async () => {
     await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain(investigation.question));
+    await peekButton(canvasElement);
   });
 
   await step('a squiggle says the vault holds more questions than you declared', async () => {
@@ -50,7 +52,7 @@ async function openThePeek(canvasElement: HTMLElement, step: (name: string, fn: 
   });
 
   await step("Peek lists the agent's questions; the first opens on its snapshot's diff", async () => {
-    press(await lens(canvasElement, 'Peek'));
+    press(await peekButton(canvasElement));
     await waitFor(() => {
       const peek = text(canvasElement, '.peekview-widget');
       for (const q of investigation.agent) expect(peek).toContain(q.tag);
@@ -109,7 +111,7 @@ export const VerdictAcrossRevisions: Story = {
     });
 
     await step("#120's verdict opens its check, at the rule that caught the forgery", async () => {
-      press(await lens(canvasElement, '#120 ✓ failed'));
+      press(await within(canvasElement).findByRole('button', { name: '#120 ✓ failed' }, { timeout: 5000 }));
       await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain('#120  ›  inputs/Reconcile.pkl'));
       await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain('trace.contains('));
       // The line #120 added since #118 is marked.
@@ -117,7 +119,7 @@ export const VerdictAcrossRevisions: Story = {
     });
 
     await step('Peek shows the check as #118 left it, without the trace', async () => {
-      press(await lens(canvasElement, 'changed since #118 · Peek'));
+      press(await within(canvasElement).findByRole('button', { name: 'changed since #118 · Peek' }, { timeout: 5000 }));
       await waitFor(() => {
         const peek = text(canvasElement, '.peekview-widget');
         expect(peek).toContain('#118/inputs');
@@ -139,6 +141,7 @@ export const ArchiveInDrive: Story = {
         for (const a of inDrive.drive!.archives) expect(text(canvasElement, '.view-lines')).toContain(a.name);
       });
       expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain('Proton Drive  ›  investigations');
+      await within(canvasElement).findByRole('button', { name: '3 findings · open the archive' }, { timeout: 5000 });
     });
 
     await step('a squiggle on the new archive: what changed since the last one', async () => {
@@ -149,7 +152,7 @@ export const ArchiveInDrive: Story = {
     });
 
     await step('opening it lists the archive like a tarball, against the previous one', async () => {
-      press(await lens(canvasElement, '3 findings · open the archive'));
+      press(await within(canvasElement).findByRole('button', { name: '3 findings · open the archive' }, { timeout: 5000 }));
       await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain('investigations  ›  release-2026-10.tar.gz'));
       await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain(`A  ${planted.path}`));
       await waitFor(() => expect(canvasElement.querySelectorAll('.squiggly-warning').length).toBe(3));
@@ -179,6 +182,7 @@ export const ArchiveInDriveExplore: Story = {
 // has no findings.
 export const RealDriveListing: Story = {
   name: 'The Drive pane from a real filesystem list',
+  parameters: { docs: { description: { story: 'Renders a retained, scrubbed CLI listing from the documented 2026-10-09 run. This story makes no live Drive request and invents no checker findings.' } } },
   args: { investigation: fromListing },
   play: async ({ canvasElement, step }) => {
     await step('the path bar is the restic repository\'s snapshots folder on Drive', async () => {
@@ -205,6 +209,7 @@ const hello = ls.nodes.find((n) => n.name === 'hello.txt')!;
 
 export const OpenRealSnapshot: Story = {
   name: 'Open a real snapshot from Drive',
+  parameters: { docs: { description: { story: 'Navigates retained listings from the second live transfer. The hello.txt text is reconstructed from the recorded run ID and capture script, not retained file bytes. No fresh download or checker runs in this story.' } } },
   args: { investigation: runInDrive },
   play: async ({ canvasElement, step }) => {
     await step('the run folder holds the restic repository', async () => {
@@ -213,7 +218,7 @@ export const OpenRealSnapshot: Story = {
     });
 
     await step('opening restic-repo lists the repository', async () => {
-      press(await lens(canvasElement, 'open restic-repo/'));
+      press(await within(canvasElement).findByRole('button', { name: 'open restic-repo/', exact: true }, { timeout: 5000 }));
       await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo')));
       await waitFor(() => {
         const lines = text(canvasElement, '.view-lines');
@@ -223,7 +228,7 @@ export const OpenRealSnapshot: Story = {
     });
 
     await step('snapshots holds the snapshot, named by its ID', async () => {
-      press(await lens(canvasElement, 'open snapshots/'));
+      press(await within(canvasElement).findByRole('button', { name: 'open snapshots/', exact: true }, { timeout: 5000 }));
       await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo', 'snapshots')));
       await waitFor(() => {
         const lines = text(canvasElement, '.view-lines');
@@ -233,7 +238,7 @@ export const OpenRealSnapshot: Story = {
     });
 
     await step('the snapshot opens on its tree, as restic ls lists it', async () => {
-      press(await lens(canvasElement, 'open the snapshot · 1 file'));
+      press(await within(canvasElement).findByRole('button', { name: 'open the snapshot · 1 file', exact: true }, { timeout: 5000 }));
       await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo', 'snapshots', ls.snapshot.id)));
       await waitFor(() => {
         const lines = text(canvasElement, '.view-lines');
@@ -243,7 +248,7 @@ export const OpenRealSnapshot: Story = {
     });
 
     await step('hello.txt opens on what the run wrote: its ID', async () => {
-      press(await lens(canvasElement, 'open hello.txt'));
+      press(await within(canvasElement).findByRole('button', { name: 'open hello.txt', exact: true }, { timeout: 5000 }));
       await waitFor(() => expect(path(canvasElement)).toBe(crumbs('restic-repo', 'snapshots', ls.snapshot.id, 'tmp', 'tmp.XSDJnYLG2i', 'hello.txt')));
       await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain(runId));
     });

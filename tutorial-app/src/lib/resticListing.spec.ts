@@ -36,3 +36,10 @@ describe('restic ls --json', () => {
     expect(() => parseResticLs(nodeLines.join('\n'))).toThrow('the first line is not the snapshot');
   });
 });
+
+describe('formatTime', () => {
+  it('converts offset-bearing restic timestamps to the labelled UTC instant', () => {
+    expect(formatTime('2017-03-11T09:57:43.26630619+01:00')).toBe('2017-03-11 08:57 UTC');
+    expect(formatTime('2026-10-09T23:30:00-03:00')).toBe('2026-10-10 02:30 UTC');
+  });
+});
