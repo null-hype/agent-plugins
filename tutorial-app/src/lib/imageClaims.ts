@@ -1,22 +1,7 @@
-// CIT-392 (image slice): a deterministic checker for uploaded images. It makes
-// no judgement call and runs no model. Each finding is a fact about the bytes:
-// the file is, or is not, what its name and its embedded scene claim it is.
-//
-// The three checks, in the order a reviewer would ask them:
-//   1. declared type vs magic bytes — a `.png` must begin with the PNG
-//      signature. A MATLAB or other file renamed `.png` is the exact mismatch
-//      a server trusts when it keeps a client-declared content type.
-//   2. active content in SVG — a `<script>`, an `on*=` handler, or a reference
-//      to a remote resource. Reported, never executed.
-//   3. embedded scene vs the image — for an Excalidraw PNG, every asset the
-//      scene references must be present, and the scene must fit inside the
-//      image that claims to depict it.
-//
-// The result is a `CheckerResult` with `origin: 'executed'`: these findings
-// come from running this checker on the bytes, not from sample output. The
-// result shape matches CIT-392's `restoredInvestigation`, so that module can
-// import these types to feed an executed result into the investigation view;
-// they are defined here so the checker stands alone.
+// Narrow, offline checks. No finding means only that these checks found nothing;
+// it does not establish that a file is valid, safe, or matches its rendered pixels.
+import { unzlibSync, strFromU8 } from 'fflate';
+
 export type CheckerFinding = { path: string; line: number; message: string };
 
 export type CheckerResult = {
@@ -28,7 +13,7 @@ export type CheckerResult = {
   raw: string;
 };
 
-export const IMAGE_CLAIMS_VERSION = '0.1.0';
+export const IMAGE_CLAIMS_VERSION = '0.2.0';
 
 /** The Excalidraw scene is stored in a PNG `tEXt` chunk under this keyword. */
 const EXCALIDRAW_KEYWORD = 'application/vnd.excalidraw+json';
@@ -44,12 +29,12 @@ const SIGNATURES: Signature[] = [
   { type: 'webp', test: (b) => startsWith(b, [0x52, 0x49, 0x46, 0x46]) && startsWith(b.subarray(8), [0x57, 0x45, 0x42, 0x50]) },
 ];
 
-/** Extensions that assert a binary raster type, and the signature that proves it. */
+/** Extensions that assert a binary raster type, and its expected leading signature. */
 const RASTER_BY_EXT: Record<string, string> = { png: 'png', jpg: 'jpeg', jpeg: 'jpeg', gif: 'gif', webp: 'webp' };
 
 const extensionOf = (path: string) => (path.split('.').pop() ?? '').toLowerCase();
 
-const asText = (b: Uint8Array) => new TextDecoder('latin1').decode(b);
+const asText = (b: Uint8Array) => Array.from(b, (n) => String.fromCharCode(n)).join('');
 
 /** The type the bytes actually are, by magic number; `svg` and `unknown` are text. */
 function actualType(bytes: Uint8Array): string {
@@ -85,70 +70,72 @@ function checkActiveSvg(path: string, bytes: Uint8Array): CheckerFinding[] {
   return findings;
 }
 
-/** Read the Excalidraw scene from a PNG `tEXt` chunk, or null if there isn't one. */
-function embeddedScene(bytes: Uint8Array): { width: number; height: number; scene: any } | null {
-  if (!SIGNATURES[0].test(bytes)) return null;
+/** Decode both legacy scenes and Excalidraw's compressed bstring envelope. */
+function decodeScene(data: Uint8Array): any {
+  const value = JSON.parse(asText(data));
+  if (value && 'encoded' in value) {
+    if (value.encoding !== 'bstring' || typeof value.encoded !== 'string' || typeof value.compressed !== 'boolean') throw new Error('unsupported encoding');
+    const encoded = Uint8Array.from(value.encoded, (c: string) => c.charCodeAt(0));
+    return JSON.parse(strFromU8(value.compressed ? unzlibSync(encoded) : encoded));
+  }
+  return value;
+}
+
+function checkScene(path: string, bytes: Uint8Array): CheckerFinding[] {
+  if (!SIGNATURES[0].test(bytes)) return [];
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let width = 0;
-  let height = 0;
-  let scene: any = null;
-  let i = 8;
-  while (i + 8 <= bytes.length) {
+  const findings: CheckerFinding[] = [];
+  for (let i = 8; i + 12 <= bytes.length;) {
     const len = view.getUint32(i);
+    if (len > bytes.length - i - 12) {
+      return [...findings, { path, line: 1, message: 'PNG chunk is truncated; embedded scene check incomplete' }];
+    }
     const type = asText(bytes.subarray(i + 4, i + 8));
     const data = bytes.subarray(i + 8, i + 8 + len);
-    if (type === 'IHDR') {
-      width = view.getUint32(i + 8);
-      height = view.getUint32(i + 12);
-    } else if (type === 'tEXt') {
+    if (type === 'tEXt') {
       const nul = data.indexOf(0);
       if (nul > 0 && asText(data.subarray(0, nul)) === EXCALIDRAW_KEYWORD) {
         try {
-          scene = JSON.parse(asText(data.subarray(nul + 1)));
+          const scene = decodeScene(data.subarray(nul + 1));
+          if (!scene || !Array.isArray(scene.elements)) throw new Error('missing elements');
+          const files = scene.files ?? {};
+          if (!files || typeof files !== 'object' || Array.isArray(files)) throw new Error('invalid files');
+          for (const el of scene.elements) {
+            if (el && !el.isDeleted && el.fileId && !Object.hasOwn(files, el.fileId)) {
+              findings.push({ path, line: 1, message: `embedded scene references asset ${el.fileId}, which is not in the file` });
+            }
+          }
         } catch {
-          scene = 'unparseable';
+          findings.push({ path, line: 1, message: 'embedded Excalidraw scene cannot be decoded; asset check incomplete' });
         }
       }
     }
     i += 12 + len;
   }
-  return scene === null ? null : { width, height, scene };
-}
-
-function checkScene(path: string, bytes: Uint8Array): CheckerFinding[] {
-  const embedded = embeddedScene(bytes);
-  if (!embedded) return [];
-  const { width, height, scene } = embedded;
-  if (scene === 'unparseable') return [{ path, line: 1, message: 'embedded Excalidraw scene does not parse' }];
-
-  const findings: CheckerFinding[] = [];
-  const elements: any[] = Array.isArray(scene.elements) ? scene.elements : [];
-  const files = scene.files && typeof scene.files === 'object' ? scene.files : {};
-
-  for (const el of elements) {
-    if (el && el.fileId && !(el.fileId in files)) {
-      findings.push({ path, line: 1, message: `embedded scene references asset ${el.fileId}, which is not in the file` });
-    }
-  }
-
-  // Conservative: only flag when the scene cannot fit inside the image it claims
-  // to depict. No padding or scale assumptions, so no false positive from a
-  // normal export.
-  const sceneWidth = Math.max(0, ...elements.map((e) => (e?.x ?? 0) + (e?.width ?? 0)));
-  const sceneHeight = Math.max(0, ...elements.map((e) => (e?.y ?? 0) + (e?.height ?? 0)));
-  if (width > 0 && height > 0 && (sceneWidth > width || sceneHeight > height)) {
-    findings.push({
-      path,
-      line: 1,
-      message: `embedded scene is ${Math.round(sceneWidth)}×${Math.round(sceneHeight)}, larger than the ${width}×${height} image`,
-    });
-  }
+  // Scene coordinates and PNG pixels have independent origins and export scales.
+  // Their dimensions alone cannot establish a visual mismatch.
   return findings;
 }
 
-/** Run the three checks over one file's bytes. */
+/** Same header predicates as vendor/lib/crafted_mat_file.rb (CIT-294).
+ * This identifies conflicting loader dispatch claims, not a confirmed file read.
+ */
+export function matlabHeaderVerdict(bytes: Uint8Array): 'unreadable' | 'clean' | 'mat_level5' | 'crafted' {
+  if (bytes.length < 128) return 'unreadable';
+  if (asText(bytes.subarray(0, 10)) !== 'MATLAB 5.0') return 'clean';
+  const tag = bytes.subarray(124, 128);
+  return startsWith(tag, [0, 2, 73, 77]) || startsWith(tag, [2, 0, 77, 73]) ? 'crafted' : 'mat_level5';
+}
+
+function checkMatlab(path: string, bytes: Uint8Array): CheckerFinding[] {
+  return matlabHeaderVerdict(bytes) === 'crafted'
+    ? [{ path, line: 1, message: 'conflicting MATLAB headers: libvips selects matload, while matio selects the MAT 7.3/HDF5 reader; inspect loader policy' }]
+    : [];
+}
+
+/** Run the limited checks over one file's bytes. */
 export function checkImage(path: string, bytes: Uint8Array): CheckerFinding[] {
-  return [...checkDeclaredType(path, bytes), ...checkActiveSvg(path, bytes), ...checkScene(path, bytes)];
+  return [...checkMatlab(path, bytes), ...checkDeclaredType(path, bytes), ...checkActiveSvg(path, bytes), ...checkScene(path, bytes)];
 }
 
 /** Run the checker over a set of files and return one executed `CheckerResult`. */
