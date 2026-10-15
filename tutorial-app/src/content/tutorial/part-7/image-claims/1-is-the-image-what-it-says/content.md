@@ -8,6 +8,33 @@ terminal: false
 
 # What does the image check actually establish?
 
+Someone shares a drawing or an image library with you. Before importing it,
+you want to know whether its assets are present and what the application will
+do with their bytes. Those are different questions. A complete drawing can
+still contain an image that needs careful handling.
+
+## Where this question started
+
+In April 2022, Excalidraw maintainer dwelle opened
+[an issue for image support in libraries](https://github.com/excalidraw/excalidraw/issues/5034).
+The checklist included investigating sanitization. That December, I asked
+whether this meant guarding against malicious image content; dwelle confirmed
+it did. Packaging and persistence across browsers, exports and host apps were
+also part of the discussion.
+
+I opened [a pull request for the feature](https://github.com/excalidraw/excalidraw/pull/6022)
+in December 2022. By February 2023, I was describing an experiment in that thread:
+storing files, including images, in restic with Excalidraw as the front end.
+The connection between drawings, stored files and the software that interprets
+them was already there.
+
+That history motivates this lesson's question: **what evidence do we need
+before letting another application process a shared image?** The Rails case
+below gives us a concrete failure to investigate. It is a separate case, not
+evidence of an Excalidraw vulnerability.
+
+## Start with the Rails/MATLAB evidence
+
 In the Rails/MATLAB investigation, an upload declared `image/png` reached
 libvips' MATLAB loader. That loader and matio interpreted different parts of
 the same header differently. The resulting HDF5 read returned bytes from a
@@ -64,6 +91,11 @@ The Excalidraw check reads both legacy JSON and compressed scene metadata,
 then reports referenced assets absent from its file map. An undecodable scene
 is reported as an incomplete check. Present assets are not decoded or validated.
 
+This separates two concerns from the library discussion: keeping the assets
+together and handling their contents safely. Finding a missing asset helps with
+the first. Neither that check nor the SVG pattern scan resolves the sanitization
+question raised in the original issue.
+
 Scene coordinates cannot be compared directly to PNG dimensions: exports have
 their own scale, origin and padding. This checker makes no claim that the
 embedded scene visually matches the rendered pixels.
@@ -100,7 +132,12 @@ regenerates it after an intentional change.
 
 For an encrypted folder, these checks can run locally before upload or after
 files are downloaded. The command above accepts those downloaded paths.
-This PR demonstrates the local check; it does not perform a Proton Drive
+Encryption protects a different boundary from the one explored here: the
+application processing the downloaded bytes still needs an appropriate loader
+policy. The intended workflow is to download, inspect locally, review the
+findings, and then decide which application should open the file.
+
+This lesson demonstrates the local check; it does not perform a Proton Drive
 login, download, upload, or automatic sharing decision. Preserving the original
 bytes and the checker output lets a later investigation ask what was checked,
 with which version, and what still needs evidence—just as the Rails case does.
