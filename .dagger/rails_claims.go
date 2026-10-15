@@ -68,6 +68,8 @@ func railsCase(ctx context.Context, source *dagger.Directory, hash, story, word,
 	if err != nil {
 		return nil, err
 	}
+	app = app.WithWorkdir(railsCaseFixtures + story).
+		WithExec([]string{"sh", "-ec", "if [ -f Fixtures.pkl ]; then pkl eval -m . Fixtures.pkl; fi"})
 	storybook := app.WithWorkdir(railsCasesHome).
 		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, railsCaseFixtures + "Recordings.test.pkl"}).
 		WithExec([]string{"pkl", "eval", "-f", "json", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, "-o", railsClaimsDir + "/cases/" + hash + "/frame.json", "Frame.pkl"}).
@@ -84,7 +86,7 @@ func railsCase(ctx context.Context, source *dagger.Directory, hash, story, word,
 		WithDirectory("/tests", source.Directory("test/rails-cases")).
 		WithWorkdir("/tests").
 		WithExec([]string{"npm", "install", "--ignore-scripts", "--no-audit", "--no-fund"}).
-		WithDirectory("/replay", source.Directory("test/rails-cases/"+story)).
+		WithDirectory("/replay", app.Directory(railsCaseFixtures+story)).
 		WithEnvVariable("RAILS_CASES_HOME", railsCasesHome).
 		WithServiceBinding("storybook", storybook).
 		WithEnvVariable("STORYBOOK_URL", "http://storybook:6006").

@@ -1,0 +1,21 @@
+// Compose replay fixtures from the immutable requests and real Jev answers.
+// Never derive captured requests from the current Frame: the test must detect drift.
+import "pkl:json"
+local parser = new json.Parser {}
+local digests = List(
+  "09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d",
+  "09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954",
+  "9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98"
+)
+output {
+  files {
+    ["recordings.json"] {
+      renderer = new JsonRenderer {}
+      value = digests.map((id) -> new Dynamic {
+        digest = "sha256:" + id
+        score = parser.parse(read("jev/" + id + "/answer.json").text).probabilities.claim
+        request = parser.parse(read("jev/" + id + "/request.json").text)
+      })
+    }
+  }
+}

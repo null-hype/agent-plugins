@@ -97,3 +97,26 @@ Local replay feature image:
 `sha256:f65925b3a30315924978b86f3fff6f01325b9648607fa352eb4246c64e35e577`.
 No CI was monitored. Authentication ownership, agent SDK reuse, Dagger
 integration, and HAR lifecycle remain follow-up work under CIT-415–419.
+
+## Review follow-up: generated recordings
+
+`Fixtures.pkl` now composes the replay's `recordings.json` from the original
+captured requests and normalized answers. The JSON output is ignored rather
+than committed; its parsed value matches the original capture exactly.
+`jev/provenance.json` retains the historical byte hashes of the original
+capture, including the formerly committed recordings; generated JSON can
+have different formatting without changing the evidence.
+
+The scenario derives its fixture directory from its own script name and
+receives the Rails hash through `containerEnv` in `scenarios.json`. The global
+case scripts call `rails-cases/capture.sh`; this is a shared helper, not an
+`ask-jev` scenario. Browser replay remains outside this validation.
+
+Review validation (2026-10-15, CLI 0.89.0): generated JSON matched the previous
+recordings as parsed values. With no pre-generated recordings in the source
+tree, the ordinary feature command in a PTY failed with exit 1 after temporarily
+restoring `inRange = true`, showing observed 0.48 against [0.0, 0.2]. Restoring
+the committed `inRange = false` passed all 3 tests / 6 assertions. The failed
+expectation was not committed. An earlier non-PTY invocation with redirected
+output reported success without assertion output; that summary is not counted
+as validation. Dagger browser execution was skipped as requested.

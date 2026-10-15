@@ -13,17 +13,31 @@ The browser-only YJIT replay is separately named `yjit-browser-replay`.
 1. Run the manual global workflow with `securerandom-always-two` or
    `yjit-always-available`. The scenario configuration selects the case and
    commit hash. The harness renders requests with Pkl and invokes the installed
-   `jev` CLI.
+   `jev` CLI. The registered scenarios are named for the cases;
+   `test/_global/rails-cases/capture.sh` is their shared helper, not a scenario.
 2. Review the `rails-cases-captures` artifact: input commit and Vale alerts,
    exact Jev requests, raw answers, and joined recordings. A capture is a
    candidate, not an accepted fixture.
 3. To accept, propose the corresponding changes to
-   `test/rails-cases/<case>/commit.txt`, `vale.json`, and `recordings.json`
+   `test/rails-cases/<case>/commit.txt`, `vale.json`, and captured Jev evidence
    in Git. Human review accepts or rejects that diff. There is no separate
    refresh command and no automatic overwrite of accepted evidence.
 
-The YJIT recordings contain a real capture from 2026-10-14. The SecureRandom
-recordings remain empty; that case has no captured baseline.
+The YJIT `Fixtures.pkl` composes `recordings.json` from the exact captured
+requests and answers. The scenario generates this ignored JSON before its
+assertions; Dagger generates it before rendering the frame. To generate it
+manually:
+
+```sh
+pkl eval -m test/rails-cases/yjit-always-available \
+  test/rails-cases/yjit-always-available/Fixtures.pkl
+```
+
+The requests, answers, raw responses, and capture provenance remain committed
+as original evidence. Requests must not be regenerated from the current frame:
+that would make the request-integrity assertion compare the implementation
+against itself. The generated recordings reproduce the real capture from
+2026-10-14. The SecureRandom recordings remain empty; that case has no captured baseline.
 The request and probability checks remain required; no sample scores are
 invented to make replay pass. Archiving agent sessions with restic remains
 independent of accepting these fixtures.

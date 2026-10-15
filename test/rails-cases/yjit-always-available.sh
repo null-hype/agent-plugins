@@ -1,5 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
-fixtures="$PWD/yjit-always-available"
-pkl test -p hash=fddf74bea9 -p case="$fixtures" Recordings.test.pkl yjit-always-available/Confidence.test.pkl
+# The matching scenario directory is copied by the feature test runner.
+scenario=$(basename "$0" .sh)
+pkl eval -m "$scenario" "$scenario/Fixtures.pkl"
+pkl test -p hash="${RAILS_CASE_HASH:?}" -p case="$PWD/$scenario" \
+    Recordings.test.pkl "$scenario/Confidence.test.pkl"
