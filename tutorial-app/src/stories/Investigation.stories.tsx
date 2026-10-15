@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import InvestigationVault, { type Investigation } from './InvestigationVault';
 
 // CIT-365: what a learner sees when an agent's questions meet the one they
@@ -89,6 +89,7 @@ const key = (target: Element | null, name: string, keyCode: number) => {
   (target as HTMLElement | null)?.focus();
   target?.dispatchEvent(new KeyboardEvent('keydown', { key: name, code: name, keyCode, bubbles: true, cancelable: true }));
 };
+const peekButton = (root: HTMLElement) => within(root).findByRole('button', { name: /snapshots · Peek$/ }, { timeout: 5000 });
 const lens = (root: Element, label: string) => waitFor(() => {
   const found = Array.from(root.querySelectorAll('.codelens-decoration a, .codelens-decoration span')).find((a) => a.textContent?.includes(label));
   if (!found) throw new Error(`lens "${label}" not shown`);
@@ -102,6 +103,7 @@ const [planted] = forged.changes;
 async function openThePeek(canvasElement: HTMLElement, step: (name: string, fn: () => Promise<void>) => Promise<void> | void) {
   await step('the vault shows the question you pre-registered', async () => {
     await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain(investigation.question));
+    await peekButton(canvasElement);
   });
 
   await step('a squiggle says the vault holds more questions than you declared', async () => {
@@ -114,7 +116,7 @@ async function openThePeek(canvasElement: HTMLElement, step: (name: string, fn: 
   });
 
   await step("Peek lists the agent's questions; the first opens on its snapshot's diff", async () => {
-    press(await lens(canvasElement, 'Peek'));
+    press(await peekButton(canvasElement));
     await waitFor(() => {
       const peek = text(canvasElement, '.peekview-widget');
       for (const q of investigation.agent) expect(peek).toContain(q.tag);
