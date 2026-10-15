@@ -42,7 +42,7 @@ test('Autodocs mounts all vaults and routes definitions to their own editor', as
   await page.goto('/?path=/docs/investigations-pre-registered-question--docs');
   const docs = page.frameLocator('#storybook-preview-iframe');
   const vaults = docs.getByTestId('investigation-vault');
-  await expect(vaults).toHaveCount(4);
+  await expect(vaults).toHaveCount(6);
   for (let i = 0; i < 4; i++) {
     const vault = vaults.nth(i);
     await expect(vault.locator('.monaco-editor').first()).toBeVisible();
@@ -56,6 +56,17 @@ test('Autodocs mounts all vaults and routes definitions to their own editor', as
     await expect(vault.locator('..').getByTestId('investigation-path')).toContainText('#120');
     if (i === 0) await expect(vaults.nth(1).locator('..').getByTestId('investigation-path')).toHaveText('investigations');
   }
+  for (let i = 4; i < 6; i++) {
+    const vault = vaults.nth(i);
+    await vault.getByRole('button', { name: '3 findings · open the archive' }).click();
+    await expect(vault.locator('..').getByTestId('investigation-path')).toContainText('release-2026-10.tar.gz');
+    await vault.locator('.monaco-editor textarea, .monaco-editor .native-edit-context').first().press('F12');
+    await expect(vault.locator('..').getByTestId('investigation-path')).toContainText('forged-read.json');
+    await vault.getByRole('button', { name: '#120 ✓ failed' }).click();
+    await expect(vault.locator('..').getByTestId('investigation-path')).toContainText('#120');
+    await vault.locator('..').getByRole('button', { name: '↑ Drive' }).click();
+    await expect(vault.locator('..').getByTestId('investigation-path')).toHaveText('Proton Drive  ›  investigations');
+  }
   expect(errors).toEqual([]);
 });
 
@@ -67,4 +78,15 @@ test('Autodocs mounts all vaults and routes definitions to their own editor', as
   await expect(canvas.getByTestId('investigation-path')).toContainText('#120');
   await expect(canvas.locator('.peekview-widget')).toContainText('#118/inputs');
   await expect(canvas.locator('.peekview-widget')).not.toContainText('trace.contains(');
+});
+
+test('Drive archive opens through the listing into its finding', async ({ page }) => {
+  await page.goto('/?path=/story/investigations-pre-registered-question--archive-in-drive');
+  await page.getByRole('tab', { name: /^Interactions/ }).click();
+  await expect(page.locator('[aria-label="Story status: Pass"]')).toBeVisible({ timeout: 20_000 });
+  const canvas = page.frameLocator('#storybook-preview-iframe');
+  await expect(canvas.getByTestId('investigation-path')).toContainText('release-2026-10.tar.gz');
+  await expect(canvas.getByTestId('investigation-path')).toContainText('forged-read.json');
+  await canvas.getByRole('button', { name: '↑ Drive' }).click();
+  await expect(canvas.getByTestId('investigation-path')).toHaveText('Proton Drive  ›  investigations');
 });
