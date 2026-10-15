@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 640" role="img">
+<title>PLAN · drawn before the run · the only part a person edits</title>
+<rect width="800" height="640" fill="#ffffff"/>
+<rect x="20" y="20" width="760" height="560" rx="6" fill="none" stroke="#1e1e1e" stroke-width="2"/>
+<text x="36" y="42.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">COMMIT_EDITMSG   rails/rails   ruby33-yjit-enable</text>
+<text x="70" y="85.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Remove unnecessary `defined?` check for RubyVM::YJIT.enable</text>
+<text x="70" y="137.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Since Rails main branch now requires Ruby 3.3.0,</text>
+<rect x="62" y="147" width="520" height="25" rx="6" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="70" y="163.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">`RubyVM::YJIT.enable` is always available and the</text>
+<rect x="62" y="173" width="520" height="25" rx="6" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="70" y="189.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">`defined?` guard is no longer necessary.</text>
+<text x="106" y="239.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">vale  Claims.Absolute  line 4  &quot;always&quot;</text>
+<text x="106" y="271.3" font-size="18" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Q: Is RubyVM::YJIT.enable always available</text>
+<text x="106" y="333.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Jev 0.38 that it holds</text>
+<rect x="106" y="354" width="140" height="34" rx="6" fill="none" stroke="#1e1e1e" stroke-width="2"/><text x="132.8" y="376.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Peek: yes</text>
+<rect x="258" y="354" width="140" height="34" rx="6" fill="none" stroke="#1e1e1e" stroke-width="2"/><text x="289.6" y="376.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Peek: no</text>
+<text x="36" y="531.9" font-size="14" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">payload sha256:9f2c..  pinned before the call   jev v1   recorded</text>
+<text x="36" y="609.6" font-size="16" fill="#1e1e1e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">PLAN · drawn before the run · the only part a person edits</text>
+</svg>
