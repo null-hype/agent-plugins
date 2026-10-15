@@ -52,7 +52,8 @@ export type AgentQuestion = {
 /** A Proton Drive folder of archives; each one was snapshotted with restic when it arrived. */
 export type DriveFolder = {
   folder: string;
-  archives: { name: string; snapshot: string; baseline?: boolean }[];
+  /** `detail` follows the entry, e.g. its size from `filesystem list --json`. */
+  archives: { name: string; snapshot: string; baseline?: boolean; detail?: string }[];
 };
 
 export type Investigation = {
@@ -167,7 +168,7 @@ const snapshotText = (q: AgentQuestion) =>
 
 const driveText = ({ folder, archives }: DriveFolder) =>
   [`/// Proton Drive: /${folder}. Each archive is a restic snapshot.`,
-    ...archives.map((a) => `${a.name}   snapshot ${a.snapshot}${a.baseline ? ' · the baseline' : ''}`)].join('\n') + '\n';
+    ...archives.map((a) => `${a.name}   snapshot ${a.snapshot}${a.baseline ? ' · the baseline' : ''}${a.detail ? ` · ${a.detail}` : ''}`)].join('\n') + '\n';
 
 const count = (n: number) => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
 
