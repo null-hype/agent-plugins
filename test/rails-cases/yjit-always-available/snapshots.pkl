@@ -1,0 +1,6 @@
+// Fixed capture data; independent of the current feature implementation.
+output {
+  value = new Listing {
+  }
+  renderer = new JsonRenderer {}
+}

@@ -1,0 +1,11 @@
+// Fixed capture data; independent of the current feature implementation.
+output {
+  value = new Mapping {
+    ["backend"] = "real"
+    ["model"] = "jev-1.13.0"
+    ["probabilities"] = new Mapping {
+      ["claim"] = 0.48
+    }
+  }
+  renderer = new JsonRenderer {}
+}

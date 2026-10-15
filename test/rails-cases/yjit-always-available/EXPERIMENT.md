@@ -120,3 +120,22 @@ the committed `inRange = false` passed all 3 tests / 6 assertions. The failed
 expectation was not committed. An earlier non-PTY invocation with redirected
 output reported success without assertion output; that summary is not counted
 as validation. Dagger browser execution was skipped as requested.
+
+## Complete Pkl fixture sources
+
+All 13 formerly committed static JSON files now have Pkl sources, including
+provenance, requests, normalized answers, responses, Vale alerts, sketch, and
+initial snapshots. `Fixtures.pkl` emits these plus composed recordings without
+reading any JSON. All 14 generated JSON values match the original fixtures.
+The capture's historical SHA-256 values remain unchanged; they describe the
+original captured bytes, not the newly rendered JSON formatting.
+
+The confidence scenario generates fixtures in a fresh temporary directory,
+so it cannot overwrite snapshots exported by a browser run. The existing
+Dagger generation step consumes the same complete Pkl fixture set.
+
+After the complete conversion, the feature scenario passed all 3 tests / 6
+assertions with no JSON in the source fixture directory. Temporarily restoring
+`inRange = true` still failed at the named confidence example (exit 1); the
+committed expectation was restored afterward. All generated paths are ignored,
+and no static JSON remains tracked under this YJIT fixture directory.
