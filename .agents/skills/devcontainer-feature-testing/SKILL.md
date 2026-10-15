@@ -22,3 +22,9 @@ npx --yes @devcontainers/cli features test -f rails-cases --filter yjit-always-a
 Use `--global-scenarios-only` for global scenarios. Check the installed CLI's help for flags. In this Codespaces setup, the Docker daemon sees container `/tmp` as `/mnt/containerTmp`; when that mapping exists, use `TMPDIR=/mnt/containerTmp` so generated bind mounts resolve.
 
 For Rails browser replays, CI exports a HAR into the selected case directory before feature tests run; see `test/rails-cases/README.md`. Preserve reviewed recordings and expectations. Missing HARs or failed container builds are setup failures, not evidence that assertions passed or failed. Report the actual command and distinguish build, assertion, and unavailable-evidence outcomes.
+
+When validating expected failures, require the assertion diagnostic and exit
+status, not just the CLI summary. In this workspace, CLI 0.89.0 invoked with
+closed stdin and redirected output reported success without executing the
+assertions. Running with a PTY produced the expected failure and normal Pkl
+output. Use a PTY here and verify both red and green outcomes.

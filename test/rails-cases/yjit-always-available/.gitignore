@@ -4,10 +4,10 @@
 !commit.txt
 !vale.json
 !snapshots.json
-!recordings.json
 !sketch.json
 !sketch_test.pkl
 !Confidence.test.pkl
+!Fixtures.pkl
 !Confidence.test.pkl-expected.pcf
 !EXPERIMENT.md
 !jev/

@@ -11,6 +11,9 @@
         "features": {
             "rails-cases": {},
             "jev": {}
+        },
+        "containerEnv": {
+            "RAILS_CASE_HASH": "fddf74bea9"
         }
     },
     "yjit-browser-replay": {
