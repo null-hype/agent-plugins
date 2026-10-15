@@ -62,6 +62,15 @@ hooks {
                     effect = "read"
                 }
             }
+            // ast-grep rules in rules/: their own tests, then the lint-*
+            // rules over the repo. The organ-* rules are an inventory, not
+            // a gate: `npx --package=@ast-grep/cli ast-grep scan --no-ignore hidden --filter '^organ-'`.
+            ["ast-grep"] {
+                check = new CommandSpec {
+                    command = "npx --yes --package=@ast-grep/cli@0.50.0 ast-grep test && npx --yes --package=@ast-grep/cli@0.50.0 ast-grep scan --no-ignore hidden --filter '^lint-'"
+                    effect = "read"
+                }
+            }
             // Syncs pushed commits to the Linear "Development" release.
             // Runs here (not pre-push) since it's a post-push sync, not a
             // push gate -- a stale pass-cli session or a renamed vault

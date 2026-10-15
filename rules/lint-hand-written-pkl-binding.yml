@@ -1,0 +1,12 @@
+id: lint-hand-written-pkl-binding
+language: go
+# Warning until CIT-420 generates these; then error.
+severity: warning
+message: Write the fact once. Everything else is a projection of it.
+note: This Go type mirrors a Pkl class by hand. Generate it instead.
+rule:
+  kind: type_declaration
+  has: { stopBy: end, kind: raw_string_literal, regex: "^`pkl:" }
+  inside:
+    kind: source_file
+    not: { has: { kind: comment, regex: "Code generated .*DO NOT EDIT" } }

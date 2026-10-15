@@ -1,0 +1,32 @@
+id: organ-projects-from-data
+snapshots:
+  ? |
+    const projects = PARTS.flatMap(({ name, projects }) => projects);
+  : labels:
+    - source: projects = PARTS.flatMap(({ name, projects }) => projects)
+      style: primary
+      start: 6
+      end: 64
+    - source: projects
+      style: secondary
+      start: 6
+      end: 14
+    - source: PARTS.flatMap(({ name, projects }) => projects)
+      style: secondary
+      start: 17
+      end: 64
+  ? |
+    export default defineConfig({ projects: Object.entries(questions).map(([id, q]) => ({ name: id })) });
+  : labels:
+    - source: 'projects: Object.entries(questions).map(([id, q]) => ({ name: id }))'
+      style: primary
+      start: 30
+      end: 98
+    - source: projects
+      style: secondary
+      start: 30
+      end: 38
+    - source: 'Object.entries(questions).map(([id, q]) => ({ name: id }))'
+      style: secondary
+      start: 40
+      end: 98
