@@ -63,14 +63,23 @@ func railsClaimsApp(ctx context.Context, source *dagger.Directory) (*dagger.Cont
 // rendered as above; Storybook is built and served statically, and the
 // scenario's replay.sh steps through the one story, recording what it loaded
 // into /replay/replay.har. The feature's scenario replays from that HAR.
-func railsCase(ctx context.Context, source *dagger.Directory, hash, story, word, phrase string) (*dagger.Container, error) {
+func railsCase(ctx context.Context, source *dagger.Directory, evidence *dagger.Directory, hash, story, word, phrase string) (*dagger.Container, error) {
 	app, err := railsClaimsApp(ctx, source)
 	if err != nil {
 		return nil, err
 	}
-	storybook := app.WithWorkdir(railsCasesHome).
+	if evidence != nil {
+		app = app.WithoutDirectory(railsCaseFixtures+story).
+			WithDirectory(railsCaseFixtures+story, evidence).
+			WithExec([]string{"pkl", "eval", "-p", "case=" + railsCaseFixtures + story, "-o", railsCaseFixtures + story + "/recordings.json", railsCasesHome + "/Recordings.pkl"})
+	} else {
+		app = app.WithWorkdir(railsCaseFixtures + story).
+			WithExec([]string{"sh", "-ec", "if [ -f Fixtures.pkl ]; then pkl eval -m . Fixtures.pkl; fi"})
+	}
+	app = app.WithWorkdir(railsCasesHome).
 		WithExec([]string{"pkl", "test", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, railsCaseFixtures + "Recordings.test.pkl"}).
-		WithExec([]string{"pkl", "eval", "-f", "json", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, "-o", railsClaimsDir + "/cases/" + hash + "/frame.json", "Frame.pkl"}).
+		WithExec([]string{"pkl", "eval", "-f", "json", "-p", "hash=" + hash, "-p", "case=" + railsCaseFixtures + story, "-o", railsCaseFixtures + story + "/frame.json", "Frame.pkl"})
+	storybook := app.WithFile(railsClaimsDir+"/cases/"+hash+"/frame.json", app.File(railsCaseFixtures+story+"/frame.json")).
 		WithWorkdir("/workspace/tutorial-app").
 		WithExec([]string{"npx", "storybook", "build", "-o", "/storybook"}).
 		WithExposedPort(6006).
@@ -84,7 +93,7 @@ func railsCase(ctx context.Context, source *dagger.Directory, hash, story, word,
 		WithDirectory("/tests", source.Directory("test/rails-cases")).
 		WithWorkdir("/tests").
 		WithExec([]string{"npm", "install", "--ignore-scripts", "--no-audit", "--no-fund"}).
-		WithDirectory("/replay", source.Directory("test/rails-cases/"+story)).
+		WithDirectory("/replay", app.Directory(railsCaseFixtures+story)).
 		WithEnvVariable("RAILS_CASES_HOME", railsCasesHome).
 		WithServiceBinding("storybook", storybook).
 		WithEnvVariable("STORYBOOK_URL", "http://storybook:6006").
@@ -103,7 +112,7 @@ func (m *AgentPlugins) SecurerandomAlwaysTwo(
 	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git", "**/replay.trace"]
 	source *dagger.Directory,
 ) error {
-	c, err := railsCase(ctx, source, "dbafc460fa", "securerandom-always-two", "always", "always 2")
+	c, err := railsCase(ctx, source, nil, "dbafc460fa", "securerandom-always-two", "always", "always 2")
 	if err != nil {
 		return err
 	}
@@ -119,7 +128,7 @@ func (m *AgentPlugins) SecurerandomAlwaysTwoHar(
 	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git", "**/replay.trace"]
 	source *dagger.Directory,
 ) (*dagger.Directory, error) {
-	c, err := railsCase(ctx, source, "dbafc460fa", "securerandom-always-two", "always", "always 2")
+	c, err := railsCase(ctx, source, nil, "dbafc460fa", "securerandom-always-two", "always", "always 2")
 	if err != nil {
 		return nil, err
 	}
@@ -132,12 +141,15 @@ func (m *AgentPlugins) YjitAlwaysAvailable(ctx context.Context,
 	// +defaultPath="/"
 	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git"]
 	source *dagger.Directory,
+	// A capture directory from the global scenario; omitted uses the retained run.
+	// +optional
+	evidence *dagger.Directory,
 ) error {
-	c, err := railsCase(ctx, source, "fddf74bea9", "yjit-always-available", "always", "always available")
+	c, err := railsCase(ctx, source, evidence, "fddf74bea9", "yjit-always-available", "always", "always available")
 	if err != nil {
 		return err
 	}
-	_, err = c.Sync(ctx)
+	_, err = c.WithExec([]string{"pkl", "test", "-p", "hash=fddf74bea9", "-p", "case=/replay", "/tests/yjit-always-available/Confidence.test.pkl"}).Sync(ctx)
 	return err
 }
 
@@ -146,8 +158,11 @@ func (m *AgentPlugins) YjitAlwaysAvailableHar(ctx context.Context,
 	// +defaultPath="/"
 	// +ignore=["**/node_modules", "**/.venv", "test-results", "**/dist", "**/storybook-static", ".git"]
 	source *dagger.Directory,
+	// Export the supplied capture even when its confidence hypothesis disagrees.
+	// +optional
+	evidence *dagger.Directory,
 ) (*dagger.Directory, error) {
-	c, err := railsCase(ctx, source, "fddf74bea9", "yjit-always-available", "always", "always available")
+	c, err := railsCase(ctx, source, evidence, "fddf74bea9", "yjit-always-available", "always", "always available")
 	if err != nil {
 		return nil, err
 	}

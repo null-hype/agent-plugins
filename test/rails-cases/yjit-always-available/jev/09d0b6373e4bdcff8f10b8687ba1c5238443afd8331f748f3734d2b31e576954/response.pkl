@@ -1,0 +1,17 @@
+// Fixed capture data; independent of the current feature implementation.
+output {
+  value = new Mapping {
+    ["model"] = "jev-1.13.0"
+    ["answers"] = new Mapping {
+      ["claim"] = new Mapping {
+        ["type"] = "noul"
+        ["noul"] = 0.83
+      }
+    }
+    ["usage"] = new Mapping {
+      ["input_tokens"] = 524
+      ["output_tokens"] = 20
+    }
+  }
+  renderer = new JsonRenderer {}
+}

@@ -1,0 +1,34 @@
+// Materialize the historical capture. New runs already have these JSON files.
+import* "jev/*/*.pkl" as captured
+import* "jev/*/request.pkl" as requests
+import* "jev/*/response.pkl" as responses
+import "/usr/local/share/rails-cases/Recordings.pkl"
+import "jev/provenance.pkl" as provenance
+import "sketch.pkl" as sketch
+import "snapshots.pkl" as snapshots
+import "vale.pkl" as vale
+local json = new JsonRenderer {}
+output {
+  files {
+    for (uri, data in captured) {
+      ["jev/" + uri.split("jev/").last.replaceAll(".pkl", ".json")] {
+        value = data.output.value
+        renderer = json
+      }
+    }
+    ["jev/provenance.json"] { value = provenance.output.value; renderer = json }
+    ["sketch.json"] { value = sketch.output.value; renderer = json }
+    ["snapshots.json"] { value = snapshots.output.value; renderer = json }
+    ["vale.json"] { value = vale.output.value; renderer = json }
+    ["recordings.json"] {
+      renderer = json
+      value = new Listing {
+        for (uri, request in requests) {
+          Recordings.recording(uri.split("/").dropLast(1).last,
+            json.renderValue(request.output.value),
+            json.renderValue(responses[uri.replaceAll("request.pkl", "response.pkl")].output.value))
+        }
+      }
+    }
+  }
+}

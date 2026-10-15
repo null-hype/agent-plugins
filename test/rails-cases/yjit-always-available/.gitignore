@@ -1,9 +1,11 @@
-# CI exports the replay here; only accepted source evidence belongs in Git.
+# Static JSON and browser exports are generated; Pkl evidence is reviewed in Git.
 *
 !.gitignore
 !commit.txt
-!vale.json
-!snapshots.json
-!recordings.json
-!sketch.json
-!sketch_test.pkl
+!*.pkl
+!Confidence.test.pkl-expected.pcf
+!EXPERIMENT.md
+!INTEGRATION.md
+!jev/
+!jev/**/
+!jev/**/*.pkl

@@ -1,0 +1,133 @@
+// Fixed capture data; independent of the current feature implementation.
+output {
+  value = new Listing {
+    new Mapping {
+      ["type"] = "cameraUpdate"
+      ["width"] = 800
+      ["height"] = 600
+      ["x"] = 0
+      ["y"] = 0
+    }
+    new Mapping {
+      ["type"] = "rectangle"
+      ["id"] = "win"
+      ["x"] = 20
+      ["y"] = 20
+      ["width"] = 760
+      ["height"] = 560
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "bart"
+      ["x"] = 36
+      ["y"] = 29
+      ["text"] = "COMMIT_EDITMSG   rails/rails   ruby33-yjit-enable"
+      ["fontSize"] = 16
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "l1"
+      ["x"] = 70
+      ["y"] = 72
+      ["text"] = "Remove unnecessary `defined?` check for RubyVM::YJIT.enable"
+      ["fontSize"] = 16
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "l3"
+      ["x"] = 70
+      ["y"] = 124
+      ["text"] = "Since Rails main branch now requires Ruby 3.3.0,"
+      ["fontSize"] = 16
+    }
+    new Mapping {
+      ["type"] = "rectangle"
+      ["id"] = "h4"
+      ["x"] = 62
+      ["y"] = 147
+      ["width"] = 520
+      ["height"] = 25
+      ["backgroundColor"] = "#fff3bf"
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "l4"
+      ["x"] = 70
+      ["y"] = 150
+      ["text"] = "`RubyVM::YJIT.enable` is always available and the"
+      ["fontSize"] = 16
+    }
+    new Mapping {
+      ["type"] = "rectangle"
+      ["id"] = "h5"
+      ["x"] = 62
+      ["y"] = 173
+      ["width"] = 520
+      ["height"] = 25
+      ["backgroundColor"] = "#fff3bf"
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "l5"
+      ["x"] = 70
+      ["y"] = 176
+      ["text"] = "`defined?` guard is no longer necessary."
+      ["fontSize"] = 16
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "p1"
+      ["x"] = 106
+      ["y"] = 226
+      ["text"] = "vale  Claims.Absolute  line 4  \"always\""
+      ["fontSize"] = 16
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "p2"
+      ["x"] = 106
+      ["y"] = 256
+      ["text"] = "Q: Is RubyVM::YJIT.enable always available"
+      ["fontSize"] = 18
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "p4"
+      ["x"] = 106
+      ["y"] = 320
+      ["text"] = "Jev 0.38 that it holds"
+      ["fontSize"] = 16
+    }
+    new Mapping {
+      ["type"] = "rectangle"
+      ["id"] = "by"
+      ["x"] = 106
+      ["y"] = 354
+      ["width"] = 140
+      ["height"] = 34
+      ["label"] = new Mapping {
+        ["text"] = "Peek: yes"
+      }
+    }
+    new Mapping {
+      ["type"] = "rectangle"
+      ["id"] = "bn"
+      ["x"] = 258
+      ["y"] = 354
+      ["width"] = 140
+      ["height"] = 34
+      ["label"] = new Mapping {
+        ["text"] = "Peek: no"
+      }
+    }
+    new Mapping {
+      ["type"] = "text"
+      ["id"] = "r3"
+      ["x"] = 36
+      ["y"] = 520
+      ["text"] = "payload sha256:9f2c..  pinned before the call   jev v1   recorded"
+      ["fontSize"] = 14
+    }
+  }
+  renderer = new JsonRenderer {}
+}

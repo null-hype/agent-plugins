@@ -21,13 +21,10 @@ pass-cli run --env-file "$here/.env" -- bash -euo pipefail -c '
     for dir in "$1"/*/; do
         out=$2/jev/$(basename "$dir")
         mkdir -p "$out"
-        jev -q "$dir/questions.json" --request-out "$out/request.json" "$dir/payload.json" > "$out/answer.json"
+        jev -q "$dir/questions.json" --request-out "$out/request.json" --response-out "$out/response.json" "$dir/payload.json" > "$out/answer.json"
     done
 ' bash "$work/payloads" "$evidence"
-for out in "$evidence"/jev/*/; do
-    jq -n --arg digest "sha256:$(basename "$out")" --slurpfile answer "$out/answer.json" --slurpfile request "$out/request.json" \
-        '{digest: $digest, score: $answer[0].probabilities.claim, request: $request[0]}'
-done | jq -s . > "$evidence/recordings.json"
-jq -e 'length > 0 and all(.score | type == "number" and . >= 0 and . <= 1)' "$evidence/recordings.json" >/dev/null
+pkl eval -p case="$evidence" -o "$evidence/recordings.json" "$RAILS_CASES_HOME/Recordings.pkl"
+pkl eval -p hash="$hash" -p case="$evidence" -o "$evidence/frame.json" "$RAILS_CASES_HOME/Frame.pkl"
 pkl test -p hash="$hash" -p case="$evidence" "$here/Recordings.test.pkl"
-printf "%s: candidate evidence in %s; review before committing local fixtures\n" "$case_" "$evidence"
+printf "%s: capture in %s; pass this directory to the case check and viewer\n" "$case_" "$evidence"

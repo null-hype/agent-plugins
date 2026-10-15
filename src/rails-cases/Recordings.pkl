@@ -1,0 +1,29 @@
+/// Derive replay records from the requests and responses retained by `jev`.
+/// Both fresh captures and historical captures use this projection. No current
+/// Frame input is substituted for the request that was actually sent.
+module Recordings
+import "pkl:json"
+import "/usr/local/share/jev/pkl/Jev.pkl" as jev
+
+local dir = read("prop:case") + "/jev/"
+local parser = new json.Parser {}
+local requests = read*(dir + "*/request.json")
+
+function recording(id: String, requestText: String, responseText: String): Dynamic = new Dynamic {
+  request = parser.parse(requestText)
+  digest = "sha256:" + id
+  local response = jev.responseFromJson(responseText,
+    new JsonRenderer {}.renderValue(request.questions.toMap().keys), request.model)
+  score = response.answers["claim"].noul
+}
+
+output {
+  renderer = new JsonRenderer {}
+  value = new Listing {
+    for (uri, resource in requests) {
+      let (prefix = uri.substring(0, uri.lastIndexOf("/") + 1))
+        recording(prefix.dropLast(1).split("/").last, resource.text,
+          read(prefix + "response.json").text)
+    }
+  }
+}

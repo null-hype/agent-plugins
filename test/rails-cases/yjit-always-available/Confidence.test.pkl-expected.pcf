@@ -1,0 +1,9 @@
+examples {
+  ["RubyVM::YJIT.enable is always available: low-confidence hypothesis"] {
+    new Dynamic {
+      minimum = 0.0
+      maximum = 0.2
+      inRange = false
+    }
+  }
+}

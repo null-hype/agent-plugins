@@ -7,6 +7,16 @@
         }
     },
     "yjit-always-available": {
+        "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+        "features": {
+            "rails-cases": {},
+            "jev": {}
+        },
+        "containerEnv": {
+            "RAILS_CASE_HASH": "fddf74bea9"
+        }
+    },
+    "yjit-browser-replay": {
         "image": "mcr.microsoft.com/playwright:v1.59.1-noble",
         "features": {
             "rails-cases": {},
