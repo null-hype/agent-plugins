@@ -32,6 +32,14 @@ describe.each(CASES)('rails claims: case %s', (hash) => {
     expect(JSON.parse(frame)).toEqual(JSON.parse(readFileSync(dir + 'frame.json', 'utf8')));
   });
 
+  // CIT-407: the lesson's two frames are Scene.pkl's output, never hand-edited SVG.
+  for (const row of ['plan', 'checked']) it.skipIf(!has('pkl'))(`public/sketches/${hash}/${row}.svg is what Scene.pkl draws`, () => {
+    const svg = execFileSync('pkl', ['eval', '-p', `hash=${hash}`, '-p', `row=${row}`, here('Scene.pkl')], { encoding: 'utf8' });
+    const file = here(`../../../public/sketches/${hash}/${row}.svg`);
+    if (update) writeFileSync(file, svg);
+    expect(svg).toBe(readFileSync(file, 'utf8'));
+  });
+
   it.skipIf(!has('pkl'))("the issue's acceptance check: 3 facts pass, the recording and peek facts fail", () => {
     const run = spawnSync('pkl', ['test', 'sketch_test.pkl'], { cwd: dir, encoding: 'utf8' });
     const facts = [...run.stdout.matchAll(/^ {2}(\S.*?) (✅|❌)$/gm)].map(([, name, mark]) => [name, mark === '✅']);
@@ -43,6 +51,19 @@ describe.each(CASES)('rails claims: case %s', (hash) => {
       'both peek states exist as snapshots': false,
     });
   });
+});
+
+it("part 6's lesson table has frame.json's statuses, one row per marked element", () => {
+  const lesson = readFileSync(
+    here('../../content/tutorial/part-6/sketch-first/1-is-yjit-enable-always-available/content.md'),
+    'utf8',
+  );
+  const rows = [...lesson.matchAll(/^\|[^|\n]+\| (proven|unproven|contradicted) \|/gm)].map(([, s]) => s);
+  const frame = JSON.parse(readFileSync(here('cases/fddf74bea9/frame.json'), 'utf8')) as {
+    elements: Record<string, { status: string }>;
+  };
+  const tally = (xs: string[]) => xs.reduce<Record<string, number>>((n, s) => ({ ...n, [s]: (n[s] ?? 0) + 1 }), {});
+  expect(tally(rows)).toEqual(tally(Object.values(frame.elements).map((e) => e.status)));
 });
 
 it('the story restates no score: every value it shows comes from frame.json', () => {
