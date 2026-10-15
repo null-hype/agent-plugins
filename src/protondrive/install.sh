@@ -12,6 +12,12 @@ SHA512_LINUX_ARM64="c8d5a6b174e57f06d05cb5483400b9963faf58e743b6b33706bb73ecff71
 
 case "$(uname -m)" in
     x86_64 | amd64)
+        # The pinned 0.9.0 release publishes no checksum for a baseline
+        # x64 build. Fail before installing its AVX2-targeted executable.
+        if ! grep -qE '^flags[[:space:]]*:.*[[:space:]]avx2([[:space:]]|$)' /proc/cpuinfo; then
+            echo "protondrive: version ${PROTON_DRIVE_VERSION} requires AVX2 on x86-64; use a host with AVX2 or a verified upstream baseline release." >&2
+            exit 1
+        fi
         PLATFORM="linux-x64"
         SHA512="$SHA512_LINUX_X64"
         ;;

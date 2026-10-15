@@ -2,7 +2,7 @@ name: Storybook PR Preview
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, development]
     paths:
       - 'tutorial-app/**'
       - '.github/workflows/storybook-preview.yml'
@@ -40,6 +40,12 @@ jobs:
         run: |
           npm ci
           npm run build-storybook
+
+      - name: Check investigation story interaction
+        working-directory: tutorial-app
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test --config=playwright.investigation.config.ts
 
       - name: Build TutorialKit
         working-directory: tutorial-app
