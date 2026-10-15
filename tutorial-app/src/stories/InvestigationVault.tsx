@@ -82,10 +82,6 @@ const driveText = ({ folder, archives }: DriveFolder) =>
     ...archives.map((a) => `${a.name}   snapshot ${a.snapshot}${a.baseline ? ' · the baseline' : ''}`)].join('\n') + '\n';
 
 const count = (n: number) => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
-const snapshotUri = (q: AgentQuestion) => monaco.Uri.from({ scheme: 'restic', authority: q.snapshot, path: '/' + q.tag });
-// The revision is in the path, so Peek's title says which check you're looking at.
-const checkUri = (revision: string, path: string) => monaco.Uri.from({ scheme: 'check', path: `/${revision}/${path}` });
-const fileUri = (snapshot: string, path: string) => monaco.Uri.from({ scheme: 'restic', authority: snapshot, path: '/files/' + path });
 const warn = (line: number, message: string, model: monaco.editor.ITextModel, column = 1, severity = monaco.MarkerSeverity.Warning): monaco.editor.IMarkerData => ({
   severity, source: SOURCE, message,
   startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: model.getLineMaxColumn(line),
@@ -97,11 +93,8 @@ const addedLines = (after: string, before = '') => {
   return after.split('\n').flatMap((text, i) => (text.trim() && !old.has(text) ? [i + 1] : []));
 };
 
-// Standalone Monaco opens other models only through a registered opener; Go to
-// Definition from a listing (or from inside Peek) lands in the active vault editor.
-let active: ((uri: monaco.Uri, selection?: monaco.IRange | monaco.IPosition) => boolean) | undefined;
-let openerRegistered = false;
-const OPEN = 'investigation.open';
+// Monaco models are global; each mount owns a separate URI namespace.
+let nextInstance = 0;
 
 const STYLE = `
 .investigation-added { background: rgba(46, 160, 67, 0.15); }
@@ -118,15 +111,20 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
 
   useEffect(() => {
     const disposables: monaco.IDisposable[] = [];
+    const scope = `investigation-${++nextInstance}`;
+    const OPEN = `investigation.open.${scope}`;
+    const checkUri = (revision: string, path: string) => monaco.Uri.from({ scheme: 'check', path: `/${revision}/${path}`, query: scope });
+    const snapshotUri = (q: AgentQuestion) => monaco.Uri.from({ scheme: 'restic', authority: q.snapshot, path: '/' + q.tag, query: scope });
+    const fileUri = (snapshot: string, path: string) => monaco.Uri.from({ scheme: 'restic', authority: snapshot, path: '/files/' + path, query: scope });
     const models: monaco.editor.ITextModel[] = [];
     const model = (text: string, uri: monaco.Uri) => {
       const m = monaco.editor.createModel(text, 'plaintext', uri);
       models.push(m);
       return m;
     };
-    const vaultModel = model(vaultText(investigation), monaco.Uri.parse(`vault://${investigation.vault}/items`));
+    const vaultModel = model(vaultText(investigation), monaco.Uri.from({ scheme: 'vault', authority: investigation.vault, path: '/items', query: scope }));
     const { drive } = investigation;
-    const driveModel = drive && model(driveText(drive), monaco.Uri.parse(`drive://proton/${drive.folder}`));
+    const driveModel = drive && model(driveText(drive), monaco.Uri.from({ scheme: 'drive', authority: 'proton', path: '/' + drive.folder, query: scope }));
     const home = driveModel ?? vaultModel;
     // Where each model sits in the investigation, for the path bar: under its
     // archive when the walk starts in Drive, under its question otherwise.
@@ -146,7 +144,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
         c.note ? [warn(HEADER + 1 + i, c.note, listing, 4)] : []));
       for (const c of q.changes) {
         const file = c.contents === undefined ? undefined : model(c.contents, fileUri(q.snapshot, c.path));
-        const base = c.baseline === undefined ? undefined : model(c.baseline, fileUri('baseline', c.path));
+        const base = c.baseline === undefined ? undefined : model(c.baseline, fileUri(`baseline-${q.snapshot}`, c.path));
         if (base) trail.set(base.uri.toString(), [...under(q), 'baseline', c.path]);
         if (!file) continue;
         trail.set(file.uri.toString(), archiveOf(q) ? [...under(q), c.path] : [...under(q), q.snapshot, c.path]);
@@ -175,6 +173,9 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
     const editor = monaco.editor.create(host.current!, {
       model: home,
       readOnly: true,
+      // Evidence uses explicit findings, not background word-occurrence queries.
+      // Those queries can reject on disposal when F12 closes the Peek editor.
+      occurrencesHighlight: 'off',
       // Read-only editors hide squiggles by default; the findings are the point here.
       renderValidationDecorations: 'on',
       minimap: { enabled: false },
@@ -196,7 +197,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       else marked.set(e, e.createDecorationsCollection(decorations));
     };
     disposables.push(monaco.editor.onDidCreateEditor((e) => {
-      e.onDidChangeModel(() => markAdded(e));
+      disposables.push(e.onDidChangeModel(() => markAdded(e)));
       markAdded(e);
     }));
 
@@ -214,13 +215,17 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       editor.focus();
       return true;
     };
-    active = show;
     back.current = () => show(home.uri);
-    if (!openerRegistered) {
-      openerRegistered = true;
-      monaco.editor.registerEditorOpener({ openCodeEditor: (_source, resource, selection) => active?.(resource, selection) ?? false });
-      monaco.editor.registerCommand(OPEN, (_accessor, uri: monaco.Uri, line: number) => active?.(uri, { lineNumber: line, column: 1 }));
-    }
+    disposables.push(monaco.editor.registerCommand(OPEN, (_accessor, uri: monaco.Uri, line: number) =>
+      show(uri, { lineNumber: line, column: 1 })));
+    disposables.push(monaco.editor.registerEditorOpener({
+      openCodeEditor: (source, resource, selection) => {
+        // Definitions from this vault or its embedded Peek editor stay here.
+        const sourceModel = source.getModel();
+        if (!sourceModel || !models.includes(sourceModel)) return false;
+        return show(resource, selection);
+      },
+    }));
 
     // The conflict is derived, never stored: you declared one question; the vault
     // holds yours plus every question the agent tagged.
@@ -272,7 +277,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
         const owner = snapshots.find(({ listing }) => listing === m);
         const change = owner?.q.changes[position.lineNumber - HEADER - 1];
         if (!owner || !change) return null;
-        const uri = change.kind === 'D' ? fileUri('baseline', change.path) : fileUri(owner.q.snapshot, change.path);
+        const uri = change.kind === 'D' ? fileUri(`baseline-${owner.q.snapshot}`, change.path) : fileUri(owner.q.snapshot, change.path);
         const at = change.finding?.line ?? 1;
         return { uri, range: new monaco.Range(at, 1, at, 1) };
       },
@@ -280,7 +285,6 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
 
     return () => {
       disposables.forEach((d) => d.dispose());
-      if (active === show) active = undefined;
       editor.dispose();
       models.forEach((m) => m.dispose());
     };
