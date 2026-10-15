@@ -19,13 +19,16 @@ The browser-only YJIT replay is separately named `yjit-browser-replay`.
    exact Jev requests, raw answers, and joined recordings. A capture is a
    candidate, not an accepted fixture.
 3. To accept, propose the corresponding changes to
-   `test/rails-cases/<case>/commit.txt`, `vale.json`, and captured Jev evidence
+   `test/rails-cases/<case>/commit.txt` and the case’s fixture sources
+   (Pkl for YJIT), including captured Jev evidence
    in Git. Human review accepts or rejects that diff. There is no separate
    refresh command and no automatic overwrite of accepted evidence.
 
-The YJIT `Fixtures.pkl` composes `recordings.json` from the exact captured
-requests and answers. The scenario generates this ignored JSON before its
-assertions; Dagger generates it before rendering the frame. To generate it
+The YJIT `Fixtures.pkl` generates all static JSON from committed Pkl sources:
+Vale alerts, sketch, initial snapshots, Jev requests, answers, responses,
+provenance, and composed recordings. The scenario generates these into a fresh
+temporary directory before assertions, preserving any browser-exported
+snapshots in the source tree. Dagger generates them before rendering the frame. To generate it
 manually:
 
 ```sh
@@ -33,8 +36,8 @@ pkl eval -m test/rails-cases/yjit-always-available \
   test/rails-cases/yjit-always-available/Fixtures.pkl
 ```
 
-The requests, answers, raw responses, and capture provenance remain committed
-as original evidence. Requests must not be regenerated from the current frame:
+The recorded requests, answers, responses, and capture provenance remain
+committed as fixed Pkl values; no static YJIT JSON is tracked. Requests must not be regenerated from the current frame:
 that would make the request-integrity assertion compare the implementation
 against itself. The generated recordings reproduce the real capture from
 2026-10-14. The SecureRandom recordings remain empty; that case has no captured baseline.

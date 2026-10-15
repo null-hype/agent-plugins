@@ -1,7 +1,0 @@
-{
-  "backend": "real",
-  "model": "jev-1.13.0",
-  "probabilities": {
-    "claim": 0.48
-  }
-}
