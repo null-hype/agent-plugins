@@ -47,7 +47,7 @@ proton-drive filesystem download -d merge -f skip /my-files/<run-id>/restic-repo
 
 - The folder lands at `$DOWNLOAD_DIR/restic-repo/`; `download-tree.txt` lists every file that arrived.
 - The empty `locks/` folder is not recreated locally.
-- `-d merge -f skip` means a conflict never prompts. Restic files never change once written, so skipping a local file that already exists is always right.
+- `-d merge -f skip` means a conflict never prompts. This run downloads into an empty directory. It does not establish that skipping existing files is safe for arbitrary later syncs: restic maintenance can remove repository data, and an existing local file may be incomplete or corrupt.
 
 Opening the downloaded copy from a fresh process (`env -i` with only
 `PATH`, `HOME` and `RESTIC_PASSWORD`), restic 0.18.1:

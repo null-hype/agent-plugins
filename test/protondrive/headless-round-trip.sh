@@ -125,9 +125,8 @@ check "both snapshots are listed back from Drive" \
     bash -c "jq -e --arg b \"$BASELINE_ID\" --arg a \"$SNAPSHOT_ID\" 'map(.name.value // .name) | (index(\$b) != null and index(\$a) != null)' \"$EVIDENCE_DIR/list.json\""
 
 # 4. Download the repository back into an empty folder and open it with
-#    restic from a fresh process. Restic files never change once written,
-#    so skipping an existing local file is always right, and the strategies
-#    mean a conflict never prompts.
+#    restic from a fresh process. The destination is empty; these strategies
+#    prevent prompts for this run, not a general repository-sync guarantee.
 DOWNLOAD_DIR="$(mktemp -d)"
 proton-drive filesystem download -d merge -f skip "$REMOTE_RUN/restic-repo" "$DOWNLOAD_DIR"
 REPO_COPY="$(dirname "$(dirname "$(find "$DOWNLOAD_DIR" -path "*/snapshots/$SNAPSHOT_ID" | head -1)")")"
