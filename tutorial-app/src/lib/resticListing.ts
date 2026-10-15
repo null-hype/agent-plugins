@@ -33,4 +33,4 @@ export function parseResticLs(ndjson: string): { snapshot: ResticSnapshot; nodes
 }
 
 /** `2026-10-09T22:05:08.699Z` → `2026-10-09 22:05 UTC`. */
-export const formatTime = (iso: string) => `${iso.slice(0, 16).replace('T', ' ')} UTC`;
+export const formatTime = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).replace('T', ' ')} UTC`;
