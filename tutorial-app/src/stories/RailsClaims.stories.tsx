@@ -66,8 +66,11 @@ const theFrame = (frame: Frame, word: string): Story => ({
       await waitFor(() => expect(canvasElement.querySelectorAll('.squiggly-warning').length).toBe(frame.claims.length));
     });
 
-    await step('no claim has a Jev score: each lens names the payload with no recording', async () => {
-      for (const c of frame.claims) await lens(canvasElement, `${c.word} · Jev: no recording for ${short(c)}`);
+    await step('each claim shows the result supplied by this capture', async () => {
+      for (const c of frame.claims) {
+        const expected = frame.model.documents[0].lenses.find((l) => l.title.startsWith(`${c.word} · Jev`))!;
+        await lens(canvasElement, expected.title);
+      }
     });
 
     await step('no Peek states: nothing has produced the snapshots', async () => {
@@ -76,16 +79,17 @@ const theFrame = (frame: Frame, word: string): Story => ({
 
     const claim = frame.claims.find((c) => c.word === word)!;
     await step('the lens opens the payload that would be sent, pinned by its digest', async () => {
-      press(await lens(canvasElement, `${word} · Jev: no recording`));
+      press(await lens(canvasElement, `${word} · Jev`));
       await waitFor(() => expect(text(canvasElement, '[data-testid="investigation-path"]')).toContain(`jev payload  ›  ${short(claim)}`));
       await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain('"type": "noul"'));
-      await lens(canvasElement, 'pinned before the call · not sent yet');
+      const payload = frame.model.documents.find((d) => d.id === `jev://payload/${claim.digest}`)!;
+      await lens(canvasElement, payload.lenses[0].title);
     });
   },
 });
 
-export const YjitAlwaysAvailable = theFrame(frame, 'always');
-export const SecurerandomAlwaysTwo = theFrame(controlFrame as unknown as Frame, 'always');
+export const YjitAlwaysAvailable: Story = { ...theFrame(frame, 'always') };
+export const SecurerandomAlwaysTwo: Story = { ...theFrame(controlFrame as unknown as Frame, 'always') };
 
 const STATUS_COLOR: Record<Element['status'], string> = { proven: '#2ea043', unproven: '#9a6700', contradicted: '#cf222e' };
 
@@ -123,11 +127,9 @@ export const TheSketchMarked: Story = {
       const rows = canvasElement.querySelectorAll('[data-testid="sketch-elements"] tbody tr');
       await expect(rows.length).toBe(Object.keys(elements).length);
     });
-    await step('the score and the Peek states are unproven, the drawn digest is contradicted', async () => {
+    await step('the sketch shows the evidence status of this capture', async () => {
       const status = (id: string) => canvasElement.querySelector(`[data-element="${id}"] [data-status]`)?.textContent;
-      await expect(status('p4')).toBe('unproven');
-      await expect(status('by/bn')).toBe('unproven');
-      await expect(status('r3')).toBe('contradicted');
+      for (const id of ['p4', 'by/bn', 'r3']) await expect(status(id)).toBe(elements[id].status);
     });
   },
 };

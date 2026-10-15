@@ -1,14 +1,13 @@
-/// A fixed real observation tested against the pre-capture low-confidence hypothesis.
+/// The same hypothesis is evaluated against either a fresh or retained capture.
 amends "pkl:test"
 import "pkl:json"
 import "/usr/local/share/rails-cases/Frame.pkl"
 local claim = Frame.claims.find((c) -> c.word == "always")
 local recordings = new json.Parser {}.parse(read(read("prop:case") + "/recordings.json").text)
-local score = recordings.toList().find((r) -> r.digest == claim.digest).score
+local score = trace(recordings.toList().find((r) -> r.digest == claim.digest).score)
 examples {
   ["RubyVM::YJIT.enable is always available: low-confidence hypothesis"] {
     new Dynamic {
-      observed = score
       minimum = 0.0
       maximum = 0.2
       inRange = score >= minimum && score <= maximum

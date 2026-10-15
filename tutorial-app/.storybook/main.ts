@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { StorybookConfig } from '@storybook/react-vite';
 import { mergeConfig } from 'vite';
@@ -26,6 +27,12 @@ const config: StorybookConfig = {
 			esbuild: { jsx: 'automatic' },
 			resolve: {
 				alias: {
+					// The case runner writes this frame even when its hypothesis fails.
+					// Display the supplied capture without copying it into source fixtures.
+					...(process.env.RAILS_CASE_EVIDENCE ? {
+						'../lesson-farms/rails-claims/cases/fddf74bea9/frame.json':
+							resolve(process.env.RAILS_CASE_EVIDENCE, 'frame.json'),
+					} : {}),
 					// The lesson bridges import TutorialKit's store; run them against a
 					// stub seeded from the lesson's own files (see tutorialkit-store.ts).
 					'tutorialkit:store': fileURLToPath(new URL('./tutorialkit-store.ts', import.meta.url)),
