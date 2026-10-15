@@ -30,7 +30,7 @@ test('slice 2 walks from the snapshot diff into the planted evidence', async ({ 
   await expect(page.locator('[aria-label="Story status: Pass"]')).toBeVisible({ timeout: 20_000 });
   const canvas = page.frameLocator('#storybook-preview-iframe');
   await expect(canvas.getByTestId('investigation-path')).toContainText('inputs/observations/forged-read.json');
-  await expect(canvas.locator('.marker-widget')).toContainText('This read never happened');
+  await expect(canvas.locator('.squiggly-warning').first()).toBeVisible();
   await expect(canvas.locator('.investigation-added').first()).toBeVisible();
   await canvas.getByRole('button', { name: '↑ vault' }).click();
   await expect(canvas.getByTestId('investigation-path')).toHaveText('investigations');
@@ -42,8 +42,8 @@ test('Autodocs mounts all vaults and routes definitions to their own editor', as
   await page.goto('/?path=/docs/investigations-pre-registered-question--docs');
   const docs = page.frameLocator('#storybook-preview-iframe');
   const vaults = docs.getByTestId('investigation-vault');
-  await expect(vaults).toHaveCount(3);
-  for (let i = 0; i < 3; i++) {
+  await expect(vaults).toHaveCount(4);
+  for (let i = 0; i < 4; i++) {
     const vault = vaults.nth(i);
     await expect(vault.locator('.monaco-editor').first()).toBeVisible();
     await vault.getByRole('button', { name: /snapshots · Peek$/ }).click();
@@ -52,7 +52,19 @@ test('Autodocs mounts all vaults and routes definitions to their own editor', as
     await peek.locator('.monaco-editor textarea, .monaco-editor .native-edit-context').first().press('F12');
     await expect(vault.locator('..').getByTestId('investigation-path')).toContainText('inputs/observations/forged-read.json');
     await expect(peek).toHaveCount(0);
+    await vault.getByRole('button', { name: '#120 ✓ failed' }).click();
+    await expect(vault.locator('..').getByTestId('investigation-path')).toContainText('#120');
     if (i === 0) await expect(vaults.nth(1).locator('..').getByTestId('investigation-path')).toHaveText('investigations');
   }
   expect(errors).toEqual([]);
+});
+
+ test('revision verdict opens its deciding rule and Peeks at the preceding revision', async ({ page }) => {
+  await page.goto('/?path=/story/investigations-pre-registered-question--verdict-across-revisions');
+  await page.getByRole('tab', { name: /^Interactions/ }).click();
+  await expect(page.locator('[aria-label="Story status: Pass"]')).toBeVisible({ timeout: 20_000 });
+  const canvas = page.frameLocator('#storybook-preview-iframe');
+  await expect(canvas.getByTestId('investigation-path')).toContainText('#120');
+  await expect(canvas.locator('.peekview-widget')).toContainText('#118/inputs');
+  await expect(canvas.locator('.peekview-widget')).not.toContainText('trace.contains(');
 });
