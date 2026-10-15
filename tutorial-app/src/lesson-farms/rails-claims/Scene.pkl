@@ -1,0 +1,151 @@
+/// CIT-407: the sketch, drawn twice.
+///
+/// `row=plan` is the black-and-white plan, element for element as
+/// `cases/<hash>/sketch.json` draws it. It is the only part a person edits.
+///
+/// `row=checked` is the same drawing coloured by the status `Frame.pkl`
+/// computes for each element from the case's evidence, plus what the evidence
+/// shows that the sketch leaves out. Nothing here decides a status; an element
+/// Frame.pkl does not mark is drawn dashed grey, as part of the drawing only.
+///
+///   pkl eval -p hash=fddf74bea9 -p row=plan Scene.pkl
+///   pkl eval -p hash=fddf74bea9 -p row=checked Scene.pkl
+///
+/// `railsClaims.spec.ts` keeps `public/sketches/<hash>/{plan,checked}.svg`
+/// current, as it does `frame.json`.
+module Scene
+
+import "pkl:json"
+import "Frame.pkl" as frame
+
+hash: String = read("prop:hash")
+row: "plan" | "checked" = read("prop:row")
+
+local sketch = (new json.Parser {}.parse(read("cases/\(hash)/sketch.json").text) as Listing)
+  .toList()
+  .filter((e) -> e.getPropertyOrNull("id") != null)
+
+local marks = frame.elements.toMap()
+
+/// Which of Frame.pkl's keys covers a sketch element: the id itself, one of a
+/// "/" pair ("by/bn"), or inside a range of same-prefix ids ("l3-l5").
+local function covers(key: String, id: String): Boolean =
+  key == id
+    || key.split("/").contains(id)
+    || (key.contains("-")
+      && let (ends = key.split("-"))
+        ends.length == 2
+          && id.take(1) == ends[0].take(1)
+          && id.length == ends[0].length
+          && id >= ends[0]
+          && id <= ends[1])
+
+local function statusOf(id: String): String? =
+  let (key = marks.keys.findOrNull((k) -> covers(k, id)))
+    if (key == null) null else marks[key].status
+
+// ---- colour -----------------------------------------------------------------
+
+local paper = "#ffffff"
+local pencil = "#1e1e1e"
+local ink: Map<String, String> = Map(
+  "proven", "#2f9e44",
+  "unproven", pencil,
+  "contradicted", "#e03131"
+)
+local highlight: Map<String, String> = Map(
+  "proven", "#fff3bf",
+  "unproven", "none",
+  "contradicted", "#ffe3e3"
+)
+local drawingOnly = "#868e96"
+local missing = "#f08c00"
+
+local function strokeOf(id: String): String =
+  if (row == "plan") pencil
+  else let (s = statusOf(id)) if (s == null) drawingOnly else ink[s]
+
+local function dashOf(id: String): String =
+  if (row == "checked" && statusOf(id) == null) " stroke-dasharray=\"8 6\"" else ""
+
+local function fillOf(e): String =
+  let (bg = e.getPropertyOrNull("backgroundColor"))
+    if (bg == null) "none"
+    else if (row == "plan") "#e9ecef"
+    else let (s = statusOf(e.id)) if (s == null) "none" else highlight[s]
+
+// ---- drawing ----------------------------------------------------------------
+
+local font = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+
+local function esc(s: String): String =
+  s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;")
+
+/// Monospace advance, close enough to place a strike line and centre a label.
+local function widthOf(s: String, size: Number): Number = s.length * size * 0.6
+
+local function text(x: Number, y: Number, size: Number, colour: String, s: String, struck: Boolean): String =
+  let (base = "<text x=\"\(x)\" y=\"\(y + size * 0.85)\" font-size=\"\(size)\" fill=\"\(colour)\" font-family=\"\(font)\">\(esc(s))</text>")
+    if (!struck) base
+    // A struck text is pinned to its computed width so the line matches it in any font.
+    else base.replaceFirst("<text ", "<text textLength=\"\(widthOf(s, size))\" lengthAdjust=\"spacingAndGlyphs\" ")
+      + "<line x1=\"\(x)\" y1=\"\(y + size * 0.55)\" x2=\"\(x + widthOf(s, size))\" y2=\"\(y + size * 0.55)\" stroke=\"\(colour)\" stroke-width=\"2\"/>"
+
+local function struck(id: String): Boolean = row == "checked" && statusOf(id) == "contradicted"
+
+local function draw(e): String =
+  let (stroke = strokeOf(e.id))
+    if (e.type == "text")
+      text(e.x, e.y, e.getPropertyOrNull("fontSize") ?? 16, stroke, e.text, struck(e.id))
+    else
+      let (label = e.getPropertyOrNull("label")?.getPropertyOrNull("text"))
+        "<rect x=\"\(e.x)\" y=\"\(e.y)\" width=\"\(e.width)\" height=\"\(e.height)\" rx=\"6\" fill=\"\(fillOf(e))\" stroke=\"\(stroke)\" stroke-width=\"2\"\(dashOf(e.id))/>"
+          + (if (label == null) ""
+            else text(e.x + (e.width - widthOf(label, 16)) / 2, e.y + (e.height - 16) / 2, 16, stroke, label, struck(e.id)))
+
+// ---- what the drawing is ----------------------------------------------------
+
+local counts = List("proven", "unproven", "contradicted")
+  .map((s) -> Pair(s, marks.values.filter((m) -> m.status == s).length))
+
+local legendRows: List<Pair<String, String>> = List(
+  Pair(ink["proven"], "proven: the evidence shows it"),
+  Pair(ink["unproven"], "unproven: nothing shows it yet"),
+  Pair(ink["contradicted"], "contradicted: the evidence disagrees"),
+  Pair(drawingOnly, "dashed: part of the drawing, not a claim")
+)
+
+local caption =
+  if (row == "plan") "PLAN · drawn before the run · the only part a person edits"
+  else "CHECKED · coloured by Frame.pkl from the evidence in cases/\(hash)"
+
+local legend: List<String> =
+  if (row == "plan") List()
+  else
+    legendRows.mapIndexed((i, r) ->
+      let (y = 640 + i * 34)
+        "<rect x=\"36\" y=\"\(y)\" width=\"22\" height=\"22\" rx=\"4\" fill=\"none\" stroke=\"\(r.first)\" stroke-width=\"3\"\(if (r.first == drawingOnly) " stroke-dasharray=\"5 4\"" else "")/>"
+          + text(70, y + 1, 18, pencil, r.second, false))
+    + List(text(36, 784, 18, pencil, counts.map((c) -> "\(c.second) \(c.first)").join("  ·  "), false))
+    + (if (frame.undrawn.isEmpty) List()
+      else
+        List(text(36, 826, 18, missing, "Missing from the sketch:", false))
+          + frame.undrawn.mapIndexed((i, u) -> text(52, 858 + i * 30, 14, missing, "+ " + u, false)))
+
+local height =
+  if (row == "plan") 640
+  else 858 + frame.undrawn.length * 30 + 20
+
+local svg = new Listing {
+  "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 \(height)\" role=\"img\">"
+  "<title>\(esc(caption))</title>"
+  "<rect width=\"800\" height=\"\(height)\" fill=\"\(paper)\"/>"
+  for (e in sketch) { draw(e) }
+  text(36, 596, 16, pencil, caption, false)
+  for (l in legend) { l }
+  "</svg>"
+}.toList().join("\n") + "\n"
+
+output {
+  text = svg
+}

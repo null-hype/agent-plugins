@@ -4,6 +4,7 @@ title: Agent decisions, checked against evidence
 parts:
   - part-0
   - part-5
+  - part-6
   - part-4
   - part-3
   - part-2
