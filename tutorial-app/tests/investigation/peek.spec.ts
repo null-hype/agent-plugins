@@ -42,7 +42,7 @@ test('Autodocs mounts all vaults and routes definitions to their own editor', as
   await page.goto('/?path=/docs/investigations-pre-registered-question--docs');
   const docs = page.frameLocator('#storybook-preview-iframe');
   const vaults = docs.getByTestId('investigation-vault');
-  await expect(vaults).toHaveCount(7);
+  await expect(vaults).toHaveCount(9);
   for (let i = 0; i < 4; i++) {
     const vault = vaults.nth(i);
     await expect(vault.locator('.monaco-editor').first()).toBeVisible();
@@ -96,8 +96,21 @@ test('retained Drive listing renders the recorded snapshot without invented find
   await page.getByRole('tab', { name: /^Interactions/ }).click();
   await expect(page.locator('[aria-label="Story status: Pass"]')).toBeVisible({ timeout: 20_000 });
   const canvas = page.frameLocator('#storybook-preview-iframe');
-  await expect(canvas.getByTestId('investigation-path')).toContainText('/restic-repo/snapshots');
+  await expect(canvas.getByTestId('investigation-path')).toContainText('restic-repo  ›  snapshots');
   await expect(canvas.locator('.view-lines')).toContainText('411 B');
   await expect(canvas.locator('.squiggly-warning')).toHaveCount(0);
   await expect(canvas.getByRole('button', { name: /findings · open the archive/ })).toHaveCount(0);
+});
+
+test('retained snapshot walk reaches hello.txt and returns through every parent', async ({ page }) => {
+  await page.goto('/?path=/story/investigations-pre-registered-question--open-real-snapshot');
+  await page.getByRole('tab', { name: /^Interactions/ }).click();
+  await expect(page.locator('[aria-label="Story status: Pass"]')).toBeVisible({ timeout: 20_000 });
+  const canvas = page.frameLocator('#storybook-preview-iframe');
+  await expect(canvas.locator('.view-lines')).toContainText('47 B');
+  for (const label of ['↑ snapshots', '↑ restic-repo', '↑ Drive']) {
+    await canvas.getByRole('button', { name: label, exact: true }).click();
+  }
+  await expect(canvas.getByRole('button', { name: 'open restic-repo/', exact: true })).toBeVisible();
+  await expect(canvas.getByTestId('investigation-path').getByRole('button')).toHaveCount(0);
 });
