@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import InvestigationVault, { type Investigation } from './InvestigationVault';
 
 // CIT-365 / CIT-372: what a learner sees when an agent's questions meet the one
@@ -42,8 +42,13 @@ const press = (el: Element) => {
 export const AgentAskedTwoMore: Story = {
   name: 'The agent asked two more questions',
   play: async ({ canvasElement, step }) => {
+    const peekButton = () => within(canvasElement).findByRole('button', { name: /snapshots · Peek$/ }, { timeout: 5000 });
+
     await step('the vault shows the question you pre-registered', async () => {
       await waitFor(() => expect(text(canvasElement, '.view-lines')).toContain(investigation.question));
+      // Monaco renders text before its debounced CodeLens command is ready.
+      // Wait for a clickable command, not a cached label, before changing focus.
+      await peekButton();
     });
 
     await step('a squiggle says the vault holds more questions than you declared', async () => {
@@ -57,11 +62,7 @@ export const AgentAskedTwoMore: Story = {
     });
 
     await step("Peek lists the agent's questions, from their snapshots", async () => {
-      const lens = await waitFor(() => {
-        const found = Array.from(canvasElement.querySelectorAll('.codelens-decoration a')).find((a) => a.textContent?.includes('Peek'));
-        if (!found) throw new Error('Peek lens not shown');
-        return found;
-      });
+      const lens = await peekButton();
       press(lens);
       // The list names each snapshot by its tag; the first one opens with its evidence.
       const [first] = investigation.agent;
