@@ -1,5 +1,9 @@
 # YJIT confidence experiment (CIT-414)
 
+This records the original capture and red/green demonstration. The current
+[integration example](INTEGRATION.md) accepts fresh capture directories directly
+and checks range membership without freezing the exact observed score.
+
 Source: Rails `fddf74bea9`, the `always` alert on line 4 of `commit.txt`.
 The request is the one derived by the installed `Frame.pkl` / `Payloads.pkl`
 from that commit message and `vale.json`. Expectations are not request inputs.

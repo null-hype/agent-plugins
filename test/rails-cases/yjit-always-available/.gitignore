@@ -5,6 +5,7 @@
 !*.pkl
 !Confidence.test.pkl-expected.pcf
 !EXPERIMENT.md
+!INTEGRATION.md
 !jev/
 !jev/**/
 !jev/**/*.pkl

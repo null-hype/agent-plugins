@@ -1,13 +1,8 @@
-// Generate all static JSON from fixed Pkl evidence, never from the current Frame.
-import "jev/09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d/answer.pkl" as noLongerAnswer
-import "jev/09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d/request.pkl" as noLongerRequest
-import "jev/09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d/response.pkl" as noLongerResponse
-import "jev/09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954/answer.pkl" as unnecessaryAnswer
-import "jev/09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954/request.pkl" as unnecessaryRequest
-import "jev/09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954/response.pkl" as unnecessaryResponse
-import "jev/9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98/answer.pkl" as alwaysAnswer
-import "jev/9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98/request.pkl" as alwaysRequest
-import "jev/9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98/response.pkl" as alwaysResponse
+// Materialize the historical capture. New runs already have these JSON files.
+import* "jev/*/*.pkl" as captured
+import* "jev/*/request.pkl" as requests
+import* "jev/*/response.pkl" as responses
+import "/usr/local/share/rails-cases/Recordings.pkl"
 import "jev/provenance.pkl" as provenance
 import "sketch.pkl" as sketch
 import "snapshots.pkl" as snapshots
@@ -15,15 +10,12 @@ import "vale.pkl" as vale
 local json = new JsonRenderer {}
 output {
   files {
-    ["jev/09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d/answer.json"] { value = noLongerAnswer.output.value; renderer = json }
-    ["jev/09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d/request.json"] { value = noLongerRequest.output.value; renderer = json }
-    ["jev/09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d/response.json"] { value = noLongerResponse.output.value; renderer = json }
-    ["jev/09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954/answer.json"] { value = unnecessaryAnswer.output.value; renderer = json }
-    ["jev/09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954/request.json"] { value = unnecessaryRequest.output.value; renderer = json }
-    ["jev/09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954/response.json"] { value = unnecessaryResponse.output.value; renderer = json }
-    ["jev/9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98/answer.json"] { value = alwaysAnswer.output.value; renderer = json }
-    ["jev/9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98/request.json"] { value = alwaysRequest.output.value; renderer = json }
-    ["jev/9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98/response.json"] { value = alwaysResponse.output.value; renderer = json }
+    for (uri, data in captured) {
+      ["jev/" + uri.split("jev/").last.replaceAll(".pkl", ".json")] {
+        value = data.output.value
+        renderer = json
+      }
+    }
     ["jev/provenance.json"] { value = provenance.output.value; renderer = json }
     ["sketch.json"] { value = sketch.output.value; renderer = json }
     ["snapshots.json"] { value = snapshots.output.value; renderer = json }
@@ -31,20 +23,10 @@ output {
     ["recordings.json"] {
       renderer = json
       value = new Listing {
-        new Dynamic {
-          digest = "sha256:09cc00d29f16ae53fc8f4c92234f7e9bbca04c3d940dab9099f1b27f11f0f76d"
-          score = noLongerAnswer.output.value["probabilities"]["claim"]
-          request = noLongerRequest.output.value
-        }
-        new Dynamic {
-          digest = "sha256:09d0b6373e4bdcff8f10b8687ba1c5238443afd8331f748f3734d2b31e576954"
-          score = unnecessaryAnswer.output.value["probabilities"]["claim"]
-          request = unnecessaryRequest.output.value
-        }
-        new Dynamic {
-          digest = "sha256:9baa2373dadbf1568fc916739e33a3e3b23a994a0f9f7a32a7e835fa298bbf98"
-          score = alwaysAnswer.output.value["probabilities"]["claim"]
-          request = alwaysRequest.output.value
+        for (uri, request in requests) {
+          Recordings.recording(uri.split("/").dropLast(1).last,
+            json.renderValue(request.output.value),
+            json.renderValue(responses[uri.replaceAll("request.pkl", "response.pkl")].output.value))
         }
       }
     }

@@ -1,5 +1,9 @@
 # Rails evidence and replay scenarios
 
+For the complete YJIT capture → check → viewer example, see
+[INTEGRATION.md](yjit-always-available/INTEGRATION.md). A fresh capture can be
+checked and displayed directly, without translating its responses into Pkl.
+
 The installed feature supplies the Pkl ontology and experiment command.
 Browser specs, Pkl assertions, and captured case evidence live in `test/`.
 
@@ -15,14 +19,13 @@ The browser-only YJIT replay is separately named `yjit-browser-replay`.
    commit hash. The harness renders requests with Pkl and invokes the installed
    `jev` CLI. The registered scenarios are named for the cases;
    `test/_global/rails-cases/capture.sh` is their shared helper, not a scenario.
-2. Review the `rails-cases-captures` artifact: input commit and Vale alerts,
-   exact Jev requests, raw answers, and joined recordings. A capture is a
-   candidate, not an accepted fixture.
-3. To accept, propose the corresponding changes to
-   `test/rails-cases/<case>/commit.txt` and the case’s fixture sources
-   (Pkl for YJIT), including captured Jev evidence
-   in Git. Human review accepts or rejects that diff. There is no separate
-   refresh command and no automatic overwrite of accepted evidence.
+2. Inspect the `rails-cases-captures` artifact: input commit and Vale alerts,
+   exact Jev requests, raw responses, derived recordings, and viewer frame.
+3. Pass the YJIT capture directory directly to the existing case script with
+   `RAILS_CASE_EVIDENCE`, or to Dagger with `--evidence`. The outcome check and
+   viewer consume it without conversion into committed Pkl literals. Updating
+   a retained baseline or an expectation remains an explicit Git diff for
+   review; running the capture/check never overwrites the expected PCF.
 
 The YJIT `Fixtures.pkl` generates all static JSON from committed Pkl sources:
 Vale alerts, sketch, initial snapshots, Jev requests, answers, responses,
@@ -35,6 +38,10 @@ manually:
 pkl eval -m test/rails-cases/yjit-always-available \
   test/rails-cases/yjit-always-available/Fixtures.pkl
 ```
+
+`Recordings.pkl` projects the same raw request/response format in capture,
+local checks, and Dagger. The historical Pkl generator discovers its captured
+modules by glob and uses that same projection, without a handwritten digest map.
 
 The recorded requests, answers, responses, and capture provenance remain
 committed as fixed Pkl values; no static YJIT JSON is tracked. Requests must not be regenerated from the current frame:
