@@ -28,8 +28,8 @@ const forgedRead = `{
 }
 `;
 
-// The check, as each pull request left it: the rule that decides whether an
-// observation counts as a real read of the private file.
+// Illustrative rule snippets and verdicts, not executions of the pinned PRs.
+// CIT-392 must supply actual restored-evidence results for the real-run article.
 const reconcile = (lines: string[]) => [
   '/// Does an observation show a real read of the private file?',
   'module cit294.Reconcile',

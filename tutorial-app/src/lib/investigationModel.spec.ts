@@ -22,7 +22,7 @@ const fileDoc = (model: InvestigationModel, snapshot: string, path: string) =>
   find(model, (d) => d.uri.scheme === 'snapshot' && d.uri.authority === snapshot && d.uri.path === '/' + path);
 /** The listing for one agent question, by its snapshot authority. */
 const listing = (model: InvestigationModel, snapshot: string) =>
-  find(model, (d) => d.uri.scheme === 'snapshot' && d.uri.authority === snapshot && d.text.startsWith(`snapshot ${snapshot}:`));
+  find(model, (d) => d.uri.scheme === 'snapshot-listing' && d.uri.authority === snapshot && d.text.startsWith(`snapshot ${snapshot}:`));
 
 describe('buildInvestigationModel — the vault walk', () => {
   const model = buildInvestigationModel(investigation);
@@ -84,7 +84,7 @@ describe('buildInvestigationModel — the vault walk', () => {
     const m = buildInvestigationModel(deleted);
     const snapListing = listing(m, 'snap');
     const baseline = byPath(m, 'snapshot', '/inputs/old.txt');
-    expect(baseline.uri.authority).toBe('baseline');
+    expect(baseline.uri.authority).toBe('baseline-snap');
     expect(snapListing.definitions[0].target.doc).toBe(baseline.id);
   });
 
@@ -121,7 +121,7 @@ describe('buildInvestigationModel — the vault walk', () => {
     expect(lens.title).toBe('changed since the baseline · Peek');
     expect(lens.line).toBe(1);
     // The Peek target is the baseline copy of the same file (authority "baseline").
-    const baseline = find(model, (d) => d.uri.scheme === 'snapshot' && d.uri.authority === 'baseline' && d.uri.path === '/inputs/canary-reads.txt');
+    const baseline = find(model, (d) => d.uri.scheme === 'snapshot' && d.uri.authority === `baseline-${forged.snapshot}` && d.uri.path === '/inputs/canary-reads.txt');
     expect(lens.peek!.locations[0].doc).toBe(baseline.id);
   });
 
@@ -198,3 +198,29 @@ describe('buildInvestigationModel — referential integrity', () => {
     expect(c117.text).not.toContain(sameText.trim());
   });
 });
+
+ it('keeps a listing whose tag equals a file path independently navigable', () => {
+  const m = buildInvestigationModel({ vault: 'v', question: 'q', agent: [{
+    tag: 'inputs/file.txt', snapshot: 's', evidence: 'e',
+    changes: [{ kind: 'A', path: 'inputs/file.txt', contents: 'evidence', note: 'finding' }],
+  }] });
+  const list = listing(m, 's');
+  const file = fileDoc(m, 's', 'inputs/file.txt');
+  expect(list.id).not.toBe(file.id);
+  expect(list.markers[0].message).toBe('finding');
+  expect(list.definitions[0].target.doc).toBe(file.id);
+  expect(file.text).toBe('evidence');
+ });
+
+ it('preserves each snapshot baseline when two questions change the same path', () => {
+  const m = buildInvestigationModel({ vault: 'v', question: 'q', agent: ['a', 'b'].map(snapshot => ({
+    snapshot, tag: snapshot, evidence: snapshot,
+    changes: [{ kind: 'M' as const, path: 'same.txt', contents: 'new ' + snapshot, baseline: 'old ' + snapshot }],
+  })) });
+  const all = docs(m);
+  for (const snapshot of ['a', 'b']) {
+    const file = fileDoc(m, snapshot, 'same.txt');
+    const target = file.lenses.find(l => l.peek)!.peek!.locations[0].doc;
+    expect(all.get(target)!.text).toBe('old ' + snapshot);
+  }
+ });
