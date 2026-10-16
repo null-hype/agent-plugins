@@ -8,21 +8,32 @@ terminal: false
 
 # Where Proton Drive fits
 
-For an encrypted folder, these checks can run locally before upload or after
-files are downloaded. The command from the previous lesson accepts those downloaded paths.
-Encryption protects a different boundary from the one explored here: the
-application processing the downloaded bytes still needs an appropriate loader
-policy. The intended workflow is to download, inspect locally, review the
-findings, and then decide which application should open the file.
+One round trip through Proton Drive was recorded on 16 October 2026. Three
+files, the canary, the Excalidraw export and the local control, were uploaded
+with Proton Drive CLI 0.9.0, downloaded again, and hashed on both sides:
 
-This part demonstrates the local check; it does not perform a Proton Drive
-login, download, upload, or automatic sharing decision. Preserving the original
-bytes and the checker output lets a later investigation ask what was checked,
-with which version, and what still needs evidence—just as the Rails case does.
+| File | SHA-256 before upload and after download |
+| --- | --- |
+| `rails-canary.png` | `f1c62ebc…` (same) |
+| `excalidraw-export.png` | `d62147db…` (same) |
+| `control.png` | `704c213a…` (same) |
 
-One live round trip is recorded in
-[`test/protondrive/fixtures/image-claims-20261016T050720Z`](https://github.com/null-hype/agent-plugins/tree/main/test/protondrive/fixtures/image-claims-20261016T050720Z):
-the three files were uploaded with Proton Drive CLI 0.9.0, downloaded again,
-and had identical SHA-256 hashes on both sides. Running the checker on the
-downloaded bytes reported the same two canary findings and nothing for the
-Excalidraw export or the PNG control.
+The image check on the downloaded bytes reported the same two canary findings
+and nothing for the other two files. The record, with full hashes and the
+checker's output, is in
+[`test/protondrive/fixtures/image-claims-20261016T050720Z`](https://github.com/null-hype/agent-plugins/tree/main/test/protondrive/fixtures/image-claims-20261016T050720Z).
+
+That is what encrypted storage should do: the bytes that come out are the bytes
+that went in. It also means the canary arrives exactly as dangerous as it left.
+Encryption protects the files in transit and at rest; it says nothing about
+what the application that opens them will do. That still depends on loader
+policy, as the Rails runs showed.
+
+This part did not log in to Proton Drive or transfer anything from your
+browser; the round trip above is recorded.
+
+**Next step:** download a folder someone has shared with you, run the image
+check on it as in the previous lesson, and read each finding before you choose
+which application opens which file. Keep the bytes and the checker's output, so
+a later investigation can ask what was checked, with which version, and what
+still needs evidence.
