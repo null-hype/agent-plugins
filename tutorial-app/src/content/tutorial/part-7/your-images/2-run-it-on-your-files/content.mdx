@@ -1,0 +1,39 @@
+---
+type: lesson
+title: Run it on your files
+editor: false
+previews: false
+terminal: false
+---
+
+import SketchToggle from '../../../../../components/SketchToggle';
+
+# Run it on your files
+
+From the repository's `tutorial-app` directory:
+
+```sh
+npm ci
+npm run image-claims -- /path/to/downloaded-image.png /path/to/drawing.svg
+```
+
+The command reads local bytes without rendering the files. Exit status is
+`0` for no findings, `1` for findings, and `2` for a usage or read error.
+
+For the lesson's examples and reproducibility check:
+
+```sh
+npm run image-claims -- src/stories/fixtures/image-claims/rails-canary.png src/stories/fixtures/image-claims/control.png
+npm run image-claims:check
+npm run image-claims:render
+```
+
+The first command should report the canary and exit `1`. The second runs the
+regressions and checks the displayed panel against a fresh execution; the third
+regenerates it after an intentional change.
+
+<SketchToggle
+  unsolved={{ src: '/sketches/image-claims/workspace-unsolved.svg', alt: 'Sketch of the workspace before running: rails-canary.png and control.png in the file list, and the image-claims command typed in the terminal.' }}
+  solved={{ src: '/sketches/image-claims/workspace-solved.svg', alt: 'Sketch of the workspace after running: two findings for rails-canary.png, conflicting MATLAB headers and a .png that is not a known image type, nothing for control.png, and exit status 1.' }}
+  caption="What the workspace would show, before and after running the checker on the canary and the PNG control. The solved frame is the checker's actual output."
+/>
