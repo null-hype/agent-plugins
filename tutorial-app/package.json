@@ -16,7 +16,8 @@
     "replay:export": "bash scripts/export-replay.sh",
     "image-claims": "node --import tsx scripts/image-claims.ts",
     "image-claims:render": "node --import tsx scripts/render-image-claims.ts",
-    "image-claims:check": "vitest run src/lib/imageClaims.spec.ts && node --import tsx scripts/render-image-claims.ts --check"
+    "image-claims:check": "vitest run src/lib/imageClaims.spec.ts && node --import tsx scripts/render-image-claims.ts --check && node --import tsx scripts/render-sketches.ts --check",
+    "sketches:render": "node --import tsx scripts/render-sketches.ts"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
