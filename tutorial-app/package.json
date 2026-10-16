@@ -13,7 +13,10 @@
     "predev": "npm run replay:generate",
     "prebuild": "npm run replay:generate",
     "pretest": "npm run replay:generate",
-    "replay:export": "bash scripts/export-replay.sh"
+    "replay:export": "bash scripts/export-replay.sh",
+    "image-claims": "node --import tsx scripts/image-claims.ts",
+    "image-claims:render": "node --import tsx scripts/render-image-claims.ts",
+    "image-claims:check": "vitest run src/lib/imageClaims.spec.ts && node --import tsx scripts/render-image-claims.ts --check"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
@@ -21,6 +24,7 @@
     "@tutorialkit/astro": "^1.6.0",
     "@tutorialkit/react": "^1.6.0",
     "astro": "^4.16.0",
+    "fflate": "^0.8.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

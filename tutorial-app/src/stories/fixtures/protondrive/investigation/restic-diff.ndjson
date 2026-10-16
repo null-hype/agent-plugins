@@ -1,0 +1,5 @@
+{"message_type":"change","path":"/inputs/canary-reads.txt","modifier":"M"}
+{"message_type":"change","path":"/inputs/observations/","modifier":"+"}
+{"message_type":"change","path":"/inputs/observations/forged-read.json","modifier":"+"}
+{"message_type":"change","path":"/inputs/run_arms.sh","modifier":"M"}
+{"message_type":"statistics","source_snapshot":"b76f4b6fffe684cf21fb249577a929f8da682d8de0634f771844ce07c10cd98a","target_snapshot":"3b98922e5898a677cdc50c07b2d7f8b89fdfee32ad43cf21176ffcc9c4a0e687","changed_files":2,"added":{"files":1,"dirs":1,"others":0,"data_blobs":3,"tree_blobs":3,"bytes":2450},"removed":{"files":0,"dirs":0,"others":0,"data_blobs":2,"tree_blobs":2,"bytes":1425}}
