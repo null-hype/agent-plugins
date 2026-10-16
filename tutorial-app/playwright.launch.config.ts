@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Default: fresh, logged-out contexts against production. PR CI explicitly
 // sets LAUNCH_BASE_URL to the locally built site; that is not live evidence.
-const baseURL = process.env.LAUNCH_BASE_URL ?? 'https://null-hype.tidelands.dev';
+const baseURL = process.env.LAUNCH_BASE_URL ?? 'https://www.tidelands.dev';
 const local = new URL(baseURL).hostname === '127.0.0.1' || new URL(baseURL).hostname === 'localhost';
 const proxyURL = process.env.PLAYWRIGHT_PROXY_SERVER ? new URL(process.env.PLAYWRIGHT_PROXY_SERVER) : null;
 
