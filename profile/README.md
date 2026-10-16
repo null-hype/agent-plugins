@@ -8,7 +8,7 @@ Automated changes can each pass the same policy check and still violate it when 
 
 ### Quick Access
 
-- **Run the walkthrough:** [null-hype.tidelands.dev](https://null-hype.tidelands.dev) (interactive budget & authority lessons)
+- **Run the walkthrough:** [www.tidelands.dev](https://www.tidelands.dev) (interactive budget & authority lessons)
 - **60–120s Demo & Narrative:** [Walkthrough guide](https://github.com/null-hype/agent-plugins/blob/main/docs/launch/demo.md)
 - **Claim → Evidence Trail:** [claims and runnable test matrix](https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md)
 - **Source Code & Checks:** [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins)
