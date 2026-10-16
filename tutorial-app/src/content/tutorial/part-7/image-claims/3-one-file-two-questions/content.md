@@ -11,9 +11,9 @@ terminal: false
 The same file raises two questions, and each needs a different kind of
 evidence.
 
-**What do its bytes claim?** The image check answers this without opening the
-file. It applies the investigation's `CraftedMatFile` header predicates: the
-text header selects libvips' `matload`, while the version and endian bytes
+**What do its bytes claim?** The image check answers this by reading the
+bytes, without rendering the file or passing it to an image loader. It applies
+the investigation's `CraftedMatFile` header predicates: the text header selects libvips' `matload`, while the version and endian bytes
 select matio's MAT 7.3/HDF5 reader. It reports that disagreement whatever the
 file is called, even `canary.mat`. A second, weaker check reports that a file
 named `.png` lacks the PNG signature.

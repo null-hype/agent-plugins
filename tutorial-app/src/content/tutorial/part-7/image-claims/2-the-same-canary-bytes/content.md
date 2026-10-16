@@ -8,9 +8,9 @@ terminal: false
 
 # A PNG that isn't one
 
-A **canary** is a specially crafted test file: harmless itself, but built so
-that a mistake in how it is handled shows up. This one was crafted for a Rails
-investigation. A **loader** is the component that interprets a file's bytes;
+A **canary** is a deliberately crafted test file. Here, the canary was used
+with a test-owned dummy file to reveal how a Rails application handles its
+bytes. A **loader** is the component that interprets a file's bytes;
 here, libvips (the image library Rails uses for variants) and matio (a library
 for MATLAB files) are the two loaders that matter.
 
