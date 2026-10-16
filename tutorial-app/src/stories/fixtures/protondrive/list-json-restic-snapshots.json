@@ -1,0 +1,50 @@
+[
+  {
+    "uid": "VOLUME_ID~SNAPSHOT_FILE_NODE_ID",
+    "parentUid": "VOLUME_ID~SNAPSHOTS_FOLDER_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "14e7ff8f01d99fe15b42792b859359dcf983f3a856c536dfc4e2ac22375f9488"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "file",
+    "mediaType": "application/octet-stream",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T20:23:05.000Z",
+    "modificationTime": "2026-10-09T20:23:05.000Z",
+    "totalStorageSize": 491,
+    "activeRevision": {
+      "uid": "VOLUME_ID~SNAPSHOT_FILE_NODE_ID~REVISION_ID",
+      "state": "active",
+      "creationTime": "2026-10-09T20:23:05.000Z",
+      "contentAuthor": {
+        "ok": true,
+        "value": "drive-user@example.com"
+      },
+      "storageSize": 491,
+      "isImported": false,
+      "claimedSize": 411,
+      "claimedModificationTime": "2026-10-09T20:22:53.168Z",
+      "claimedDigests": {
+        "sha1": "d0c3f48db06b3bf442ee3ccb73b1baf458928100",
+        "sha1Verified": false
+      },
+      "claimedAdditionalMetadata": {
+        "Media": {}
+      }
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  }
+]

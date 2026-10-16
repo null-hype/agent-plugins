@@ -1,0 +1,13 @@
+{
+    "headless-round-trip": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "protondrive": {}
+        },
+        "containerEnv": {
+            "PROTON_DRIVE_LIVE": "${localEnv:PROTON_DRIVE_LIVE}"
+        }
+    }
+}
