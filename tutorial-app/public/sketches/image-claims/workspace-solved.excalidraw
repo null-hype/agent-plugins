@@ -5,7 +5,7 @@
   "elements": [
     { "type": "rectangle", "id": "phone", "x": 0, "y": 0, "width": 380, "height": 700, "roundness": { "type": 3 }, "roughness": 0, "strokeColor": "#1e1e1e", "strokeWidth": 2 },
     { "type": "text", "id": "title", "x": 20, "y": 18, "width": 110, "height": 25, "text": "Workspace", "fontSize": 20, "fontFamily": 2, "roughness": 0, "strokeColor": "#1e1e1e" },
-    { "type": "text", "id": "state", "x": 290, "y": 22, "width": 70, "height": 20, "text": "solved", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#757575" },
+    { "type": "text", "id": "state", "x": 206, "y": 22, "width": 154, "height": 20, "text": "recorded result", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#757575" },
     { "type": "rectangle", "id": "files", "x": 16, "y": 60, "width": 348, "height": 92, "roughness": 0, "strokeColor": "#1e1e1e", "strokeWidth": 2 },
     { "type": "text", "id": "files-label", "x": 28, "y": 70, "width": 50, "height": 18, "text": "FILES", "fontSize": 14, "fontFamily": 2, "roughness": 0, "strokeColor": "#757575" },
     { "type": "text", "id": "files-list", "x": 28, "y": 94, "width": 170, "height": 40, "text": "rails-canary.png\ncontrol.png", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" },
