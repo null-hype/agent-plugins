@@ -16,3 +16,13 @@ declare module 'virtual:acp-trace-agent-page' {
 declare module 'js-yaml' {
 	export function load(input: string): unknown;
 }
+
+declare module '*?worker' {
+	const WorkerConstructor: new () => Worker;
+	export default WorkerConstructor;
+}
+
+declare module '*?raw' {
+	const text: string;
+	export default text;
+}

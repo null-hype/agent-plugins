@@ -1,0 +1,10 @@
+./restic-repo/config
+./restic-repo/data/1e/1e69fe25591b69280c3a96cc2be219728ef74344341ede444ef48dcf42a08158
+./restic-repo/data/9a/9a096a5a9a6025d312cd294e309117042a0ec59751ca458a4efd780547d8f4a3
+./restic-repo/data/e7/e79554c6837d6b9e2c8875b735873aff7ade4ac9d535510ded9e3ec59b744887
+./restic-repo/data/ec/eca91b18968e6e154e38f885f1cc53917cb577836c3b4c2bc3ffa843b96443ff
+./restic-repo/index/10ca3be5024cb4f2af87e32ec5fe37aac8bc458c5ff5aa65bb02365efb367245
+./restic-repo/index/ba46d88ba064dcbc60b415f0770cb41439f54ab6def648be2a69bf90119639e6
+./restic-repo/keys/e97c356f83a70ba93eca65925f0543a1073f8bf52d673b590c676879daa5a243
+./restic-repo/snapshots/3b98922e5898a677cdc50c07b2d7f8b89fdfee32ad43cf21176ffcc9c4a0e687
+./restic-repo/snapshots/b76f4b6fffe684cf21fb249577a929f8da682d8de0634f771844ce07c10cd98a
