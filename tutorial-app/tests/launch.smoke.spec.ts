@@ -4,16 +4,25 @@ const LANDING = '/part-0/overview/start';
 const DEMO = '/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one';
 const EVIDENCE = 'https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md';
 const CONTACT = 'https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml';
+const WORKING_TOGETHER = '/part-7/your-images/3-where-proton-drive-fits';
 
 test('logged-out journey: root → explanation → demo → evidence → contact', async ({ page, context }) => {
   await page.goto('/');
   await expect(page).toHaveURL(new RegExp(`${LANDING}/?$`));
   await expect(page.getByText('What does the passing check actually tell you about the answer?', { exact: true })).toBeVisible();
 
+  // CIT-422: the opening links to "Working together" at the end of the route,
+  // which carries both contact routes.
+  await page.getByRole('link', { name: 'working together', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`${WORKING_TOGETHER}/?#working-together$`));
+  await expect(page.getByRole('heading', { name: 'Working together', exact: true })).toBeVisible();
   const email = page.getByRole('link', { name: 'public.rant@pm.me', exact: true });
   await expect(email).toBeVisible();
   await expect(email).toHaveAttribute('href', 'mailto:public.rant@pm.me');
   await expect(page.getByRole('link', { name: 'Open an issue', exact: true })).toHaveAttribute('href', CONTACT);
+
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${LANDING}/?$`));
   await page.getByRole('link', { name: /Start the review/ }).first().click();
   await expect(page).toHaveURL(new RegExp(`${DEMO}/?$`));
   await expect(page.getByRole('heading', { name: 'Can the check tell a real read of the private file from a forged one?', exact: true })).toBeVisible();
