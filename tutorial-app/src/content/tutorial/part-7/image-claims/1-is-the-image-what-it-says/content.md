@@ -1,34 +1,41 @@
 ---
 type: lesson
-title: What does the image check actually establish
+title: What can an image check establish
 editor: false
 previews: false
 terminal: false
 ---
 
-# What does the image check actually establish?
+# What can an image check establish?
 
-Someone shares a drawing or an image library with you. Before importing it,
-you want to know whether its assets are present and what the application will
-do with their bytes. Those are different questions. A complete drawing can
-still contain an image that needs careful handling.
+Someone shares an image with you through an encrypted folder. Before another
+application opens it, what can you establish about it, and what can't you?
 
-## Where this question started
+This part follows one file through that question: a file named
+`rails-canary.png` that is not a PNG. You will inspect two kinds of evidence
+and keep them apart:
 
-In April 2022, Excalidraw maintainer dwelle opened
-[an issue for image support in libraries](https://github.com/excalidraw/excalidraw/issues/5034).
-The checklist included investigating sanitization. That December, I asked
-whether this meant guarding against malicious image content; dwelle confirmed
-it did. Packaging and persistence across browsers, exports and host apps were
-also part of the discussion.
+- **The image check** reads local file bytes and reports format
+  disagreements, active-content patterns and missing embedded assets. It
+  doesn't render the file or pass it to an application's image loader. No
+  finding means only that these checks found nothing.
+- **Retained execution evidence** records what an application actually did
+  with the same bytes in a specific configuration. Here that is a Rails
+  experiment recorded in an earlier investigation and checked by its own Pkl
+  files (Pkl is a configuration language used here to check recorded results).
 
-I opened [a pull request for the feature](https://github.com/excalidraw/excalidraw/pull/6022)
-in December 2022. By February 2023, I was describing an experiment in that thread:
-storing files, including images, in restic with Excalidraw as the front end.
-The connection between drawings, stored files and the software that interprets
-them was already there.
+Nothing in this part runs in your browser. Every output shown is recorded, and
+the last lesson's Proton Drive upload and download is a recorded round trip,
+not one you perform here. The commands to run the image check yourself are in
+*Run it on your files*.
 
-That history motivates this part's question: **what evidence do we need
-before letting another application process a shared image?** The Rails case
-in the next lesson gives us a concrete failure to investigate. It is a
-separate case, not evidence of an Excalidraw vulnerability.
+## Background
+
+The question comes from Excalidraw. In April 2022 its maintainer dwelle opened
+[an issue for image support in libraries](https://github.com/excalidraw/excalidraw/issues/5034),
+whose checklist included sanitization; dwelle later confirmed that meant
+guarding against malicious image content. I opened
+[a pull request for the feature](https://github.com/excalidraw/excalidraw/pull/6022)
+that December, and by February 2023 was storing drawings' files in restic with
+Excalidraw as the front end. The Rails case that follows is separate: it is not
+evidence of an Excalidraw vulnerability.
