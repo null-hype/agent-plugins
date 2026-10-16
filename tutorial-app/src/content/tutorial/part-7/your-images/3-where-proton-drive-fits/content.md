@@ -37,3 +37,14 @@ check on it as in the previous lesson, and read each finding before you choose
 which application opens which file. Keep the bytes and the checker's output, so
 a later investigation can ask what was checked, with which version, and what
 still needs evidence.
+
+For a team assessing an agent workflow, the practical questions are the same
+ones this tutorial asked: what must hold, and what observations would reveal
+that it doesn't?
+
+## Working together
+
+- **Inspect the evidence:** [Claim-to-evidence matrix](https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md) and [source repository](https://github.com/null-hype/agent-plugins)
+- **Discuss applying this to an agent system:**
+  - **Public collaboration:** [Open an issue](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) for open discussions and reproducible evaluations (public; describe workflows without private data).
+  - **Private enquiries:** Email [`public.rant@pm.me`](mailto:public.rant@pm.me) for confidential discussions regarding production agent architectures, consulting, research collaboration, or funding. (Please do not include credentials or unredacted secrets in initial outreach).
