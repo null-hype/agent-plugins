@@ -15,10 +15,10 @@ This part follows one file through that question: a file named
 `rails-canary.png` that is not a PNG. You will inspect two kinds of evidence
 and keep them apart:
 
-- **The image check** reads a file's bytes and reports what they claim to be.
-  It never opens or renders the file. A finding means the bytes disagree with
-  themselves or with their name; no finding means only that these checks found
-  nothing.
+- **The image check** reads local file bytes and reports format
+  disagreements, active-content patterns and missing embedded assets. It
+  doesn't render the file or pass it to an application's image loader. No
+  finding means only that these checks found nothing.
 - **Retained execution evidence** records what an application actually did
   with the same bytes in a specific configuration. Here that is a Rails
   experiment recorded in an earlier investigation and checked by its own Pkl
