@@ -32,12 +32,19 @@ describe('Contact and Conversion Paths (CIT-166, CIT-259, CIT-165)', () => {
     expect(content).toContain('This profile is not a portfolio of promises; it is a log of evidence.');
   });
 
-  it('exposes dual contact routes in top-level landing page (part-0/overview/start)', () => {
+  it('links the landing page (part-0/overview/start) to the dual contact routes at the end of the route', () => {
     const landingPath = path.resolve(tutorialDir, 'src/content/tutorial/part-0/overview/start/content.mdx');
-    const content = fs.readFileSync(landingPath, 'utf8');
-    expect(content).toContain('https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml');
-    expect(content).toContain('public.rant@pm.me');
-    expect(content).toContain('/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one');
+    const landing = fs.readFileSync(landingPath, 'utf8');
+    expect(landing).toContain('/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one');
+    expect(landing).toContain('/part-7/your-images/3-where-proton-drive-fits#working-together');
+
+    // CIT-422: the routes themselves live under "Working together", after the tutorial.
+    const destinationPath = path.resolve(tutorialDir, 'src/content/tutorial/part-7/your-images/3-where-proton-drive-fits/content.md');
+    const destination = fs.readFileSync(destinationPath, 'utf8');
+    expect(destination).toMatch(/^## Working together$/m);
+    const section = destination.slice(destination.indexOf('## Working together'));
+    expect(section).toContain('https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml');
+    expect(section).toContain('public.rant@pm.me');
   });
 
 
