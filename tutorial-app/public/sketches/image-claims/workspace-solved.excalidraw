@@ -1,0 +1,23 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://www.tidelands.dev",
+  "elements": [
+    { "type": "rectangle", "id": "phone", "x": 0, "y": 0, "width": 380, "height": 700, "roundness": { "type": 3 }, "roughness": 0, "strokeColor": "#1e1e1e", "strokeWidth": 2 },
+    { "type": "text", "id": "title", "x": 20, "y": 18, "width": 110, "height": 25, "text": "Workspace", "fontSize": 20, "fontFamily": 2, "roughness": 0, "strokeColor": "#1e1e1e" },
+    { "type": "text", "id": "state", "x": 290, "y": 22, "width": 70, "height": 20, "text": "solved", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#757575" },
+    { "type": "rectangle", "id": "files", "x": 16, "y": 60, "width": 348, "height": 92, "roughness": 0, "strokeColor": "#1e1e1e", "strokeWidth": 2 },
+    { "type": "text", "id": "files-label", "x": 28, "y": 70, "width": 50, "height": 18, "text": "FILES", "fontSize": 14, "fontFamily": 2, "roughness": 0, "strokeColor": "#757575" },
+    { "type": "text", "id": "files-list", "x": 28, "y": 94, "width": 170, "height": 40, "text": "rails-canary.png\ncontrol.png", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" },
+    { "type": "rectangle", "id": "terminal", "x": 16, "y": 168, "width": 348, "height": 516, "roughness": 0, "strokeColor": "#1e1e1e", "strokeWidth": 2 },
+    { "type": "text", "id": "terminal-label", "x": 28, "y": 178, "width": 80, "height": 18, "text": "TERMINAL", "fontSize": 14, "fontFamily": 2, "roughness": 0, "strokeColor": "#757575" },
+    { "type": "text", "id": "command", "x": 28, "y": 202, "width": 280, "height": 60, "text": "$ npm run image-claims -- \\\n    rails-canary.png \\\n    control.png", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" },
+    { "type": "text", "id": "summary", "x": 28, "y": 272, "width": 300, "height": 40, "text": "image-claims 0.2.0: 2 file(s),\n2 finding(s)", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" },
+    { "type": "text", "id": "finding-1", "x": 28, "y": 322, "width": 290, "height": 120, "text": "rails-canary.png:1\n  conflicting MATLAB headers:\n  libvips selects matload,\n  while matio selects the MAT\n  7.3/HDF5 reader; inspect\n  loader policy", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" },
+    { "type": "text", "id": "finding-2", "x": 28, "y": 452, "width": 290, "height": 60, "text": "rails-canary.png:1\n  declared .png but the bytes\n  are not a known image type", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" },
+    { "type": "text", "id": "verdict", "x": 28, "y": 522, "width": 300, "height": 60, "text": "No finding is not a safety\nverdict. These checks do not\nvalidate full image contents.", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" },
+    { "type": "text", "id": "exit", "x": 28, "y": 592, "width": 100, "height": 40, "text": "$ echo $?\n1", "fontSize": 16, "fontFamily": 3, "roughness": 0, "strokeColor": "#1e1e1e" }
+  ],
+  "appState": { "viewBackgroundColor": "#ffffff" },
+  "files": {}
+}
