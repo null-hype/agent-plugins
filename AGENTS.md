@@ -16,43 +16,20 @@ Repo skills live in `.agents/skills/`:
 
 ## Review guidelines
 
-This file states the intent. Violations are captured formally as ast-grep rules
-in `rules/`, with tests in `rule-tests/` (`sgconfig.yml`). Each rule's
-`message` is an organ, a one-sentence principle that several rules can share.
-Its `note` describes what this particular footprint looks like. The organs so
-far:
+Review the change against the principles below, and comment as you normally
+would. Where a comment applies one of them, name it.
 
-- "A broken instrument fails the run. A refuted hypothesis is a result."
-- "Write the fact once. Everything else is a projection of it."
+CI already runs the ast-grep rules in `rules/`. You do not need to run them or
+repeat their findings.
 
-### Every finding is a rule match
+### A broken instrument fails the run. A refuted hypothesis is a result.
 
-Do not report a design finding as prose alone. Each finding is one of these:
+A check that could not run, or whose records contradict each other, must fail.
+A check that ran and says the claim is wrong is data: record it, and keep
+running what depends on it. Flag code that collapses the two into one failure.
 
-1. **An existing rule fires.** Run
-   `npx --yes --package=@ast-grep/cli@0.50.0 ast-grep scan --no-ignore hidden`.
-   Report each hit in the changed files with the rule id, the file and line,
-   and the rule's `message`. `lint-*` hits are findings. `organ-*` rules are an
-   inventory (severity `hint`), so report one of them only when the diff adds
-   code that goes against its organ.
-2. **No rule fires, but the code violates an organ.** Capture the violation
-   by proposing a rule, or a new `invalid` case for an existing rule, that
-   matches the offending code. Include the YAML in the finding:
-   - `rules/<id>.yml`, using an existing organ's sentence as `message` and the
-     footprint as `note`. Use the `organ-` prefix with `severity: hint` for an
-     inventory, or the `lint-` prefix with `warning` or `error` for a check
-     that `hk check` enforces.
-   - `rule-tests/<id>-test.yml`, taking `invalid` cases from the offending code
-     and `valid` cases from code that respects the organ.
-3. **No organ fits.** Propose a new organ (one sentence) together with its
-   first rule, as above. Do this only when the principle is general, not a
-   one-off preference.
+### Write the fact once. Everything else is a projection of it.
 
-If a violation has nothing in the syntax to match, say so in the finding instead of
-writing a rule that only matches by name.
-
-### Turning human review comments into rules
-
-Treat a general human review comment the same way as case 2 or case 3 above.
-Write the rule and its tests, run `ast-grep test --update-all` and then
-`ast-grep test`, and cite the comment in the PR that adds the rule.
+A fact has one source, and tests, lessons, fixtures and bindings are derived
+from it. Flag a second hand-written copy of something that already has a
+source.
