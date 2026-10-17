@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Every rule's message must be a principle heading in AGENTS.md.
 set -euo pipefail
+shopt -s nullglob
 cd "$(dirname "$0")/.."
 status=0
 for rule in rules/*.yml; do
