@@ -31,6 +31,9 @@ for (const [n, lesson] of LESSONS.entries()) {
       await expect.poll(() => terminal(page), BOOT).toContain(`(${lesson.reviewer}: will `);
       expect(await terminal(page)).toContain(`alice: ${lesson.subject}`);
       expect(await terminal(page)).not.toContain(lesson.lens);
+      // CIT-422: the counts wait for Solve.
+      await expect(page.locator('.solved-recap-pending')).toBeVisible();
+      await expect(page.locator('.solved-recap')).toHaveCount(0);
     });
 
     await test.step('Solve offers the probes; the findings wait for an accept', async () => {
@@ -39,6 +42,7 @@ for (const [n, lesson] of LESSONS.entries()) {
       // The terminal renders only its visible rows; the probes push "deciding what
       // to check" off the top, so the line still on screen is the one to read.
       await expect.poll(() => terminal(page), BOOT).toContain(`(${lesson.reviewer}: its findings wait until you accept a probe`);
+      await expect(page.locator('.solved-recap')).toContainText('Recap.');
     });
 
     await test.step('Tab accepts a probe and its finding follows', async () => {
