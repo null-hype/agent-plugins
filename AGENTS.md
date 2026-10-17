@@ -16,36 +16,43 @@ Repo skills live in `.agents/skills/`:
 
 ## Review guidelines
 
-Review rules live in `rules/` as ast-grep rules, with tests in `rule-tests/`
-(`sgconfig.yml`). Each rule's `message` is an organ: a one-sentence principle
-that several rules can share. Its `note` says what this particular footprint
-looks like. The organs so far:
+This file states the intent. Violations are captured formally as ast-grep rules
+in `rules/`, with tests in `rule-tests/` (`sgconfig.yml`). Each rule's
+`message` is an organ, a one-sentence principle that several rules can share.
+Its `note` describes what this particular footprint looks like. The organs so
+far:
 
 - "A broken instrument fails the run. A refuted hypothesis is a result."
 - "Write the fact once. Everything else is a projection of it."
 
-When reviewing:
+### Every finding is a rule match
 
-1. Run `npx --yes --package=@ast-grep/cli@0.50.0 ast-grep scan --no-ignore hidden`
-   and report every `lint-*` hit in the changed files as a finding, quoting the
-   rule's `message`. `organ-*` rules are an inventory (severity `hint`). Report
-   one of them only when the diff adds code that goes against its organ.
-2. Judge the diff against each organ's `message`, even where no rule matches.
+Do not report a design finding as prose alone. Each finding is one of these:
 
-## Turning review comments into rules
+1. **An existing rule fires.** Run
+   `npx --yes --package=@ast-grep/cli@0.50.0 ast-grep scan --no-ignore hidden`.
+   Report each hit in the changed files with the rule id, the file and line,
+   and the rule's `message`. `lint-*` hits are findings. `organ-*` rules are an
+   inventory (severity `hint`), so report one of them only when the diff adds
+   code that goes against its organ.
+2. **No rule fires, but the code violates an organ.** Capture the violation
+   by proposing a rule, or a new `invalid` case for an existing rule, that
+   matches the offending code. Include the YAML in the finding:
+   - `rules/<id>.yml`, using an existing organ's sentence as `message` and the
+     footprint as `note`. Use the `organ-` prefix with `severity: hint` for an
+     inventory, or the `lint-` prefix with `warning` or `error` for a check
+     that `hk check` enforces.
+   - `rule-tests/<id>-test.yml`, taking `invalid` cases from the offending code
+     and `valid` cases from code that respects the organ.
+3. **No organ fits.** Propose a new organ (one sentence) together with its
+   first rule, as above. Do this only when the principle is general, not a
+   one-off preference.
 
-A human review comment that states something general becomes a rule, not
-prose in this file.
+If a violation has nothing in the syntax to match, say so in the finding instead of
+writing a rule that only matches by name.
 
-1. Distill the comment to one sentence. Reuse an existing organ's `message`
-   when it fits. Propose a new organ only when none does.
-2. Find the syntax that shows the problem and write `rules/<id>.yml` with that
-   sentence as `message` and the footprint as `note`. Use the `organ-` prefix
-   and `severity: hint` for an inventory, or the `lint-` prefix with `warning`
-   or `error` for a check that `hk check` enforces.
-3. Add `rule-tests/<id>-test.yml`, taking `invalid` cases from the code the
-   comment was about and `valid` cases from code that respects the organ. Run
-   `ast-grep test --update-all` to write the snapshot, then `ast-grep test`.
-4. Cite the review comment the rule came from in the PR or reply that adds it.
-   If the problem has no syntax footprint, say so instead of writing a rule
-   that only matches by name.
+### Turning human review comments into rules
+
+Treat a general human review comment the same way as case 2 or case 3 above.
+Write the rule and its tests, run `ast-grep test --update-all` and then
+`ast-grep test`, and cite the comment in the PR that adds the rule.
