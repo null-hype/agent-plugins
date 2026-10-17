@@ -1,0 +1,15 @@
+id: organ-check-returns-report
+valid:
+  - |
+    func Check(code string) error {
+      if code != "0" { return fmt.Errorf("failed") }
+      return nil
+    }
+invalid:
+  - |
+    func (r *RunReport) Check(ctx context.Context) (string, error) {
+      if strings.TrimSpace(code) != "0" {
+        return "", fmt.Errorf("Playwright experiment failed")
+      }
+      return r.Artifacts.File("comparison.json").Contents(ctx)
+    }

@@ -1,0 +1,26 @@
+id: organ-outcome-type
+valid:
+  - |
+    const (
+      invalidType = "%s is an invalid type name"
+      typeError   = "%s must be of type %s"
+    )
+  - |
+    const (
+      OutcomePassed Outcome = "passed"
+      OutcomeFailed Outcome = "failed"
+    )
+invalid:
+  - |
+    const (
+      OutcomePassed    Outcome = "passed"
+      OutcomeFailed    Outcome = "failed"
+      OutcomeEvalError Outcome = "eval-error"
+    )
+  - |
+    const (
+      _       Status = iota
+      Error
+      Valid
+      Invalid
+    )

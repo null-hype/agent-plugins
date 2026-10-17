@@ -1,0 +1,22 @@
+id: lint-hand-written-pkl-binding
+valid:
+  - |
+    // Code generated from Pkl module `evidence`. DO NOT EDIT.
+    package evidence
+
+    type Grant struct {
+      FactID string `pkl:"factID"`
+    }
+  - |
+    package evidence
+
+    type Grant struct {
+      FactID string `json:"factID"`
+    }
+invalid:
+  - |
+    package supervisor
+
+    type Grant struct {
+      FactID string `pkl:"factID"`
+    }
