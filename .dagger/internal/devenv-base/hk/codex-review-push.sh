@@ -38,9 +38,13 @@ repo_slug() {
     sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##'
 }
 
+# A status that cannot be written is logged and fails the review at the end,
+# but does not stop the review itself from being posted.
+STATUS_FAILED=""
 set_status() { # repo sha state description [target_url]
   gh api "repos/$1/statuses/$2" -f state="$3" -f context="$CONTEXT" \
-    -f description="${4:0:140}" ${5:+-f target_url="$5"} --silent
+    -f description="${4:0:140}" ${5:+-f target_url="$5"} --silent ||
+    { log "could not set $CONTEXT=$3 on ${2:0:7}"; STATUS_FAILED=1; }
 }
 
 # Prints "<remote> <branch> <sha>" for every remote-tracking ref a push
@@ -59,7 +63,7 @@ pushed_refs() {
 }
 
 review() { # remote branch sha
-  local remote=$1 branch=$2 sha=$3 repo default wt events thread rollout out state desc pr url
+  local remote=$1 branch=$2 sha=$3 repo default wt events thread rollout out body state desc pr url
   repo=$(repo_slug "$remote")
   default=$(git -C "$REPO_ROOT" symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null || echo "$remote/main")
   [ "$branch" = "${default#*/}" ] && { log "$branch is the default branch -- not reviewing"; return 0; }
@@ -95,10 +99,15 @@ review() { # remote branch sha
   pr=$(gh pr list --repo "$repo" --head "$branch" --state open --json number --jq '.[0].number // empty')
   if [ -n "$pr" ]; then
     url=$(jq -n --arg body "$body" --arg sha "$sha" '{event: "COMMENT", commit_id: $sha, body: $body}' |
-      gh api "repos/$repo/pulls/$pr/reviews" --input - --jq '.html_url')
+      gh api "repos/$repo/pulls/$pr/reviews" --input - --jq '.html_url') || url=""
   else
     url=$(jq -n --arg body "$body" '{body: $body}' |
-      gh api "repos/$repo/commits/$sha/comments" --input - --jq '.html_url')
+      gh api "repos/$repo/commits/$sha/comments" --input - --jq '.html_url') || url=""
+  fi
+  if [ -z "$url" ]; then
+    log "could not post the review of ${sha:0:7}"
+    set_status "$repo" "$sha" error "Codex review ran but could not be posted"
+    return 1
   fi
   log "posted $url"
 
@@ -108,6 +117,7 @@ review() { # remote branch sha
     state=success desc="No findings"
   fi
   set_status "$repo" "$sha" "$state" "$desc" "$url"
+  [ -z "$STATUS_FAILED" ]
 }
 
 job() {
@@ -122,9 +132,13 @@ job() {
   done
   [ -n "$found" ] || { log "no pushed refs recorded since $since -- nothing to review"; return 0; }
   sleep 5  # let a multi-ref push finish recording every ref
-  pushed_refs "$since" | while read -r remote branch sha; do
-    review "$remote" "$branch" "$sha" || true
-  done
+  # Each review is its own process, so errexit holds inside it (under
+  # `review || ...` bash would switch errexit off for the whole function).
+  local failed=0
+  while read -r remote branch sha; do
+    bash "${BASH_SOURCE[0]}" --review "$remote" "$branch" "$sha" || { log "review of $branch@${sha:0:7} failed"; failed=1; }
+  done < <(pushed_refs "$since")
+  return "$failed"
 }
 
 mkdir -p "$STATE_DIR"
