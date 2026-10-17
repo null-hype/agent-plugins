@@ -1,0 +1,35 @@
+[
+  {
+    "time": "2026-10-09T22:05:08.699679861Z",
+    "tree": "27a8f1d0cc15c9c41d1fb867dc70b03ee7ec41f30682686133aa3ce34c2dbeef",
+    "paths": [
+      "/tmp/tmp.XSDJnYLG2i"
+    ],
+    "hostname": "a8319f86dd1e",
+    "username": "vscode",
+    "uid": 1000,
+    "gid": 1000,
+    "tags": [
+      "protondrive-scenario-20261009T220221Z-0b0d2885"
+    ],
+    "program_version": "restic 0.18.1",
+    "summary": {
+      "backup_start": "2026-10-09T22:05:08.699679861Z",
+      "backup_end": "2026-10-09T22:05:09.517077752Z",
+      "files_new": 1,
+      "files_changed": 0,
+      "files_unmodified": 0,
+      "dirs_new": 2,
+      "dirs_changed": 0,
+      "dirs_unmodified": 0,
+      "data_blobs": 1,
+      "tree_blobs": 3,
+      "data_added": 1132,
+      "data_added_packed": 1020,
+      "total_files_processed": 1,
+      "total_bytes_processed": 47
+    },
+    "id": "b23bf5a1672f8c132a355b54b17ffd9ca58d717048f38a51c527d595ec378950",
+    "short_id": "b23bf5a1"
+  }
+]

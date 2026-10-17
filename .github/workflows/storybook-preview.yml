@@ -2,7 +2,7 @@ name: Storybook PR Preview
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, development]
     paths:
       - 'tutorial-app/**'
       - '.github/workflows/storybook-preview.yml'
@@ -41,9 +41,21 @@ jobs:
           npm ci
           npm run build-storybook
 
+      - name: Check investigation story interaction
+        working-directory: tutorial-app
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test --config=playwright.investigation.config.ts
+
+      # This deploy publishes only non-draft lessons (unlike the Netlify deploy
+      # preview, which shows drafts). See src/content/config.ts.
       - name: Build TutorialKit
         working-directory: tutorial-app
-        run: npm run build
+        env:
+          CONTEXT: production
+        run: |
+          npm run build
+          node scripts/prune-drafts.mjs dist
 
       - name: Deploy PR preview to existing Netlify site
         id: deploy
