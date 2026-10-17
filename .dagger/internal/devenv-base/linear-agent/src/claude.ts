@@ -1,4 +1,4 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query, type Options } from "@anthropic-ai/claude-agent-sdk";
 
 /**
  * Runs a single Claude Agent SDK turn and returns its final text result.
@@ -92,13 +92,13 @@ const NO_TOOLS_PROMPT =
   "your analysis, questions, or a concrete plan, and say plainly what you would " +
   "need to check in the code instead of guessing.";
 
-function sandboxOptions() {
+function sandboxOptions(): Options {
   if (!USE_CONTAINER_USE) {
     return {
       tools: [],
       settingSources: [],
       systemPrompt: { type: "preset", preset: "claude_code", append: NO_TOOLS_PROMPT },
-    } as const;
+    };
   }
   return {
     cwd: WORKSPACE_DIR,
@@ -121,7 +121,7 @@ function sandboxOptions() {
       },
     },
     systemPrompt: { type: "preset", preset: "claude_code" },
-  } as const;
+  };
 }
 
 export async function runClaude(
