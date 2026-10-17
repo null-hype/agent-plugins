@@ -22,3 +22,10 @@ Features install tools and fixtures, scenarios exercise them, and Dagger
 explores on top. Flag code that does one layer's job in another, such as a
 hand-rolled runner or a Dagger function copying in files a Feature should
 install.
+
+### Test the result, not the machinery
+
+Flag tests of machinery rather than results: checking that another feature
+works as advertised, renaming or counting files, or checking the experiment
+scaffolding. Assert on what a user of the feature would see, such as a claim
+falling within a confidence range.
