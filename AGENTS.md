@@ -16,35 +16,36 @@ Repo skills live in `.agents/skills/`:
 
 ## Review guidelines
 
-Two rules organize everything below. Flag a change that breaks either one.
+Review rules live in `rules/` as ast-grep rules, with tests in `rule-tests/`
+(`sgconfig.yml`). Each rule's `message` is an organ: a one-sentence principle
+that several rules can share. Its `note` says what this particular footprint
+looks like. The organs so far:
 
-### A broken instrument fails the run. A refuted hypothesis is a result.
+- "A broken instrument fails the run. A refuted hypothesis is a result."
+- "Write the fact once. Everything else is a projection of it."
 
-A check that says no should return its report as a result. Only a check that
-could not run should error out. Keep the two apart in types, for example with an
-outcome that separates `Refuted` from `Broken`.
+When reviewing:
 
-- **Fail loudly, let a human resolve.** An agent should be able to cause a
-  failure that a human then resolves, for example by granting vault access.
-  Flag changes that stop the agent from acting instead of letting the check
-  fail.
-- **Test the result, not the machinery.** Flag tests of machinery rather than
-  results: checking that another feature works as advertised, renaming or
-  counting files, or checking the experiment scaffolding. Assert on what a user
-  of the feature would see, such as a claim falling within a confidence range.
+1. Run `npx --yes --package=@ast-grep/cli@0.50.0 ast-grep scan --no-ignore hidden`
+   and report every `lint-*` hit in the changed files as a finding, quoting the
+   rule's `message`. `organ-*` rules are an inventory (severity `hint`). Report
+   one of them only when the diff adds code that goes against its organ.
+2. Judge the diff against each organ's `message`, even where no rule matches.
 
-### Write the fact once. Everything else is a projection of it.
+## Turning review comments into rules
 
-Generate what can be derived, for example Pkl bindings and test projects built
-from a data source. Flag hand-written copies of a fact that lives elsewhere.
+A human review comment that states something general becomes a rule, not
+prose in this file.
 
-- **Layering.** Features install tools and fixtures, scenarios exercise them,
-  and Dagger explores on top. Flag code that does one layer's job in another,
-  such as a hand-rolled runner or a Dagger function copying in files a Feature
-  should install.
-- **Conventional paths.** Config loads from conventional locations, Rails
-  style. Flag hardcoded absolute paths, needless relative paths, and paths
-  passed around through env vars or arguments when a convention would find
-  them.
-- **No waffle.** Flag README or docs prose that describes intentions with no
-  command, test or evidence link behind it. A doc should be driven by a test.
+1. Distill the comment to one sentence. Reuse an existing organ's `message`
+   when it fits. Propose a new organ only when none does.
+2. Find the syntax that shows the problem and write `rules/<id>.yml` with that
+   sentence as `message` and the footprint as `note`. Use the `organ-` prefix
+   and `severity: hint` for an inventory, or the `lint-` prefix with `warning`
+   or `error` for a check that `hk check` enforces.
+3. Add `rule-tests/<id>-test.yml`, taking `invalid` cases from the code the
+   comment was about and `valid` cases from code that respects the organ. Run
+   `ast-grep test --update-all` to write the snapshot, then `ast-grep test`.
+4. Cite the review comment the rule came from in the PR or reply that adds it.
+   If the problem has no syntax footprint, say so instead of writing a rule
+   that only matches by name.
