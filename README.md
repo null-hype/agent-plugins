@@ -24,7 +24,7 @@ go run .                                             # step 9 flags it
 cd tutorial-app && npm install && npm run dev
 ```
 
-Start with **[Budget Authority](https://null-hype.tidelands.dev/part-3/proposal-p-against-the-budget/1-jev-types-the-answer)**:
+Start with **[Budget Authority](https://www.tidelands.dev/part-3/proposal-p-against-the-budget/1-jev-types-the-answer)**:
 a confident answer, a clean merge, a failed budget check, and a scoped supervisor
 exception. The replay is scripted; the merge and arithmetic are computed, and
 authority enforcement is simulated. The tutorial then links to a recorded

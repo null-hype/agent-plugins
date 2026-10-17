@@ -1,0 +1,31 @@
+[
+  {
+    "uid": "VOLUME_ID~RESTIC_REPO_NODE_ID",
+    "parentUid": "VOLUME_ID~RUN_FOLDER_NODE_ID",
+    "name": {
+      "ok": true,
+      "value": "restic-repo"
+    },
+    "keyAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "nameAuthor": {
+      "ok": true,
+      "value": "drive-user@example.com"
+    },
+    "directRole": "admin",
+    "ownedBy": {
+      "email": "drive-user@example.com"
+    },
+    "type": "folder",
+    "isShared": false,
+    "isSharedByUrl": false,
+    "creationTime": "2026-10-09T22:05:17.000Z",
+    "modificationTime": "2026-10-09T22:05:17.000Z",
+    "folder": {
+      "isImported": false
+    },
+    "treeEventScopeId": "VOLUME_ID"
+  }
+]
