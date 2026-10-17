@@ -1,6 +1,9 @@
 import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
 import { runClaude } from "./claude.ts";
+import * as worktree from "./worktree.ts";
+
+const USE_WORKTREE = process.env.LINEAR_AGENT_SANDBOX === "worktree";
 
 /**
  * Tracks the most recent agent session id per issue, keyed by issue id, so a
@@ -44,7 +47,7 @@ export async function handleAgentSessionEvent(
     return;
   }
 
-  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken);
+  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, issueId ?? undefined);
 }
 
 /**
@@ -69,7 +72,7 @@ export async function handleIssueEvent(
 
   const context = await buildIssuePrompt(linear, payload.data.id);
   const prompt = `${context}\n\n---\n\nThe issue description was just updated — see "Description" above for the current text. Re-evaluate your plan in light of the change.`;
-  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken);
+  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, payload.data.id);
 }
 
 // `created` sessions carry the full formatted context (issue, comments,
@@ -149,15 +152,31 @@ async function runTurn(
   agentSessionId: string,
   prompt: string,
   claudeCodeOAuthToken: string,
+  issueId?: string,
 ): Promise<void> {
   await postActivity(linear, agentSessionId, { type: "thought", body: "On it." });
 
   try {
-    const result = await runClaude(prompt, claudeCodeOAuthToken, (content) =>
-      // Best-effort narration: a failed intermediate post shouldn't abort
-      // the turn the way a failed final response/error post should.
-      postActivity(linear, agentSessionId, content).catch(() => undefined),
+    // worktree mode: the turn works on this session's own branch, which is
+    // pushed (running the Codex pre-push review) and opened as a PR after.
+    const wt = USE_WORKTREE ? await worktree.prepare(agentSessionId) : undefined;
+    let result = await runClaude(
+      prompt,
+      claudeCodeOAuthToken,
+      (content) =>
+        // Best-effort narration: a failed intermediate post shouldn't abort
+        // the turn the way a failed final response/error post should.
+        postActivity(linear, agentSessionId, content).catch((err) => {
+          console.error("activity post failed", err);
+        }),
+      wt?.dir,
     );
+    if (wt) {
+      const issue = issueId ? await linear.issue(issueId) : undefined;
+      const title = issue ? `${issue.identifier}: ${issue.title}` : `Linear agent session ${agentSessionId}`;
+      const pushed = await worktree.finish(wt, title);
+      if (pushed) result += `\n\n${pushed}`;
+    }
     await postActivity(linear, agentSessionId, { type: "response", body: result });
   } catch (err) {
     await postActivity(linear, agentSessionId, {
