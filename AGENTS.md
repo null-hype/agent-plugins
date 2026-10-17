@@ -35,3 +35,9 @@ falling within a confidence range.
 Config loads from conventional locations, Rails style. Flag hardcoded absolute
 paths, needless relative paths, and paths passed around through env vars or
 arguments when a convention would find them.
+
+### Fail loudly, let a human resolve
+
+An agent should be able to cause a failure that a human then resolves, for
+example by granting vault access. Flag changes that stop the agent from acting
+instead of letting the check fail.
