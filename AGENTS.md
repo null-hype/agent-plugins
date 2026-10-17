@@ -16,33 +16,35 @@ Repo skills live in `.agents/skills/`:
 
 ## Review guidelines
 
-### Layering
+Two rules organize everything below. Flag a change that breaks either one.
 
-Features install tools and fixtures, scenarios exercise them, and Dagger
-explores on top. Flag code that does one layer's job in another, such as a
-hand-rolled runner or a Dagger function copying in files a Feature should
-install.
+### A broken instrument fails the run. A refuted hypothesis is a result.
 
-### Test the result, not the machinery
+A check that says no should return its report as a result. Only a check that
+could not run should error out. Keep the two apart in types, for example with an
+outcome that separates `Refuted` from `Broken`.
 
-Flag tests of machinery rather than results: checking that another feature
-works as advertised, renaming or counting files, or checking the experiment
-scaffolding. Assert on what a user of the feature would see, such as a claim
-falling within a confidence range.
+- **Fail loudly, let a human resolve.** An agent should be able to cause a
+  failure that a human then resolves, for example by granting vault access.
+  Flag changes that stop the agent from acting instead of letting the check
+  fail.
+- **Test the result, not the machinery.** Flag tests of machinery rather than
+  results: checking that another feature works as advertised, renaming or
+  counting files, or checking the experiment scaffolding. Assert on what a user
+  of the feature would see, such as a claim falling within a confidence range.
 
-### Conventional paths
+### Write the fact once. Everything else is a projection of it.
 
-Config loads from conventional locations, Rails style. Flag hardcoded absolute
-paths, needless relative paths, and paths passed around through env vars or
-arguments when a convention would find them.
+Generate what can be derived, for example Pkl bindings and test projects built
+from a data source. Flag hand-written copies of a fact that lives elsewhere.
 
-### Fail loudly, let a human resolve
-
-An agent should be able to cause a failure that a human then resolves, for
-example by granting vault access. Flag changes that stop the agent from acting
-instead of letting the check fail.
-
-### No waffle
-
-Flag README or docs prose that describes intentions with no command, test or
-evidence link behind it. A doc should be driven by a test.
+- **Layering.** Features install tools and fixtures, scenarios exercise them,
+  and Dagger explores on top. Flag code that does one layer's job in another,
+  such as a hand-rolled runner or a Dagger function copying in files a Feature
+  should install.
+- **Conventional paths.** Config loads from conventional locations, Rails
+  style. Flag hardcoded absolute paths, needless relative paths, and paths
+  passed around through env vars or arguments when a convention would find
+  them.
+- **No waffle.** Flag README or docs prose that describes intentions with no
+  command, test or evidence link behind it. A doc should be driven by a test.
