@@ -62,16 +62,30 @@ pushed_refs() {
     done
 }
 
+REVIEW_REPO="" REVIEW_SHA="" REVIEW_WT="" REVIEW_DONE=""
+finish() { # like set_status, for a review's final outcome
+  REVIEW_DONE=1
+  set_status "$@"
+}
+on_review_exit() {
+  local rc=$?
+  [ -n "$REVIEW_DONE" ] || { log "review of ${REVIEW_SHA:0:7} exited ($rc) before finishing"; set_status "$REVIEW_REPO" "$REVIEW_SHA" error "Codex review failed before finishing"; }
+  git -C "$REPO_ROOT" worktree remove --force "$REVIEW_WT" >/dev/null 2>&1 || true
+}
+
 review() { # remote branch sha
   local remote=$1 branch=$2 sha=$3 repo default wt events thread rollout out body state desc pr url
   repo=$(repo_slug "$remote")
   default=$(git -C "$REPO_ROOT" symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null || echo "$remote/main")
   [ "$branch" = "${default#*/}" ] && { log "$branch is the default branch -- not reviewing"; return 0; }
 
-  set_status "$repo" "$sha" pending "Codex is reviewing ${sha:0:7}"
   wt=$(mktemp -d "${TMPDIR:-/tmp}/codex-review.XXXXXX")
   events="$STATE_DIR/$sha.jsonl"
-  trap 'git -C "$REPO_ROOT" worktree remove --force "$wt" >/dev/null 2>&1 || true' RETURN
+  # Runs on any exit once pending is set (this is its own process, see job):
+  # a review that dies before setting its outcome must not stay pending.
+  REVIEW_REPO=$repo REVIEW_SHA=$sha REVIEW_WT=$wt
+  trap on_review_exit EXIT
+  set_status "$repo" "$sha" pending "Codex is reviewing ${sha:0:7}"
   git -C "$REPO_ROOT" worktree add -q --detach "$wt" "$sha"
   # The QA pass in AGENTS.md drives Storybook with playwright-cli.
   [ -d "$REPO_ROOT/tutorial-app/node_modules" ] && ln -s "$REPO_ROOT/tutorial-app/node_modules" "$wt/tutorial-app/node_modules"
@@ -86,7 +100,7 @@ review() { # remote branch sha
   # A review that inspected nothing is a broken instrument, not a pass.
   if [ -z "$out" ] || [ "$(jq -r '.overall_confidence_score' <<< "$out")" = 0 ]; then
     log "no usable review for ${sha:0:7} (see $STATE_DIR/$sha.err)"
-    set_status "$repo" "$sha" error "Codex review did not run"
+    finish "$repo" "$sha" error "Codex review did not run"
     return 1
   fi
 
@@ -106,7 +120,7 @@ review() { # remote branch sha
   fi
   if [ -z "$url" ]; then
     log "could not post the review of ${sha:0:7}"
-    set_status "$repo" "$sha" error "Codex review ran but could not be posted"
+    finish "$repo" "$sha" error "Codex review ran but could not be posted"
     return 1
   fi
   log "posted $url"
@@ -116,7 +130,7 @@ review() { # remote branch sha
   else
     state=success desc="No findings"
   fi
-  set_status "$repo" "$sha" "$state" "$desc" "$url"
+  finish "$repo" "$sha" "$state" "$desc" "$url"
   [ -z "$STATUS_FAILED" ]
 }
 

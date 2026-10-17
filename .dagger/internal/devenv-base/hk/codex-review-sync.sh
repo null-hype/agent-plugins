@@ -11,7 +11,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/../.devcontainer/lib/gce-common.sh"
 
 codex_review_sync() {
-  local changed snap f rollout meta repo branch session pr confidence
+  local changed snap f rollout meta repo branch session pr confidence failed=0
   changed=$(gce_common_codex_changed_rollouts)
   [ -n "$changed" ] || { echo "no rollout transcripts changed in the latest snapshot" >&2; return 0; }
   rollout=$(mktemp)
@@ -23,9 +23,11 @@ codex_review_sync() {
     [ -n "$confidence" ] || continue
     meta=$(jq -c 'select(.type == "session_meta") | .payload' "$rollout")
     # A review whose confidence is 0 inspected nothing (e.g. a sandbox
-    # failure); posting it would read as an approval.
+    # failure); posting it would read as an approval. The rest still sync,
+    # but the run fails.
     if [ "$confidence" = 0 ]; then
       echo "$(jq -r '.id' <<< "$meta"): review has confidence 0 (inspected nothing) -- not posting" >&2
+      failed=1
       continue
     fi
 
@@ -40,15 +42,18 @@ codex_review_sync() {
       continue
     fi
 
-    jq -s --arg session "$session" '
+    # Pinned to the reviewed commit, so a branch that moved on since does not
+    # show this verdict against code it never saw.
+    jq -s --arg session "$session" --arg sha "$(jq -r '.git.commit_hash' <<< "$meta")" '
       (map(select(.payload.item.type? == "ExitedReviewMode"))[-1].payload.item.review_output) as $r
-      | {event: "COMMENT",
+      | {event: "COMMENT", commit_id: $sha,
          body: ("**Codex review:** \($r.overall_correctness) (confidence \($r.overall_confidence_score))\n\n"
                 + $r.overall_explanation
                 + ($r.findings | map("\n\n---\n\n" + (. | tostring)) | join(""))
                 + "\n\n<!-- codex-session: \($session) -->")}
     ' "$rollout" | gh api "repos/$repo/pulls/$pr/reviews" --input - --jq '.html_url'
   done <<< "$changed"
+  return "$failed"
 }
 
 gce_common_reserve_sa_key_file
