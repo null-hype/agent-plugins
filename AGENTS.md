@@ -15,3 +15,10 @@ Repo skills live in `.agents/skills/`:
   `.codex/config.toml`) or `storybook tools` when the server is not running.
 
 ## Review guidelines
+
+### Layering
+
+Features install tools and fixtures, scenarios exercise them, and Dagger
+explores on top. Flag code that does one layer's job in another, such as a
+hand-rolled runner or a Dagger function copying in files a Feature should
+install.
