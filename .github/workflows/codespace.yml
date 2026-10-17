@@ -1,0 +1,179 @@
+name: Codespace
+
+# Create or destroy a GitHub Codespace for this repository from Actions.
+#
+# The default GITHUB_TOKEN cannot manage codespaces, so this workflow needs a
+# personal access token stored as the repository secret CODESPACES_TOKEN. The
+# codespace is created under (and billed to) the token owner's account. See
+# docs/codespace-workflow.md for token scopes and examples.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: create, destroy, or list
+        type: choice
+        options: [create, destroy, list]
+        default: create
+      branch:
+        description: Branch to create from (create), or to match when destroying without a name. Defaults to the branch the workflow runs on.
+        type: string
+        default: ''
+      machine:
+        description: Machine type (create)
+        type: choice
+        options: [basicLinux32gb, standardLinux32gb, premiumLinux, largePremiumLinux]
+        default: basicLinux32gb
+      devcontainer_path:
+        description: devcontainer.json to use (create)
+        type: choice
+        options: [.devcontainer/devcontainer.json, .devcontainer/internal/devcontainer.json]
+        default: .devcontainer/devcontainer.json
+      display_name:
+        description: Display name, 48 characters or less (create, optional)
+        type: string
+        default: ''
+      idle_timeout:
+        description: Inactivity before the codespace stops, e.g. 30m (create)
+        type: string
+        default: 30m
+      retention_period:
+        description: Time after stopping before auto-deletion, e.g. 72h, max 720h (create, optional)
+        type: string
+        default: ''
+      name:
+        description: Codespace name to destroy. Empty destroys every codespace of this repo on the branch.
+        type: string
+        default: ''
+      force:
+        description: Destroy even if the codespace has unpushed or uncommitted changes
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      action:
+        type: string
+        required: true
+      branch:
+        type: string
+        default: ''
+      machine:
+        type: string
+        default: basicLinux32gb
+      devcontainer_path:
+        type: string
+        default: .devcontainer/devcontainer.json
+      display_name:
+        type: string
+        default: ''
+      idle_timeout:
+        type: string
+        default: 30m
+      retention_period:
+        type: string
+        default: ''
+      name:
+        type: string
+        default: ''
+      force:
+        type: boolean
+        default: false
+    secrets:
+      CODESPACES_TOKEN:
+        required: true
+    outputs:
+      name:
+        description: Name of the codespace that was created
+        value: ${{ jobs.codespace.outputs.name }}
+
+permissions:
+  contents: read
+
+jobs:
+  codespace:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.create.outputs.name }}
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACES_TOKEN }}
+      REPO: ${{ github.repository }}
+      BRANCH: ${{ inputs.branch || github.ref_name }}
+    steps:
+      - name: Check token
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Secret CODESPACES_TOKEN is not set. See docs/codespace-workflow.md."
+            exit 1
+          fi
+
+      - name: Create
+        id: create
+        if: inputs.action == 'create'
+        env:
+          MACHINE: ${{ inputs.machine }}
+          DEVCONTAINER_PATH: ${{ inputs.devcontainer_path }}
+          DISPLAY_NAME: ${{ inputs.display_name }}
+          IDLE_TIMEOUT: ${{ inputs.idle_timeout }}
+          RETENTION_PERIOD: ${{ inputs.retention_period }}
+        run: |
+          args=(--repo "$REPO" --branch "$BRANCH" --machine "$MACHINE"
+                --devcontainer-path "$DEVCONTAINER_PATH" --default-permissions)
+          [ -n "$DISPLAY_NAME" ] && args+=(--display-name "$DISPLAY_NAME")
+          [ -n "$IDLE_TIMEOUT" ] && args+=(--idle-timeout "$IDLE_TIMEOUT")
+          [ -n "$RETENTION_PERIOD" ] && args+=(--retention-period "$RETENTION_PERIOD")
+
+          name=$(gh codespace create "${args[@]}" | tail -n 1)
+          if [ -z "$name" ]; then
+            echo "::error::gh codespace create returned no name"
+            exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Codespace created"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Name | \`$name\` |"
+            echo "| Branch | \`$BRANCH\` |"
+            echo "| Machine | \`$MACHINE\` |"
+            echo "| Open | https://github.com/codespaces/$name |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Destroy
+        if: inputs.action == 'destroy'
+        env:
+          NAME: ${{ inputs.name }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          if [ -n "$NAME" ]; then
+            names="$NAME"
+          else
+            names=$(gh codespace list --repo "$REPO" --json name,gitStatus \
+              --jq ".[] | select(.gitStatus.ref == \"$BRANCH\") | .name")
+          fi
+          if [ -z "$names" ]; then
+            echo "No codespaces to destroy for $REPO on $BRANCH."
+            echo "Nothing to destroy for \`$REPO\` on \`$BRANCH\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          flags=()
+          [ "$FORCE" = "true" ] && flags+=(--force)
+          echo "### Codespaces destroyed" >> "$GITHUB_STEP_SUMMARY"
+          for n in $names; do
+            gh codespace delete --codespace "$n" "${flags[@]}"
+            echo "- \`$n\`" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: List
+        if: inputs.action == 'list'
+        run: |
+          gh codespace list --repo "$REPO"
+          {
+            echo "### Codespaces for \`$REPO\`"
+            echo
+            echo "| Name | Branch | State | Machine | Last used |"
+            echo "|---|---|---|---|---|"
+            gh codespace list --repo "$REPO" --json name,gitStatus,state,machineName,lastUsedAt \
+              --jq '.[] | "| `\(.name)` | `\(.gitStatus.ref)` | \(.state) | \(.machineName) | \(.lastUsedAt) |"'
+          } >> "$GITHUB_STEP_SUMMARY"
