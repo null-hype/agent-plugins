@@ -103,6 +103,13 @@ hooks {
             ["claude-session-backup"] {
                 check = "bash .dagger/internal/devenv-base/hk/claude-session-backup.sh"
             }
+            // Starts a detached Codex review of each pushed branch and
+            // returns at once. The review lands on the PR as a review plus a
+            // `codex-review` commit status, which branch protection can
+            // require. See .dagger/internal/devenv-base/hk/codex-review-push.sh.
+            ["codex-review"] {
+                check = "bash .dagger/internal/devenv-base/hk/codex-review-push.sh"
+            }
         }
     }
 }

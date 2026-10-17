@@ -33,3 +33,41 @@ running what depends on it. Flag code that collapses the two into one failure.
 A fact has one source, and tests, lessons, fixtures and bindings are derived
 from it. Flag a second hand-written copy of something that already has a
 source.
+
+## Product review
+
+In this repository a product gap is a finding, with the same standing as a
+bug. This overrides the default rule that only bugs in the code are flagged.
+Every review reports product findings as well as code findings; if there are
+none, say so in the overall explanation.
+
+Read the commit messages as the change's description, and flag:
+
+- **[P1]** The change does not do what its description says, or does
+  something the description does not mention.
+- **[P2]** The person it is for will not be able to tell whether it worked:
+  it fails silently, or succeeds and fails the same way.
+- **[P2]** Something that person needs is missing: a way to find it, turn it
+  on, or undo it.
+- **[P3]** It is not clear who the change is for or what they can now do.
+
+Start these finding titles with the priority, then `[Product]`, e.g.
+`[P2] [Product] ...`. Anchor each at the line it is most about.
+
+## QA pass
+
+Before you write findings, use the change the way the person it is for would,
+and report what you saw.
+
+- If the change touches `tutorial-app/` UI or stories, start Storybook
+  (`npm run storybook -- --no-open` in `tutorial-app`) and drive the affected
+  stories with the `playwright-cli` skill: open them, click through them, and
+  take a snapshot or screenshot. Compare what is on screen with what the
+  commit messages promise.
+- If the change is a script or hook, run it on local inputs (fixtures,
+  recorded evidence, a scratch directory). Never run it against real
+  services: do not post to GitHub, push, or write to Linear or Proton Pass.
+- If you cannot get the feature to run, that is a finding.
+
+Title these findings `[Pn] [QA]`, and put the steps you ran and what you
+observed in the body.
