@@ -2,9 +2,11 @@ name: Codespace
 
 # Create or destroy a GitHub Codespace for this repository from Actions.
 #
-# The default GITHUB_TOKEN cannot manage codespaces, so this workflow needs a
-# personal access token stored as the repository secret CODESPACES_TOKEN. The
-# codespace is created under (and billed to) the token owner's account. See
+# The default GITHUB_TOKEN cannot manage codespaces, so this workflow resolves
+# a personal access token from pass://infra/github.com/GITHUB_TOKEN with
+# pass-cli (same pattern as storybook-preview.yml), authenticated by the
+# PROTON_PASS_PERSONAL_ACCESS_TOKEN repository secret. Codespaces are created
+# under (and billed to) that token owner's account. See
 # docs/codespace-workflow.md for token scopes and examples.
 
 on:
@@ -79,7 +81,7 @@ on:
         type: boolean
         default: false
     secrets:
-      CODESPACES_TOKEN:
+      PROTON_PASS_PERSONAL_ACCESS_TOKEN:
         required: true
     outputs:
       name:
@@ -95,16 +97,40 @@ jobs:
     outputs:
       name: ${{ steps.create.outputs.name }}
     env:
-      GH_TOKEN: ${{ secrets.CODESPACES_TOKEN }}
       REPO: ${{ github.repository }}
       BRANCH: ${{ inputs.branch || github.ref_name }}
     steps:
-      - name: Check token
+      - name: Resolve GitHub token from Proton Pass
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+          PROTON_PASS_KEY_PROVIDER: fs
+          PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
+          PROTON_PASS_AGENT_REASON: "GitHub Actions Codespace workflow: resolve GitHub token to manage codespaces"
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::Secret CODESPACES_TOKEN is not set. See docs/codespace-workflow.md."
+          set -euo pipefail
+          if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Secret PROTON_PASS_PERSONAL_ACCESS_TOKEN is not set. See docs/codespace-workflow.md."
             exit 1
           fi
+
+          if ! command -v pass-cli >/dev/null 2>&1; then
+            curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          fi
+
+          pass-cli login
+          trap 'pass-cli logout >/dev/null 2>&1 || true' EXIT
+
+          cat > /tmp/github.env <<'EOF'
+          CODESPACES_GH_TOKEN=pass://infra/github.com/GITHUB_TOKEN
+          EOF
+
+          # Later steps run gh directly, so hand the token on via GITHUB_ENV
+          # (masked) rather than wrapping every step in pass-cli run.
+          pass-cli run --env-file /tmp/github.env -- bash -euo pipefail -c '
+            echo "::add-mask::$CODESPACES_GH_TOKEN"
+            echo "GH_TOKEN=$CODESPACES_GH_TOKEN" >> "$GITHUB_ENV"
+          '
+          rm -f /tmp/github.env
 
       - name: Create
         id: create

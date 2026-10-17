@@ -6,23 +6,21 @@ called from another workflow (`workflow_call`).
 
 ## Token
 
-The default `GITHUB_TOKEN` cannot manage codespaces, so the workflow reads a
-personal access token from the repository secret **`CODESPACES_TOKEN`**.
-Codespaces belong to a user, so every codespace this workflow creates is owned
-by, and billed to, the account that owns the token.
+The default `GITHUB_TOKEN` cannot manage codespaces, so the workflow resolves
+a personal access token from Proton Pass at
+**`pass://infra/github.com/GITHUB_TOKEN`**, the same way
+`storybook-preview.yml` resolves its Netlify token: `pass-cli login` with the
+existing **`PROTON_PASS_PERSONAL_ACCESS_TOKEN`** repository secret, then
+`pass-cli run --env-file`. The resolved token is masked and handed to the later
+`gh` steps as `GH_TOKEN`. No new repository secret is needed.
 
-Either token type works:
+Codespaces belong to a user, so every codespace this workflow creates is owned
+by, and billed to, the account that owns that token. The token needs:
 
 - **Classic PAT**: scopes `codespace` and `repo`.
-- **Fine-grained PAT**: resource owner `null-hype`, repository access limited
-  to `null-hype/agent-plugins`, with repository permissions
+- **Fine-grained PAT**: resource owner `null-hype`, repository access including
+  `null-hype/agent-plugins`, with repository permissions
   **Codespaces: Read and write**, **Contents: Read**, and **Metadata: Read**.
-
-Add it with:
-
-```bash
-gh secret set CODESPACES_TOKEN --repo null-hype/agent-plugins
-```
 
 ## Inputs
 
@@ -73,7 +71,7 @@ jobs:
       action: create
       branch: ${{ github.head_ref }}
     secrets:
-      CODESPACES_TOKEN: ${{ secrets.CODESPACES_TOKEN }}
+      PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
   down:
     if: github.event.action == 'closed'
     uses: ./.github/workflows/codespace.yml
@@ -82,5 +80,5 @@ jobs:
       branch: ${{ github.head_ref }}
       force: true
     secrets:
-      CODESPACES_TOKEN: ${{ secrets.CODESPACES_TOKEN }}
+      PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
 ```
