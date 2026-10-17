@@ -82,6 +82,16 @@ hooks {
                     effect = "read"
                 }
             }
+            // Posts `codex review` runs from the latest codex-session-state
+            // snapshot (saved by the pre-push backup) as reviews on the PR for
+            // the reviewed branch. Post-push for the same reason as
+            // linear-release. See .dagger/internal/devenv-base/hk/codex-review-sync.sh.
+            ["codex-review-sync"] {
+                check = new CommandSpec {
+                    command = "bash .dagger/internal/devenv-base/hk/codex-review-sync.sh"
+                    effect = "read"
+                }
+            }
         }
     }
     ["pre-push"] {
