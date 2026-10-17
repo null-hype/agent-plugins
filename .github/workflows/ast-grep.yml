@@ -18,4 +18,4 @@ jobs:
         with:
           node-version: 22
       # Same command as the ast-grep step in hk.pkl.
-      - run: npx --yes --package=@ast-grep/cli@0.50.0 ast-grep test && npx --yes --package=@ast-grep/cli@0.50.0 ast-grep scan --no-ignore hidden --filter '^lint-'
+      - run: bash scripts/check-organs.sh && npx --yes --package=@ast-grep/cli@0.50.0 ast-grep test && npx --yes --package=@ast-grep/cli@0.50.0 ast-grep scan --no-ignore hidden --filter '^lint-'
