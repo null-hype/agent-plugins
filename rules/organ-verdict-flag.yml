@@ -1,0 +1,16 @@
+id: organ-verdict-flag
+language: go
+severity: hint
+message: A broken instrument fails the run. A refuted hypothesis is a result.
+note: Fails only on a decoded verdict flag; the report itself passes through.
+rule:
+  any: [ {kind: function_declaration}, {kind: method_declaration} ]
+  all:
+    - has: { stopBy: end, kind: call_expression, regex: "^json\\.Unmarshal\\(" }
+    - has:
+        stopBy: end
+        kind: if_statement
+        all:
+          - has: { field: condition, kind: unary_expression, regex: "^!\\w+\\.\\w+$" }
+          - has: { stopBy: end, kind: call_expression, regex: "^(fmt\\.Errorf|errors\\.New)\\(" }
+    - has: { stopBy: end, kind: return_statement, regex: "^return \\w+, nil$" }
