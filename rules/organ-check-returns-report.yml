@@ -1,0 +1,17 @@
+id: organ-check-returns-report
+language: go
+severity: hint
+message: A broken instrument fails the run. A refuted hypothesis is a result.
+note: A Check/Verify that fails on a gate but returns the report, not just an error.
+rule:
+  any: [ {kind: function_declaration}, {kind: method_declaration} ]
+  all:
+    - has: { field: name, regex: "^(Check|Verify|Validate|Evaluate)" }
+    - has: { field: result, kind: parameter_list, regex: "error\\)$" }
+    - has:
+        stopBy: end
+        kind: if_statement
+        has: { stopBy: end, kind: call_expression, regex: "^(fmt\\.Errorf|errors\\.New)\\(" }
+    - has:
+        field: body
+        has: { stopBy: end, kind: return_statement, regex: "^return [^,\\n]*\\w+\\([^)]*\\)$" }

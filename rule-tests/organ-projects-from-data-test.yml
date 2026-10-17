@@ -1,0 +1,9 @@
+id: organ-projects-from-data
+valid:
+  - |
+    export default defineConfig({ projects: [{ name: 'chromium' }] });
+invalid:
+  - |
+    export default defineConfig({ projects: Object.entries(questions).map(([id, q]) => ({ name: id })) });
+  - |
+    const projects = PARTS.flatMap(({ name, projects }) => projects);
