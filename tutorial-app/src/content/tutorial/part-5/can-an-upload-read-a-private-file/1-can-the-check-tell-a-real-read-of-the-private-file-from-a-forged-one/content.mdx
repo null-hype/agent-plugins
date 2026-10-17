@@ -18,6 +18,7 @@ mainCommand: npm run dev
 ---
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+import SolvedRecap from '../../../../../components/SolvedRecap';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 
@@ -51,10 +52,15 @@ Select **Solve** for Bob's review. Each grey line is a question he answered by
 editing the recorded evidence in a copy and running Alice's checker again: a
 forged read of the private file, a deleted trace, a generic crash in place of
 the block, emptied bytes, corrupted control pixels. Press **Tab** to accept the
-one shown, or **Alt+]** to switch first.
+one shown, or **Alt+]** to switch first. A good first question: *Does the check fail when a read of the private file is forged?*
 
 Open the lens above an accepted line. Peek opens the edit itself, the record as
 Bob left it, beside the review's own words and the checker's result. Each
 result is a **reproduction**: Bob's edit, run again for real against Alice's
-checker as submitted, because the review's own runs were not kept. It shows
-the checker still passing all 28 assertions, whichever edit Bob made.
+checker as submitted, because the review's own runs were not kept.
+
+<SolvedRecap client:load>
+
+**Recap.** The checker still passed all 28 assertions, whichever edit Bob made.
+
+</SolvedRecap>

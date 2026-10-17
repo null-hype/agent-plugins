@@ -174,6 +174,7 @@ const LESSON_META = {
 };
 
 const BRIDGE = `import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+import SolvedRecap from '../../../../../components/SolvedRecap';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 `;

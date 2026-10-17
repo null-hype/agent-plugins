@@ -149,13 +149,14 @@ revisions: Mapping<String, Revision> = new {
         editing the recorded evidence in a copy and running Alice's checker again: a
         forged read of the private file, a deleted trace, a generic crash in place of
         the block, emptied bytes, corrupted control pixels. Press **Tab** to accept the
-        one shown, or **Alt+]** to switch first.
+        one shown, or **Alt+]** to switch first. \(suggested)
 
         Open the lens above an accepted line. Peek opens the edit itself, the record as
         Bob left it, beside the review's own words and the checker's result. Each
         result is a **reproduction**: Bob's edit, run again for real against Alice's
-        checker as submitted, because the review's own runs were not kept. It shows
-        the checker \(found).
+        checker as submitted, because the review's own runs were not kept.
+
+        \(recap(""))
         """
     }
   }
@@ -228,15 +229,16 @@ revisions: Mapping<String, Revision> = new {
         each now carrying Alice's claim and whether the run bears it out. Two more are
         new: his review notices that the upload's sha256 and the configuration are
         recorded for every arm but checked for one, and edits the blocked arm's to
-        see. Press **Tab** to accept each.
+        see. Press **Tab** to accept each. \(suggested)
 
         Open a lens. Peek opens the edit Bob made to #118's own records, then his
-        review's words beside it, then the checker's result. Here the checker
-        \(found).\(
+        review's words beside it, then the checker's result.
+
+        \(recap(
           if (asked.take(2).every((q) -> !Question.noticed(answer(q))))
-            " The new negative controls change the open count, a number derived from the trace; Bob's trace edits change the trace and leave that number alone, so they still pass."
+            " Alice's new negative controls change the open count, a number derived from the trace. Bob's trace edits change the trace and leave that number alone, so they still pass."
           else ""
-        )
+        ))
         """
     }
   }
@@ -310,10 +312,12 @@ revisions: Mapping<String, Revision> = new {
         three more. Each replaces the real read of the private file, in the arm that
         does read it, with something that only looks like one: a prose mention, a
         failed open, an open of a file with the same name somewhere else. Alice made
-        no claim about those; they are new.
+        no claim about those; they are new. \(suggested)
 
-        Here the checker \(found). Open the lens on an accepted line: Peek opens the
-        record as Bob edited it, at the trace he changed.
+        Open the lens on an accepted line: Peek opens the record as Bob edited it, at
+        the trace he changed.
+
+        \(recap(""))
         """
     }
   }
@@ -392,10 +396,9 @@ revisions: Mapping<String, Revision> = new {
         bring back: it brings back the checker itself, asked every question Bob asked
         of the three commits before it, word for word, each against what Alice
         claimed. The pending line in the **Agent** names Pkl, not Bob, and the reply
-        says plainly that no review was recorded.
+        says plainly that no review was recorded. \(suggested)
 
-        Here the checker \(found). A green run is the only answer this revision ever
-        got. Whether it is the right answer is a question for the next reviewer.
+        \(recap(" With no edit, the records Alice committed still pass. That passing run, and these failing ones, are the only checks this revision ever got. Whether the checker is now right is a question for the next reviewer."))
         """
     }
   }
@@ -617,11 +620,29 @@ local function each(q: Probe, what: String): String =
   let (a = answer(q))
     "\(what) \(if (Question.noticed(a)) "made it fail (\(counts(a)))" else "still left all \(a.assertsTotal) assertions passing")"
 local found: String =
-  if (foundSame) "still passing all \(answer(deletedTrace).assertsTotal) assertions, whichever edit Bob made"
+  if (foundSame) "The checker still passed all \(answer(deletedTrace).assertsTotal) assertions, whichever edit Bob made."
   else
     let (missed = asked.filter((q) -> !Question.noticed(answer(q))))
-      if (missed.isEmpty) "failing the suite on every one of the \(asked.length) edits"
-      else "catching \(asked.length - missed.length) of Bob's \(asked.length) edits, and still passing every assertion for the rest: \(missed.map((q) -> q.did.toLowerCase()).join("; ")); a reproduction of what each edit did is the lens's last row"
+      if (missed.isEmpty) "The checker failed the suite on every one of the \(asked.length) edits."
+      else "The checker caught \(asked.length - missed.length) of Bob's \(asked.length) edits. It still passed every assertion for the rest: \(missed.map((q) -> q.did.toLowerCase()).join("; ")). The last row of each lens is a reproduction of what that edit did."
+
+/// One question to start with (CIT-422): the first this revision's review
+/// raises, else the first Alice claims to catch. Its answer stays in the lens
+/// until it is accepted.
+local suggested: String =
+  let (q = asked.findOrNull((q) -> q.from == state) ?? asked.findOrNull((q) -> claimedHere(q)) ?? asked.first)
+    "A good first question: *\(q.question)*\(if (q == asked.first) "" else " Press **Alt+]** until it is the one shown.")"
+
+/// The lesson's counts, told only after Solve (CIT-422): the prose before it
+/// says what changed and what to ask, never what the run found.
+local function recap(more: String): String =
+  """
+  <SolvedRecap client:load>
+
+  **Recap.** \(found)\(more)
+
+  </SolvedRecap>
+  """
 
 /// The row that shows what a probe produced. Labelled a reproduction, never the reviewers' own output.
 local function reproduction(q: Probe): AcpTrace.Row =
