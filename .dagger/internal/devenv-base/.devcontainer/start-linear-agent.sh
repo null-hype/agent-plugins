@@ -38,6 +38,9 @@ set -euo pipefail
 
 PORT=${PORT:-8080}
 export DEVENV_BASE_WORKSPACE_DIR="$PWD"
+# This box runs a Docker/Dagger engine, so keep container-use as the
+# agent's sandbox (claude.ts defaults to no tools without it).
+export LINEAR_AGENT_SANDBOX=container-use
 
 # JIN-63: a fixed path here (/tmp/linear-agent-docker-config) meant that
 # once the directory/file existed with the wrong ownership (e.g. created by
