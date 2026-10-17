@@ -29,3 +29,9 @@ Flag tests of machinery rather than results: checking that another feature
 works as advertised, renaming or counting files, or checking the experiment
 scaffolding. Assert on what a user of the feature would see, such as a claim
 falling within a confidence range.
+
+### Conventional paths
+
+Config loads from conventional locations, Rails style. Flag hardcoded absolute
+paths, needless relative paths, and paths passed around through env vars or
+arguments when a convention would find them.
