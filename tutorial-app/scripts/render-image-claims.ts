@@ -12,7 +12,7 @@ for (const arm of ['mat-unblocked', 'mat-blocked']) {
   if (obs.independent_source_sha256 !== sha) throw new Error(`Canary differs from retained ${arm} input`);
 }
 const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-const lines = [`PROBLEMS ${result.findings.length} · image-claims ${result.checker.version}`, 'Checker: executed now · Rails outcomes: retained evidence', ''];
+const lines = [`PROBLEMS ${result.findings.length} · image-claims ${result.checker.version}`, 'Recorded checker output · Rails outcomes: retained evidence', ''];
 for (const finding of result.findings) {
   lines.push(`${finding.path}:${finding.line}`);
   const words = finding.message.split(' '); let line = '  ';
