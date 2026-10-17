@@ -11,7 +11,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/../.devcontainer/lib/gce-common.sh"
 
 codex_review_sync() {
-  local changed snap f rollout meta repo branch session pr
+  local changed snap f rollout meta repo branch session pr confidence
   changed=$(gce_common_codex_changed_rollouts)
   [ -n "$changed" ] || { echo "no rollout transcripts changed in the latest snapshot" >&2; return 0; }
   rollout=$(mktemp)
@@ -19,12 +19,16 @@ codex_review_sync() {
 
   while read -r snap f; do
     restic dump "$snap" "$f" > "$rollout"
+    confidence=$(jq -rs 'map(select(.payload.item.type? == "ExitedReviewMode"))[-1].payload.item.review_output.overall_confidence_score // empty' "$rollout")
+    [ -n "$confidence" ] || continue
+    meta=$(jq -c 'select(.type == "session_meta") | .payload' "$rollout")
     # A review whose confidence is 0 inspected nothing (e.g. a sandbox
     # failure); posting it would read as an approval.
-    jq -e 'select(.payload.item.type? == "ExitedReviewMode")
-           | .payload.item.review_output.overall_confidence_score > 0' "$rollout" >/dev/null || continue
+    if [ "$confidence" = 0 ]; then
+      echo "$(jq -r '.id' <<< "$meta"): review has confidence 0 (inspected nothing) -- not posting" >&2
+      continue
+    fi
 
-    meta=$(jq -c 'select(.type == "session_meta") | .payload' "$rollout")
     repo=$(jq -r '.git.repository_url | sub("^https://github.com/"; "") | sub("\\.git$"; "")' <<< "$meta")
     branch=$(jq -r '.git.branch' <<< "$meta")
     session=$(jq -r '.id' <<< "$meta")
@@ -49,6 +53,9 @@ codex_review_sync() {
 
 gce_common_reserve_sa_key_file
 export SA_KEY_FILE
+# gcloud.env's GITHUB_TOKEN replaces the caller's inside `pass-cli run`; gh
+# prefers GH_TOKEN, so the caller's own GitHub login is the one that posts.
+export GH_TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-$(gh auth token)}}"
 export -f gce_common_write_sa_key gce_common_codex_changed_rollouts codex_review_sync
 export PROTON_PASS_AGENT_REASON="codex-review-sync: post codex review findings from codex-session-state snapshots"
 
