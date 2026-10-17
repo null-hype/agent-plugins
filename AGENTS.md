@@ -41,3 +41,8 @@ arguments when a convention would find them.
 An agent should be able to cause a failure that a human then resolves, for
 example by granting vault access. Flag changes that stop the agent from acting
 instead of letting the check fail.
+
+### No waffle
+
+Flag README or docs prose that describes intentions with no command, test or
+evidence link behind it. A doc should be driven by a test.
