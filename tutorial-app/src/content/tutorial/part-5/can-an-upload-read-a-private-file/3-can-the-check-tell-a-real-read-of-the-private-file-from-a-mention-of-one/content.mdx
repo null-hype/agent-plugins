@@ -18,6 +18,7 @@ mainCommand: npm run dev
 ---
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+import SolvedRecap from '../../../../../components/SolvedRecap';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 
@@ -38,7 +39,13 @@ the lesson labels it so. Bob asks the seven questions again, word for word, and
 three more. Each replaces the real read of the private file, in the arm that
 does read it, with something that only looks like one: a prose mention, a
 failed open, an open of a file with the same name somewhere else. Alice made
-no claim about those; they are new.
+no claim about those; they are new. A good first question: *Does the check fail when the real read is only a mention of the private file?* Press **Alt+]** until it is the one shown.
 
-Here the checker catching 6 of Bob's 10 edits, and still passing every assertion for the rest: deleting the trace; replacing the real read with a prose mention of the private file; replacing the real read with a failed open of the private file; replacing the real read with an open of a same-named file elsewhere; a reproduction of what each edit did is the lens's last row. Open the lens on an accepted line: Peek opens the
-record as Bob edited it, at the trace he changed.
+Open the lens on an accepted line: Peek opens the record as Bob edited it, at
+the trace he changed.
+
+<SolvedRecap client:load>
+
+**Recap.** The checker caught 6 of Bob's 10 edits. It still passed every assertion for the rest: deleting the trace; replacing the real read with a prose mention of the private file; replacing the real read with a failed open of the private file; replacing the real read with an open of a same-named file elsewhere. The last row of each lens is a reproduction of what that edit did.
+
+</SolvedRecap>

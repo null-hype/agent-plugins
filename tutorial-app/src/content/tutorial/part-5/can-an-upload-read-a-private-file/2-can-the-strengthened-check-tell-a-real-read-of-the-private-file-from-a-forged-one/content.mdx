@@ -18,6 +18,7 @@ mainCommand: npm run dev
 ---
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+import SolvedRecap from '../../../../../components/SolvedRecap';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 
@@ -34,8 +35,13 @@ review. His first five questions are the ones he asked of #117, word for word,
 each now carrying Alice's claim and whether the run bears it out. Two more are
 new: his review notices that the upload's sha256 and the configuration are
 recorded for every arm but checked for one, and edits the blocked arm's to
-see. Press **Tab** to accept each.
+see. Press **Tab** to accept each. A good first question: *Does the check fail when the blocked arm records a different upload?* Press **Alt+]** until it is the one shown.
 
 Open a lens. Peek opens the edit Bob made to #118's own records, then his
-review's words beside it, then the checker's result. Here the checker
-catching 3 of Bob's 7 edits, and still passing every assertion for the rest: forging a read of the private file; deleting the trace; recording a different upload for the blocked arm; recording a different configuration for the blocked arm; a reproduction of what each edit did is the lens's last row. The new negative controls change the open count, a number derived from the trace; Bob's trace edits change the trace and leave that number alone, so they still pass.
+review's words beside it, then the checker's result.
+
+<SolvedRecap client:load>
+
+**Recap.** The checker caught 3 of Bob's 7 edits. It still passed every assertion for the rest: forging a read of the private file; deleting the trace; recording a different upload for the blocked arm; recording a different configuration for the blocked arm. The last row of each lens is a reproduction of what that edit did. Alice's new negative controls change the open count, a number derived from the trace. Bob's trace edits change the trace and leave that number alone, so they still pass.
+
+</SolvedRecap>

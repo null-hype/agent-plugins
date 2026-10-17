@@ -18,6 +18,7 @@ mainCommand: npm run dev
 ---
 
 import AcpTraceBridge from '../../../../../components/AcpTraceBridge';
+import SolvedRecap from '../../../../../components/SolvedRecap';
 
 <AcpTraceBridge client:load traceFile="/acp-trace.json" scenario="cit294-review-v1" />
 
@@ -33,7 +34,10 @@ No one reviewed this commit. It was merged. So **Solve** has no reviewer to
 bring back: it brings back the checker itself, asked every question Bob asked
 of the three commits before it, word for word, each against what Alice
 claimed. The pending line in the **Agent** names Pkl, not Bob, and the reply
-says plainly that no review was recorded.
+says plainly that no review was recorded. A good first question: *Does the check fail when the trace is deleted?* Press **Alt+]** until it is the one shown.
 
-Here the checker failing the suite on every one of the 10 edits. A green run is the only answer this revision ever
-got. Whether it is the right answer is a question for the next reviewer.
+<SolvedRecap client:load>
+
+**Recap.** The checker failed the suite on every one of the 10 edits. With no edit, the records Alice committed still pass. That passing run, and these failing ones, are the only checks this revision ever got. Whether the checker is now right is a question for the next reviewer.
+
+</SolvedRecap>
