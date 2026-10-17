@@ -1,53 +1,23 @@
 import { query, type Options } from "@anthropic-ai/claude-agent-sdk";
+import { worktreeGuard } from "./guard.ts";
 
 /**
  * Runs a single Claude Agent SDK turn and returns its final text result.
  *
  * permissionMode is dontAsk: the SDK's headless query() has no human to
- * answer a permission prompt, and 'default' would just hang a turn forever
- * waiting for one. dontAsk denies anything not pre-approved instead of
- * hanging, so allowedTools explicitly pre-approves the container-use MCP
- * tools; the built-in filesystem/shell tools (Bash, Read, Write, Edit, Glob,
- * Grep, NotebookEdit) are disallowed outright on top of that — whatever
- * host this process is running on (a dev box, a prod devpod) must not be
- * directly reachable by a delegated issue. Instead the only file/code/shell
- * surface is the container-use MCP server (`container-use stdio`), which
- * does all such work inside an isolated per-task container/branch.
- * strictMcpConfig keeps that the *only* MCP server available too, ignoring
- * whatever .mcp.json or user-level MCP config happens to exist on the host.
+ * answer a permission prompt, so anything not pre-approved is denied instead
+ * of hanging the turn. What is pre-approved depends on LINEAR_AGENT_SANDBOX:
  *
- * options.cwd is what actually matters here, and was missing before: it's
- * what the SDK reports to Claude as its own session directory ("Primary
- * working directory" / "Is a git repository" in the claude_code preset
- * system prompt), and Claude in turn passes that straight through as
- * environment_create's `environment_source` argument. Confirmed live by
- * hand-driving container-use's MCP stdio protocol directly: calling
- * environment_create with environment_source:"/app" reproduces "unable to
- * open repository: you must be in a git repository" verbatim, while
- * environment_source:"." (i.e. this process's real cwd) passes the git
- * check. Without options.cwd set, it defaults to process.cwd(), which is
- * /app -- start-linear-agent.sh cds there before launching node, since
- * /app is baked into the image and has no .git. The earlier fix (JIN-40)
- * only cd'd the container-use *subprocess*'s shell before exec'ing it,
- * which changes where the MCP server itself starts but not what cwd
- * Claude is told or what environment_source it sends -- the server's own
- * cwd was never actually consulted by environment_create, so that fix did
- * nothing for this failure. Kept anyway (harmless) as a fallback for calls
- * that omit environment_source or pass ".". WORKSPACE_DIR below reads
- * DEVENV_BASE_WORKSPACE_DIR, which start-linear-agent.sh exports as its own
- * $PWD (the real devpod-cloned checkout) before cd'ing to /app -- rather
- * than a literal path, since JIN-95 found that assuming path identity
- * between the devpod-mounted checkout and this process breaks quietly the
- * moment the two disagree (e.g. GCE vs docker provider mounting the
- * workspace at a different path). Falls back to the previous hardcoded
- * path only if the env var is somehow unset, so a misconfigured deployment
- * degrades to the old (still-correct-today) behavior instead of silently
- * resolving to /app.
- * Diagnosed live in the JIN-40 and JIN-57/58 agent sessions.
+ * - worktree: the turn runs in the session's git worktree (see worktree.ts),
+ *   with file tools and Bash; a PreToolUse hook (guard.ts) keeps every call
+ *   inside that worktree. Pushing and opening the PR are done by the server
+ *   after the turn.
+ * - unset (e.g. the Render service, 512 MB and no repo): Claude answers from
+ *   the Linear context in the prompt, with no tools.
  */
-const WORKSPACE_DIR =
-  process.env.DEVENV_BASE_WORKSPACE_DIR ?? "/workspaces/devenv-base-gce";
-export type ActivityContent = { type: string; body: string };
+export type ActivityContent =
+  | { type: "thought" | "response" | "error"; body: string }
+  | { type: "action"; action: string; parameter: string };
 
 const MAX_ACTIVITY_BODY = 2000;
 
@@ -57,34 +27,19 @@ function truncate(body: string): string {
     : body;
 }
 
-// Tool inputs/outputs that are either huge or redundant with the action
-// name itself (file contents, whole diffs) — narrated as just the tool
-// name with no argument dump, instead of a multi-KB blob per call.
-const NOISY_TOOLS = new Set([
-  "mcp__container-use__environment_file_write",
-  "mcp__container-use__environment_file_edit",
-  "mcp__container-use__environment_file_read",
-]);
-
-function describeToolUse(name: string, input: unknown): string {
-  if (NOISY_TOOLS.has(name)) return name;
+// Tool inputs that are huge or redundant with the action itself (file
+// contents, whole edits) -- narrated as just the path, instead of a
+// multi-KB blob per call.
+function describeToolInput(name: string, input: unknown): string {
+  const i = (input ?? {}) as Record<string, unknown>;
+  if (name === "Write" || name === "Edit" || name === "Read") return String(i.file_path ?? "");
+  if (name === "Bash") return truncate(String(i.command ?? ""));
   try {
-    return `${name}(${truncate(JSON.stringify(input))})`;
+    return truncate(JSON.stringify(input));
   } catch {
-    return name;
+    return "";
   }
 }
-
-/**
- * LINEAR_AGENT_SANDBOX=container-use restores the container-use setup
- * described above (start-linear-agent.sh sets it on the GCE box, which runs
- * a Docker/Dagger engine next to this process). Anywhere else -- e.g. the
- * Render service, which has no engine and only 512 MB -- the default is no
- * tools at all: Claude answers from the Linear context in the prompt. The
- * host stays unreachable either way, since the built-in tools are never
- * enabled; without a sandbox there is just no file/shell surface.
- */
-const USE_CONTAINER_USE = process.env.LINEAR_AGENT_SANDBOX === "container-use";
 
 const NO_TOOLS_PROMPT =
   "You are running with no tools: you cannot read the repository, run commands, " +
@@ -92,8 +47,17 @@ const NO_TOOLS_PROMPT =
   "your analysis, questions, or a concrete plan, and say plainly what you would " +
   "need to check in the code instead of guessing.";
 
-function sandboxOptions(): Options {
-  if (!USE_CONTAINER_USE) {
+const WORKTREE_PROMPT =
+  "You are working in a git worktree of the repository, on a branch made for this " +
+  "Linear session; it is your current directory. Read and edit files here, run the " +
+  "repository's scripts and tests to check your work, and commit with git when the " +
+  "change is done (git add, git commit). Do not push: the server pushes your branch " +
+  "and opens a pull request after your turn, and Codex reviews it.";
+
+const WORKTREE_TOOLS = ["Read", "Edit", "Write", "Glob", "Grep", "Bash"];
+
+function sandboxOptions(cwd: string | undefined): Options {
+  if (!cwd) {
     return {
       tools: [],
       settingSources: [],
@@ -101,38 +65,25 @@ function sandboxOptions(): Options {
     };
   }
   return {
-    cwd: WORKSPACE_DIR,
-    allowedTools: ["mcp__container-use__*"],
-    mcpServers: {
-      "container-use": {
-        type: "stdio",
-        command: "sh",
-        args: [
-          "-c",
-          `cd "${WORKSPACE_DIR}" && exec container-use stdio`,
-        ],
-        // Without this, tools are deferred behind tool search by default
-        // and aren't guaranteed present in the turn-1 prompt -- observed
-        // live as a turn that narrated "I've kicked off an exploration"
-        // without ever actually calling an environment_* tool, since
-        // Bash/Read/etc are disallowed and container-use was the only
-        // other way to look at anything.
-        alwaysLoad: true,
-      },
-    },
-    systemPrompt: { type: "preset", preset: "claude_code" },
+    cwd,
+    tools: WORKTREE_TOOLS,
+    hooks: { PreToolUse: [{ hooks: [worktreeGuard(cwd)] }] },
+    settingSources: [],
+    systemPrompt: { type: "preset", preset: "claude_code", append: WORKTREE_PROMPT },
   };
 }
 
+/** cwd is the session's worktree in worktree mode, undefined otherwise. */
 export async function runClaude(
   prompt: string,
   oauthToken: string,
   onActivity?: (content: ActivityContent) => void | Promise<void>,
+  cwd?: string,
 ): Promise<string> {
   const result = query({
     prompt,
     options: {
-      ...sandboxOptions(),
+      ...sandboxOptions(cwd),
       permissionMode: "dontAsk",
       env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: oauthToken },
       strictMcpConfig: true,
@@ -147,7 +98,7 @@ export async function runClaude(
         } else if (block.type === "thinking" && block.thinking) {
           await onActivity({ type: "thought", body: truncate(block.thinking) });
         } else if (block.type === "tool_use") {
-          await onActivity({ type: "action", body: describeToolUse(block.name, block.input) });
+          await onActivity({ type: "action", action: block.name, parameter: describeToolInput(block.name, block.input) });
         }
       }
     } else if (message.type === "result") {
