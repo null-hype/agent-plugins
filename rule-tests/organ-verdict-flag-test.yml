@@ -1,0 +1,20 @@
+id: organ-verdict-flag
+valid:
+  - |
+    func (r *Report) Check() (string, error) {
+      var v verdict
+      if err := json.Unmarshal(raw, &v); err != nil { return "", err }
+      return raw, nil
+    }
+invalid:
+  - |
+    func (r *InvestigationReport) Check(ctx context.Context) (string, error) {
+      var verdict consistencyVerdict
+      if err := json.Unmarshal([]byte(raw), &verdict); err != nil {
+        return "", fmt.Errorf("unreadable: %w", err)
+      }
+      if !verdict.Consistent {
+        return "", fmt.Errorf("inconsistent")
+      }
+      return raw, nil
+    }
