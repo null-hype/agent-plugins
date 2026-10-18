@@ -82,7 +82,7 @@ status)
   id=$1
   jq -n --argjson ws "$(workspace_json "$id")" \
     --argjson job_exit "$(cat "$JOBS/$id.exit" 2>/dev/null || echo null)" \
-    --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null || true)" \
+    --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' || true)" \
     '$ws + {job_exit: $job_exit, log_tail: $log_tail}'
   ;;
 up)
