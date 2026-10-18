@@ -63,7 +63,7 @@ echo "$*" >> "$HOME/devpod.calls"
 case $1 in
 list) echo '[{"id":"ws1"}]' ;;
 status) [ "$2" = ws1 ] && echo '{"state":"Stopped"}' || exit 1 ;;
-up) echo "up output" ;;
+up) printf '\033[0;1;36minfo \033[0mup output\n' ;;
 esac
 `
 	os.WriteFile(filepath.Join(bin, "devpod"), []byte(fake), 0o755)
@@ -94,7 +94,7 @@ esac
 		exec.Command("sleep", "0.05").Run()
 	}
 	status := run("", "status", "ws2")
-	if !strings.Contains(status, `"job_exit": 0`) || !strings.Contains(status, "up output") {
+	if !strings.Contains(status, `"job_exit": 0`) || !strings.Contains(status, `"log_tail": "info up output"`) {
 		t.Fatalf("status = %s", status)
 	}
 	calls, _ := os.ReadFile(filepath.Join(home, "devpod.calls"))

@@ -17,7 +17,7 @@ if ! command -v docker >/dev/null || ! command -v jq >/dev/null; then
   apt-get install -y docker.io jq git curl
 fi
 
-if ! echo "$DEVPOD_SHA256  /usr/local/bin/devpod" | sha256sum -c --quiet 2>/dev/null; then
+if ! echo "$DEVPOD_SHA256  /usr/local/bin/devpod" | sha256sum -c --quiet >/dev/null 2>&1; then
   curl -fsSL -o /tmp/devpod "https://github.com/loft-sh/devpod/releases/download/$DEVPOD_VERSION/devpod-linux-amd64"
   echo "$DEVPOD_SHA256  /tmp/devpod" | sha256sum -c --quiet
   install -m 0755 /tmp/devpod /usr/local/bin/devpod
