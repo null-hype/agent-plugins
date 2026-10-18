@@ -142,5 +142,18 @@
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
+    },
+    "agent-task-linear": {
+        "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+        "features": {
+            "pass-cli": {},
+            "codex-session": {},
+            "agent-task": {
+                "linear": true
+            }
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
     }
 }
