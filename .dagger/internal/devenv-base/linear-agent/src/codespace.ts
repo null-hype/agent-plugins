@@ -13,9 +13,8 @@ const run = promisify(execFile);
  * first turn, --resume after), so no mapping is stored either.
  *
  * The codespace gets CLAUDE_CODE_OAUTH_TOKEN from a Codespaces secret on
- * the repo, not from this server. Claude commits there but does not push:
- * only the prompt says so in this first version, since the codespace's own
- * token can push. --idle-timeout stops a forgotten codespace.
+ * the repo, not from this server. Claude commits there but cannot push:
+ * each turn points origin's push URL nowhere first. --idle-timeout stops a forgotten codespace.
  */
 const REPO = process.env.LINEAR_AGENT_CODESPACE_REPO ?? "null-hype/agent-plugins";
 const BRANCH = process.env.LINEAR_AGENT_CODESPACE_BRANCH ?? "main";
@@ -69,7 +68,8 @@ export function runClaude(
 ): Promise<string> {
   if (!UUID.test(agentSessionId)) throw new Error(`agent session id is not a UUID: ${agentSessionId}`);
   const remote =
-    `cd ${WORKSPACE} && IS_SANDBOX=1 exec claude -p --output-format stream-json --verbose ` +
+    // A push URL that goes nowhere: no push, and so no PR, from this turn.
+    `cd ${WORKSPACE} && git remote set-url --push origin no-push && IS_SANDBOX=1 exec claude -p --output-format stream-json --verbose ` +
     `--permission-mode bypassPermissions --append-system-prompt ${shellQuote(CODESPACE_PROMPT)} ` +
     `${resume ? "--resume" : "--session-id"} ${agentSessionId}`;
   const child = spawn("gh", ["cs", "ssh", "-c", codespace, "--", remote], { stdio: ["pipe", "pipe", "pipe"] });

@@ -168,7 +168,8 @@ async function runTurn(
   // The thought goes out right away (Linear's 10 seconds), even when queued.
   await postActivity(linear, agentSessionId, { type: "thought", body: "On it." });
   const previous = turns.get(agentSessionId) ?? Promise.resolve();
-  const turn = previous.then(() => runQueuedTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, issueId, resume));
+  // A failed turn (already reported as an error) must not block the next.
+  const turn = previous.catch(() => {}).then(() => runQueuedTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, issueId, resume));
   turns.set(agentSessionId, turn);
   try {
     await turn;
