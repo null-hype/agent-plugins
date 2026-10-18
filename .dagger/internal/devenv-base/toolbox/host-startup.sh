@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GCE startup script for the toolbox host (Debian 12). It runs as root on
 # every boot and is idempotent: it installs Docker, jq and git, Tailscale,
-# the pinned Codex and DevPod CLIs, and DevPod's docker provider for the
-# toolbox user. It
-# touches $READY last; host_status reports ready only once it exists.
+# the pinned Codex, container-use and DevPod CLIs, and DevPod's docker
+# provider for the toolbox user. It touches $READY last; host_status reports
+# ready only once it exists.
 set -euo pipefail
 
 READY=/var/lib/toolbox-host.ready
@@ -29,14 +29,35 @@ systemctl enable --now tailscaled
 
 # Codex CLI for reviews. Log in once over Tailscale SSH as the toolbox user
 # (`codex login --device-auth`); the login stays in /home/toolbox/.codex.
+# Codex runs every tool through codex-code-mode-host, a separate asset.
 CODEX_VERSION=0.163.0
 CODEX_SHA256=beb339e8ecd9ba057a6bb2dc81ad8ca474812edfbf0fc5056ca818797648dde4
+CODEX_MODE_HOST_SHA256=314263128ba6592e7e807c265deeaf928a692b72dcbfeb5e0b20c9423b703529
+install_codex_asset() {
+  local name=$1 sha=$2 f=$1-x86_64-unknown-linux-musl
+  curl -fsSL -o "/tmp/$f.tgz" "https://github.com/openai/codex/releases/download/rust-v$CODEX_VERSION/$f.tar.gz"
+  echo "$sha  /tmp/$f.tgz" | sha256sum -c --quiet
+  tar -xzf "/tmp/$f.tgz" -C /tmp "$f"
+  install -m 0755 "/tmp/$f" "/usr/local/bin/$name"
+  rm -f "/tmp/$f.tgz" "/tmp/$f"
+}
 if [ "$(codex --version 2>/dev/null)" != "codex-cli $CODEX_VERSION" ]; then
-  curl -fsSL -o /tmp/codex.tgz "https://github.com/openai/codex/releases/download/rust-v$CODEX_VERSION/codex-x86_64-unknown-linux-musl.tar.gz"
-  echo "$CODEX_SHA256  /tmp/codex.tgz" | sha256sum -c --quiet
-  tar -xzf /tmp/codex.tgz -C /tmp codex-x86_64-unknown-linux-musl
-  install -m 0755 /tmp/codex-x86_64-unknown-linux-musl /usr/local/bin/codex
-  rm -f /tmp/codex.tgz /tmp/codex-x86_64-unknown-linux-musl
+  install_codex_asset codex "$CODEX_SHA256"
+  install_codex_asset codex-code-mode-host "$CODEX_MODE_HOST_SHA256"
+fi
+[ -x /usr/local/bin/codex-code-mode-host ] || install_codex_asset codex-code-mode-host "$CODEX_MODE_HOST_SHA256"
+
+# container-use, as in the devcontainer: Codex creates an environment per
+# review finding.
+CONTAINER_USE_VERSION=0.4.2
+if [ "$(container-use version 2>/dev/null | awk '{print $NF}' | tr -d v | head -1)" != "$CONTAINER_USE_VERSION" ]; then
+  f=container-use_v${CONTAINER_USE_VERSION}_linux_amd64.tar.gz
+  d=$(mktemp -d)
+  curl -fsSL -o "$d/$f" "https://github.com/dagger/container-use/releases/download/v$CONTAINER_USE_VERSION/$f"
+  curl -fsSL -o "$d/checksums.txt" "https://github.com/dagger/container-use/releases/download/v$CONTAINER_USE_VERSION/checksums.txt"
+  (cd "$d" && grep " $f\$" checksums.txt | sha256sum -c --quiet && tar -xzf "$f" container-use)
+  install -m 0755 "$d/container-use" /usr/local/bin/container-use
+  rm -rf "$d"
 fi
 
 if ! echo "$DEVPOD_SHA256  /usr/local/bin/devpod" | sha256sum -c --quiet >/dev/null 2>&1; then
