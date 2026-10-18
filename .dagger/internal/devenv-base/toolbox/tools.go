@@ -26,6 +26,8 @@ type toolbox struct {
 	// githubToken lets devpod clone the private repo. passToken is forwarded
 	// to the agent workspace's tailscale-up.sh, as the keepalive does.
 	githubToken, passToken string
+	// tsAuthKey joins the host itself to the tailnet. Empty leaves it off.
+	tsAuthKey string
 }
 
 type nameIn struct {
@@ -41,11 +43,19 @@ type refIn struct {
 	Ref string `json:"ref,omitempty" jsonschema:"git branch, tag or commit of agent-plugins to create the workspace from; default main"`
 }
 
+type tailnet struct {
+	State  string   `json:"state"`
+	Name   string   `json:"name,omitempty"`
+	IPs    []string `json:"ips,omitempty"`
+	Online bool     `json:"online"`
+}
+
 type hostStatusOut struct {
-	Status string `json:"status"`
-	IP     string `json:"ip,omitempty"`
-	Ready  bool   `json:"ready"`
-	Detail string `json:"detail,omitempty"`
+	Status  string   `json:"status"`
+	IP      string   `json:"ip,omitempty"`
+	Ready   bool     `json:"ready"`
+	Tailnet *tailnet `json:"tailnet,omitempty"`
+	Detail  string   `json:"detail,omitempty"`
 }
 
 type workspace struct {
@@ -84,11 +94,20 @@ func (t *toolbox) hostStatus(ctx context.Context) (hostStatusOut, error) {
 	if in.Status != "RUNNING" {
 		return out, nil
 	}
-	if _, err := t.host.Run(ctx, nil, "ping"); err != nil {
+	var env map[string]string
+	if t.tsAuthKey != "" {
+		env = map[string]string{"TS_AUTHKEY": t.tsAuthKey}
+	}
+	b, err := t.host.Run(ctx, env, "ping")
+	if err != nil {
 		out.Detail = "booting: " + err.Error()
 		return out, nil
 	}
-	out.Ready = true
+	var ping struct{ Tailnet *tailnet }
+	if err := json.Unmarshal(b, &ping); err != nil {
+		return out, fmt.Errorf("host ping: %w", err)
+	}
+	out.Ready, out.Tailnet = true, ping.Tailnet
 	return out, nil
 }
 
@@ -152,7 +171,7 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	s.AddReceivingMiddleware(limitToolCalls)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "host_status",
-		Description: "Report the GCE host VM's status and IP, and whether it is ready for workspace tools.",
+		Description: "Report the GCE host VM's status and IP, whether it is ready for workspace tools, and its tailnet node. A ready host joins the tailnet (with Tailscale SSH) if it has not yet.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, hostStatusOut, error) {
 		out, err := t.hostStatus(ctx)
 		return nil, out, err

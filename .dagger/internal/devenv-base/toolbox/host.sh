@@ -68,10 +68,22 @@ shift
 case $action in
 ping)
   # Written last by host-startup.sh on every boot.
-  test -f /var/lib/toolbox-host.ready
+  test -f "${TOOLBOX_READY_FILE:-/var/lib/toolbox-host.ready}"
   devpod version >/dev/null
   docker info >/dev/null
-  echo '{"ready": true}'
+  # Join the tailnet once, with Tailscale SSH; tailscaled keeps the node
+  # across reboots. The auth key reaches tailscale up as a 0600 file, not
+  # an argument.
+  if [ "$(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty')" != Running ] &&
+    [ -n "${TS_AUTHKEY:-}" ]; then
+    key=$(mktemp)
+    printf %s "$TS_AUTHKEY" > "$key"
+    sudo tailscale up --auth-key="file:$key" --hostname=toolbox-host --ssh >&2 || true
+    rm -f "$key"
+  fi
+  tailscale status --json 2>/dev/null |
+    jq '{ready: true, tailnet: {state: .BackendState, name: (.Self.DNSName // "" | rtrimstr(".")), ips: (.Self.TailscaleIPs // []), online: (.Self.Online // false)}}' ||
+    echo '{"ready": true, "tailnet": {"state": "NotInstalled"}}'
   ;;
 list)
   devpod list --output json | jq -r '.[]?.id' | while read -r id; do

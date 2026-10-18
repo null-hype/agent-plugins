@@ -9,8 +9,12 @@
 # 2. Creates the toolbox-render service account, allowed to administer that
 #    one instance and nothing else, and a key for it. If the deploy account
 #    may not do that, Render gets the deploy account's key instead.
-# 3. Writes GCP_SERVICE_ACCOUNT_KEY, TOOLBOX_SSH_KEY, GITHUB_TOKEN and
-#    PROTON_PASS_PERSONAL_ACCESS_TOKEN to the Render service and redeploys.
+# 3. Writes GCP_SERVICE_ACCOUNT_KEY, TOOLBOX_SSH_KEY, GITHUB_TOKEN,
+#    PROTON_PASS_PERSONAL_ACCESS_TOKEN and TS_AUTHKEY to the Render service
+#    and redeploys.
+#
+# A changed startup script runs on the host's next boot: host_stop, then
+# host_start.
 #
 # Secrets go from Proton Pass to Render through files in a 0700 tempdir and
 # curl's stdin; none is printed or put in a command line.
@@ -25,7 +29,7 @@ export RENDER_SERVICE=${TOOLBOX_RENDER_SERVICE:-srv-dba7ibijnfac73elst20}
 export STARTUP=$HERE/host-startup.sh
 
 export PROTON_PASS_AGENT_REASON="toolbox setup-host: create the toolbox host VM and configure the Render toolbox service"
-pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" \
+pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" --env-file "$ENV_DIR/tailscale.env" \
   --env-file <(echo PROTON_PASS_PERSONAL_ACCESS_TOKEN=pass://tidelands.dev/pass-cli/PROTON_PASS_PERSONAL_ACCESS_TOKEN) \
   -- bash -euo pipefail -c '
   tmp=$(mktemp -d)
@@ -74,6 +78,7 @@ pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" \
 
   printf %s "$GITHUB_TOKEN" > "$tmp/github"
   printf %s "$PROTON_PASS_PERSONAL_ACCESS_TOKEN" > "$tmp/pass"
+  printf %s "$TS_AUTHKEY" > "$tmp/ts"
   put() {
     jq -n --rawfile v "$2" "{value: \$v}" |
       curl -fsS -o /dev/null -X PUT -H "Authorization: Bearer $RENDER_API_KEY" \
@@ -85,6 +90,7 @@ pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" \
   put TOOLBOX_SSH_KEY "$tmp/id"
   put GITHUB_TOKEN "$tmp/github"
   put PROTON_PASS_PERSONAL_ACCESS_TOKEN "$tmp/pass"
+  put TS_AUTHKEY "$tmp/ts"
   curl -fsS -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" \
     -d "{}" "https://api.render.com/v1/services/$RENDER_SERVICE/deploys" | jq -r "\"== Render: deploy \(.id)\""
 '

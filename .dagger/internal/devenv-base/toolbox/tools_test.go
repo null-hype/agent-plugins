@@ -43,7 +43,9 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 	switch args[0] {
 	case "list":
 		return json.Marshal(f.workspaces)
-	case "ping", "status", "up", "stop", "delete":
+	case "ping":
+		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true}}`), nil
+	case "status", "up", "stop", "delete":
 		return []byte(`{}`), nil
 	}
 	return nil, fmt.Errorf("unexpected action %s", args[0])
@@ -86,7 +88,7 @@ func resultText(res *mcp.CallToolResult) string {
 func newTestToolbox(status string, ws ...workspace) (*toolbox, *fakeGCE, *fakeHost) {
 	g := &fakeGCE{status: status}
 	h := &fakeHost{workspaces: ws}
-	return &toolbox{gce: g, host: h, githubToken: "gh-token", passToken: "pass-token"}, g, h
+	return &toolbox{gce: g, host: h, githubToken: "gh-token", passToken: "pass-token", tsAuthKey: "ts-key"}, g, h
 }
 
 func TestWorkspaceUpSendsOnlyTheGitHubToken(t *testing.T) {
@@ -176,5 +178,19 @@ func TestHostStatusOnlyPingsARunningHost(t *testing.T) {
 	res := callTool(t, tb, "host_status", nil)
 	if res.IsError || len(h.calls) != 0 {
 		t.Fatalf("host_status on a stopped host: %s, host calls %v", resultText(res), h.actions())
+	}
+}
+
+func TestHostStatusJoinsTheTailnet(t *testing.T) {
+	tb, _, h := newTestToolbox("RUNNING")
+	res := callTool(t, tb, "host_status", nil)
+	if res.IsError {
+		t.Fatalf("host_status: %s", resultText(res))
+	}
+	if len(h.calls) != 1 || h.calls[0].env["TS_AUTHKEY"] != "ts-key" || len(h.calls[0].env) != 1 {
+		t.Fatalf("ping env %v, want only TS_AUTHKEY", h.calls)
+	}
+	if got := resultText(res); !strings.Contains(got, `"ready":true`) || !strings.Contains(got, `"name":"toolbox-host.tail.ts.net"`) {
+		t.Fatalf("host_status = %s", got)
 	}
 }
