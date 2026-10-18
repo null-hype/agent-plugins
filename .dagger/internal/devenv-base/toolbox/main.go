@@ -1,18 +1,13 @@
-// Command toolbox is the CIT-430 spike: an MCP server on Render whose only
-// job is to show how the Linear Agent connects to a custom MCP server. It has
-// no DevPod or GCE access yet.
+// Command toolbox is an MCP server on Render that manages DevPod workspaces
+// on one GCE host VM (CIT-430). Its first client is the Linear Agent, through
+// a custom MCP connector that sends "Authorization: Bearer <TOOLBOX_TOKEN>".
 //
-// It answers two questions:
-//   - auth: does Linear send a static bearer header, or does it go looking
-//     for OAuth (/.well-known/*)? Every request's path and auth scheme are
-//     logged; token values never are.
-//   - time: how long will Linear wait on one tool call? slow_ping sleeps for
-//     as long as it is asked to.
+// The host keeps all DevPod state; this server keeps none. It starts and
+// stops the VM through the Compute API and runs host.sh on it over SSH.
+// Long work runs as a job on the host, because the Linear Agent gives up on a
+// tool call after 3 minutes.
 //
-// With TOOLBOX_TOKEN set, /mcp requires "Authorization: Bearer <token>" and a
-// 401 carries a resource_metadata hint, so an OAuth-capable client shows
-// itself by fetching it. Without TOOLBOX_TOKEN, /mcp is open, which is fine
-// for tools that only echo the time.
+// Every request's path and auth scheme are logged; token values never are.
 package main
 
 import (
@@ -27,51 +22,26 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"golang.org/x/crypto/ssh"
 )
-
-const maxSlowPing = 15 * time.Minute
 
 type pingOut struct {
 	Time string `json:"time"`
 }
 
-type slowPingIn struct {
-	Seconds int `json:"seconds" jsonschema:"how long to wait before answering, in seconds"`
-}
-
-type slowPingOut struct {
-	Started  string `json:"started"`
-	Finished string `json:"finished"`
-}
-
-func newServer() *mcp.Server {
-	s := mcp.NewServer(&mcp.Implementation{Name: "toolbox", Version: "spike"}, nil)
+// newServer returns the MCP server. With tb nil it has only ping, so the
+// service still answers before the infrastructure secrets are configured.
+func newServer(tb *toolbox) *mcp.Server {
+	s := mcp.NewServer(&mcp.Implementation{Name: "toolbox", Version: "0.1"}, nil)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "ping",
 		Description: "Return the server's current time. Use it to check that the toolbox is reachable.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, pingOut, error) {
 		return nil, pingOut{Time: time.Now().UTC().Format(time.RFC3339)}, nil
 	})
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "slow_ping",
-		Description: "Wait the given number of seconds, then return when the wait started and finished. Used to measure how long a caller waits on one tool call.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in slowPingIn) (*mcp.CallToolResult, slowPingOut, error) {
-		d := time.Duration(in.Seconds) * time.Second
-		if d < 0 || d > maxSlowPing {
-			return nil, slowPingOut{}, fmt.Errorf("seconds must be between 0 and %d", int(maxSlowPing.Seconds()))
-		}
-		started := time.Now().UTC()
-		log.Printf("slow_ping: waiting %s", d)
-		select {
-		case <-time.After(d):
-		case <-ctx.Done():
-			// The caller gave up: this is the number the spike is after.
-			log.Printf("slow_ping: caller went away after %s: %v", time.Since(started).Round(time.Second), ctx.Err())
-			return nil, slowPingOut{}, ctx.Err()
-		}
-		log.Printf("slow_ping: answered after %s", d)
-		return nil, slowPingOut{Started: started.Format(time.RFC3339), Finished: time.Now().UTC().Format(time.RFC3339)}, nil
-	})
+	if tb != nil {
+		tb.addTools(s)
+	}
 	return s
 }
 
@@ -104,12 +74,12 @@ func requireBearer(token, metadataURL string, next http.Handler) http.Handler {
 	})
 }
 
-func newMux(token, baseURL string) *http.ServeMux {
+func newMux(token, baseURL string, tb *toolbox) *http.ServeMux {
 	// The SDK's DNS rebinding protection 403s requests that arrive on a
 	// loopback address with a public Host header, which is how Render's proxy
 	// delivers every request. It guards servers on a developer's machine; this
 	// one is public and guarded by the bearer token.
-	mcpHandler := http.Handler(mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return newServer() },
+	mcpHandler := http.Handler(mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return newServer(tb) },
 		&mcp.StreamableHTTPOptions{DisableLocalhostProtection: true}))
 	metadataURL := baseURL + "/.well-known/oauth-protected-resource"
 	if token != "" {
@@ -121,8 +91,8 @@ func newMux(token, baseURL string) *http.ServeMux {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "ok")
 	})
-	// No authorization server exists yet. Listing none tells an OAuth client
-	// there is nothing to log in with; the log line is the finding.
+	// No authorization server exists: Linear sends a static bearer header.
+	// Listing none tells an OAuth client there is nothing to log in with.
 	mux.HandleFunc("/.well-known/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("oauth discovery: %s", r.URL.Path)
 		if r.URL.Path != "/.well-known/oauth-protected-resource" {
@@ -138,21 +108,63 @@ func newMux(token, baseURL string) *http.ServeMux {
 	return mux
 }
 
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+func envOr(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
 	}
+	return def
+}
+
+// loadToolbox builds the infrastructure tools from the environment. It
+// returns nil, and the server offers only ping, until every secret is set.
+func loadToolbox(ctx context.Context) (*toolbox, error) {
+	required := []string{"GCP_SERVICE_ACCOUNT_KEY", "TOOLBOX_SSH_KEY", "GITHUB_TOKEN", "PROTON_PASS_PERSONAL_ACCESS_TOKEN"}
+	var missing []string
+	for _, k := range required {
+		if os.Getenv(k) == "" {
+			missing = append(missing, k)
+		}
+	}
+	if len(missing) > 0 {
+		log.Printf("toolbox: infrastructure tools off; unset: %s", strings.Join(missing, ", "))
+		return nil, nil
+	}
+	g, err := newGCE(ctx, []byte(os.Getenv("GCP_SERVICE_ACCOUNT_KEY")),
+		envOr("TOOLBOX_HOST_ZONE", "us-central1-a"), envOr("TOOLBOX_HOST_NAME", "toolbox-host"))
+	if err != nil {
+		return nil, err
+	}
+	signer, err := ssh.ParsePrivateKey([]byte(os.Getenv("TOOLBOX_SSH_KEY")))
+	if err != nil {
+		return nil, fmt.Errorf("TOOLBOX_SSH_KEY: %w", err)
+	}
+	return &toolbox{
+		gce:         g,
+		host:        &sshHost{gce: g, user: "toolbox", signer: signer},
+		githubToken: os.Getenv("GITHUB_TOKEN"),
+		passToken:   os.Getenv("PROTON_PASS_PERSONAL_ACCESS_TOKEN"),
+	}, nil
+}
+
+func main() {
+	port := envOr("PORT", "8080")
 	// Render sets RENDER_EXTERNAL_URL on web services.
 	baseURL := strings.TrimSuffix(os.Getenv("RENDER_EXTERNAL_URL"), "/")
 	if baseURL == "" {
 		baseURL = "http://localhost:" + port
 	}
+	tb, err := loadToolbox(context.Background())
+	if err != nil {
+		log.Fatalf("toolbox: %v", err)
+	}
 	token := os.Getenv("TOOLBOX_TOKEN")
-	log.Printf("toolbox: listening on :%s, bearer auth %t", port, token != "")
+	if tb != nil && token == "" {
+		log.Fatal("toolbox: infrastructure tools need TOOLBOX_TOKEN")
+	}
+	log.Printf("toolbox: listening on :%s, bearer auth %t, infrastructure tools %t", port, token != "", tb != nil)
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           logRequests(newMux(token, baseURL)),
+		Handler:           logRequests(newMux(token, baseURL, tb)),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	log.Fatal(srv.ListenAndServe())
