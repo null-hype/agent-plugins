@@ -1,0 +1,28 @@
+{
+    "name": "CIT-271 free agent",
+    "id": "cit-271-free-agent",
+    "version": "0.1.0",
+    "description": "Runs the CIT-271 free-agent detector when the container starts: a fresh, tool-less agent reviews the positive and control fixture states at one hint level, and its traces and ~/.claude transcripts are recorded and backed up with restic.",
+    "options": {
+        "hintLevel": {
+            "type": "string",
+            "enum": ["0", "1", "2", "3"],
+            "default": "0",
+            "description": "Hint ladder level (CIT-265): 0 is no hint, 3 names the CVE (ceiling check)."
+        },
+        "model": {
+            "type": "string",
+            "default": "sonnet",
+            "description": "Model the agent runs on."
+        },
+        "repeats": {
+            "type": "string",
+            "default": "3",
+            "description": "Runs per fixture state."
+        }
+    },
+    "postStartCommand": "cit-271-free-agent",
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}

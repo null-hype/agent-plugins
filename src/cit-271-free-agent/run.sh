@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Shared logic for the CIT-271 free-agent scenarios. SOURCED from the mounted test workspace by each thin per-level scenario
-# script (cit-271-free-agent-hintN.sh), which sets CIT271_HINT_LEVEL first.
+# The CIT-271 free-agent detector, run by the cit-271-free-agent bin (the
+# feature's postStartCommand) with the feature's options as CIT271_* env.
+# It records what happened in $EVIDENCE_DIR/result.json; the
+# cit-271-free-agent-hintN scenarios check that.
 #
 # CIT-271: "run a fresh agent at each hint level, on the positive state and on
 # the matched :mini_magick control, and record the traces." One hint level per
@@ -10,7 +12,7 @@
 # states and REPEATS; each `claude -p` is already a fresh, stateless turn.
 #
 # Isolation is structural, not promised:
-#   - the repo is NOT mounted into the scenario container  -> no repo access
+#   - the agent's working directory is an empty one         -> no repo access
 #   - --strict-mcp-config with an empty config             -> no Linear/any MCP,
 #         even though the base image (devenv-linear-agent) wires Linear MCP
 #   - --disallowedTools + a zero-tools trace assertion     -> no web/file/bash
@@ -21,31 +23,27 @@
 # Jev's cutoff is unpublished. That caveat is CIT-273's; every trace inherits it.
 
 set -euo pipefail
-source dev-container-features-test-lib
 
-# This helper is SOURCED by a thin per-level script from the mounted test
-# workspace, so locate collateral (state files, .env) next to this file rather
-# than at a baked image path -- there is no per-scenario image build; the four
-# scenarios share one base image and this one directory. ${BASH_SOURCE[0]} is
-# the path this file was sourced by (./cit-271-free-agent/run-detector.sh).
-STATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STATE_DIR="${CIT271_SHARE:?run through the cit-271-free-agent bin}"
 
 # pass-cli's default key backend is the OS keyring (Secret Service over D-Bus),
-# absent in this headless container -- same fs provider the jin-9x scenarios
-# bake into their images. Set here since this scenario has no image build.
+# absent in a headless container -- same fs provider the jin-9x scenarios
+# bake into their images.
 export PROTON_PASS_KEY_PROVIDER="fs"
 PASS_CLI_ENV_FILE="${PASS_CLI_ENV_FILE:-$STATE_DIR/.env}"
 
-LEVEL="${CIT271_HINT_LEVEL:?scenario must export CIT271_HINT_LEVEL}"
-MODEL="${CIT271_MODEL:-sonnet}"
-REPEATS="${CIT271_REPEATS:-3}"
+LEVEL="${CIT271_HINT_LEVEL:?}"
+MODEL="${CIT271_MODEL:?}"
+REPEATS="${CIT271_REPEATS:?}"
 EVIDENCE_DIR="${EVIDENCE_DIR:-/tmp/cit-271-traces/L${LEVEL}}"
 mkdir -p "$EVIDENCE_DIR"
 
-# Same skip-without-credentials behaviour as every other _global scenario.
+RESULT="$EVIDENCE_DIR/result.json"
+
+# Without credentials there is nothing to run: say so, for the scenario to skip.
 if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
-    echo -e "\nSkipping CIT-271 hint-$LEVEL run: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set.\n"
-    reportResults
+    echo "Skipping CIT-271 hint-$LEVEL run: PROTON_PASS_PERSONAL_ACCESS_TOKEN not set."
+    echo '{"skipped":true}' > "$RESULT"
     exit 0
 fi
 command -v pass-cli >/dev/null 2>&1 || curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
@@ -119,12 +117,12 @@ for state_name in positive control; do
         # only. --strict-mcp-config + empty mcpServers: load no MCP (so no Linear
         # from the base image). The tools==0 assertion below verifies the denial
         # actually took on this claude version.
-        pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- \
+        (cd "$(mktemp -d)" && pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- \
             claude -p --model "$MODEL" --permission-mode dontAsk \
                    --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
                    --disallowedTools $CIT271_DENY_TOOLS \
                    --output-format stream-json --verbose \
-                   "$prompt" > "$trace" 2>"$trace.err" \
+                   "$prompt") > "$trace" 2>"$trace.err" \
             || { echo "  run failed; see $trace.err" >&2; fail=1; continue; }
         test -s "$trace" || { echo "  empty trace: $trace" >&2; fail=1; }
 
@@ -170,16 +168,12 @@ pass-cli run --env-file "$PASS_CLI_ENV_FILE" -- sh -c "
 SNAPSHOT_ID="$(jq -rs 'map(select(.message_type=="summary"))|.[-1].snapshot_id // empty' "$BACKUP_JSON" 2>/dev/null || true)"
 echo "hint-$LEVEL restic snapshot: ${SNAPSHOT_ID:-<none>} (tag $RESTIC_TAG)"
 
-# We assert the harness RAN, emitted non-empty traces, and persisted them -- not
-# that the agent found the bug. Ranking variant_processor/libvips against the
-# full flag list, positive vs. control, is CIT-276's scoring pass over the
-# restored ~/.claude transcripts (mapped back to runs via manifest.jsonl).
-# Count only the per-run traces (${state}-r${rep}.jsonl); manifest.jsonl lives
-# here too and must not inflate the count.
-check "hint-$LEVEL produced a trace per state x repeat" \
-    bash -c "test \$(ls $EVIDENCE_DIR/*-r*.jsonl 2>/dev/null | wc -l) -eq $((2 * REPEATS))"
-check "hint-$LEVEL: no tripwire, crash, or isolation breach (0 tools)" bash -c "test $fail -eq 0"
-check "hint-$LEVEL: restic snapshot of ~/.claude recorded a snapshot id" \
-    bash -c "[ -n \"$SNAPSHOT_ID\" ]"
+# What the scenarios check: the harness RAN, emitted non-empty traces, and
+# persisted them -- not that the agent found the bug. Ranking
+# variant_processor/libvips against the full flag list, positive vs. control,
+# is CIT-276's scoring pass over the restored ~/.claude transcripts (mapped
+# back to runs via manifest.jsonl).
+traces=$(ls "$EVIDENCE_DIR"/*-r*.jsonl 2>/dev/null | wc -l || true)
+printf '{"skipped":false,"level":%s,"repeats":%s,"traces":%s,"failed":%s,"snapshot":"%s"}\n' \
+    "$LEVEL" "$REPEATS" "$traces" "$([ $fail -eq 0 ] && echo false || echo true)" "$SNAPSHOT_ID" > "$RESULT"
 echo "Traces + manifest in $EVIDENCE_DIR; transcripts in restic snapshot $SNAPSHOT_ID."
-reportResults

@@ -1,6 +1,9 @@
 {
     "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
     "features": {
-        "./pass-cli": {}
+        "./pass-cli": {},
+        "./cit-271-free-agent": {
+            "hintLevel": "0"
+        }
     }
 }
