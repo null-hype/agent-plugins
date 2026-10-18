@@ -1,0 +1,43 @@
+{
+    "name": "My Favorite Color",
+    "id": "pass-cli",
+    "version": "1.0.3",
+    "description": "A feature to remind you of your favorite color",
+    "options": {
+        "favorite": {
+            "type": "string",
+            "enum": [
+                "red",
+                "gold",
+                "green"
+            ],
+            "default": "red",
+            "description": "Choose your favorite color."
+        },
+        "model": {
+            "type": "string",
+            "default": "haiku",
+            "description": "Model the 'color' bin uses for its pass-cli-authenticated claude call (see src/pass-cli/install.sh)."
+        },
+        "effort": {
+            "type": "string",
+            "enum": [
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+            ],
+            "default": "low",
+            "description": "Effort level the 'color' bin uses for its pass-cli-authenticated claude call."
+        },
+        "tag": {
+            "type": "string",
+            "default": "color",
+            "description": "restic snapshot tag the 'color' bin uses when it backs up ~/.claude."
+        }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
