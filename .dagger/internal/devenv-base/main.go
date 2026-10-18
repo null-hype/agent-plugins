@@ -582,9 +582,9 @@ func (m *DevenvBase) CheckPlaywrightAgent(ctx context.Context) error {
 // baked in here (install-tools.sh no longer installs it at runtime -- the
 // image system exists to bake tools, not defer them to first boot). The
 // box's public route is `tailscale funnel` (tailscale is already joined via
-// tailscale-up.sh), not a separate tunnel tool. Doesn't set an entrypoint or
-// start command -- start-linear-agent.sh runs the server and opens the
-// funnel, invoked over `devpod ssh` by devpod-gce.sh/devpod-keepalive.sh.
+// tailscale-up.sh), not a separate tunnel tool. Its default command,
+// start.sh, is what Render runs; on the devpod box start-linear-agent.sh
+// runs the server instead, over `devpod ssh` from devpod-gce.sh/devpod-keepalive.sh.
 func (m *DevenvBase) LinearAgent(
 	// +optional
 	platform dagger.Platform,
@@ -596,7 +596,10 @@ func (m *DevenvBase) LinearAgent(
 		WithExec([]string{"npm", "ci"}).
 		// dist/ is git-ignored, so the module source never carries it:
 		// build it here or `node dist/index.js` has nothing to run.
-		WithExec([]string{"npm", "run", "build"})
+		WithExec([]string{"npm", "run", "build"}).
+		// One env file for every place the server runs; start.sh reads it.
+		WithFile("/app/linear-agent.env", dag.CurrentModule().Source().File(".devcontainer/linear-agent.env")).
+		WithDefaultArgs([]string{"/app/start.sh"})
 }
 
 // LinearAgentSlim builds the same linear-agent app directly on node:22-slim
@@ -626,6 +629,9 @@ func (m *DevenvBase) LinearAgentSlim(
 // +check
 func (m *DevenvBase) CheckLinearAgent(ctx context.Context) error {
 	out, err := m.LinearAgent("").
+		// What Render starts: start.sh and the env file it reads.
+		WithExec([]string{"bash", "-n", "/app/start.sh"}).
+		WithExec([]string{"sh", "-c", "test -x /app/start.sh && grep -q '^GH_TOKEN=pass://' /app/linear-agent.env"}).
 		WithExec([]string{"npm", "test"}).
 		Stdout(ctx)
 	if err != nil {

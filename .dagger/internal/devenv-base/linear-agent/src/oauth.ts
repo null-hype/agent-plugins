@@ -52,3 +52,30 @@ export async function exchangeCode(cfg: Config, code: string): Promise<TokenResp
 
   return (await res.json()) as TokenResponse;
 }
+
+/**
+ * Mints an app token from the client credentials alone (the
+ * client_credentials grant), for a server started without
+ * LINEAR_INSTALL_TOKEN -- Render's case, where no OAuth install flow has
+ * written one back to Pass.
+ */
+export async function mintAppToken(cfg: Config): Promise<string> {
+  const body = new URLSearchParams({
+    client_id: cfg.linearClientId,
+    client_secret: cfg.linearClientSecret,
+    grant_type: "client_credentials",
+    scope: ["read", "write", ...SCOPES].join(","),
+  });
+
+  const res = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    throw new Error(`client_credentials token mint failed: ${res.status} ${await res.text()}`);
+  }
+
+  return ((await res.json()) as TokenResponse).access_token;
+}
