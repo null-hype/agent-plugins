@@ -24,7 +24,7 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 
 | Tool | Does |
 | --- | --- |
-| `host_status` | VM status and IP; `ready` once the boot script has finished |
+| `host_status` | VM status and IP; `ready` once the boot script has finished; the tailnet node, joining it first if needed |
 | `host_start` | Start the VM |
 | `host_stop` | Stop every running workspace, then the VM; refuses while a job runs |
 | `workspace_list` | Workspaces with their state |
@@ -51,10 +51,26 @@ name.
 | `TOOLBOX_SSH_KEY` | Private key whose public half is the VM's `toolbox` ssh-keys metadata |
 | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`, for cloning the private repo |
 | `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does |
+| `TS_AUTHKEY` | `pass://infra/tailscale/TS_AUTHKEY`, joins the host itself to the tailnet (optional) |
+
+## Tailscale and Codex
+
+The host is its own tailnet node, `toolbox-host`, with Tailscale SSH. The
+first `host_status` on a ready host runs `tailscale up`; tailscaled keeps the
+node across reboots. The `linear-agent` workspace joins separately, through
+`tailscale-up.sh`, as it did on the old VM.
+
+The boot script also installs a pinned Codex CLI. Log in once from a tailnet
+device; the login stays on the host's disk:
+
+```sh
+ssh toolbox@toolbox-host
+codex login --device-auth
+```
 
 Secrets reach the host on SSH stdin and stay in the job's environment; git
-reads the GitHub token through a credential helper. Without the last four,
-the server offers only `ping`. With them, it refuses to start without
+reads the GitHub token through a credential helper. Without the four
+required ones, the server offers only `ping`. With them, it refuses to start without
 `TOOLBOX_TOKEN`.
 
 `setup-host.sh` creates the VM and service account and writes these to

@@ -81,6 +81,15 @@ esac
 		return strings.TrimSpace(string(out))
 	}
 
+	// Without tailscaled the host is still ready; the tailnet says why.
+	os.WriteFile(filepath.Join(bin, "docker"), []byte("#!/bin/sh\n"), 0o755)
+	os.WriteFile(filepath.Join(bin, "tailscale"), []byte("#!/bin/sh\nexit 1\n"), 0o755)
+	ready := filepath.Join(home, "ready")
+	os.WriteFile(ready, nil, 0o644)
+	if got := run("export TOOLBOX_READY_FILE="+ready+"\n", "ping"); !strings.Contains(got, `"NotInstalled"`) {
+		t.Fatalf("ping = %s", got)
+	}
+
 	if got := run("", "list"); strings.Join(strings.Fields(got), "") != `[{"name":"ws1","state":"Stopped","job_running":false}]` {
 		t.Fatalf("list = %s", got)
 	}

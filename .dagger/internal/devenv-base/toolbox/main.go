@@ -143,6 +143,7 @@ func loadToolbox(ctx context.Context) (*toolbox, error) {
 		host:        &sshHost{gce: g, user: "toolbox", signer: signer},
 		githubToken: os.Getenv("GITHUB_TOKEN"),
 		passToken:   os.Getenv("PROTON_PASS_PERSONAL_ACCESS_TOKEN"),
+		tsAuthKey:   os.Getenv("TS_AUTHKEY"),
 	}, nil
 }
 
