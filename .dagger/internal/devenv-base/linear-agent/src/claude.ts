@@ -1,4 +1,4 @@
-import { query, type Options } from "@anthropic-ai/claude-agent-sdk";
+import { query } from "@anthropic-ai/claude-agent-sdk";
 
 /**
  * Runs a single Claude Agent SDK turn and returns its final text result.
@@ -75,55 +75,6 @@ function describeToolUse(name: string, input: unknown): string {
   }
 }
 
-/**
- * LINEAR_AGENT_SANDBOX=container-use restores the container-use setup
- * described above (start-linear-agent.sh sets it on the GCE box, which runs
- * a Docker/Dagger engine next to this process). Anywhere else -- e.g. the
- * Render service, which has no engine and only 512 MB -- the default is no
- * tools at all: Claude answers from the Linear context in the prompt. The
- * host stays unreachable either way, since the built-in tools are never
- * enabled; without a sandbox there is just no file/shell surface.
- */
-const USE_CONTAINER_USE = process.env.LINEAR_AGENT_SANDBOX === "container-use";
-
-const NO_TOOLS_PROMPT =
-  "You are running with no tools: you cannot read the repository, run commands, " +
-  "or change code. Work from the Linear issue context in the prompt. Reply with " +
-  "your analysis, questions, or a concrete plan, and say plainly what you would " +
-  "need to check in the code instead of guessing.";
-
-function sandboxOptions(): Options {
-  if (!USE_CONTAINER_USE) {
-    return {
-      tools: [],
-      settingSources: [],
-      systemPrompt: { type: "preset", preset: "claude_code", append: NO_TOOLS_PROMPT },
-    };
-  }
-  return {
-    cwd: WORKSPACE_DIR,
-    allowedTools: ["mcp__container-use__*"],
-    mcpServers: {
-      "container-use": {
-        type: "stdio",
-        command: "sh",
-        args: [
-          "-c",
-          `cd "${WORKSPACE_DIR}" && exec container-use stdio`,
-        ],
-        // Without this, tools are deferred behind tool search by default
-        // and aren't guaranteed present in the turn-1 prompt -- observed
-        // live as a turn that narrated "I've kicked off an exploration"
-        // without ever actually calling an environment_* tool, since
-        // Bash/Read/etc are disallowed and container-use was the only
-        // other way to look at anything.
-        alwaysLoad: true,
-      },
-    },
-    systemPrompt: { type: "preset", preset: "claude_code" },
-  };
-}
-
 export async function runClaude(
   prompt: string,
   oauthToken: string,
@@ -132,10 +83,32 @@ export async function runClaude(
   const result = query({
     prompt,
     options: {
-      ...sandboxOptions(),
+      cwd: WORKSPACE_DIR,
       permissionMode: "dontAsk",
+      allowedTools: ["mcp__container-use__*"],
       env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: oauthToken },
+      mcpServers: {
+        "container-use": {
+          type: "stdio",
+          command: "sh",
+          args: [
+            "-c",
+            `cd "${WORKSPACE_DIR}" && exec container-use stdio`,
+          ],
+          // Without this, tools are deferred behind tool search by default
+          // and aren't guaranteed present in the turn-1 prompt -- observed
+          // live as a turn that narrated "I've kicked off an exploration"
+          // without ever actually calling an environment_* tool, since
+          // Bash/Read/etc are disallowed and container-use was the only
+          // other way to look at anything.
+          alwaysLoad: true,
+        },
+      },
       strictMcpConfig: true,
+      systemPrompt: {
+        type: "preset",
+        preset: "claude_code",
+      },
     },
   });
 
