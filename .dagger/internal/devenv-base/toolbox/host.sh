@@ -68,23 +68,31 @@ run_up() {
 }
 
 # Reviews the PR with the host's Codex login, so AGENTS.md sets the criteria,
-# and posts the result to the PR as a comment review.
+# and has Codex create a container-use environment for each finding. Its
+# final message, one line per finding with the environment id, lands in $out.
 run_review() {
   set -euo pipefail
-  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 repo
+  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1
   git_auth
+  # container-use commits each environment, so git needs an author.
+  git config --global user.name toolbox
+  git config --global user.email toolbox@toolbox-host
   [ -d "$dir" ] || git clone -q "$REPO" "$dir"
   cd "$dir"
   git fetch -q origin +main:refs/remotes/origin/main "+pull/$pr/head:refs/pr/$pr"
-  git checkout -q --detach "refs/pr/$pr"
+  git checkout -q -B "pr-$pr" "refs/pr/$pr"
   # workspace-write lets the AGENTS.md QA pass run commands in the checkout.
-  codex exec review -c 'sandbox_mode="workspace-write"' ${model:+-m "$model"} \
-    --base origin/main -o "$out"
-  repo=${REPO#https://github.com/}
-  jq -n --rawfile body "$out" --arg model "${model:-default model}" \
-    '{event: "COMMENT", body: ("**Codex review** (\($model))\n\n" + $body)}' |
-    curl -fsS -H @/dev/fd/3 --data @- "https://api.github.com/repos/${repo%.git}/pulls/$pr/reviews" \
-      3<<< "Authorization: Bearer $GITHUB_TOKEN" | jq -r .html_url
+  # exec runs with approval policy never, so the MCP tools are pre-approved.
+  codex exec -c 'sandbox_mode="workspace-write"' ${model:+-m "$model"} \
+    -c 'mcp_servers.container-use.command="/usr/local/bin/container-use"' \
+    -c 'mcp_servers.container-use.args=["stdio"]' \
+    -c 'mcp_servers.container-use.default_tools_approval_mode="approve"' \
+    -o "$out" - <<'PROMPT'
+Review this branch against origin/main using the review guidelines in AGENTS.md.
+For each finding, call the container-use environment_create tool (environment_source: this repository's
+directory), titled with the finding, with the finding's explanation. Then print one line per finding:
+environment id, title.
+PROMPT
 }
 
 action=${1:?action}
@@ -145,9 +153,9 @@ review-status)
   id=review-$1
   jq -n --argjson job_running "$(job_running "$id" && echo true || echo false)" \
     --argjson job_exit "$(cat "$JOBS/$id.exit" 2>/dev/null || echo null)" \
-    --arg review "$(cat "$JOBS/$id.md" 2>/dev/null || true)" \
+    --arg findings "$(cat "$JOBS/$id.md" 2>/dev/null || true)" \
     --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null || true)" \
-    '{job_running: $job_running, job_exit: $job_exit, review: $review, log_tail: $log_tail}'
+    '{job_running: $job_running, job_exit: $job_exit, findings: $findings, log_tail: $log_tail}'
   ;;
 stop)
   refuse_if_busy "$1"
