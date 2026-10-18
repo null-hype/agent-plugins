@@ -69,6 +69,7 @@ test("created makes the session's codespace; a prompt mid-turn resumes it instea
   assert.equal(ssh.length, 2);
   assert.match(ssh[0], new RegExp(`-c cs-fake -- .*--session-id ${SESSION}$`));
   assert.match(ssh[1], new RegExp(`-c cs-fake -- .*--resume ${SESSION}$`));
+  assert.ok(ssh.every((c) => c.includes("git remote set-url --push origin no-push &&")));
   // Prompts travel over stdin, and a resumed turn gets only the new message.
   assert.ok(calls.includes("stdin: Fix JIN-1."));
   assert.ok(calls.includes("stdin: Also add a test."));
