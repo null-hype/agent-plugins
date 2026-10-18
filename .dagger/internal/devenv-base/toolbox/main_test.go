@@ -88,6 +88,28 @@ func TestOpenWithoutToken(t *testing.T) {
 	cs.Close()
 }
 
+// Render's proxy reaches the server on loopback with the public Host header.
+func TestPublicHostOverLoopbackIsServed(t *testing.T) {
+	ts := httptest.NewServer(newMux("", "http://example.test"))
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/mcp", strings.NewReader("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = "toolbox-spike.onrender.com"
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode == http.StatusForbidden {
+		t.Fatal("403 for a public Host header arriving on loopback")
+	}
+}
+
 func TestAuthSchemeNeverReturnsTheToken(t *testing.T) {
 	for in, want := range map[string]string{"": "none", "Bearer abc": "Bearer", "Basic xyz": "Basic"} {
 		if got := authScheme(in); got != want {

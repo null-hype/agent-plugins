@@ -105,7 +105,12 @@ func requireBearer(token, metadataURL string, next http.Handler) http.Handler {
 }
 
 func newMux(token, baseURL string) *http.ServeMux {
-	mcpHandler := http.Handler(mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return newServer() }, nil))
+	// The SDK's DNS rebinding protection 403s requests that arrive on a
+	// loopback address with a public Host header, which is how Render's proxy
+	// delivers every request. It guards servers on a developer's machine; this
+	// one is public and guarded by the bearer token.
+	mcpHandler := http.Handler(mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return newServer() },
+		&mcp.StreamableHTTPOptions{DisableLocalhostProtection: true}))
 	metadataURL := baseURL + "/.well-known/oauth-protected-resource"
 	if token != "" {
 		mcpHandler = requireBearer(token, metadataURL, mcpHandler)
