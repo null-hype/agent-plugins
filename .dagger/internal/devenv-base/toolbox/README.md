@@ -32,6 +32,8 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 | `agent_start` | `workspace_up` for `linear-agent`, then the keepalive's bootstrap scripts |
 | `workspace_status` | State, latest job's exit code and log tail |
 | `workspace_stop` / `workspace_delete` | Stop or delete a workspace |
+| `codex_review` | Codex reviews a PR (optional `model`) against `AGENTS.md` with the host's login and posts the review to the PR |
+| `codex_review_status` | The review job's exit code, review text and log tail |
 
 The Linear Agent gives up on a tool call after 3 minutes (measured in the
 spike), so `workspace_up` and `agent_start` start a job on the host and

@@ -45,7 +45,7 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 		return json.Marshal(f.workspaces)
 	case "ping":
 		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true}}`), nil
-	case "status", "up", "stop", "delete":
+	case "status", "up", "stop", "delete", "review", "review-status":
 		return []byte(`{}`), nil
 	}
 	return nil, fmt.Errorf("unexpected action %s", args[0])
@@ -192,5 +192,16 @@ func TestHostStatusJoinsTheTailnet(t *testing.T) {
 	}
 	if got := resultText(res); !strings.Contains(got, `"ready":true`) || !strings.Contains(got, `"name":"toolbox-host.tail.ts.net"`) {
 		t.Fatalf("host_status = %s", got)
+	}
+}
+
+func TestCodexReviewPassesTheModelAndToken(t *testing.T) {
+	tb, _, h := newTestToolbox("RUNNING")
+	if res := callTool(t, tb, "codex_review", map[string]any{"pr": 221, "model": "gpt-5.5"}); res.IsError {
+		t.Fatalf("codex_review: %s", resultText(res))
+	}
+	c := h.calls[0]
+	if got := strings.Join(c.args, " "); got != "review 221 gpt-5.5" || c.env["GITHUB_TOKEN"] != "gh-token" {
+		t.Fatalf("host call %q env %v", got, c.env)
 	}
 }
