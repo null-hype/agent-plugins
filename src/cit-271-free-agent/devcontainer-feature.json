@@ -17,7 +17,7 @@
         },
         "repeats": {
             "type": "string",
-            "default": "3",
+            "default": "1",
             "description": "Runs per fixture state."
         }
     },
