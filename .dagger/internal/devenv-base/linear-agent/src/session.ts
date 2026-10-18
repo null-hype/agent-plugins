@@ -1,9 +1,18 @@
 import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
 import { runClaude } from "./claude.ts";
+import * as codespace from "./codespace.ts";
 import * as worktree from "./worktree.ts";
 
 const USE_WORKTREE = process.env.LINEAR_AGENT_SANDBOX === "worktree";
+const USE_CODESPACE = process.env.LINEAR_AGENT_SANDBOX === "codespace";
+
+/**
+ * The turn in flight per agent session. A `prompted` event can arrive while
+ * the session's codespace is still being created; queued behind that turn,
+ * it resumes the same codespace instead of creating a second one.
+ */
+const turns = new Map<string, Promise<void>>();
 
 /**
  * Tracks the most recent agent session id per issue, keyed by issue id, so a
@@ -47,7 +56,7 @@ export async function handleAgentSessionEvent(
     return;
   }
 
-  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, issueId ?? undefined);
+  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, issueId ?? undefined, payload.action !== "created");
 }
 
 /**
@@ -72,7 +81,7 @@ export async function handleIssueEvent(
 
   const context = await buildIssuePrompt(linear, payload.data.id);
   const prompt = `${context}\n\n---\n\nThe issue description was just updated — see "Description" above for the current text. Re-evaluate your plan in light of the change.`;
-  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, payload.data.id);
+  await runTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, payload.data.id, true);
 }
 
 // `created` sessions carry the full formatted context (issue, comments,
@@ -97,7 +106,8 @@ async function buildPrompt(
     case "prompted": {
       const content = payload.agentActivity?.content as { body?: string } | undefined;
       if (!content?.body) return undefined;
-      if (!issueId) return content.body;
+      // A codespace turn resumes the Claude session, which has the context.
+      if (!issueId || USE_CODESPACE) return content.body;
       const context = await buildIssuePrompt(linear, issueId);
       return `${context}\n\n---\n\nNew message in this thread:\n\n${content.body}`;
     }
@@ -152,25 +162,47 @@ async function runTurn(
   agentSessionId: string,
   prompt: string,
   claudeCodeOAuthToken: string,
-  issueId?: string,
+  issueId: string | undefined,
+  resume: boolean,
 ): Promise<void> {
+  // The thought goes out right away (Linear's 10 seconds), even when queued.
   await postActivity(linear, agentSessionId, { type: "thought", body: "On it." });
-
+  const previous = turns.get(agentSessionId) ?? Promise.resolve();
+  const turn = previous.then(() => runQueuedTurn(linear, agentSessionId, prompt, claudeCodeOAuthToken, issueId, resume));
+  turns.set(agentSessionId, turn);
   try {
+    await turn;
+  } finally {
+    if (turns.get(agentSessionId) === turn) turns.delete(agentSessionId);
+  }
+}
+
+async function runQueuedTurn(
+  linear: LinearClient,
+  agentSessionId: string,
+  prompt: string,
+  claudeCodeOAuthToken: string,
+  issueId: string | undefined,
+  resume: boolean,
+): Promise<void> {
+  // Best-effort narration: a failed intermediate post shouldn't abort the
+  // turn the way a failed final response/error post should.
+  const narrate = (content: Record<string, unknown>) =>
+    postActivity(linear, agentSessionId, content).catch((err) => {
+      console.error("activity post failed", err);
+    });
+  try {
+    if (USE_CODESPACE) {
+      const name = await codespace.prepare(agentSessionId);
+      await narrate({ type: "action", action: "Codespace", parameter: name });
+      const result = await codespace.runClaude(name, agentSessionId, resume, prompt, narrate);
+      await postActivity(linear, agentSessionId, { type: "response", body: result });
+      return;
+    }
     // worktree mode: the turn works on this session's own branch, which is
     // pushed (running the Codex pre-push review) and opened as a PR after.
     const wt = USE_WORKTREE ? await worktree.prepare(agentSessionId) : undefined;
-    let result = await runClaude(
-      prompt,
-      claudeCodeOAuthToken,
-      (content) =>
-        // Best-effort narration: a failed intermediate post shouldn't abort
-        // the turn the way a failed final response/error post should.
-        postActivity(linear, agentSessionId, content).catch((err) => {
-          console.error("activity post failed", err);
-        }),
-      wt?.dir,
-    );
+    let result = await runClaude(prompt, claudeCodeOAuthToken, narrate, wt?.dir);
     if (wt) {
       const issue = issueId ? await linear.issue(issueId) : undefined;
       const title = issue ? `${issue.identifier}: ${issue.title}` : `Linear agent session ${agentSessionId}`;

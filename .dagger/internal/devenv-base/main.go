@@ -589,10 +589,14 @@ func (m *DevenvBase) LinearAgent(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withClaude(withNode(m.Devpod(platform))).
+	// gh: codespace mode creates and drives a codespace per agent session.
+	return withGh(withClaude(withNode(m.Devpod(platform)))).
 		WithDirectory("/app", dag.CurrentModule().Source().Directory("linear-agent")).
 		WithWorkdir("/app").
-		WithExec([]string{"npm", "ci"})
+		WithExec([]string{"npm", "ci"}).
+		// dist/ is git-ignored, so the module source never carries it:
+		// build it here or `node dist/index.js` has nothing to run.
+		WithExec([]string{"npm", "run", "build"})
 }
 
 // LinearAgentSlim builds the same linear-agent app directly on node:22-slim
@@ -609,7 +613,10 @@ func (m *DevenvBase) LinearAgentSlim(
 		From("node:22-slim").
 		WithDirectory("/app", dag.CurrentModule().Source().Directory("linear-agent")).
 		WithWorkdir("/app").
-		WithExec([]string{"npm", "ci"})
+		WithExec([]string{"npm", "ci"}).
+		// dist/ is git-ignored, so the module source never carries it:
+		// build it here or `node dist/index.js` has nothing to run.
+		WithExec([]string{"npm", "run", "build"})
 }
 
 // CheckLinearAgent runs the real test suite (src/webhook.test.ts), which
