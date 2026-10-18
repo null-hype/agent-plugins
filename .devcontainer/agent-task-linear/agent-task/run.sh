@@ -33,8 +33,8 @@ pass-cli info >/dev/null 2>&1 || timeout 2m pass-cli login >&2 || result '{error
 
 linear() { pass-cli run --env-file "$SHARE/linear.env" -- bash "$SHARE/linear.sh" "$@"; }
 if [ "$AGENT_TASK_LINEAR" = true ]; then
-    session=$(pass-cli run --env-file "$SHARE/linear.env" -- gh api "user/codespaces/$CODESPACE_NAME" --jq .display_name) ||
-        result '{error: "could not read the codespace display name"}'
+    session=$(pass-cli run --env-file "$SHARE/linear.env" -- gh api "user/codespaces/$CODESPACE_NAME" --jq .display_name 2> "$OUT/linear.err") ||
+        result --rawfile err "$OUT/linear.err" '{error: "could not read the codespace display name", stderr: $err}'
     done_marker="/workspaces/.agent-task/$session.done"
     [ -e "$done_marker" ] && result --arg s "$session" '{skipped: "session \($s) already done"}'
     mkdir -p "$(dirname "$done_marker")" && touch "$done_marker"

@@ -15,6 +15,7 @@ cat "$RESULT"
 
 check "linear mode skips outside a codespace" jq -e '.skipped == "linear mode runs in a codespace"' "$RESULT"
 check "the Linear helper is installed" test -x /usr/local/bin/agent-task -a -f /usr/local/share/agent-task/linear.sh
+check "gh is installed, for the display name, the PR and the delete" command -v gh
 check "linear.env holds only Pass references" bash -c "! grep -v '^#' /usr/local/share/agent-task/linear.env | grep -v '=pass://'"
 
 reportResults
