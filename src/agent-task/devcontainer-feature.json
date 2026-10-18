@@ -1,13 +1,13 @@
 {
     "name": "Agent task",
     "id": "agent-task",
-    "version": "0.1.0",
-    "description": "Runs one Claude Code task when the container starts: Claude works in the checkout and commits, and Codex (the codex-session feature) reviews what it committed. Pushing is blocked; the outcome is recorded in /tmp/agent-task/result.json.",
+    "version": "0.2.0",
+    "description": "Runs one Claude Code task when the container starts: Claude works in the checkout and commits, and Codex (the codex-session feature) reviews what it committed. Pushing is blocked (except in linear mode, which opens a PR); the outcome is recorded in /tmp/agent-task/result.json.",
     "options": {
         "prompt": {
             "type": "string",
             "default": "",
-            "description": "The task. Empty does nothing."
+            "description": "The task. Empty does nothing, unless linear is set."
         },
         "workspace": {
             "type": "string",
@@ -23,6 +23,11 @@
             "type": "boolean",
             "default": true,
             "description": "Have Codex review Claude's commits (needs the codex-session feature)."
+        },
+        "linear": {
+            "type": "boolean",
+            "default": false,
+            "description": "Take the task from the Linear agent session named by the codespace's display name, push the commits as a PR, post the outcome to the session, and delete the codespace."
         }
     },
     "postStartCommand": "agent-task",
