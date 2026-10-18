@@ -19,7 +19,7 @@ echo "$*" >> ${log}
 case "$1 $2" in
   "cs list") cat ${dir}/codespaces.json 2>/dev/null || echo '[]' ;;
   "cs create") sleep 0.3; echo '[{"name":"cs-fake","displayName":"agent-11111111"}]' > ${dir}/codespaces.json; echo cs-fake ;;
-  "cs ssh") echo "stdin: $(cat)" >> ${log}; sleep 0.2
+  "cs ssh") IFS= read -r token; echo "token: $token" >> ${log}; echo "stdin: $(cat)" >> ${log}; sleep 0.2
     echo 'Welcome to the codespace'
     echo '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"git commit -am fix"}}]}}'
     echo '{"type":"result","subtype":"success","result":"Committed the fix."}' ;;
@@ -53,12 +53,12 @@ function event(action: "created" | "prompted", extra: object): AgentSessionEvent
 }
 
 test("created makes the session's codespace; a prompt mid-turn resumes it instead of making another", async () => {
-  const first = handleAgentSessionEvent(event("created", { promptContext: "Fix JIN-1." }), linear, "token");
+  const first = handleAgentSessionEvent(event("created", { promptContext: "Fix JIN-1." }), linear, "claude-token");
   await new Promise((r) => setTimeout(r, 50));
   const second = handleAgentSessionEvent(
     event("prompted", { agentActivity: { content: { type: "prompt", body: "Also add a test." } } }),
     linear,
-    "token",
+    "claude-token",
   );
   await Promise.all([first, second]);
 
@@ -70,7 +70,10 @@ test("created makes the session's codespace; a prompt mid-turn resumes it instea
   assert.match(ssh[0], new RegExp(`-c cs-fake -- .*--session-id ${SESSION}$`));
   assert.match(ssh[1], new RegExp(`-c cs-fake -- .*--resume ${SESSION}$`));
   assert.ok(ssh.every((c) => c.includes("git remote set-url --push origin no-push &&")));
-  // Prompts travel over stdin, and a resumed turn gets only the new message.
+  // The Claude token and then the prompt travel over stdin, never argv, and a
+  // resumed turn gets only the new message.
+  assert.equal(calls.filter((c) => c === "token: claude-token").length, 2);
+  assert.ok(!ssh.some((c) => c.includes("claude-token")));
   assert.ok(calls.includes("stdin: Fix JIN-1."));
   assert.ok(calls.includes("stdin: Also add a test."));
   assert.ok(!ssh.some((c) => c.includes("JIN-1")));

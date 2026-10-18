@@ -196,7 +196,7 @@ async function runQueuedTurn(
     if (USE_CODESPACE) {
       const name = await codespace.prepare(agentSessionId);
       await narrate({ type: "action", action: "Codespace", parameter: name });
-      const result = await codespace.runClaude(name, agentSessionId, resume, prompt, narrate);
+      const result = await codespace.runClaude(name, agentSessionId, resume, prompt, claudeCodeOAuthToken, narrate);
       await postActivity(linear, agentSessionId, { type: "response", body: result });
       return;
     }
