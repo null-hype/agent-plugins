@@ -21,6 +21,8 @@ export interface Config {
   linearInstallToken: string;
   /** Authenticates headless `claude` CLI invocations. */
   claudeCodeOAuthToken: string;
+  /** Linear GraphQL endpoint; unset means Linear's own. Scenarios point it at a fake Linear. */
+  linearApiUrl?: string;
 }
 
 const REQUIRED_ENV_VARS = [
@@ -45,5 +47,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     oauthRedirectUrl: env.LINEAR_OAUTH_REDIRECT_URL!,
     linearInstallToken: env.LINEAR_INSTALL_TOKEN ?? "",
     claudeCodeOAuthToken: env.CLAUDE_CODE_OAUTH_TOKEN!,
+    linearApiUrl: env.LINEAR_API_URL || undefined,
   };
 }
