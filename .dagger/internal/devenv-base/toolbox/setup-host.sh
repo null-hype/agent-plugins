@@ -7,7 +7,8 @@
 #    on so its SSH host keys can be read through the Compute API), or, if it
 #    exists, replaces its toolbox SSH key.
 # 2. Creates the toolbox-render service account, allowed to administer that
-#    one instance and nothing else, and a key for it.
+#    one instance and nothing else, and a key for it. If the deploy account
+#    may not do that, Render gets the deploy account's key instead.
 # 3. Writes GCP_SERVICE_ACCOUNT_KEY, TOOLBOX_SSH_KEY, GITHUB_TOKEN and
 #    PROTON_PASS_PERSONAL_ACCESS_TOKEN to the Render service and redeploys.
 #
@@ -56,12 +57,20 @@ pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" \
       --metadata-from-file ssh-keys="$tmp/ssh-keys",startup-script="$STARTUP"
   fi
 
+  # Prefer an account limited to this instance. The deploy account may not
+  # be allowed to create one; then Render gets the deploy key, which the
+  # Proton Pass token it also holds can read anyway.
   SA=toolbox-render@$P.iam.gserviceaccount.com
-  gcloud iam service-accounts describe "$SA" >/dev/null 2>&1 ||
-    gcloud iam service-accounts create toolbox-render --display-name "Render toolbox: one host VM"
-  gcloud compute instances add-iam-policy-binding "$NAME" --zone "$ZONE" \
-    --member "serviceAccount:$SA" --role roles/compute.instanceAdmin.v1 --quiet >/dev/null
-  gcloud iam service-accounts keys create "$tmp/render-sa.json" --iam-account "$SA" --quiet
+  if { gcloud iam service-accounts describe "$SA" >/dev/null 2>&1 ||
+       gcloud iam service-accounts create toolbox-render --display-name "Render toolbox: one host VM"; } &&
+     gcloud compute instances add-iam-policy-binding "$NAME" --zone "$ZONE" \
+       --member "serviceAccount:$SA" --role roles/compute.instanceAdmin.v1 --quiet >/dev/null &&
+     gcloud iam service-accounts keys create "$tmp/render-sa.json" --iam-account "$SA" --quiet; then
+    echo "== using $SA"
+  else
+    echo "== WARNING: could not set up $SA; Render gets the deploy service account key" >&2
+    cp "$tmp/admin.json" "$tmp/render-sa.json"
+  fi
 
   printf %s "$GITHUB_TOKEN" > "$tmp/github"
   printf %s "$PROTON_PASS_PERSONAL_ACCESS_TOKEN" > "$tmp/pass"
