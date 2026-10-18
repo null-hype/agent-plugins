@@ -2,8 +2,9 @@
 """Render a global scenario as the devcontainer config a codespace is made from.
 
 A scenario in test/_global/scenarios.json is a devcontainer config the
-feature tests prove works. Rendered to .devcontainer/agents/<scenario>/,
-it is the same config for `gh codespace create --devcontainer-path`:
+feature tests prove works. Rendered to .devcontainer/<scenario>/ (Codespaces
+finds configs only one folder down), it is the same config for
+`gh codespace create --devcontainer-path`:
 
 - this repo's features (src/<id>) are copied in beside it and referenced as
   ./<id>, until they are published;
@@ -24,7 +25,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCENARIOS = ROOT / 'test/_global/scenarios.json'
-AGENTS = ROOT / '.devcontainer/agents'
+AGENTS = ROOT / '.devcontainer'
 
 
 def render(name, out):
