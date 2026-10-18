@@ -30,7 +30,7 @@ export function createServer(cfg: Config): http.Server {
       console.error("AgentSessionEvent received before an installation token was configured");
       throw new Error("no installation token configured");
     }
-    const linear = new LinearClient({ accessToken: installToken, apiUrl: cfg.linearApiUrl });
+    const linear = new LinearClient({ accessToken: installToken });
     // Deliberately not awaited: handleAgentSessionEvent posts its required
     // `thought` activity first and only then does the slow `claude` work.
     void handleAgentSessionEvent(payload, linear, cfg.claudeCodeOAuthToken).catch((err) => {
@@ -43,7 +43,7 @@ export function createServer(cfg: Config): http.Server {
       console.error("Issue event received before an installation token was configured");
       throw new Error("no installation token configured");
     }
-    const linear = new LinearClient({ accessToken: installToken, apiUrl: cfg.linearApiUrl });
+    const linear = new LinearClient({ accessToken: installToken });
     void handleIssueEvent(payload, linear, cfg.claudeCodeOAuthToken).catch((err) => {
       console.error("Issue event handling failed", err);
     });

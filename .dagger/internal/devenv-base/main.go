@@ -589,7 +589,7 @@ func (m *DevenvBase) LinearAgent(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	// gh: codespace mode creates and drives a codespace per agent session.
+	// gh: worktree mode opens a PR per agent session.
 	return withGh(withClaude(withNode(m.Devpod(platform)))).
 		WithDirectory("/app", dag.CurrentModule().Source().Directory("linear-agent")).
 		WithWorkdir("/app").

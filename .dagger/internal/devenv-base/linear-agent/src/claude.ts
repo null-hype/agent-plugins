@@ -91,39 +91,23 @@ export async function runClaude(
   });
 
   for await (const message of result) {
-    const done = await narrate(message, onActivity);
-    if (done !== undefined) return done;
+    if (message.type === "assistant" && onActivity) {
+      for (const block of message.message.content) {
+        if (block.type === "text" && block.text) {
+          await onActivity({ type: "thought", body: truncate(block.text) });
+        } else if (block.type === "thinking" && block.thinking) {
+          await onActivity({ type: "thought", body: truncate(block.thinking) });
+        } else if (block.type === "tool_use") {
+          await onActivity({ type: "action", action: block.name, parameter: describeToolInput(block.name, block.input) });
+        }
+      }
+    } else if (message.type === "result") {
+      if (message.subtype === "success") {
+        return message.result;
+      }
+      throw new Error(`claude turn failed (${message.subtype}): ${message.errors.join("; ")}`);
+    }
   }
 
   throw new Error("claude query ended without a result message");
-}
-
-/**
- * One message of a Claude turn -- an SDK message, or a line of the CLI's
- * `--output-format stream-json`, which has the same shape -- narrated as
- * Linear activities. Returns the turn's final text on a success result,
- * throws on a failed one, and returns undefined for everything else.
- */
-export async function narrate(
-  // Loosely typed: stream-json lines are parsed JSON, not SDK types.
-  message: any,
-  onActivity?: (content: ActivityContent) => void | Promise<void>,
-): Promise<string | undefined> {
-  if (message.type === "assistant" && onActivity) {
-    for (const block of message.message?.content ?? []) {
-      if (block.type === "text" && block.text) {
-        await onActivity({ type: "thought", body: truncate(block.text) });
-      } else if (block.type === "thinking" && block.thinking) {
-        await onActivity({ type: "thought", body: truncate(block.thinking) });
-      } else if (block.type === "tool_use") {
-        await onActivity({ type: "action", action: block.name, parameter: describeToolInput(block.name, block.input) });
-      }
-    }
-  } else if (message.type === "result") {
-    if (message.subtype === "success") {
-      return message.result;
-    }
-    throw new Error(`claude turn failed (${message.subtype}): ${(message.errors ?? []).join("; ")}`);
-  }
-  return undefined;
 }
