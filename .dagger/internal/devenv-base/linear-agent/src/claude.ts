@@ -12,6 +12,8 @@ import { worktreeGuard } from "./guard.ts";
  *   with file tools and Bash; a PreToolUse hook (guard.ts) keeps every call
  *   inside that worktree. Pushing and opening the PR are done by the server
  *   after the turn.
+ * - codespace: no turn runs here; the session's codespace runs it (see
+ *   codespace.ts).
  * - unset (e.g. the Render service, 512 MB and no repo): Claude answers from
  *   the Linear context in the prompt, with no tools.
  */

@@ -1,9 +1,11 @@
 import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
 import { runClaude } from "./claude.ts";
+import * as codespace from "./codespace.ts";
 import * as worktree from "./worktree.ts";
 
 const USE_WORKTREE = process.env.LINEAR_AGENT_SANDBOX === "worktree";
+const USE_CODESPACE = process.env.LINEAR_AGENT_SANDBOX === "codespace";
 
 /**
  * Tracks the most recent agent session id per issue, keyed by issue id, so a
@@ -157,6 +159,16 @@ async function runTurn(
   await postActivity(linear, agentSessionId, { type: "thought", body: "On it." });
 
   try {
+    // codespace mode: the codespace reads the prompt from the session itself
+    // and posts the response; this server only starts it.
+    if (USE_CODESPACE) {
+      const cs = await codespace.dispatch(agentSessionId);
+      const body = cs.running
+        ? `Still working on the last message in codespace ${cs.name}; send this one again once it has answered.`
+        : `Starting codespace ${cs.name}; it posts the result here.`;
+      await postActivity(linear, agentSessionId, { type: "thought", body });
+      return;
+    }
     // worktree mode: the turn works on this session's own branch, which is
     // pushed (running the Codex pre-push review) and opened as a PR after.
     const wt = USE_WORKTREE ? await worktree.prepare(agentSessionId) : undefined;
