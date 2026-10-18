@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -41,6 +42,15 @@ type upIn struct {
 
 type refIn struct {
 	Ref string `json:"ref,omitempty" jsonschema:"git branch, tag or commit of agent-plugins to create the workspace from; default main"`
+}
+
+type reviewIn struct {
+	PR    int    `json:"pr" jsonschema:"pull request number in agent-plugins"`
+	Model string `json:"model,omitempty" jsonschema:"Codex model to review with; default the host's configured model"`
+}
+
+type prIn struct {
+	PR int `json:"pr" jsonschema:"pull request number in agent-plugins"`
 }
 
 type tailnet struct {
@@ -258,6 +268,30 @@ func (t *toolbox) addTools(s *mcp.Server) {
 			return nil, nil, err
 		}
 		b, err := t.up(ctx, agentWorkspace, ref, true)
+		if err != nil {
+			return nil, nil, err
+		}
+		return text(b), nil, nil
+	})
+	mcp.AddTool(s, &mcp.Tool{
+		Name: "codex_review",
+		Description: "Review an agent-plugins pull request with Codex on the host, against AGENTS.md, and post the review to the PR. " +
+			"Returns at once; poll codex_review_status until job_exit is set.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in reviewIn) (*mcp.CallToolResult, any, error) {
+		if in.Model != "" && !refRE.MatchString(in.Model) {
+			return nil, nil, fmt.Errorf("model %q is not a model name", in.Model)
+		}
+		b, err := t.host.Run(ctx, map[string]string{"GITHUB_TOKEN": t.githubToken}, "review", strconv.Itoa(in.PR), in.Model)
+		if err != nil {
+			return nil, nil, err
+		}
+		return text(b), nil, nil
+	})
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "codex_review_status",
+		Description: "Report a codex_review job: its exit code (null while running), the review text, and the end of its log.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in prIn) (*mcp.CallToolResult, any, error) {
+		b, err := t.host.Run(ctx, nil, "review-status", strconv.Itoa(in.PR))
 		if err != nil {
 			return nil, nil, err
 		}
