@@ -71,3 +71,5 @@ We support two direct routes depending on your context:
 
 This repo also hosts devcontainer features and Dagger modules; see
 [`docs/devcontainer-features.md`](docs/devcontainer-features.md).
+
+The Linear agent can run each delegated session in its own GitHub codespace.
