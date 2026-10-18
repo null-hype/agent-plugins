@@ -1,6 +1,7 @@
 {
     "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
     "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {},
         "ghcr.io/devcontainers/features/sshd:1": {},
         "./pass-cli": {},
         "./codex-session": {},
