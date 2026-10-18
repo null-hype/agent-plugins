@@ -12,9 +12,12 @@ const run = promisify(execFile);
  * session inside it is the agent session's own id (--session-id on the
  * first turn, --resume after), so no mapping is stored either.
  *
- * The codespace gets CLAUDE_CODE_OAUTH_TOKEN from a Codespaces secret on
- * the repo, not from this server. Claude commits there but cannot push:
- * each turn points origin's push URL nowhere first. --idle-timeout stops a forgotten codespace.
+ * Credentials come from this server, which has them from Proton Pass
+ * (linear-agent.env): gh uses its GH_TOKEN, and each turn sends the Claude
+ * token to the codespace as the first line of stdin, so the codespace needs
+ * no secrets of its own. Claude commits there but cannot push: each turn
+ * points origin's push URL nowhere first. --idle-timeout stops a forgotten
+ * codespace.
  */
 const REPO = process.env.LINEAR_AGENT_CODESPACE_REPO ?? "null-hype/agent-plugins";
 const BRANCH = process.env.LINEAR_AGENT_CODESPACE_BRANCH ?? "main";
@@ -56,24 +59,28 @@ export async function prepare(agentSessionId: string): Promise<string> {
 
 /**
  * Runs one headless Claude turn in the codespace and returns its final
- * text. The prompt -- untrusted issue text -- goes over stdin; the remote
- * command line holds only fixed strings and the (validated) session id.
+ * text. The token and the prompt -- untrusted issue text -- go over stdin;
+ * the remote command line holds only fixed strings and the (validated)
+ * session id.
  */
 export function runClaude(
   codespace: string,
   agentSessionId: string,
   resume: boolean,
   prompt: string,
+  oauthToken: string,
   onActivity?: (content: ActivityContent) => void | Promise<void>,
 ): Promise<string> {
   if (!UUID.test(agentSessionId)) throw new Error(`agent session id is not a UUID: ${agentSessionId}`);
   const remote =
     // A push URL that goes nowhere: no push, and so no PR, from this turn.
-    `cd ${WORKSPACE} && git remote set-url --push origin no-push && IS_SANDBOX=1 exec claude -p --output-format stream-json --verbose ` +
+    `cd ${WORKSPACE} && git remote set-url --push origin no-push && ` +
+    // The rest of stdin, after the token's line, is claude's prompt.
+    `IFS= read -r CLAUDE_CODE_OAUTH_TOKEN && export CLAUDE_CODE_OAUTH_TOKEN && IS_SANDBOX=1 exec claude -p --output-format stream-json --verbose ` +
     `--permission-mode bypassPermissions --append-system-prompt ${shellQuote(CODESPACE_PROMPT)} ` +
     `${resume ? "--resume" : "--session-id"} ${agentSessionId}`;
   const child = spawn("gh", ["cs", "ssh", "-c", codespace, "--", remote], { stdio: ["pipe", "pipe", "pipe"] });
-  child.stdin.end(prompt);
+  child.stdin.end(`${oauthToken}\n${prompt}`);
 
   let stderr = "";
   child.stderr.on("data", (chunk) => (stderr += chunk));
