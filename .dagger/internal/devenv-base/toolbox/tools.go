@@ -336,21 +336,78 @@ func (t *toolbox) addTools(s *mcp.Server) {
 }
 
 func (t *toolbox) addCodespaceTools(s *mcp.Server) {
-	codespaceTool := func(name, desc string, act func(codespaceAPI, context.Context, string) (string, error)) {
+	codespaceTool := func(name, desc string, act func(context.Context, string) (string, error)) {
 		mcp.AddTool(s, &mcp.Tool{Name: name, Description: desc},
 			func(ctx context.Context, _ *mcp.CallToolRequest, in codespaceIn) (*mcp.CallToolResult, any, error) {
 				if !codespaceRE.MatchString(in.Name) {
 					return nil, nil, fmt.Errorf("codespace name %q must be lowercase letters, digits and dashes", in.Name)
 				}
-				state, err := act(t.codespaces, ctx, in.Name)
+				msg, err := act(ctx, in.Name)
 				if err != nil {
 					return nil, nil, err
 				}
-				return text([]byte(fmt.Sprintf("codespace %s is %s", in.Name, state))), nil, nil
+				return text([]byte(msg)), nil, nil
 			})
 	}
-	codespaceTool("codespace_start", "Start a GitHub codespace. Returns at once; it is ready when its state is Available, after a minute or two.", codespaceAPI.Start)
-	codespaceTool("codespace_stop", "Stop a GitHub codespace. Its files are kept; codespace_start starts it again.", codespaceAPI.Stop)
+	codespaceTool("codespace_status", "Report whether a GitHub codespace is running, starting, stopping, stopped or rebuilding, and the repository and branch it is on.", t.codespaceStatus)
+	codespaceTool("codespace_start", "Start a GitHub codespace. Returns at once; codespace_status shows when it is running, usually after a minute or two.", t.codespaceStart)
+	codespaceTool("codespace_stop", "Stop a GitHub codespace. Its files are kept; codespace_start starts it again.", t.codespaceStop)
+	codespaceTool("codespace_rebuild", "Rebuild a running GitHub codespace's container from the dev container config on its current branch. Only /workspaces is kept. Returns at once; codespace_status shows when it is running again, usually after a few minutes.", t.codespaceRebuild)
+}
+
+func (t *toolbox) codespaceStatus(ctx context.Context, name string) (string, error) {
+	cs, err := t.codespaces.Get(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s is %s.", cs, cs.stateWords()), nil
+}
+
+func (t *toolbox) codespaceStart(ctx context.Context, name string) (string, error) {
+	cs, err := t.codespaces.Get(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	if cs.is("running") || cs.is("starting") {
+		return fmt.Sprintf("%s is already %s. Nothing to do.", cs, cs.stateWords()), nil
+	}
+	if cs, err = t.codespaces.Start(ctx, name); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Asked GitHub to start %s; it is %s. codespace_status shows when it is running, usually after a minute or two.", cs, cs.stateWords()), nil
+}
+
+func (t *toolbox) codespaceStop(ctx context.Context, name string) (string, error) {
+	cs, err := t.codespaces.Get(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	if cs.is("stopped") || cs.is("stopping") {
+		return fmt.Sprintf("%s is already %s. Nothing to do.", cs, cs.stateWords()), nil
+	}
+	if cs, err = t.codespaces.Stop(ctx, name); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Asked GitHub to stop %s; it is %s. Its files are kept; codespace_start starts it again.", cs, cs.stateWords()), nil
+}
+
+// codespaceRebuild only rebuilds a running codespace: gh would start a stopped
+// one first and wait for it, which can outlast the tool call.
+func (t *toolbox) codespaceRebuild(ctx context.Context, name string) (string, error) {
+	cs, err := t.codespaces.Get(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	if cs.is("rebuilding its container") {
+		return fmt.Sprintf("%s is already %s. Nothing to do.", cs, cs.stateWords()), nil
+	}
+	if !cs.is("running") {
+		return "", fmt.Errorf("%s is %s, and only a running codespace can be rebuilt. Start it with codespace_start, then rebuild once codespace_status says it is running", cs, cs.stateWords())
+	}
+	if err := t.codespaces.Rebuild(ctx, name); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Rebuilding %s from %s. Only /workspaces is kept; codespace_status shows when it is running again, usually after a few minutes.", cs, cs.config()), nil
 }
 
 func ptr[T any](v T) *T { return &v }
