@@ -39,7 +39,7 @@
         "session": {
             "type": "string",
             "default": "",
-            "description": "Claude session id that 'color start' (the postStartCommand) continues on every container start, in acceptEdits mode. Empty does nothing."
+            "description": "Claude session id that 'color start' (the postStartCommand) continues on container start, in acceptEdits mode with Remote Control, when /workspaces/.color-session does not name one. Leave it empty in a shared config; empty with no file does nothing."
         }
     },
     "postStartCommand": "color start",

@@ -31,12 +31,14 @@ set -e
 # times (see test/_global/jin-91-resume-session/Dockerfile).
 AGENT_ASSIGNMENT="${TAG}"
 
-# 'color start' is the feature's postStartCommand: with the session option
-# set, every container start continues that Claude session; unset, it does
-# nothing. A resume that came back under a new id saved it in
-# ~/.claude/color-session, and that id wins.
+# 'color start' is the feature's postStartCommand: every container start
+# continues the session named in /workspaces/.color-session, or else the
+# session option; with neither, it does nothing. The file is the machine's
+# own pointer: /workspaces survives a rebuild (~/.claude does not), and it
+# is never committed, so a shared devcontainer.json can leave the option
+# empty without every codespace built from it resuming the same session.
 if [ "\${1:-}" = "start" ]; then
-    session="\$(cat "\$HOME/.claude/color-session" 2>/dev/null || echo "${SESSION}")"
+    session="\$(cat /workspaces/.color-session 2>/dev/null || echo "${SESSION}")"
     [ -n "\$session" ] || exit 0
     exec "\$0" resume "\$session"
 fi
@@ -85,7 +87,7 @@ if [ "\${1:-}" = "resume" ] && [ -n "\${2:-}" ]; then
     echo "\$out"
     # --bg continues under a new id when it thinks the session is still running.
     short="\$(printf '%s\n' "\$out" | grep -o 'claude logs [0-9a-f]*' | cut -d' ' -f3)"
-    [ -z "\$short" ] || jq -r .sessionId "\$HOME/.claude/jobs/\$short/state.json" > "\$HOME/.claude/color-session"
+    [ -z "\$short" ] || jq -r .sessionId "\$HOME/.claude/jobs/\$short/state.json" > /workspaces/.color-session
     exit 0
 fi
 
