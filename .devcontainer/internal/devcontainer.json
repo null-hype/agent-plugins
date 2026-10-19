@@ -1,6 +1,6 @@
 {
   "name": "tidelands.dev",
-  "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+  "image": "ghcr.io/null-hype/devenv-linear-agent:sha-cb7468209ab861d2de09114ec3697c4ef3ce32bc",
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": { "username": "vscode" },
     "ghcr.io/devcontainers/features/git:1": {},
