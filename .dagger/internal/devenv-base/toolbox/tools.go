@@ -25,7 +25,8 @@ type toolbox struct {
 	gce  computeAPI
 	host hostAPI
 	// githubToken lets devpod clone the private repo. passToken is forwarded
-	// to the agent workspace's tailscale-up.sh, as the keepalive does.
+	// to the agent workspace's tailscale-up.sh, as the keepalive does, and
+	// logs codex_review's pass-cli in, for the Linear key.
 	githubToken, passToken string
 	// tsAuthKey joins the host itself to the tailnet. Empty leaves it off.
 	tsAuthKey string
@@ -275,13 +276,13 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "codex_review",
-		Description: "Review an agent-plugins pull request with Codex on the host, against AGENTS.md, creating a container-use environment on the host for each finding. " +
+		Description: "Review an agent-plugins pull request with Codex on the host, against AGENTS.md, creating a container-use environment on the host and a CIT Triage issue in Linear for each finding. " +
 			"Returns at once; poll codex_review_status until job_exit is set.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in reviewIn) (*mcp.CallToolResult, any, error) {
 		if in.Model != "" && !refRE.MatchString(in.Model) {
 			return nil, nil, fmt.Errorf("model %q is not a model name", in.Model)
 		}
-		b, err := t.host.Run(ctx, map[string]string{"GITHUB_TOKEN": t.githubToken}, "review", strconv.Itoa(in.PR), in.Model)
+		b, err := t.host.Run(ctx, map[string]string{"GITHUB_TOKEN": t.githubToken, "PROTON_PASS_PERSONAL_ACCESS_TOKEN": t.passToken}, "review", strconv.Itoa(in.PR), in.Model)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -289,7 +290,7 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "codex_review_status",
-		Description: "Report a codex_review job: its exit code (null while running), one line per finding with its container-use environment id and title, and the end of its log.",
+		Description: "Report a codex_review job: its exit code (null while running), one line per finding with its container-use environment id, Linear issue and title, and the end of its log.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in prIn) (*mcp.CallToolResult, any, error) {
 		b, err := t.host.Run(ctx, nil, "review-status", strconv.Itoa(in.PR))
 		if err != nil {

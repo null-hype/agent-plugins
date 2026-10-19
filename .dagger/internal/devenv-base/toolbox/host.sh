@@ -8,6 +8,10 @@
 set -euo pipefail
 
 export REPO=https://github.com/null-hype/agent-plugins.git
+# codex_review files findings in team CIT's Triage state.
+export LINEAR_TEAM_ID=c59e559d-fd9c-43da-a049-108672cb6bb4
+export LINEAR_TRIAGE_STATE_ID=5b35854e-8954-4fec-a99b-61752cd2400c
+export LINEAR_API_KEY_REF=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY
 export DEVCONTAINER_DIR=.dagger/internal/devenv-base/.devcontainer
 # Same order as keepalive/runner/bootstrap.go.
 export AGENT_SCRIPTS="generate-env-files.sh tailscale-up.sh install-tools.sh start-linear-agent.sh start-cloudflared.sh check-linear-agent-webhook-live.sh"
@@ -68,12 +72,20 @@ run_up() {
 }
 
 # Reviews the PR with the host's Codex login, so AGENTS.md sets the criteria,
-# and has Codex create a container-use environment for each finding. Its
-# final message, one line per finding with the environment id, lands in $out.
+# and has Codex create a container-use environment and a Linear triage issue
+# for each finding. Its final message, one line per finding, lands in $out.
 run_review() {
   set -euo pipefail
-  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1
+  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env
   git_auth
+  # Codex never sees the Linear key: its curl runs under `pass-cli run`,
+  # which resolves this reference. Same login as tailscale-up.sh.
+  export PROTON_PASS_KEY_PROVIDER=fs
+  if ! pass-cli info >/dev/null 2>&1; then
+    pass-cli logout --force >/dev/null 2>&1 || true
+    pass-cli login
+  fi
+  echo "LINEAR_API_KEY=$LINEAR_API_KEY_REF" > "$env"
   # container-use commits each environment, so git needs an author.
   git config --global user.name toolbox
   git config --global user.email toolbox@toolbox-host
@@ -82,16 +94,23 @@ run_review() {
   git fetch -q origin +main:refs/remotes/origin/main "+pull/$pr/head:refs/pr/$pr"
   git checkout -q -B "pr-$pr" "refs/pr/$pr"
   # workspace-write lets the AGENTS.md QA pass run commands in the checkout.
+  # Network access is for Linear's API, and pass-cli writes its session.
   # exec runs with approval policy never, so the MCP tools are pre-approved.
   codex exec -c 'sandbox_mode="workspace-write"' ${model:+-m "$model"} \
+    -c 'sandbox_workspace_write.network_access=true' \
+    -c "sandbox_workspace_write.writable_roots=[\"$HOME/.local/share/proton-pass-cli\"]" \
     -c 'mcp_servers.container-use.command="/usr/local/bin/container-use"' \
     -c 'mcp_servers.container-use.args=["stdio"]' \
     -c 'mcp_servers.container-use.default_tools_approval_mode="approve"' \
-    -o "$out" - <<'PROMPT'
+    -o "$out" - <<PROMPT
 Review this branch against origin/main using the review guidelines in AGENTS.md.
 For each finding, call the container-use environment_create tool (environment_source: this repository's
-directory), titled with the finding, with the finding's explanation. Then print one line per finding:
-environment id, title.
+directory), titled with the finding, with the finding's explanation. Then file the finding in Linear with
+an issueCreate mutation: teamId $LINEAR_TEAM_ID, stateId $LINEAR_TRIAGE_STATE_ID, the finding as the title,
+and a description with its explanation, the PR (https://github.com/null-hype/agent-plugins/pull/$pr) and
+the environment id. Send the GraphQL request body on stdin to:
+PROTON_PASS_KEY_PROVIDER=fs pass-cli run --env-file $env -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: \$LINEAR_API_KEY" --data @-'
+Then print one line per finding: environment id, Linear issue identifier, title.
 PROMPT
 }
 
