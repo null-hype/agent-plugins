@@ -5,7 +5,13 @@
     "ghcr.io/devcontainers/features/common-utils:2": { "username": "vscode" },
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
-    "ghcr.io/devcontainers/features/sshd:1": {}
+    "ghcr.io/devcontainers/features/sshd:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/null-hype/agent-plugins/pass-cli:1": {
+      "tag": "claude-session-state",
+      "model": "opus",
+      "effort": "high"
+    }
   },
   "runArgs": [
     "--cap-add=NET_ADMIN",
@@ -16,7 +22,8 @@
   "postAttachCommand": "bash .dagger/internal/devenv-base/.devcontainer/verify-tools.sh",
   "remoteEnv": {
     "PROTON_PASS_KEY_PROVIDER": "fs",
-    "GOOGLE_APPLICATION_CREDENTIALS": "/home/vscode/.config/gcloud/devpod-sa.json"
+    "GOOGLE_APPLICATION_CREDENTIALS": "/home/vscode/.config/gcloud/devpod-sa.json",
+    "PASS_CLI_ENV_FILE": "${containerWorkspaceFolder}/.dagger/internal/devenv-base/.devcontainer/gcloud.env"
   },
   "remoteUser": "vscode"
 }
