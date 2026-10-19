@@ -18,12 +18,15 @@ const agentWorkspace = "linear-agent"
 var (
 	nameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,39}$`)
 	refRE  = regexp.MustCompile(`^[A-Za-z0-9._][A-Za-z0-9._/-]{0,99}$`)
+	// GitHub codespace names, e.g. bug-free-space-broccoli-jgp9vp7q75r2q96j.
+	codespaceRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,99}$`)
 )
 
 // toolbox holds what the infrastructure tools act on.
 type toolbox struct {
-	gce  computeAPI
-	host hostAPI
+	gce        computeAPI
+	host       hostAPI
+	codespaces codespaceAPI
 	// githubToken lets devpod clone the private repo. passToken is forwarded
 	// to the agent workspace's tailscale-up.sh, as the keepalive does, and
 	// logs codex_review's pass-cli in, for the Linear key.
@@ -34,6 +37,10 @@ type toolbox struct {
 
 type nameIn struct {
 	Name string `json:"name" jsonschema:"workspace name: lowercase letters, digits and dashes, e.g. an issue identifier like cit-430"`
+}
+
+type codespaceIn struct {
+	Name string `json:"name" jsonschema:"codespace name as GitHub shows it, e.g. bug-free-space-broccoli-jgp9vp7q75r2q96j"`
 }
 
 type upIn struct {
@@ -180,6 +187,7 @@ func (t *toolbox) up(ctx context.Context, name, ref string, agent bool) ([]byte,
 
 func (t *toolbox) addTools(s *mcp.Server) {
 	s.AddReceivingMiddleware(limitToolCalls)
+	t.addCodespaceTools(s)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "host_status",
 		Description: "Report the GCE host VM's status and IP, whether it is ready for workspace tools, and its tailnet node. A ready host joins the tailnet (with Tailscale SSH) if it has not yet.",
@@ -325,6 +333,24 @@ func (t *toolbox) addTools(s *mcp.Server) {
 		}
 		return text(b), nil, nil
 	})
+}
+
+func (t *toolbox) addCodespaceTools(s *mcp.Server) {
+	codespaceTool := func(name, desc string, act func(codespaceAPI, context.Context, string) (string, error)) {
+		mcp.AddTool(s, &mcp.Tool{Name: name, Description: desc},
+			func(ctx context.Context, _ *mcp.CallToolRequest, in codespaceIn) (*mcp.CallToolResult, any, error) {
+				if !codespaceRE.MatchString(in.Name) {
+					return nil, nil, fmt.Errorf("codespace name %q must be lowercase letters, digits and dashes", in.Name)
+				}
+				state, err := act(t.codespaces, ctx, in.Name)
+				if err != nil {
+					return nil, nil, err
+				}
+				return text([]byte(fmt.Sprintf("codespace %s is %s", in.Name, state))), nil, nil
+			})
+	}
+	codespaceTool("codespace_start", "Start a GitHub codespace. Returns at once; it is ready when its state is Available, after a minute or two.", codespaceAPI.Start)
+	codespaceTool("codespace_stop", "Stop a GitHub codespace. Its files are kept; codespace_start starts it again.", codespaceAPI.Stop)
 }
 
 func ptr[T any](v T) *T { return &v }
