@@ -141,6 +141,7 @@ func loadToolbox(ctx context.Context) (*toolbox, error) {
 	return &toolbox{
 		gce:         g,
 		host:        &sshHost{gce: g, user: "toolbox", signer: signer},
+		codespaces:  &codespaces{client: http.DefaultClient, url: "https://api.github.com/user/codespaces", token: os.Getenv("GITHUB_TOKEN")},
 		githubToken: os.Getenv("GITHUB_TOKEN"),
 		passToken:   os.Getenv("PROTON_PASS_PERSONAL_ACCESS_TOKEN"),
 		tsAuthKey:   os.Getenv("TS_AUTHKEY"),
