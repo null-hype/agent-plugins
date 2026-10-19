@@ -13,3 +13,27 @@ services:
         sync: false
       - key: WORKSPACE_ID
         value: devenv-base-gce
+
+  # One dispatch-window supervisor per zone (CIT-443), left commented until
+  # two values are known that only a person can supply: the zone's schedule
+  # (its team's midnight, expressed in UTC) and the published image digest
+  # (PublishSupervisor tags sha-<commit>; pin the digest as devpod-keepalive
+  # above does). Copy this block once per zone, changing name, schedule and
+  # SUPERVISOR_ZONE only. See supervisor/README.md.
+  #
+  # - type: cron
+  #   name: supervisor-zone-1
+  #   runtime: image
+  #   image:
+  #     url: ghcr.io/null-hype/devenv-supervisor@sha256:<pin after the first publish>
+  #     creds:
+  #       fromRegistryCreds:
+  #         name: Citizen6.Librarian6.Refrain4
+  #   schedule: "<team midnight in UTC>"
+  #   envVars:
+  #     - key: PROTON_PASS_PERSONAL_ACCESS_TOKEN
+  #       sync: false
+  #     - key: TOOLBOX_TOKEN
+  #       sync: false
+  #     - key: SUPERVISOR_ZONE
+  #       value: zone-1
