@@ -205,3 +205,54 @@ func TestCodexReviewPassesTheModelAndTokens(t *testing.T) {
 		t.Fatalf("host call %q env %v", got, c.env)
 	}
 }
+
+func TestCodespaceToolsPostToGitHub(t *testing.T) {
+	var got []string
+	gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
+		state := map[string]string{"start": "Starting", "stop": "ShuttingDown"}[r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]]
+		fmt.Fprintf(w, `{"name": "bug-free-space-broccoli-jgp9vp7q75r2q96j", "state": %q}`, state)
+	}))
+	defer gh.Close()
+	tb, _, _ := newTestToolbox("RUNNING")
+	tb.codespaces = &codespaces{client: gh.Client(), url: gh.URL + "/user/codespaces", token: "gh-token"}
+	name := "bug-free-space-broccoli-jgp9vp7q75r2q96j"
+	for tool, want := range map[string]string{"codespace_start": "Starting", "codespace_stop": "ShuttingDown"} {
+		res := callTool(t, tb, tool, map[string]any{"name": name})
+		if res.IsError || resultText(res) != "codespace "+name+" is "+want {
+			t.Fatalf("%s = %q", tool, resultText(res))
+		}
+	}
+	for _, g := range got {
+		if !strings.HasSuffix(g, "Bearer gh-token") || !strings.HasPrefix(g, "POST /user/codespaces/"+name+"/") {
+			t.Fatalf("GitHub request %q", g)
+		}
+	}
+}
+
+func TestCodespaceToolsReject(t *testing.T) {
+	gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("GitHub was called: %s", r.URL.Path)
+	}))
+	defer gh.Close()
+	tb, _, _ := newTestToolbox("RUNNING")
+	tb.codespaces = &codespaces{client: gh.Client(), url: gh.URL + "/user/codespaces", token: "gh-token"}
+	for _, name := range []string{"", "../repos", "Bug-Free", "a/stop"} {
+		if res := callTool(t, tb, "codespace_stop", map[string]any{"name": name}); !res.IsError {
+			t.Errorf("codespace_stop %q was accepted", name)
+		}
+	}
+}
+
+func TestCodespaceErrorsSurface(t *testing.T) {
+	gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"message": "Resource not accessible by personal access token"}`, http.StatusForbidden)
+	}))
+	defer gh.Close()
+	tb, _, _ := newTestToolbox("RUNNING")
+	tb.codespaces = &codespaces{client: gh.Client(), url: gh.URL + "/user/codespaces", token: "gh-token"}
+	res := callTool(t, tb, "codespace_start", map[string]any{"name": "some-codespace"})
+	if !res.IsError || !strings.Contains(resultText(res), "403") {
+		t.Fatalf("codespace_start on a 403 = %q", resultText(res))
+	}
+}
