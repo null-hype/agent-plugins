@@ -56,9 +56,13 @@ if [ "\${1:-}" = "resume" ] && [ -n "\${2:-}" ]; then
     # been probed before it existed.
     export PATH="\$HOME/.local/bin:\$PATH"
     export PROTON_PASS_KEY_PROVIDER="\${PROTON_PASS_KEY_PROVIDER:-fs}"
+    # The pass session expires while a machine is off for long, and the
+    # resumed session needs it (the pre-push hook backs up through it), so
+    # log in on every start, not only to restore. A stale session has to be
+    # dropped first. Without a login a session already on disk still resumes.
+    pass-cli info >/dev/null 2>&1 || { pass-cli logout --force >/dev/null 2>&1; timeout 2m pass-cli login >&2; } || true
     if ! ls "\$HOME"/.claude/projects/*/"\$SESSION_ID".jsonl >/dev/null 2>&1; then
         : "\${PASS_CLI_ENV_FILE:?color resume: set PASS_CLI_ENV_FILE (restic secrets)}"
-        pass-cli info >/dev/null 2>&1 || timeout 2m pass-cli login >&2
         export PROTON_PASS_AGENT_REASON="\${AGENT_ASSIGNMENT}: restoring Claude session \$SESSION_ID"
         pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- sh -c '
             set -e
