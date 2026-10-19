@@ -76,9 +76,11 @@ if [ "\${1:-}" = "resume" ] && [ -n "\${2:-}" ]; then
         # ~/.claude, but Claude keeps copies of it inside.
         [ -e "\$HOME/.claude.json" ] || cp "\$(ls -t "\$HOME"/.claude/backups/.claude.json.backup.* | head -1)" "\$HOME/.claude.json"
     fi
-    # acceptEdits: file edits go ahead, anything else waits for a person to
-    # approve it from claude.ai.
-    out="\$(claude --bg --resume "\$SESSION_ID" --model ${MODEL} --effort ${EFFORT} --permission-mode acceptEdits \\
+    # --remote-control registers the session with the account, so it can be
+    # driven from the Claude app on a phone -- the point of resuming it on a
+    # box nobody is sitting at. acceptEdits: file edits go ahead, anything
+    # else waits for a person to approve it there.
+    out="\$(claude --bg --remote-control --resume "\$SESSION_ID" --model ${MODEL} --effort ${EFFORT} --permission-mode acceptEdits \\
         "The container just started and 'color resume' continued this session. Carry on where you left off.")"
     echo "\$out"
     # --bg continues under a new id when it thinks the session is still running.
