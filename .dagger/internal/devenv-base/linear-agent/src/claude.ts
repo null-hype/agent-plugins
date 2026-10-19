@@ -84,6 +84,9 @@ export async function runClaude(
     prompt,
     options: {
       cwd: WORKSPACE_DIR,
+      // Sonnet does the work and consults Opus through the advisor tool.
+      model: "claude-sonnet-5-5",
+      settings: { advisorModel: "claude-opus-5-5" },
       permissionMode: "dontAsk",
       allowedTools: ["mcp__container-use__*"],
       env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: oauthToken },
