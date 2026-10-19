@@ -50,6 +50,9 @@ fi
 # another machine's ~/.claude.
 if [ "\${1:-}" = "resume" ] && [ -n "\${2:-}" ]; then
     SESSION_ID="\$2"
+    # Claude's installer puts it here; a postStartCommand's PATH may have
+    # been probed before it existed.
+    export PATH="\$HOME/.local/bin:\$PATH"
     export PROTON_PASS_KEY_PROVIDER="\${PROTON_PASS_KEY_PROVIDER:-fs}"
     if ! ls "\$HOME"/.claude/projects/*/"\$SESSION_ID".jsonl >/dev/null 2>&1; then
         : "\${PASS_CLI_ENV_FILE:?color resume: set PASS_CLI_ENV_FILE (restic secrets)}"
