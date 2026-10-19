@@ -1,0 +1,5 @@
+[P2] [QA] Propagate snapshot inventory failures to review sync
+
+At `.dagger/internal/devenv-base/.devcontainer/lib/gce-common.sh:218–221`, explicitly propagate failure from the `restic snapshots | jq` assignment before treating the result as an empty inventory. Both callers capture this helper with `changed=$(gce_common_codex_changed_rollouts)`, where Bash normally clears errexit inside command substitutions. Local QA sourced the helper under `set -euo pipefail`, replaced `restic` with a function that prints a simulated error and returns 23, and called that exact assignment. It printed “fewer than two codex-session-state snapshots -- nothing to diff yet” and returned 0 with an empty result. Consequently the newly added review sync reports that nothing changed and succeeds when credentials, storage, or snapshot JSON are broken, silently skipping every review. This violates “A broken instrument fails the run. A refuted hypothesis is a result.” No real services were contacted.
+
+PR: https://github.com/null-hype/agent-plugins/pull/215
