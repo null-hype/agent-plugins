@@ -34,7 +34,9 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 | `workspace_stop` / `workspace_delete` | Stop or delete a workspace |
 | `codex_review` | Codex reviews a PR (optional `model`) against `AGENTS.md` with the host's login and creates a container-use environment on the host and a CIT Triage issue for each finding, pushing the environment's branch under the issue's branch name |
 | `codex_review_status` | The review job's exit code, one line per finding (environment id, Linear issue, branch, title) and log tail |
-| `codespace_start` / `codespace_stop` | Start or stop a GitHub codespace by name, through the GitHub API (CIT-436) |
+| `codespace_status` | Whether a GitHub codespace is running, starting, stopping, stopped or rebuilding, and its repository and branch |
+| `codespace_start` / `codespace_stop` | Start or stop a GitHub codespace by name, through the GitHub API (CIT-436); says so and does nothing if it already is |
+| `codespace_rebuild` | Rebuild a running codespace's container from the dev container config on its branch, with the image's `gh` (GitHub's REST API has no rebuild). Only `/workspaces` is kept |
 
 The Linear Agent gives up on a tool call after 3 minutes (measured in the
 spike), so `workspace_up` and `agent_start` start a job on the host and

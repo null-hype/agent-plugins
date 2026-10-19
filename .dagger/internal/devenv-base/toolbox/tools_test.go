@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -206,27 +208,104 @@ func TestCodexReviewPassesTheModelAndTokens(t *testing.T) {
 	}
 }
 
-func TestCodespaceToolsPostToGitHub(t *testing.T) {
+const testCodespace = "bug-free-space-broccoli-jgp9vp7q75r2q96j"
+
+// fakeCodespaces serves one codespace, in the given state, as GitHub's REST
+// API would, and logs the requests. start and stop change its state.
+func fakeCodespaces(t *testing.T, state string) (*codespaces, *[]string) {
+	t.Helper()
 	var got []string
 	gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = append(got, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
-		state := map[string]string{"start": "Starting", "stop": "ShuttingDown"}[r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]]
-		fmt.Fprintf(w, `{"name": "bug-free-space-broccoli-jgp9vp7q75r2q96j", "state": %q}`, state)
+		if r.Header.Get("Authorization") != "Bearer gh-token" {
+			t.Errorf("GitHub request without the token: %s %s", r.Method, r.URL.Path)
+		}
+		got = append(got, r.Method+" "+r.URL.Path)
+		switch r.Method + " " + strings.TrimPrefix(r.URL.Path, "/user/codespaces/"+testCodespace) {
+		case "POST /start":
+			state = "Starting"
+		case "POST /stop":
+			state = "ShuttingDown"
+		case "GET ":
+		default:
+			http.NotFound(w, r)
+			return
+		}
+		fmt.Fprintf(w, `{"name": %q, "display_name": "bug-free space broccoli", "state": %q,
+			"devcontainer_path": ".devcontainer/internal/devcontainer.json",
+			"repository": {"full_name": "null-hype/agent-plugins"}, "git_status": {"ref": "main"}}`, testCodespace, state)
 	}))
-	defer gh.Close()
-	tb, _, _ := newTestToolbox("RUNNING")
-	tb.codespaces = &codespaces{client: gh.Client(), url: gh.URL + "/user/codespaces", token: "gh-token"}
-	name := "bug-free-space-broccoli-jgp9vp7q75r2q96j"
-	for tool, want := range map[string]string{"codespace_start": "Starting", "codespace_stop": "ShuttingDown"} {
-		res := callTool(t, tb, tool, map[string]any{"name": name})
-		if res.IsError || resultText(res) != "codespace "+name+" is "+want {
-			t.Fatalf("%s = %q", tool, resultText(res))
+	t.Cleanup(gh.Close)
+	return &codespaces{client: gh.Client(), url: gh.URL + "/user/codespaces", token: "gh-token"}, &got
+}
+
+func TestCodespaceTools(t *testing.T) {
+	const cs = "bug-free space broccoli (null-hype/agent-plugins, branch main)"
+	for _, c := range []struct {
+		tool, state, want string
+		posted            bool
+	}{
+		{"codespace_status", "Available", cs + " is running (Available).", false},
+		{"codespace_status", "Shutdown", cs + " is stopped (Shutdown).", false},
+		{"codespace_start", "Shutdown", "Asked GitHub to start " + cs + "; it is starting. codespace_status shows when it is running, usually after a minute or two.", true},
+		{"codespace_start", "Available", cs + " is already running (Available). Nothing to do.", false},
+		{"codespace_stop", "Available", "Asked GitHub to stop " + cs + "; it is stopping (ShuttingDown). Its files are kept; codespace_start starts it again.", true},
+		{"codespace_stop", "Shutdown", cs + " is already stopped (Shutdown). Nothing to do.", false},
+	} {
+		tb, _, _ := newTestToolbox("RUNNING")
+		var got *[]string
+		tb.codespaces, got = fakeCodespaces(t, c.state)
+		res := callTool(t, tb, c.tool, map[string]any{"name": testCodespace})
+		if res.IsError || resultText(res) != c.want {
+			t.Errorf("%s on %s = %q", c.tool, c.state, resultText(res))
+		}
+		if posted := strings.HasPrefix((*got)[len(*got)-1], "POST "); posted != c.posted {
+			t.Errorf("%s on %s: GitHub requests %q", c.tool, c.state, *got)
 		}
 	}
-	for _, g := range got {
-		if !strings.HasSuffix(g, "Bearer gh-token") || !strings.HasPrefix(g, "POST /user/codespaces/"+name+"/") {
-			t.Fatalf("GitHub request %q", g)
-		}
+}
+
+// fakeGH writes a gh that logs its arguments, and whether GH_TOKEN was set,
+// to the returned file.
+func fakeGH(t *testing.T) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	log := filepath.Join(dir, "gh.calls")
+	script := "#!/bin/sh\necho \"$* token=${GH_TOKEN:+set}\" >> " + log + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Join(dir, "gh"), log
+}
+
+func TestCodespaceRebuildRunsGH(t *testing.T) {
+	tb, _, _ := newTestToolbox("RUNNING")
+	c, _ := fakeCodespaces(t, "Available")
+	var log string
+	c.gh, log = fakeGH(t)
+	tb.codespaces = c
+	res := callTool(t, tb, "codespace_rebuild", map[string]any{"name": testCodespace})
+	want := "Rebuilding bug-free space broccoli (null-hype/agent-plugins, branch main) from .devcontainer/internal/devcontainer.json. Only /workspaces is kept; codespace_status shows when it is running again, usually after a few minutes."
+	if res.IsError || resultText(res) != want {
+		t.Fatalf("codespace_rebuild = %q", resultText(res))
+	}
+	calls, _ := os.ReadFile(log)
+	if got := string(calls); got != "codespace rebuild --codespace "+testCodespace+" token=set\n" {
+		t.Fatalf("gh calls %q", got)
+	}
+}
+
+func TestCodespaceRebuildNeedsARunningCodespace(t *testing.T) {
+	tb, _, _ := newTestToolbox("RUNNING")
+	c, _ := fakeCodespaces(t, "Shutdown")
+	var log string
+	c.gh, log = fakeGH(t)
+	tb.codespaces = c
+	res := callTool(t, tb, "codespace_rebuild", map[string]any{"name": testCodespace})
+	if !res.IsError || !strings.Contains(resultText(res), "Start it with codespace_start") {
+		t.Fatalf("codespace_rebuild on a stopped codespace = %q", resultText(res))
+	}
+	if _, err := os.Stat(log); err == nil {
+		t.Fatal("gh ran for a stopped codespace")
 	}
 }
 
