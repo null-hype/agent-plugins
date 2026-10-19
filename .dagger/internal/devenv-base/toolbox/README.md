@@ -32,8 +32,8 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 | `agent_start` | `workspace_up` for `linear-agent`, then the keepalive's bootstrap scripts |
 | `workspace_status` | State, latest job's exit code and log tail |
 | `workspace_stop` / `workspace_delete` | Stop or delete a workspace |
-| `codex_review` | Codex reviews a PR (optional `model`) against `AGENTS.md` with the host's login and creates a container-use environment on the host for each finding |
-| `codex_review_status` | The review job's exit code, one line per finding (environment id, title) and log tail |
+| `codex_review` | Codex reviews a PR (optional `model`) against `AGENTS.md` with the host's login and creates a container-use environment on the host and a CIT Triage issue for each finding |
+| `codex_review_status` | The review job's exit code, one line per finding (environment id, Linear issue, title) and log tail |
 
 The Linear Agent gives up on a tool call after 3 minutes (measured in the
 spike), so `workspace_up` and `agent_start` start a job on the host and
@@ -52,7 +52,7 @@ name.
 | `GCP_SERVICE_ACCOUNT_KEY` | `toolbox-render` service account, admin of the host instance only |
 | `TOOLBOX_SSH_KEY` | Private key whose public half is the VM's `toolbox` ssh-keys metadata |
 | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`, for cloning the private repo |
-| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does |
+| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does; logs in `codex_review`'s pass-cli, which gives Codex's curl the Linear key |
 | `TS_AUTHKEY` | `pass://infra/tailscale/TS_AUTHKEY`, joins the host itself to the tailnet (optional) |
 
 ## Tailscale and Codex
@@ -62,7 +62,7 @@ first `host_status` on a ready host runs `tailscale up`; tailscaled keeps the
 node across reboots. The `linear-agent` workspace joins separately, through
 `tailscale-up.sh`, as it did on the old VM.
 
-The boot script also installs pinned Codex and container-use CLIs. Log in once from a tailnet
+The boot script also installs pinned Codex and container-use CLIs, and pass-cli. Log in once from a tailnet
 device; the login stays on the host's disk:
 
 ```sh

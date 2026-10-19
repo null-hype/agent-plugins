@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # GCE startup script for the toolbox host (Debian 12). It runs as root on
 # every boot and is idempotent: it installs Docker, jq and git, Tailscale,
-# the pinned Codex, container-use and DevPod CLIs, and DevPod's docker
+# pass-cli, the pinned Codex, container-use and DevPod CLIs, and DevPod's docker
 # provider for the toolbox user. It touches $READY last; host_status reports
 # ready only once it exists.
 set -euo pipefail
@@ -46,6 +46,11 @@ if [ "$(codex --version 2>/dev/null)" != "codex-cli $CODEX_VERSION" ]; then
   install_codex_asset codex-code-mode-host "$CODEX_MODE_HOST_SHA256"
 fi
 [ -x /usr/local/bin/codex-code-mode-host ] || install_codex_asset codex-code-mode-host "$CODEX_MODE_HOST_SHA256"
+
+# pass-cli, as in the devcontainer image: Codex's curl gets the Linear key
+# through `pass-cli run`. The installer checks the binary's sha256.
+command -v pass-cli >/dev/null ||
+  curl -fsSL https://proton.me/download/pass-cli/install.sh | PROTON_PASS_CLI_INSTALL_DIR=/usr/local/bin bash
 
 # container-use, as in the devcontainer: Codex creates an environment per
 # review finding.

@@ -195,13 +195,13 @@ func TestHostStatusJoinsTheTailnet(t *testing.T) {
 	}
 }
 
-func TestCodexReviewPassesTheModelAndToken(t *testing.T) {
+func TestCodexReviewPassesTheModelAndTokens(t *testing.T) {
 	tb, _, h := newTestToolbox("RUNNING")
 	if res := callTool(t, tb, "codex_review", map[string]any{"pr": 221, "model": "gpt-5.5"}); res.IsError {
 		t.Fatalf("codex_review: %s", resultText(res))
 	}
 	c := h.calls[0]
-	if got := strings.Join(c.args, " "); got != "review 221 gpt-5.5" || c.env["GITHUB_TOKEN"] != "gh-token" {
+	if got := strings.Join(c.args, " "); got != "review 221 gpt-5.5" || c.env["GITHUB_TOKEN"] != "gh-token" || c.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "pass-token" {
 		t.Fatalf("host call %q env %v", got, c.env)
 	}
 }
