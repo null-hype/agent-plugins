@@ -110,7 +110,9 @@ For each finding, call the container-use environment_create tool (environment_so
 directory), titled with the finding, with the finding's explanation. Then file the finding in Linear with
 an issueCreate mutation: teamId $LINEAR_TEAM_ID, stateId $LINEAR_TRIAGE_STATE_ID, the finding as the title,
 and a description with its explanation, the PR (https://github.com/null-hype/agent-plugins/pull/$pr) and
-the environment id. Ask for the created issue's identifier and branchName. Send the GraphQL request body on stdin to:
+the environment id. Ask for the created issue's identifier and branchName, then attach
+https://github.com/null-hype/agent-plugins/tree/<branchName> to the issue with attachmentLinkURL, titled
+"Finding environment branch"; the environment is pushed there after you finish. Send each GraphQL request body on stdin to:
 PROTON_PASS_KEY_PROVIDER=fs pass-cli run --env-file $env -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: \$LINEAR_API_KEY" --data @-'
 Then print one line per finding: environment id, Linear issue identifier, Linear branchName, title.
 PROMPT
