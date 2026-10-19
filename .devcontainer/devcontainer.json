@@ -1,5 +1,5 @@
 {
-    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-cb7468209ab861d2de09114ec3697c4ef3ce32bc",
+    "image": "ghcr.io/null-hype/devenv-linear-agent:sha-375042cf0a7ac6a302438a0e62827c457f5e0d1c",
     "features": {
         "ghcr.io/devcontainers/features/docker-in-docker:2": {},
         "ghcr.io/devcontainers/features/sshd:1": {}
