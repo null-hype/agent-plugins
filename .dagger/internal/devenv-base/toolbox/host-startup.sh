@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GCE startup script for the toolbox host (Debian 12). It runs as root on
-# every boot and is idempotent: it installs Docker, jq and git, Tailscale,
-# pass-cli, the pinned Codex, container-use and DevPod CLIs, and DevPod's docker
-# provider for the toolbox user. It touches $READY last; host_status reports
-# ready only once it exists.
+# every boot and is idempotent: it installs Docker, jq, git and restic,
+# Tailscale, pass-cli, the pinned Codex, container-use and DevPod CLIs, and
+# DevPod's docker provider for the toolbox user. It touches $READY last;
+# host_status reports ready only once it exists.
 set -euo pipefail
 
 READY=/var/lib/toolbox-host.ready
@@ -13,10 +13,12 @@ DEVPOD_VERSION=v0.6.15
 # Upstream publishes no checksums; this is the release asset's sha256.
 DEVPOD_SHA256=cc50bce09229d5a6d448ac1d4494327f4b8f7a20321e5fcee3bfec1aef0d20c5
 
-# bubblewrap is Codex's sandbox on Linux.
-if ! command -v docker >/dev/null || ! command -v jq >/dev/null || ! command -v bwrap >/dev/null; then
+# bubblewrap is Codex's sandbox on Linux. restic backs up reviews, as the
+# repo's pre-push hook does.
+if ! command -v docker >/dev/null || ! command -v jq >/dev/null || ! command -v bwrap >/dev/null ||
+  ! command -v restic >/dev/null; then
   apt-get update
-  apt-get install -y docker.io jq git curl bubblewrap
+  apt-get install -y docker.io jq git curl bubblewrap restic
 fi
 
 # Same installer as the Dagger module's withTailscale. The toolbox joins the

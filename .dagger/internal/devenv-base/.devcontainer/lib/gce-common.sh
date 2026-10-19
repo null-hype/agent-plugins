@@ -159,6 +159,10 @@ gce_common_restic_retry() (
 )
 
 gce_common_restic_push_claude_session() {
+  if [ ! -d ~/.claude ]; then
+    echo "no ~/.claude yet -- skipping (nothing to back up)" >&2
+    return 0
+  fi
   (cd ~ && gce_common_restic_retry backup .claude --tag claude-session-state)
 }
 
