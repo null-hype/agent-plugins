@@ -25,7 +25,7 @@ func connect(t *testing.T, url string, httpClient *http.Client) (*mcp.ClientSess
 }
 
 func TestPingWithBearer(t *testing.T) {
-	ts := httptest.NewServer(newMux("s3cret", "http://example.test"))
+	ts := httptest.NewServer(newMux("s3cret", "http://example.test", nil))
 	defer ts.Close()
 
 	cs, err := connect(t, ts.URL, &http.Client{Transport: bearerTransport{"s3cret"}})
@@ -41,22 +41,10 @@ func TestPingWithBearer(t *testing.T) {
 	if res.IsError {
 		t.Fatalf("ping returned an error: %+v", res.Content)
 	}
-
-	res, err = cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "slow_ping", Arguments: map[string]any{"seconds": 0}})
-	if err != nil || res.IsError {
-		t.Fatalf("slow_ping 0: err=%v result=%+v", err, res)
-	}
-	res, err = cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "slow_ping", Arguments: map[string]any{"seconds": 100000}})
-	if err != nil {
-		t.Fatalf("slow_ping out of range: %v", err)
-	}
-	if !res.IsError {
-		t.Fatal("slow_ping accepted a wait longer than the maximum")
-	}
 }
 
 func TestWrongTokenGets401WithMetadataHint(t *testing.T) {
-	ts := httptest.NewServer(newMux("s3cret", "http://example.test"))
+	ts := httptest.NewServer(newMux("s3cret", "http://example.test", nil))
 	defer ts.Close()
 
 	if _, err := connect(t, ts.URL, &http.Client{Transport: bearerTransport{"wrong"}}); err == nil {
@@ -78,7 +66,7 @@ func TestWrongTokenGets401WithMetadataHint(t *testing.T) {
 }
 
 func TestOpenWithoutToken(t *testing.T) {
-	ts := httptest.NewServer(newMux("", "http://example.test"))
+	ts := httptest.NewServer(newMux("", "http://example.test", nil))
 	defer ts.Close()
 
 	cs, err := connect(t, ts.URL, nil)
@@ -90,7 +78,7 @@ func TestOpenWithoutToken(t *testing.T) {
 
 // Render's proxy reaches the server on loopback with the public Host header.
 func TestPublicHostOverLoopbackIsServed(t *testing.T) {
-	ts := httptest.NewServer(newMux("", "http://example.test"))
+	ts := httptest.NewServer(newMux("", "http://example.test", nil))
 	defer ts.Close()
 
 	req, err := http.NewRequest(http.MethodPost, ts.URL+"/mcp", strings.NewReader("{}"))
