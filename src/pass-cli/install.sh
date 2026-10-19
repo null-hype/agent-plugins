@@ -31,6 +31,70 @@ set -e
 # times (see test/_global/jin-91-resume-session/Dockerfile).
 AGENT_ASSIGNMENT="${TAG}"
 
+# 'color start' is the feature's postStartCommand: every container start
+# continues the session named in /workspaces/.color-session, or else the
+# session option; with neither, it does nothing. The file is the machine's
+# own pointer: /workspaces survives a rebuild (~/.claude does not), and it
+# is never committed, so a shared devcontainer.json can leave the option
+# empty without every codespace built from it resuming the same session.
+if [ "\${1:-}" = "start" ]; then
+    session="\$(cat /workspaces/.color-session 2>/dev/null || echo "${SESSION}")"
+    [ -n "\$session" ] || exit 0
+    exec "\$0" resume "\$session"
+fi
+
+# 'color resume <session-id>' continues an existing session in the
+# background (claude --bg), so it can be picked up from claude.ai. After a
+# stop/start the transcript is still on disk and is used as is; restoring
+# over it would roll it back to the last snapshot. Only when it is missing
+# (a rebuild, a new machine) is it restored, from the newest snapshot that
+# holds it: other hosts back up under the same tag, so 'latest' can be
+# another machine's ~/.claude.
+if [ "\${1:-}" = "resume" ] && [ -n "\${2:-}" ]; then
+    SESSION_ID="\$2"
+    # Claude's installer puts it here; a postStartCommand's PATH may have
+    # been probed before it existed.
+    export PATH="\$HOME/.local/bin:\$PATH"
+    export PROTON_PASS_KEY_PROVIDER="\${PROTON_PASS_KEY_PROVIDER:-fs}"
+    # The pass session expires while a machine is off for long, and the
+    # resumed session needs it (the pre-push hook backs up through it), so
+    # log in on every start, not only to restore. A stale session has to be
+    # dropped first. Without a login a session already on disk still resumes.
+    pass-cli info >/dev/null 2>&1 || { pass-cli logout --force >/dev/null 2>&1; timeout 2m pass-cli login >&2; } || true
+    if ! ls "\$HOME"/.claude/projects/*/"\$SESSION_ID".jsonl >/dev/null 2>&1; then
+        : "\${PASS_CLI_ENV_FILE:?color resume: set PASS_CLI_ENV_FILE (restic secrets)}"
+        export PROTON_PASS_AGENT_REASON="\${AGENT_ASSIGNMENT}: restoring Claude session \$SESSION_ID"
+        pass-cli run --env-file "\$PASS_CLI_ENV_FILE" -- sh -c '
+            set -e
+            export GOOGLE_APPLICATION_CREDENTIALS="\$(mktemp)"
+            trap "rm -f \$GOOGLE_APPLICATION_CREDENTIALS" EXIT
+            printf %s "\$GCP_SERVICE_ACCOUNT_KEY" > "\$GOOGLE_APPLICATION_CREDENTIALS"
+            snap=\$(restic find --json --tag '"\$AGENT_ASSIGNMENT"' "\$1.jsonl" | jq -r "max_by(.matches[0].mtime) | .snapshot // empty")
+            [ -n "\$snap" ] || { echo "color resume: no snapshot holds session \$1" >&2; exit 1; }
+            # Leave out the runtime state of the background daemon: its lock names
+            # a pid from the old machine (a live process here, or worse,
+            # someone else), and stale job records make --bg think the
+            # session is still running.
+            restic restore "\$snap" --target "\$HOME" \\
+                --exclude "/.claude/daemon*" --exclude /.claude/jobs
+        ' sh "\$SESSION_ID"
+        # ~/.claude.json (workspace trust, the account) lives outside
+        # ~/.claude, but Claude keeps copies of it inside.
+        [ -e "\$HOME/.claude.json" ] || cp "\$(ls -t "\$HOME"/.claude/backups/.claude.json.backup.* | head -1)" "\$HOME/.claude.json"
+    fi
+    # --remote-control registers the session with the account, so it can be
+    # driven from the Claude app on a phone -- the point of resuming it on a
+    # box nobody is sitting at. acceptEdits: file edits go ahead, anything
+    # else waits for a person to approve it there.
+    out="\$(claude --bg --remote-control --resume "\$SESSION_ID" --model ${MODEL} --effort ${EFFORT} --permission-mode acceptEdits \\
+        "The container just started and 'color resume' continued this session. Carry on where you left off.")"
+    echo "\$out"
+    # --bg continues under a new id when it thinks the session is still running.
+    short="\$(printf '%s\n' "\$out" | grep -o 'claude logs [0-9a-f]*' | cut -d' ' -f3)"
+    [ -z "\$short" ] || jq -r .sessionId "\$HOME/.claude/jobs/\$short/state.json" > /workspaces/.color-session
+    exit 0
+fi
+
 echo "my favorite color is ${FAVORITE}"
 
 # If pass-cli is on PATH, configured (PASS_CLI_ENV_FILE set - baked into

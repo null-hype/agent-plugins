@@ -1,7 +1,7 @@
 {
     "name": "My Favorite Color",
     "id": "pass-cli",
-    "version": "1.0.3",
+    "version": "1.1.0",
     "description": "A feature to remind you of your favorite color",
     "options": {
         "favorite": {
@@ -35,8 +35,14 @@
             "type": "string",
             "default": "color",
             "description": "restic snapshot tag the 'color' bin uses when it backs up ~/.claude."
+        },
+        "session": {
+            "type": "string",
+            "default": "",
+            "description": "Claude session id that 'color start' (the postStartCommand) continues on container start, in acceptEdits mode with Remote Control, when /workspaces/.color-session does not name one. Leave it empty in a shared config; empty with no file does nothing."
         }
     },
+    "postStartCommand": "color start",
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"
     ]
