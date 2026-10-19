@@ -1,0 +1,5 @@
+[P2] [QA] Preserve the Codex process failure in the final status
+
+At `.dagger/internal/devenv-base/hk/codex-review-push.sh:94`, preserve and check the exit status of `codex exec review` instead of unconditionally discarding it with `|| true`. A structured result does not establish that the process finished successfully. Local QA ran the review function with stubbed git/GitHub commands and a Codex stub that emitted `thread.started`, left a valid nonzero-confidence ExitedReviewMode record with zero findings, and then exited 23. The hook posted the review, wrote `codex-review=success`, and exited 0. Thus a CLI failure after writing a verdict can satisfy the required status check despite the commit description promising an error when the review cannot run successfully. Retain the verdict as data, but make an execution failure an error status. This applies “A broken instrument fails the run. A refuted hypothesis is a result.” All posts and statuses in this reproduction were local stubs; no real services were contacted.
+
+PR: https://github.com/null-hype/agent-plugins/pull/215
