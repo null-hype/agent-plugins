@@ -438,11 +438,16 @@ func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
 // a devpod or snapshots state, so it needs neither gcloud nor restic. One
 // image serves every zone, parameterised by SUPERVISOR_ZONE the way the
 // keepalive is by WORKSPACE_ID.
+//
+// tzdata is not optional here: a window is decided from the team's own
+// clock, and without the zoneinfo files GNU date answers in UTC without
+// complaint, which would put every window hours out while the run still
+// looked healthy. supervisor.sh refuses a timezone it cannot find.
 func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withClaude(m.PassCli(platform)).
+	return withAptPackages(withClaude(m.PassCli(platform)), "tzdata").
 		WithFile(
 			"/app/supervisor/supervisor.sh",
 			dag.CurrentModule().Source().File("supervisor/supervisor.sh"),
@@ -491,6 +496,9 @@ func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 	out, err := m.Supervisor("").
 		WithExec([]string{"bash", "-n", "/app/supervisor/supervisor.sh"}).
 		WithExec([]string{"claude", "--version"}).
+		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Asia/Hong_Kong"}).
+		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Europe/Berlin"}).
+		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/America/New_York"}).
 		WithExec([]string{"bash", "/app/supervisor/test_supervisor.sh"}).
 		Stdout(ctx)
 	if err != nil {

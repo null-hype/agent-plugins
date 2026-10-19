@@ -35,8 +35,24 @@ shift
 : "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:?PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set}"
 : "${TOOLBOX_TOKEN:?TOOLBOX_TOKEN must be set: copy it from the env vars of the toolbox Render service}"
 ZONE="${SUPERVISOR_ZONE:?SUPERVISOR_ZONE must be set: one Render cron service per zone}"
+ZONE_TZ="${SUPERVISOR_TZ:?SUPERVISOR_TZ must be set: the IANA timezone of the team, e.g. Europe/Berlin}"
 TOOLBOX_URL=${TOOLBOX_URL:-https://toolbox-spike.onrender.com/mcp}
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# An unknown TZ makes GNU date fall back to UTC without a word, which would
+# put the window hours off and look like a working run. Refuse instead.
+[ -f "/usr/share/zoneinfo/$ZONE_TZ" ] ||
+  { echo "supervisor ($ZONE): unknown timezone $ZONE_TZ" >&2; exit 1; }
+
+# Render schedules in UTC, and a zone's midnight moves against UTC twice a
+# year. So the cron is only a sampler: the local clock here is what decides
+# whether a window is near, which is why each DST-observing zone's schedule
+# fires at both candidate hours and one of the two runs decides "not yet".
+# The model is given these numbers rather than asked to do timezone
+# arithmetic.
+local_now=$(TZ="$ZONE_TZ" date +'%F %T %Z')
+to_midnight=$(( ( $(TZ="$ZONE_TZ" date -d 'tomorrow 00:00' +%s) - $(date +%s) ) / 60 ))
+since_midnight=$(( ( $(date +%s) - $(TZ="$ZONE_TZ" date -d 'today 00:00' +%s) ) / 60 ))
 
 # The toolbox's read-only tools. Every tool that starts, stops, deletes or
 # dispatches is spelled out as disallowed as well, so an allowlist that ever
@@ -75,7 +91,14 @@ jq -n --arg url "$TOOLBOX_URL" --arg auth "Bearer $TOOLBOX_TOKEN" \
   '{mcpServers: {toolbox: {type: "http", url: $url, headers: {Authorization: $auth}}}}' \
   > "$MCP_FILE"
 
-prompt=$(sed -e "s|{{ZONE}}|$ZONE|g" -e "s|{{NOW}}|$(date -u +%FT%TZ)|g" "$DIR/prompt.md")
+prompt=$(sed \
+  -e "s|{{ZONE}}|$ZONE|g" \
+  -e "s|{{TZ}}|$ZONE_TZ|g" \
+  -e "s|{{NOW}}|$(date -u +%FT%TZ)|g" \
+  -e "s|{{LOCAL_NOW}}|$local_now|g" \
+  -e "s|{{TO_MIDNIGHT}}|$to_midnight|g" \
+  -e "s|{{SINCE_MIDNIGHT}}|$since_midnight|g" \
+  "$DIR/prompt.md")
 
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON="supervisor ($ZONE): resolve the Claude Code token for a dry-run window check"
