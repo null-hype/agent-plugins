@@ -800,12 +800,20 @@ func (m *DevenvBase) CheckPlaywright(ctx context.Context) error {
 // No restic/tailscale/docker/devpod -- unlike Agent, this box neither
 // snapshots state nor needs a devpod to ssh into. protonPassToken is a
 // *dagger.Secret so it never lands in Dagger's cache/plan output or logs.
+// Passing issues (a comma-separated list of identifiers, e.g. "CIT-439")
+// names what to review outright and ignores labelFilter. That is the
+// per-issue loop: one cron service per issue, each naming its issue, the
+// way each supervisor service names its zone -- and because the label is
+// ignored, a loop pointed at one issue cannot be widened by someone
+// labelling something else.
 func (m *DevenvBase) LinearTriageAgent(
 	ctx context.Context,
 	protonPassToken *dagger.Secret,
 	// +optional
 	// +default="agent-triage"
 	labelFilter string,
+	// +optional
+	issues string,
 ) (string, error) {
 	return withClaude(m.PassCli("linux/amd64")).
 		WithFile(
@@ -836,6 +844,7 @@ func (m *DevenvBase) LinearTriageAgent(
 		WithWorkdir("/app").
 		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
 		WithEnvVariable("LINEAR_TRIAGE_LABEL", labelFilter).
+		WithEnvVariable("LINEAR_TRIAGE_ISSUES", issues).
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
 		WithExec([]string{"bash", "-c", `
 set -euo pipefail
@@ -878,6 +887,39 @@ func (m *DevenvBase) CheckRestic(ctx context.Context) error {
 }
 
 // CheckDaggerCli asserts the dagger CLI is installed and runnable.
+// CheckLinearTriageAgent runs linear-triage-agent.sh's stub tests, which
+// need no network, credentials or model: a stub stands in for
+// linear-query.sh and for claude. It is a +check because the label path
+// shipped broken -- `label` is a jq keyword, so `jq --arg label` produced a
+// program jq could not compile and every run died on its first query --
+// and the agent's only output is a filed Linear issue, so selecting
+// nothing looks exactly like having nothing to do.
+// +check
+func (m *DevenvBase) CheckLinearTriageAgent(ctx context.Context) error {
+	src := dag.CurrentModule().Source()
+	out, err := m.PassCli("").
+		WithFile("/app/.devcontainer/linear-triage-agent.sh",
+			src.File(".devcontainer/linear-triage-agent.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755}).
+		WithFile("/app/.devcontainer/linear-triage/test_linear_triage_agent.sh",
+			src.File(".devcontainer/linear-triage/test_linear_triage_agent.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755}).
+		WithFile("/app/.devcontainer/linear-triage/settings.json",
+			src.File(".devcontainer/linear-triage/settings.json"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644}).
+		WithFile("/app/.devcontainer/linear-triage/hooks/exit-plan-to-linear.sh",
+			src.File(".devcontainer/linear-triage/hooks/exit-plan-to-linear.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755}).
+		WithWorkdir("/app").
+		WithExec([]string{"bash", "-n", "/app/.devcontainer/linear-triage-agent.sh"}).
+		WithExec([]string{"bash", "/app/.devcontainer/linear-triage/test_linear_triage_agent.sh"}).
+		Stdout(ctx)
+	if err != nil {
+		return err
+	}
+	return assertContains(out, "linear-triage-agent stub tests: ok")
+}
+
 // +check
 func (m *DevenvBase) CheckDaggerCli(ctx context.Context) error {
 	return runToolChecks(ctx, m.DaggerCli(""), []toolCheck{
