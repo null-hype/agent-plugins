@@ -75,10 +75,10 @@ run_up() {
 # and has Codex create a container-use environment and a Linear triage issue
 # for each finding. Its final message, one line per finding, lands in $out.
 # Each environment's branch is then pushed under its issue's branch name, so
-# Linear links it to the issue.
+# Linear links it to the issue, and the pre-push hook's backup runs.
 run_review() {
   set -euo pipefail
-  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env
+  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env hk
   git_auth
   # Codex never sees the Linear key: its curl runs under `pass-cli run`,
   # which resolves this reference. Same login as tailscale-up.sh.
@@ -121,6 +121,13 @@ PROMPT
     git push -q origin "FETCH_HEAD:refs/heads/$branch"
     echo "== pushed $env as $branch ($issue)"
   done
+  # The clone has no hk hooks, so run the pre-push backup here: it snapshots
+  # container-use and Codex state to restic. It comes from main, not the PR
+  # under review, since it runs with the restic credentials.
+  hk=$(mktemp -d)
+  git archive origin/main .dagger/internal/devenv-base/hk .dagger/internal/devenv-base/.devcontainer | tar -x -C "$hk"
+  bash "$hk/.dagger/internal/devenv-base/hk/claude-session-backup.sh"
+  rm -rf "$hk"
 }
 
 action=${1:?action}
