@@ -74,6 +74,8 @@ run_up() {
 # Reviews the PR with the host's Codex login, so AGENTS.md sets the criteria,
 # and has Codex create a container-use environment and a Linear triage issue
 # for each finding. Its final message, one line per finding, lands in $out.
+# Each environment's branch is then pushed under its issue's branch name, so
+# Linear links it to the issue.
 run_review() {
   set -euo pipefail
   local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env
@@ -108,10 +110,15 @@ For each finding, call the container-use environment_create tool (environment_so
 directory), titled with the finding, with the finding's explanation. Then file the finding in Linear with
 an issueCreate mutation: teamId $LINEAR_TEAM_ID, stateId $LINEAR_TRIAGE_STATE_ID, the finding as the title,
 and a description with its explanation, the PR (https://github.com/null-hype/agent-plugins/pull/$pr) and
-the environment id. Send the GraphQL request body on stdin to:
+the environment id. Ask for the created issue's identifier and branchName. Send the GraphQL request body on stdin to:
 PROTON_PASS_KEY_PROVIDER=fs pass-cli run --env-file $env -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: \$LINEAR_API_KEY" --data @-'
-Then print one line per finding: environment id, Linear issue identifier, title.
+Then print one line per finding: environment id, Linear issue identifier, Linear branchName, title.
 PROMPT
+  grep -E '^[a-z]+-[a-z]+, [A-Z]+-[0-9]+, [^ ,]+, ' "$out" | while IFS=', ' read -r env issue branch _; do
+    git fetch -q container-use "$env"
+    git push -q origin "FETCH_HEAD:refs/heads/$branch"
+    echo "== pushed $env as $branch ($issue)"
+  done
 }
 
 action=${1:?action}

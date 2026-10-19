@@ -276,7 +276,7 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "codex_review",
-		Description: "Review an agent-plugins pull request with Codex on the host, against AGENTS.md, creating a container-use environment on the host and a CIT Triage issue in Linear for each finding. " +
+		Description: "Review an agent-plugins pull request with Codex on the host, against AGENTS.md, creating a container-use environment on the host and a CIT Triage issue in Linear for each finding, and pushing the environment's branch under the issue's branch name. " +
 			"Returns at once; poll codex_review_status until job_exit is set.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in reviewIn) (*mcp.CallToolResult, any, error) {
 		if in.Model != "" && !refRE.MatchString(in.Model) {
@@ -290,7 +290,7 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "codex_review_status",
-		Description: "Report a codex_review job: its exit code (null while running), one line per finding with its container-use environment id, Linear issue and title, and the end of its log.",
+		Description: "Report a codex_review job: its exit code (null while running), one line per finding with its container-use environment id, Linear issue, branch and title, and the end of its log.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in prIn) (*mcp.CallToolResult, any, error) {
 		b, err := t.host.Run(ctx, nil, "review-status", strconv.Itoa(in.PR))
 		if err != nil {
