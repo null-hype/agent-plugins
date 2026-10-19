@@ -63,6 +63,7 @@ export PATH="$BIN:$PATH"
 export PROTON_PASS_PERSONAL_ACCESS_TOKEN=stub-pass-token
 export TOOLBOX_TOKEN=stub-toolbox-token
 export SUPERVISOR_ZONE=zone-test
+export SUPERVISOR_TZ=Asia/Hong_Kong
 export SUPERVISOR_TIMEOUT=2m
 export CLAUDE_ARGV=$WORK/argv
 export CLAUDE_MCP=$WORK/mcp.json
@@ -99,6 +100,24 @@ for tool in mcp__toolbox__host_start mcp__toolbox__host_stop mcp__toolbox__agent
   section --disallowedTools | grep -qx "$tool" ||
     fail "$tool should be disallowed by name as well"
 done
+
+# The window is decided from the team's own clock, and the numbers are
+# handed over rather than left to the model to derive.
+grep -q 'Asia/Hong_Kong' "$CLAUDE_ARGV" ||
+  fail "the prompt should name the team's timezone"
+grep -qE 'Minutes until the team.s next local midnight: \*\*-?[0-9]+\*\*' "$CLAUDE_ARGV" ||
+  fail "the prompt should carry the minutes to local midnight, already computed"
+if grep -q '{{' "$CLAUDE_ARGV"; then
+  fail "every prompt placeholder should have been substituted"
+fi
+
+# A timezone the box does not know would silently become UTC, putting the
+# window hours out while the run still looks healthy.
+if SUPERVISOR_TZ=Not/AZone bash "$DIR/supervisor.sh" > "$WORK/badtz" 2>&1; then
+  fail "an unknown timezone should fail the run"
+fi
+grep -q 'unknown timezone Not/AZone' "$WORK/badtz" ||
+  fail "an unknown timezone should say so"
 
 if CLAUDE_STUB_MODE=prose bash "$DIR/supervisor.sh" > "$WORK/prose" 2>&1; then
   fail "a run that produced no heartbeat should fail"
