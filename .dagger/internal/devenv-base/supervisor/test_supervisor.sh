@@ -19,6 +19,10 @@
 #      allowed, every toolbox tool that can move infrastructure is disallowed
 #      by name, and the bearer tokens reach claude through a 0600 file rather
 #      than through argv.
+#   7. Every secret, the toolbox token included, is resolved by `pass-cli run`
+#      from pass:// references; the Render service holds only the pass token.
+#      With no pass session, or no pass token, nothing runs. No secret is on
+#      an argv or left in a file once the run ends.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
