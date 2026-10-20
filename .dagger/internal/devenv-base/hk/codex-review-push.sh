@@ -9,8 +9,9 @@
 #
 # For each pushed branch (the default branch is skipped) the job:
 #   1. sets a `codex-review` commit status of pending on the pushed commit;
-#   2. runs `codex exec review --base <remote>/<default>` in a throwaway
-#      worktree at that commit, so the review sees exactly what was pushed;
+#   2. runs `codex exec review` against the PR's base (the default branch
+#      when there is no PR) in a throwaway worktree at that commit, so the
+#      review sees exactly what was pushed, with a time limit;
 #   3. posts the findings as a review on the open PR for the branch, pinned
 #      to that commit (or as a commit comment when there is no PR yet);
 #   4. sets the status: failure when there are findings, error when the
@@ -74,10 +75,15 @@ on_review_exit() {
 }
 
 review() { # remote branch sha
-  local remote=$1 branch=$2 sha=$3 repo default wt events thread rollout out body state desc pr url
+  local remote=$1 branch=$2 sha=$3 repo default base="" pr="" wt events thread rollout out body state desc url
   repo=$(repo_slug "$remote")
   default=$(git -C "$REPO_ROOT" symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null || echo "$remote/main")
   [ "$branch" = "${default#*/}" ] && { log "$branch is the default branch -- not reviewing"; return 0; }
+  # Review against the PR's own base when there is one (a stacked PR's diff
+  # against main would include every commit below it).
+  read -r pr base < <(gh pr list --repo "$repo" --head "$branch" --state open --json number,baseRefName \
+    --jq '.[0] // empty | "\(.number) \(.baseRefName)"') || true
+  [ -n "${base:-}" ] && default="$remote/$base"
 
   wt=$(mktemp -d "${TMPDIR:-/tmp}/codex-review.XXXXXX")
   events="$STATE_DIR/$sha.jsonl"
@@ -94,7 +100,7 @@ review() { # remote branch sha
   # A verdict written before a nonzero exit is kept and posted as data, but
   # the process failing is a broken instrument: the status is error.
   local codex_rc=0
-  (cd "$wt" && codex exec review "${CODEX_ARGS[@]}" --base "$default" --json) > "$events" 2> "$STATE_DIR/$sha.err" || codex_rc=$?
+  (cd "$wt" && timeout "${CODEX_REVIEW_TIMEOUT:-900}" codex exec review "${CODEX_ARGS[@]}" --base "$default" --json) > "$events" 2> "$STATE_DIR/$sha.err" || codex_rc=$?
 
   thread=$(jq -r 'select(.type == "thread.started") | .thread_id' "$events" | head -1)
   rollout=$( [ -n "$thread" ] && find "${CODEX_HOME:-$HOME/.codex}/sessions" -name "*$thread*.jsonl" | head -1 || true)
@@ -115,8 +121,7 @@ review() { # remote branch sha
   [ "$codex_rc" -eq 0 ] ||
     body+=$'\n\n'"> **Note:** \`codex exec review\` exited $codex_rc after writing this verdict, so the \`$CONTEXT\` status is \`error\`, not a verdict."
 
-  pr=$(gh pr list --repo "$repo" --head "$branch" --state open --json number --jq '.[0].number // empty')
-  if [ -n "$pr" ]; then
+  if [ -n "${pr:-}" ]; then
     url=$(jq -n --arg body "$body" --arg sha "$sha" '{event: "COMMENT", commit_id: $sha, body: $body}' |
       gh api "repos/$repo/pulls/$pr/reviews" --input - --jq '.html_url') || url=""
   else
