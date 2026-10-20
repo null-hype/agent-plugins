@@ -441,7 +441,7 @@ func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withAptPackages(withClaude(m.PassCli(platform)), "tzdata", "restic").
+	return withAptPackages(withClaude(m.PassCli(platform)), "restic").
 		WithFile(
 			"/app/supervisor/supervisor.sh",
 			dag.CurrentModule().Source().File("supervisor/supervisor.sh"),
