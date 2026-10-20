@@ -197,6 +197,11 @@ while [ "$1" != -o ]; do shift; done
 echo done > "$2"
 `), 0o755)
 
+	// A host that shipped with the earlier version still has the plaintext
+	// token; the first ship deletes it.
+	os.MkdirAll(filepath.Join(home, ".toolbox", "ship"), 0o700)
+	os.WriteFile(filepath.Join(home, ".toolbox", "ship", "push-token"), []byte("s3cret\n"), 0o600)
+
 	// The fake pass-cli has a session unless FAKE_PASS_DOWN is set, and
 	// resolves every pass:// reference in an env file to s3cret, as the real
 	// one resolves the push token. It logs its arguments and key provider.
