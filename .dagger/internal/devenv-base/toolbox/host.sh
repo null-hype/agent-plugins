@@ -177,10 +177,11 @@ SHIP_CREDENTIAL_HELPER=/workspaces/.ship-git-credential
 # Runs the script in the workspace as `bash -s -- args`. The script travels
 # in the command, not on stdin, which devpod ssh does not promise to forward.
 # devpod prints its own messages too, so callers pick out marker lines.
-ship_in_workspace() { # ws script send args... (SHIP_PUSH_PAT is forwarded if send is 1)
-  local ws=$1 script=$2 send=$3
+ship_in_workspace() { # ws script send args... (SHIP_PUSH_PAT, resolved by pass-cli, is forwarded if send is 1)
+  local ws=$1 script=$2 send=$3 resolve=()
   shift 3
-  devpod ssh "$ws" ${send:+--send-env SHIP_PUSH_PAT} \
+  [ -z "$send" ] || resolve=(pass-cli run --env-file "$HOME/.toolbox/ship/ship.env" --)
+  "${resolve[@]}" devpod ssh "$ws" ${send:+--send-env SHIP_PUSH_PAT} \
     --command "echo $(printf %s "$script" | base64 -w0) | base64 -d | bash -s -- $*" </dev/null
 }
 
