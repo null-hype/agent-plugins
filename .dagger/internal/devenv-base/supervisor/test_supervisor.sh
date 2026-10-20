@@ -157,11 +157,12 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 # A fresh container for each run: nothing from the last one is on disk.
 reset() {
-  rm -rf "$HOME" "$CALLS" "$RESTIC_LOG" "$PASS_ENVFILE_LOG" "$CLAUDE_ARGV" "$CLAUDE_PWD" "$CLAUDE_MCP" "$CLAUDE_MCP_MODE"
-  mkdir -p "$HOME"
+  rm -rf "$HOME" "$TMPDIR" "$CALLS" "$RESTIC_LOG" "$PASS_ENVFILE_LOG" "$PASS_ARGV_LOG" "$CLAUDE_ARGV" "$CLAUDE_PWD" "$CLAUDE_MCP" "$CLAUDE_MCP_MODE"
+  mkdir -p "$HOME" "$TMPDIR"
   : > "$CALLS"
   : > "$RESTIC_LOG"
   : > "$PASS_ENVFILE_LOG"
+  : > "$PASS_ARGV_LOG"
 }
 
 # Prints the arguments that followed $1, up to the next flag.
