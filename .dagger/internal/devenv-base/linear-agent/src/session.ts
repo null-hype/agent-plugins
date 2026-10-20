@@ -1,7 +1,7 @@
 import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
 import { runClaude, WORKSPACE_DIR } from "./claude.ts";
-import { baseRef } from "./workspace.ts";
+import { syncWorkspace } from "./workspace.ts";
 
 /**
  * Tracks the most recent agent session id per issue, keyed by issue id, so a
@@ -156,9 +156,11 @@ async function runTurn(
 
   try {
     const branch = issueId ? await linear.issue(issueId).then((issue) => issue.branchName, () => undefined) : undefined;
-    const base = await baseRef(WORKSPACE_DIR, branch);
-    const withBase = `${prompt}\n\n---\n\nCreate every container-use environment with from_git_ref "${base}". The workspace's own checkout is stale, so the default HEAD is the wrong code.`;
-    const result = await runClaude(withBase, claudeCodeOAuthToken, (content) =>
+    const issueRef = await syncWorkspace(WORKSPACE_DIR, branch);
+    const withRef = issueRef
+      ? `${prompt}\n\n---\n\nThis issue's code is on ${issueRef}, not main: create container-use environments with from_git_ref "${issueRef}".`
+      : prompt;
+    const result = await runClaude(withRef, claudeCodeOAuthToken, (content) =>
       // Best-effort narration: a failed intermediate post shouldn't abort
       // the turn the way a failed final response/error post should.
       postActivity(linear, agentSessionId, content).catch(() => undefined),

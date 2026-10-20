@@ -65,6 +65,12 @@ run_up() {
     devpod up "$id" --ide none
   fi
   [ "$agent" = 1 ] || return 0
+  # The scripts run from the workspace's checkout, and so does every
+  # container-use environment the agent creates. The agent server moves it
+  # to origin/main before each turn; start the scripts from there too, not
+  # from the ref the workspace was created with.
+  devpod ssh "$id" --command "cd /workspaces/$id && git fetch -q origin && git checkout -q --detach origin/main" </dev/null ||
+    echo "== could not move $id to origin/main; running the scripts it has" >&2
   for s in $AGENT_SCRIPTS; do
     echo "== $s"
     if [ "$s" = tailscale-up.sh ]; then
@@ -73,8 +79,7 @@ run_up() {
       # MagicDNS points the container's resolv.conf at 100.100.100.100, and
       # then public names stop resolving, so the next script's pass-cli
       # cannot reach Proton. Turned off here as well as in tailscale-up.sh,
-      # because a workspace runs the scripts from the checkout it was
-      # created from.
+      # in case the checkout could not be moved to origin/main above.
       devpod ssh "$id" --command 's=; [ "$(id -u)" = 0 ] || s=sudo
         $s tailscale --socket=/var/run/tailscale/tailscaled.sock set --accept-dns=false
         getent ahosts pass.proton.me >/dev/null || { echo "public names do not resolve in the container" >&2; exit 1; }'
