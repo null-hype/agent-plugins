@@ -14,80 +14,30 @@ services:
       - key: WORKSPACE_ID
         value: devenv-base-gce
 
-  # One dispatch-window supervisor per zone (CIT-443). Three services, one
-  # image, differing only in schedule and the two SUPERVISOR_ vars.
+  # The dispatch supervisor (CIT-443, CIT-453): one hourly service that
+  # continues one Claude session and works every open `Dispatch: <name>`
+  # issue.
   #
   # Still commented out because one value cannot be written here yet: the
   # published image digest. PublishSupervisor tags sha-<commit>; pin the
   # digest the way devpod-keepalive above does, once the first publish has
   # run, then uncomment. See supervisor/README.md.
   #
-  # Schedules are 15 minutes before each team's local midnight, because the
-  # window has to open before Linear creates the dispatch issue at 00:01 --
-  # a delegation that arrives mid-boot is lost. Render cron is UTC only, so
-  # the two DST-observing zones list both candidate hours and the run itself
-  # decides from the team's clock whether midnight is actually near; the
-  # other run of the pair reports "nothing" and exits. Hong Kong keeps one
-  # hour because it has no DST.
-  #
-  # Midnights land at 16:00, 23:00 and 05:00 UTC, so the longest stretch
-  # with no supervisor awake is the 11 hours from New York's window to Hong
-  # Kong's. That gap is the window a wedged host could sit in, and the
-  # reason the VM keeps its own deadline.
+  # One service, so Render's single-run guarantee holds for the one
+  # transcript: a tick still running when the next is due delays that next
+  # one. SUPERVISOR_TIMEOUT (default 50m) keeps a tick below the hour.
   #
   # - type: cron
-  #   name: supervisor-infrastructure
+  #   name: supervisor
   #   runtime: image
   #   image:
   #     url: ghcr.io/null-hype/devenv-supervisor@sha256:<pin after the first publish>
   #     creds:
   #       fromRegistryCreds:
   #         name: Citizen6.Librarian6.Refrain4
-  #   schedule: "45 15 * * *"       # 23:45 Asia/Hong_Kong
+  #   schedule: "13 * * * *"
   #   envVars:
   #     - key: PROTON_PASS_PERSONAL_ACCESS_TOKEN
   #       sync: false
   #     - key: TOOLBOX_TOKEN
   #       sync: false
-  #     - key: SUPERVISOR_ZONE
-  #       value: infrastructure
-  #     - key: SUPERVISOR_TZ
-  #       value: Asia/Hong_Kong
-  #
-  # - type: cron
-  #   name: supervisor-planning
-  #   runtime: image
-  #   image:
-  #     url: ghcr.io/null-hype/devenv-supervisor@sha256:<pin after the first publish>
-  #     creds:
-  #       fromRegistryCreds:
-  #         name: Citizen6.Librarian6.Refrain4
-  #   schedule: "45 21,22 * * *"    # 23:45 Europe/Berlin, CEST then CET
-  #   envVars:
-  #     - key: PROTON_PASS_PERSONAL_ACCESS_TOKEN
-  #       sync: false
-  #     - key: TOOLBOX_TOKEN
-  #       sync: false
-  #     - key: SUPERVISOR_ZONE
-  #       value: planning
-  #     - key: SUPERVISOR_TZ
-  #       value: Europe/Berlin
-  #
-  # - type: cron
-  #   name: supervisor-opensource
-  #   runtime: image
-  #   image:
-  #     url: ghcr.io/null-hype/devenv-supervisor@sha256:<pin after the first publish>
-  #     creds:
-  #       fromRegistryCreds:
-  #         name: Citizen6.Librarian6.Refrain4
-  #   schedule: "45 4,5 * * *"      # 23:45 America/New_York, EDT then EST
-  #   envVars:
-  #     - key: PROTON_PASS_PERSONAL_ACCESS_TOKEN
-  #       sync: false
-  #     - key: TOOLBOX_TOKEN
-  #       sync: false
-  #     - key: SUPERVISOR_ZONE
-  #       value: opensource
-  #     - key: SUPERVISOR_TZ
-  #       value: America/New_York
