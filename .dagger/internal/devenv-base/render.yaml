@@ -35,7 +35,7 @@ services:
   #     creds:
   #       fromRegistryCreds:
   #         name: Citizen6.Librarian6.Refrain4
-  #   schedule: "14 * * * *"
+  #   schedule: "13 * * * *"
   #   envVars:
   #     - key: PROTON_PASS_PERSONAL_ACCESS_TOKEN
   #       sync: false
