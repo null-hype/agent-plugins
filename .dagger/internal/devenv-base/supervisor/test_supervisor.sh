@@ -284,11 +284,32 @@ grep -q 'resolved-LINEAR_API_KEY' "$CLAUDE_MCP" ||
   fail "Linear should be an explicit MCP server: --strict-mcp-config leaves no connector to rely on"
 [ "$(cat "$CLAUDE_MCP_MODE")" = 600 ] ||
   fail "the MCP config holds bearer tokens and should be mode 0600, got $(cat "$CLAUDE_MCP_MODE")"
-for secret in stub-toolbox-token resolved-LINEAR_API_KEY resolved-CLAUDE_CODE_OAUTH_TOKEN resolved-RESTIC_PASSWORD; do
+for secret in resolved-TOOLBOX_TOKEN resolved-LINEAR_API_KEY resolved-CLAUDE_CODE_OAUTH_TOKEN resolved-RESTIC_PASSWORD; do
   if grep -q "$secret" "$CLAUDE_ARGV"; then
     fail "$secret must never appear in claude's argv"
   fi
+  if grep -q "$secret" "$PASS_ARGV_LOG" "$RESTIC_LOG"; then
+    fail "$secret must never appear in the argv of pass-cli or restic"
+  fi
+  if grep -rq "$secret" "$HOME" "$TMPDIR"; then
+    fail "$secret must not be left in a file once the run has ended"
+  fi
 done
+[ -z "$(ls -A "$TMPDIR")" ] ||
+  fail "the 0600 MCP and key files should be removed on exit, left: $(ls "$TMPDIR")"
+
+# The toolbox token is resolved by pass-cli run from supervisor.env, and the
+# Render service is not asked to carry it.
+grep -qx 'TOOLBOX_TOKEN=pass://infra/render.com/TOOLBOX_TOKEN' "$PASS_ENVFILE_LOG" ||
+  fail "the env file handed to pass-cli run should reference the toolbox token in Proton Pass"
+grep -q -- "pass-cli run --env-file $DIR/supervisor.env -- " "$PASS_ARGV_LOG" ||
+  fail "the secrets should be resolved with pass-cli run --env-file supervisor.env"
+if grep -v '^ *#' "$DIR/supervisor.env" | grep -E '^[A-Z_]+=' | grep -v '=pass://' ; then
+  fail "supervisor.env should hold pass:// references only"
+fi
+if grep -q 'TOOLBOX_TOKEN' "$RENDER_YAML"; then
+  fail "render.yaml should not ask the service for TOOLBOX_TOKEN: it comes from Proton Pass"
+fi
 grep -qx -- '--strict-mcp-config' "$CLAUDE_ARGV" ||
   fail "--strict-mcp-config should be passed, so no other MCP server joins in"
 
