@@ -147,6 +147,7 @@ unset SUPERVISOR_ZONE SUPERVISOR_SESSION_ID SUPERVISOR_TZ SUPERVISOR_EFFORT
 export CALLS=$WORK/calls
 export RESTIC_LOG=$WORK/restic.log
 export PASS_ENVFILE_LOG=$WORK/pass-env.log
+export PASS_ARGV_LOG=$WORK/pass-argv.log
 export CLAUDE_ARGV=$WORK/argv
 export CLAUDE_PWD=$WORK/pwd
 export CLAUDE_MCP=$WORK/mcp.json
