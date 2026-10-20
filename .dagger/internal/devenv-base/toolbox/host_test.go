@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -112,5 +113,105 @@ esac
 	}
 	if strings.Contains(string(calls), "GITHUB_TOKEN") || strings.Contains(string(calls), " t ") {
 		t.Fatalf("token reached a devpod command line:\n%s", calls)
+	}
+}
+
+// TestHostShip runs host.sh's ship against real git: a local origin stands in
+// for GitHub, a fake devpod runs its command in a local workspace whose
+// container-use remote holds the environment, and a fake curl answers the
+// pulls API.
+func TestHostShip(t *testing.T) {
+	for _, tool := range []string{"bash", "jq", "git", "base64"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	home := t.TempDir()
+	bin := filepath.Join(home, "bin")
+	os.Mkdir(bin, 0o755)
+	origin := filepath.Join(home, "origin.git")
+	ws := filepath.Join(home, "ws")
+	env := []string{"HOME=" + home, "PATH=" + bin + ":" + os.Getenv("PATH"),
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t"}
+	sh := func(dir, script string) string {
+		t.Helper()
+		cmd := exec.Command("bash", "-euo", "pipefail", "-c", script)
+		cmd.Dir, cmd.Env = dir, env
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s: %v\n%s", script, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	// origin: main, then base, then the issue branch one commit ahead of base.
+	// The environment forked from base, so the issue branch moved on since.
+	sh(home, `git init -q --bare -b main origin.git && git clone -q origin.git src && cd src &&
+		echo a > a && git add a && git commit -qm main && git push -q origin main &&
+		git switch -qc agent/x && echo b > b && git add b && git commit -qm base && git push -q origin agent/x &&
+		git switch -qc cit-1-fix && echo finding > f && git add f && git commit -qm finding && git push -q origin cit-1-fix &&
+		git clone -q ../origin.git ../cu && cd ../cu && git switch -qc trusty-burro origin/agent/x &&
+		echo fix > b && git commit -qam "" --allow-empty-message &&
+		git clone -q ../origin.git ../ws && cd ../ws && git remote add container-use ../cu`)
+	os.WriteFile(filepath.Join(home, ".gitconfig"), []byte(
+		"[url \""+origin+"\"]\n\tinsteadOf = https://github.com/null-hype/agent-plugins.git\n"), 0o644)
+	os.WriteFile(filepath.Join(bin, "devpod"), []byte(`#!/bin/bash
+echo "$*" >> "$HOME/devpod.calls"
+[ "$1 $3" = "ssh --command" ] || exit 1
+echo "devpod noise"
+cmd=${4//\/workspaces\/$2/`+ws+`}
+bash -c "${cmd//\/tmp\/ship.bundle/$HOME/ship.bundle}"
+`), 0o755)
+	os.WriteFile(filepath.Join(bin, "curl"), []byte(`#!/bin/bash
+echo "$*" >> "$HOME/curl.calls"
+case "$*" in
+*"-X POST"*) cat > "$HOME/pr.json"; echo '{"html_url": "https://github.com/null-hype/agent-plugins/pull/9"}' ;;
+*) echo '[]' ;;
+esac
+`), 0o755)
+
+	ship := func(branch string) map[string]string {
+		t.Helper()
+		cmd := exec.Command("bash", "-s", "--", "ship", "linear-agent", "trusty-burro", branch, "agent/x", "Fix it (CIT-1)")
+		cmd.Env = env
+		cmd.Stdin = strings.NewReader(exports(map[string]string{"GITHUB_TOKEN": "s3cret"}) + hostScript)
+		var stderr strings.Builder
+		cmd.Stderr = &stderr
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("ship %s: %v\n%s", branch, err, stderr.String())
+		}
+		var got map[string]string
+		if err := json.Unmarshal(out, &got); err != nil {
+			t.Fatalf("ship %s printed %q: %v", branch, out, err)
+		}
+		return got
+	}
+
+	got := ship("cit-1-fix")
+	if got["pr"] != "https://github.com/null-hype/agent-plugins/pull/9" || !strings.Contains(got["diffstat"], "b | 2 +-") {
+		t.Fatalf("ship = %v", got)
+	}
+	// One commit on top of the moved-on branch: its finding stays and the fix lands.
+	if parent := sh(origin, "git rev-parse "+got["sha"]+"^"); parent != sh(home+"/src", "git rev-parse cit-1-fix") {
+		t.Fatalf("shipped commit's parent is %s, not the issue branch's tip", parent)
+	}
+	if sh(origin, "git rev-parse cit-1-fix") != got["sha"] || sh(origin, "git show cit-1-fix:b") != "fix" || sh(origin, "git show cit-1-fix:f") != "finding" {
+		t.Fatal("origin's issue branch does not hold both the finding and the fix")
+	}
+	pr, _ := os.ReadFile(filepath.Join(home, "pr.json"))
+	if req := strings.Join(strings.Fields(string(pr)), ""); !strings.Contains(req, `"head":"cit-1-fix"`) || !strings.Contains(req, `"base":"agent/x"`) {
+		t.Fatalf("PR request %s", pr)
+	}
+
+	// A branch that does not exist yet is created off base.
+	got = ship("cit-2-fix")
+	if parent := sh(origin, "git rev-parse "+got["sha"]+"^"); parent != sh(origin, "git rev-parse agent/x") {
+		t.Fatalf("new branch's commit has parent %s, not base", parent)
+	}
+
+	for _, f := range []string{"devpod.calls", "curl.calls"} {
+		if b, _ := os.ReadFile(filepath.Join(home, f)); strings.Contains(string(b), "s3cret") {
+			t.Fatalf("token reached a command line in %s:\n%s", f, b)
+		}
 	}
 }

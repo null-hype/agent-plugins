@@ -33,6 +33,7 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 | `workspace_status` | State, latest job's exit code and log tail |
 | `workspace_stop` / `workspace_delete` | Stop or delete a workspace |
 | `codex_review` | Codex reviews a PR (optional `model`) against `AGENTS.md` with the host's login and creates a container-use environment on the host and a CIT Triage issue for each finding, pushing the environment's branch under the issue's branch name |
+| `agent_ship` | Push the Linear agent's container-use environment (its sandbox cannot push): its change since it forked becomes one commit on the issue's branch, without force, and a PR into `base` is opened if none is. The commits leave the agent's workspace as a git bundle; the GitHub token stays on the host |
 | `codex_review_status` | The review job's exit code, one line per finding (environment id, Linear issue, branch, title) and log tail |
 | `codespace_status` | Whether a GitHub codespace is running, starting, stopping, stopped or rebuilding, and its repository and branch |
 | `codespace_start` / `codespace_stop` | Start or stop a GitHub codespace by name, through the GitHub API (CIT-436); says so and does nothing if it already is |
