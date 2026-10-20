@@ -6,6 +6,7 @@ import {
   type DocumentRange,
   type Investigation,
   type InvestigationDocument,
+  type InvestigationModel,
   type Severity,
 } from '../lib/investigationModel';
 
@@ -51,14 +52,17 @@ const STYLE = `
 .investigation-path button { font: inherit; padding: 0 6px; white-space: nowrap; }
 `;
 
-export default function InvestigationVault({ investigation, height = 420 }: { investigation: Investigation; height?: number }) {
+// A prebuilt `model` (e.g. from ../lib/codexReviewModel) skips the investigation walk.
+type Props = { height?: number } & ({ investigation: Investigation; model?: never } | { model: InvestigationModel; investigation?: never });
+
+export default function InvestigationVault({ investigation, model: prebuilt, height = 420 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const back = useRef<() => void>(() => {});
-  const model = useMemo(() => buildInvestigationModel(investigation), [investigation]);
+  const model = useMemo(() => prebuilt ?? buildInvestigationModel(investigation!), [prebuilt, investigation]);
   const { start } = model;
   const [path, setPath] = useState<string[]>(start);
   // Where ↑ goes: the level above in Drive, or home.
-  const homeLabel = investigation.drive ? 'Drive' : 'vault';
+  const homeLabel = investigation?.drive ? 'Drive' : investigation ? 'vault' : start[0];
   const [up, setUp] = useState(homeLabel);
 
   useEffect(() => {
@@ -85,7 +89,7 @@ export default function InvestigationVault({ investigation, height = 420 }: { in
       if (doc.markers.length) {
         monaco.editor.setModelMarkers(m, SOURCE, doc.markers.map((mk) => ({
           severity: SEVERITY[mk.severity], source: SOURCE, message: mk.message,
-          startLineNumber: mk.line, startColumn: mk.column, endLineNumber: mk.line, endColumn: mk.endColumn,
+          startLineNumber: mk.line, startColumn: mk.column, endLineNumber: mk.endLine ?? mk.line, endColumn: mk.endColumn,
         })));
       }
     }
