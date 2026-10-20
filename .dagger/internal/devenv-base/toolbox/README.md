@@ -125,9 +125,11 @@ What this does not guarantee:
   matches a command plus anything appended to it, so an appended `--command`
   could replace the allowed one. Any other command Codex tries is not
   refused: it runs in the read-only sandbox without network. Read-only
-  still reads, and the token file belongs to the same Unix user as Codex, so
-  such a command could print it. Closing that takes a root-owned token and a
-  sudoers entry for `ship-push` alone.
+  still reads, and the host's pass session belongs to the same Unix user as
+  Codex, so such a command could read the session's files. It has no network,
+  so it cannot ask Proton Pass for the token itself. Closing that takes a
+  separate Unix user for the pass session and a sudoers entry for `ship-push`
+  alone.
 - The token is in the process environment inside the `linear-agent` container
   while the push runs, where the Linear agent also runs.
 - That the sandbox keeps those other commands off the docker socket (the
