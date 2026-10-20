@@ -30,13 +30,16 @@ mkdir -p "$BIN"
 
 cat > "$BIN/pass-cli" <<'STUB'
 #!/usr/bin/env bash
-# info: report a live session, so the script never attempts a login.
+# info: report a live session, so the script never attempts a login -- unless
+# PASS_STUB_SESSION=none, when there is no session and no login succeeds.
 # run --env-file F -- cmd...: resolve each KEY=pass://vault/item/NAME line to
 # "resolved-NAME" -- so the value shows which pass item it came from -- and
 # run the command with them, as the real one does. The file is logged first,
-# to show which references a tick asks for.
+# to show which references a tick asks for, and so is every argv.
+echo "pass-cli $*" >> "$PASS_ARGV_LOG"
 case "${1:-}" in
-  info) exit 0 ;;
+  info) [ "${PASS_STUB_SESSION:-live}" = live ] || exit 1 ;;
+  login) [ "${PASS_STUB_SESSION:-live}" = live ] || { echo "login failed" >&2; exit 1; } ;;
   run)
     shift
     envfile=""
