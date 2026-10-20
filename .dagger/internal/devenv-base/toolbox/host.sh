@@ -346,6 +346,8 @@ ship)
   export PROTON_PASS_KEY_PROVIDER=fs
   pass-cli info >/dev/null 2>&1 || { echo "no Proton Pass session on this host, so the push token cannot be resolved: log pass-cli in once on the host (PROTON_PASS_KEY_PROVIDER=fs pass-cli login)" >&2; exit 2; }
   install -d -m 700 "$HOME/.toolbox/ship"
+  # The plaintext copy an earlier version of this action read.
+  rm -f "$HOME/.toolbox/ship/push-token"
   echo "SHIP_PUSH_PAT=$SHIP_PUSH_PAT_REF" > "$HOME/.toolbox/ship/ship.env"
   # One ship at a time: they share Codex's home, and its rules.
   refuse_if_busy "$id"
