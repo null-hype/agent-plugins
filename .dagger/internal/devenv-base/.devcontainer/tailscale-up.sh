@@ -49,3 +49,7 @@ else
     sh -c 'exec $SUDO tailscale --socket="$SOCK" up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME" --accept-routes --ssh'
   echo "tailscale: joined tailnet as $TS_HOSTNAME"
 fi
+# MagicDNS would point resolv.conf at 100.100.100.100, and then public names
+# stop resolving in the container (pass-cli cannot reach Proton). Nothing
+# here needs tailnet names.
+$SUDO tailscale --socket="$SOCK" set --accept-dns=false
