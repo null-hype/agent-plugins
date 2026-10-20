@@ -1,4 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { editedEnvironment } from "./handoff.ts";
 
 /**
  * Runs a single Claude Agent SDK turn and returns its final text result.
@@ -79,7 +80,9 @@ export async function runClaude(
   prompt: string,
   oauthToken: string,
   onActivity?: (content: ActivityContent) => void | Promise<void>,
-): Promise<string> {
+): Promise<{ result: string; environmentId?: string }> {
+  // The last environment the turn edited: the one with its work in it.
+  let environmentId: string | undefined;
   const result = query({
     prompt,
     options: {
@@ -116,19 +119,20 @@ export async function runClaude(
   });
 
   for await (const message of result) {
-    if (message.type === "assistant" && onActivity) {
+    if (message.type === "assistant") {
       for (const block of message.message.content) {
         if (block.type === "text" && block.text) {
-          await onActivity({ type: "thought", body: truncate(block.text) });
+          await onActivity?.({ type: "thought", body: truncate(block.text) });
         } else if (block.type === "thinking" && block.thinking) {
-          await onActivity({ type: "thought", body: truncate(block.thinking) });
+          await onActivity?.({ type: "thought", body: truncate(block.thinking) });
         } else if (block.type === "tool_use") {
-          await onActivity({ type: "action", body: describeToolUse(block.name, block.input) });
+          environmentId = editedEnvironment(block.name, block.input) ?? environmentId;
+          await onActivity?.({ type: "action", body: describeToolUse(block.name, block.input) });
         }
       }
     } else if (message.type === "result") {
       if (message.subtype === "success") {
-        return message.result;
+        return { result: message.result, environmentId };
       }
       throw new Error(`claude turn failed (${message.subtype}): ${message.errors.join("; ")}`);
     }
