@@ -133,8 +133,14 @@ export PATH="$BIN:$PATH"
 export HOME=$WORK/home
 mkdir -p "$HOME"
 export PROTON_PASS_PERSONAL_ACCESS_TOKEN=stub-pass-token
-export TOOLBOX_TOKEN=stub-toolbox-token
+# TOOLBOX_TOKEN is not set: the Render service holds only the pass token, and
+# the toolbox token must come from supervisor.env through pass-cli.
+unset TOOLBOX_TOKEN
 export SUPERVISOR_TIMEOUT=2m
+# Where mktemp puts the MCP and key files, so a run can be checked for
+# leaving none behind.
+export TMPDIR=$WORK/tmp
+mkdir -p "$TMPDIR"
 # Nothing a zone-per-service supervisor needed is set: the tick must not miss
 # it. The defaults are what the first run asserts, wherever the test runs.
 unset SUPERVISOR_ZONE SUPERVISOR_SESSION_ID SUPERVISOR_TZ SUPERVISOR_EFFORT
