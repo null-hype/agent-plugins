@@ -45,7 +45,7 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
  * resolving to /app.
  * Diagnosed live in the JIN-40 and JIN-57/58 agent sessions.
  */
-const WORKSPACE_DIR =
+export const WORKSPACE_DIR =
   process.env.DEVENV_BASE_WORKSPACE_DIR ?? "/workspaces/devenv-base-gce";
 export type ActivityContent = { type: string; body: string };
 
