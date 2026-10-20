@@ -86,6 +86,7 @@ fi
 # --resolved: the secrets are in the environment from here on.
 : "${CLAUDE_CODE_OAUTH_TOKEN:?CLAUDE_CODE_OAUTH_TOKEN must come from the pass env file}"
 : "${LINEAR_API_KEY:?LINEAR_API_KEY must come from the pass env file}"
+: "${TOOLBOX_TOKEN:?TOOLBOX_TOKEN must come from the pass env file}"
 : "${GCP_SERVICE_ACCOUNT_KEY:?GCP_SERVICE_ACCOUNT_KEY must come from the pass env file (restic)}"
 : "${RESTIC_REPOSITORY:?RESTIC_REPOSITORY must come from the pass env file}"
 : "${RESTIC_PASSWORD:?RESTIC_PASSWORD must come from the pass env file}"
