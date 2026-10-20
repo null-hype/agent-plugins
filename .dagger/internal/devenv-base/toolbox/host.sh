@@ -12,6 +12,8 @@ export REPO=https://github.com/null-hype/agent-plugins.git
 export LINEAR_TEAM_ID=c59e559d-fd9c-43da-a049-108672cb6bb4
 export LINEAR_TRIAGE_STATE_ID=5b35854e-8954-4fec-a99b-61752cd2400c
 export LINEAR_API_KEY_REF=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY
+# agent_ship's push token: can push this repository and nothing else.
+export SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN
 export DEVCONTAINER_DIR=.dagger/internal/devenv-base/.devcontainer
 # Same order as keepalive/runner/bootstrap.go.
 export AGENT_SCRIPTS="generate-env-files.sh tailscale-up.sh install-tools.sh start-linear-agent.sh start-cloudflared.sh check-linear-agent-webhook-live.sh"
