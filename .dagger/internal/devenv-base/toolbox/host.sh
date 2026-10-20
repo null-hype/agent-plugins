@@ -152,60 +152,130 @@ PROMPT
   rm -rf "$hk"
 }
 
-# Ships a container-use environment from the Linear agent's workspace, whose
-# sandbox has no git remote by design. The environment's change since it
-# forked becomes one commit on top of the issue's branch (or a new branch off
-# $base), pushed without force, and a PR into $base is opened if the branch
-# has none. The commits leave the workspace as a bundle on stdout, so the
-# GitHub token never enters the agent's container.
+# Ships a container-use environment from the Linear agent's workspace, where
+# its state lives. Codex, signed in on this host, runs `container-use merge`
+# for the environment and `git push` to the issue's branch, and its rules
+# allow exactly those two commands. Both run in the workspace through devpod
+# ssh, in a worktree of its own: the shared checkout is moved to origin/main
+# on every agent turn. The worktree starts at the issue's branch, or at
+# origin/main when the branch does not exist yet, so the push is a
+# fast-forward and never needs force.
+#
+# The push token lives in ~/.toolbox/ship/push-token on this host and can push
+# this repository and nothing else. Only ship-push and the check below read it;
+# it is not in Codex's environment, and the Linear key never comes near: this
+# job does not log pass-cli in. After Codex exits, this script checks on GitHub that
+# the environment's tip is on the branch, so a Codex that stopped early or
+# only said it pushed is not a success. The result is $out:
+# {env, branch, sha, status}.
+SHIP_CREDENTIAL_HELPER=/workspaces/.ship-git-credential
+
+# Runs the script in the workspace as `bash -s -- args`. The script travels
+# in the command, not on stdin, which devpod ssh does not promise to forward.
+# devpod prints its own messages too, so callers pick out marker lines.
+ship_in_workspace() { # ws script send args... (SHIP_PUSH_PAT is forwarded if send is 1)
+  local ws=$1 script=$2 send=$3
+  shift 3
+  devpod ssh "$ws" ${send:+--send-env SHIP_PUSH_PAT} \
+    --command "echo $(printf %s "$script" | base64 -w0) | base64 -d | bash -s -- $*" </dev/null
+}
+
+SHIP_PREPARE='set -euo pipefail
+env=$1 branch=$2 wt=$3 root=$4 helper=$5
+cd "$root"
+git fetch -q origin
+git fetch -q container-use
+tip=$(git rev-parse --verify -q "refs/remotes/container-use/$env") || { echo "no container-use environment $env in $root" >&2; exit 3; }
+if git rev-parse --verify -q "refs/remotes/origin/$branch" >/dev/null; then start=refs/remotes/origin/$branch; else start=refs/remotes/origin/main; fi
+if git merge-base --is-ancestor "$tip" "$start"; then echo "SHIP_ALREADY $(git rev-parse "$start")"; exit 0; fi
+git worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
+git worktree prune
+git worktree add -q --detach "$wt" "$start"
+git config user.name >/dev/null || git config --global user.name toolbox
+git config user.email >/dev/null || git config --global user.email toolbox@toolbox-host
+printf "%s\n" "#!/bin/sh" "test \"\$1\" = get || exit 0" "echo username=x-access-token" "echo \"password=\$SHIP_PUSH_PAT\"" > "$helper"
+chmod 755 "$helper"
+echo "SHIP_READY $start"'
+
+SHIP_VERIFY='set -euo pipefail
+env=$1 branch=$2 wt=$3 root=$4 helper=$5
+cd "$root"
+git -c credential.helper= -c credential.helper="$helper" fetch -q origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+if ! git merge-base --is-ancestor "refs/remotes/container-use/$env" "refs/remotes/origin/$branch"; then
+  echo "origin/$branch does not contain environment $env" >&2
+  exit 5
+fi
+echo "SHIP_TIP $(git rev-parse "refs/remotes/origin/$branch")"
+git worktree remove --force "$wt"'
+
 run_ship() {
-  local id=$1 env=$2 branch=$3 base=$4 title=$5 dir=$HOME/.toolbox/ship parent fork stat sha pr
-  git_auth
-  git config --global user.name toolbox
-  git config --global user.email toolbox@toolbox-host
-  # Global, since the trap runs after this function returns.
-  tmp=$(mktemp -d)
-  trap 'rm -rf "$tmp"' EXIT
-  # devpod prints its own messages too, hence the markers.
-  devpod ssh "$id" --command "cd /workspaces/$id && git fetch -q container-use &&
-    git bundle create -q /tmp/ship.bundle refs/remotes/container-use/$env &&
-    echo BUNDLE && base64 -w0 /tmp/ship.bundle && echo && echo END; rm -f /tmp/ship.bundle" </dev/null |
-    sed -n '/^BUNDLE$/,/^END$/p' | sed '1d;$d' | base64 -d > "$tmp/ship.bundle" || true
-  if [ ! -s "$tmp/ship.bundle" ]; then
-    echo "no container-use environment $env in $id" >&2
-    return 1
-  fi
-  [ -d "$dir" ] || git clone -q --no-checkout "$REPO" "$dir"
-  git -C "$dir" fetch -q "$tmp/ship.bundle" "+refs/remotes/container-use/$env:refs/ship/$env"
-  git -C "$dir" fetch -q origin "+refs/heads/$base:refs/remotes/origin/$base"
-  parent=refs/remotes/origin/$base
-  if git -C "$dir" ls-remote --exit-code -q origin "refs/heads/$branch" >/dev/null; then
-    git -C "$dir" fetch -q origin "+refs/heads/$branch:refs/remotes/origin/$branch"
-    parent=refs/remotes/origin/$branch
-  fi
-  fork=$(git -C "$dir" merge-base "$parent" "refs/ship/$env")
-  if git -C "$dir" diff --quiet "$fork" "refs/ship/$env"; then
-    echo "$env has no changes since it forked at ${fork:0:7}" >&2
-    return 1
-  fi
-  stat=$(git -C "$dir" diff --stat "$fork" "refs/ship/$env")
-  # The change is applied to $parent in a scratch index, so a branch that
-  # moved on since the environment forked still gets a fast-forward.
-  GIT_INDEX_FILE=$tmp/index git -C "$dir" read-tree "$parent"
-  git -C "$dir" diff --binary "$fork" "refs/ship/$env" | GIT_INDEX_FILE=$tmp/index git -C "$dir" apply --cached
-  sha=$(git -C "$dir" commit-tree "$(GIT_INDEX_FILE=$tmp/index git -C "$dir" write-tree)" -p "$parent" \
-    -m "$title" -m "Shipped by agent_ship from container-use environment $env.")
-  git -C "$dir" push -q origin "$sha:refs/heads/$branch"
-  pr=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls?state=open&head=null-hype:$branch" | jq -r '.[0].html_url // empty')
-  if [ -z "$pr" ]; then
-    pr=$(jq -n --arg title "$title" --arg head "$branch" --arg base "$base" \
-      --arg body "Shipped by \`agent_ship\` from container-use environment \`$env\`: its change since ${fork:0:7}, as one commit." \
-      '{title: $title, head: $head, base: $base, body: $body}' |
-      api -X POST https://api.github.com/repos/null-hype/agent-plugins/pulls --data @- | jq -r .html_url) ||
-      { echo "pushed $branch at ${sha:0:7}, but opening the PR into $base failed" >&2; return 1; }
-  fi
-  jq -n --arg branch "$branch" --arg sha "$sha" --arg pr "$pr" --arg diffstat "$stat" \
-    '{branch: $branch, sha: $sha, pr: $pr, diffstat: $diffstat}'
+  set -euo pipefail
+  local ws=$1 env=$2 branch=$3 out=$4 dir=$HOME/.toolbox/ship
+  local root=/workspaces/$ws wt=/workspaces/ship-$2 args sha merge push mark
+  args="$env $branch $wt $root $SHIP_CREDENTIAL_HELPER"
+  mkdir -p "$dir/work" "$dir/codex/rules"
+
+  mark=$(ship_in_workspace "$ws" "$SHIP_PREPARE" "" "$args" | sed -n 's/^SHIP_\(ALREADY\|READY\) /\1 /p')
+  case $mark in
+  "ALREADY "*)
+    jq -n --arg env "$env" --arg branch "$branch" --arg sha "${mark#ALREADY }" \
+      '{env: $env, branch: $branch, sha: $sha, status: "already on the branch"}' > "$out"
+    return 0
+    ;;
+  "READY "*) ;;
+  *) echo "could not prepare a worktree for $env in $ws" >&2; return 1 ;;
+  esac
+
+  # A prefix rule also matches a command with arguments added after it, and
+  # devpod ssh takes the last --command. So the allowed commands are two
+  # scripts that ignore their arguments and run the one command each; the
+  # rules allow those scripts and nothing else. The environment and branch
+  # passed the checks in the ship action, so they hold no quote or newline.
+  merge="cd $wt && container-use merge $env"
+  push="cd $wt && git -c credential.helper= -c credential.helper=$SHIP_CREDENTIAL_HELPER push origin HEAD:refs/heads/$branch"
+  mkdir -p "$dir/bin"
+  printf '#!/bin/bash\nexec devpod ssh %s --command %s\n' "$ws" "'$merge'" > "$dir/bin/ship-merge"
+  printf '#!/bin/bash\nSHIP_PUSH_PAT=$(cat %s) || exit 1\nexport SHIP_PUSH_PAT\nexec devpod ssh %s --send-env SHIP_PUSH_PAT --command %s\n' \
+    "$dir/push-token" "$ws" "'$push'" > "$dir/bin/ship-push"
+  chmod 755 "$dir/bin/ship-merge" "$dir/bin/ship-push"
+  cat > "$dir/codex/rules/default.rules" <<RULES
+prefix_rule(
+    pattern = ["$dir/bin/ship-merge"],
+    justification = "container-use merge $env, in the ship worktree.",
+    match = [["$dir/bin/ship-merge"]],
+    not_match = [["$dir/bin/ship-other"]],
+)
+prefix_rule(
+    pattern = ["$dir/bin/ship-push"],
+    justification = "git push to $branch, without force.",
+    match = [["$dir/bin/ship-push"]],
+    not_match = [["$dir/bin/ship-other"]],
+)
+RULES
+  ln -sfn "$HOME/.codex/auth.json" "$dir/codex/auth.json"
+
+  # Any other command Codex tries runs in a read-only sandbox without
+  # network. Its shell gets only the variables listed.
+  (cd "$dir/work" && CODEX_HOME=$dir/codex codex exec --skip-git-repo-check \
+    -c 'sandbox_mode="read-only"' -c 'approval_policy="never"' \
+    -c 'shell_environment_policy.include_only=["PATH","HOME","USER","LOGNAME","SHELL","LANG","TMPDIR"]' \
+    -o "$dir/last-message.md" - <<PROMPT
+Ship the container-use environment $env to the branch $branch. Run these two commands, in this order, exactly as
+written and nothing else; each one is already allowed. They take no arguments.
+
+1. $dir/bin/ship-merge     (container-use merge $env)
+2. $dir/bin/ship-push      (git push to $branch)
+
+Run the second only if the first succeeded. If either fails, stop and print its output; do not retry, edit anything,
+or try another command. Finish by printing one line: pushed, or the error.
+PROMPT
+  )
+
+  # The postcondition is read from GitHub, not taken from Codex.
+  sha=$(SHIP_PUSH_PAT=$(cat "$dir/push-token") ship_in_workspace "$ws" "$SHIP_VERIFY" 1 "$args" | sed -n 's/^SHIP_TIP //p')
+  [ -n "$sha" ] || { echo "$env is not on $branch after the ship" >&2; return 1; }
+  jq -n --arg env "$env" --arg branch "$branch" --arg sha "$sha" \
+    '{env: $env, branch: $branch, sha: $sha, status: "pushed"}' > "$out"
 }
 
 action=${1:?action}
@@ -263,8 +333,28 @@ review)
   jq -n --argjson pr "$pr" '{pr: $pr, job_running: true}'
   ;;
 ship)
-  refuse_if_busy "$1"
-  run_ship "$@"
+  ws=$1 env=$2 branch=$3 id=ship
+  # They go into a remote shell and a rules file: only plain names pass.
+  [[ $env =~ ^[a-z]+-[a-z]+$ ]] || { echo "$env is not a container-use environment id" >&2; exit 2; }
+  [[ $branch =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]{0,99}$ && $branch != main ]] || { echo "$branch is not an issue branch" >&2; exit 2; }
+  [ -s "$HOME/.toolbox/ship/push-token" ] || { echo "no push token: put one in $HOME/.toolbox/ship/push-token (mode 0600)" >&2; exit 2; }
+  # One ship at a time: they share Codex's home, and its rules.
+  refuse_if_busy "$id"
+  rm -f "$JOBS/$id.exit" "$JOBS/$id.json" "$HOME/.toolbox/ship/last-message.md"
+  setsid nohup bash -c "$(declare -p SHIP_CREDENTIAL_HELPER SHIP_PREPARE SHIP_VERIFY; declare -f ship_in_workspace run_ship)"'
+    (run_ship "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$ws" "$env" "$branch" "$JOBS/$id.json" \
+    > "$JOBS/$id.log" 2>&1 < /dev/null &
+  echo $! > "$JOBS/$id.pid"
+  jq -n --arg env "$env" --arg branch "$branch" '{env: $env, branch: $branch, job_running: true}'
+  ;;
+ship-status)
+  id=ship
+  jq -n --argjson job_running "$(job_running "$id" && echo true || echo false)" \
+    --argjson job_exit "$(cat "$JOBS/$id.exit" 2>/dev/null || echo null)" \
+    --argjson result "$(cat "$JOBS/$id.json" 2>/dev/null || echo null)" \
+    --arg codex "$(cat "$HOME/.toolbox/ship/last-message.md" 2>/dev/null || true)" \
+    --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null || true)" \
+    '{job_running: $job_running, job_exit: $job_exit, result: $result, codex: $codex, log_tail: $log_tail}'
   ;;
 review-status)
   id=review-$1
