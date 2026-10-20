@@ -240,8 +240,8 @@ run_ship() {
   push="cd $wt && git -c credential.helper= -c credential.helper=$SHIP_CREDENTIAL_HELPER push origin HEAD:refs/heads/$branch"
   mkdir -p "$dir/bin"
   printf '#!/bin/bash\nexec devpod ssh %s --command %s\n' "$ws" "'$merge'" > "$dir/bin/ship-merge"
-  printf '#!/bin/bash\nSHIP_PUSH_PAT=$(cat %s) || exit 1\nexport SHIP_PUSH_PAT\nexec devpod ssh %s --send-env SHIP_PUSH_PAT --command %s\n' \
-    "$dir/push-token" "$ws" "'$push'" > "$dir/bin/ship-push"
+  printf '#!/bin/bash\nexport PROTON_PASS_KEY_PROVIDER=fs\nexec pass-cli run --env-file %s -- devpod ssh %s --send-env SHIP_PUSH_PAT --command %s\n' \
+    "$dir/ship.env" "$ws" "'$push'" > "$dir/bin/ship-push"
   chmod 755 "$dir/bin/ship-merge" "$dir/bin/ship-push"
   cat > "$dir/codex/rules/default.rules" <<RULES
 prefix_rule(
