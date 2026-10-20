@@ -342,7 +342,11 @@ ship)
   # They go into a remote shell and a rules file: only plain names pass.
   [[ $env =~ ^[a-z]+-[a-z]+$ ]] || { echo "$env is not a container-use environment id" >&2; exit 2; }
   [[ $branch =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]{0,99}$ && $branch != main ]] || { echo "$branch is not an issue branch" >&2; exit 2; }
-  [ -s "$HOME/.toolbox/ship/push-token" ] || { echo "no push token: put one in $HOME/.toolbox/ship/push-token (mode 0600)" >&2; exit 2; }
+  # The push token is resolved from Proton Pass by the host's own session.
+  export PROTON_PASS_KEY_PROVIDER=fs
+  pass-cli info >/dev/null 2>&1 || { echo "no Proton Pass session on this host, so the push token cannot be resolved: log pass-cli in once as $USER (PROTON_PASS_KEY_PROVIDER=fs pass-cli login)" >&2; exit 2; }
+  install -d -m 700 "$HOME/.toolbox/ship"
+  echo "SHIP_PUSH_PAT=$SHIP_PUSH_PAT_REF" > "$HOME/.toolbox/ship/ship.env"
   # One ship at a time: they share Codex's home, and its rules.
   refuse_if_busy "$id"
   rm -f "$JOBS/$id.exit" "$JOBS/$id.json" "$HOME/.toolbox/ship/last-message.md"
