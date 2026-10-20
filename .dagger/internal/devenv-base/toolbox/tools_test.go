@@ -47,7 +47,7 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 		return json.Marshal(f.workspaces)
 	case "ping":
 		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true}}`), nil
-	case "status", "up", "stop", "delete", "review", "review-status", "ship":
+	case "status", "up", "stop", "delete", "review", "review-status", "ship", "ship-status":
 		return []byte(`{}`), nil
 	}
 	return nil, fmt.Errorf("unexpected action %s", args[0])
@@ -208,28 +208,36 @@ func TestCodexReviewPassesTheModelAndTokens(t *testing.T) {
 	}
 }
 
-func TestAgentShipSendsOnlyTheGitHubToken(t *testing.T) {
+func TestAgentShipSendsNoSecrets(t *testing.T) {
 	tb, _, h := newTestToolbox("RUNNING")
-	args := map[string]any{"env": "trusty-burro", "branch": "cit-432-fix", "base": "agent/733b00af", "title": "Fix it (CIT-432)"}
+	args := map[string]any{"env": "trusty-burro", "branch": "cit-432-fix"}
 	if res := callTool(t, tb, "agent_ship", args); res.IsError {
 		t.Fatalf("agent_ship: %s", resultText(res))
 	}
 	c := h.calls[0]
-	if got := strings.Join(c.args, " "); got != "ship linear-agent trusty-burro cit-432-fix agent/733b00af Fix it (CIT-432)" {
+	if got := strings.Join(c.args, " "); got != "ship linear-agent trusty-burro cit-432-fix" {
 		t.Fatalf("args %q", got)
 	}
-	if len(c.env) != 1 || c.env["GITHUB_TOKEN"] != "gh-token" {
-		t.Fatalf("env %v, want only GITHUB_TOKEN", c.env)
+	if len(c.env) != 0 {
+		t.Fatalf("env %v, want none: the push token is on the host", c.env)
+	}
+}
+
+func TestAgentShipStatus(t *testing.T) {
+	tb, _, h := newTestToolbox("RUNNING")
+	if res := callTool(t, tb, "agent_ship_status", map[string]any{}); res.IsError {
+		t.Fatalf("agent_ship_status: %s", resultText(res))
+	}
+	if got := h.actions(); len(got) != 1 || got[0] != "ship-status" || len(h.calls[0].env) != 0 {
+		t.Fatalf("host calls %v env %v", got, h.calls[0].env)
 	}
 }
 
 func TestAgentShipRejects(t *testing.T) {
-	ok := map[string]any{"env": "trusty-burro", "branch": "cit-432-fix", "base": "main", "title": "Fix it"}
+	ok := map[string]any{"env": "trusty-burro", "branch": "cit-432-fix"}
 	for k, v := range map[string]any{
 		"env":    "trusty-burro; rm -rf /",
 		"branch": "main",
-		"base":   "--force",
-		"title":  "two\nlines",
 	} {
 		args := map[string]any{}
 		for kk, vv := range ok {
@@ -244,10 +252,11 @@ func TestAgentShipRejects(t *testing.T) {
 			t.Errorf("agent_ship with %s=%q reached the host", k, v)
 		}
 	}
-	tb, _, _ := newTestToolbox("RUNNING")
-	args := map[string]any{"env": "trusty-burro", "branch": "x", "base": "x", "title": "t"}
-	if res := callTool(t, tb, "agent_ship", args); !res.IsError {
-		t.Error("agent_ship onto its own base was accepted")
+	for _, branch := range []string{"--force", "a b", "x'y", "a\nb"} {
+		tb, _, h := newTestToolbox("RUNNING")
+		if res := callTool(t, tb, "agent_ship", map[string]any{"env": "trusty-burro", "branch": branch}); !res.IsError || len(h.calls) != 0 {
+			t.Errorf("agent_ship with branch %q was accepted", branch)
+		}
 	}
 }
 

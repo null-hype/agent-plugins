@@ -33,7 +33,8 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 | `workspace_status` | State, latest job's exit code and log tail |
 | `workspace_stop` / `workspace_delete` | Stop or delete a workspace |
 | `codex_review` | Codex reviews a PR (optional `model`) against `AGENTS.md` with the host's login and creates a container-use environment on the host and a CIT Triage issue for each finding, pushing the environment's branch under the issue's branch name |
-| `agent_ship` | Push the Linear agent's container-use environment (its sandbox cannot push): its change since it forked becomes one commit on the issue's branch, without force, and a PR into `base` is opened if none is. The commits leave the agent's workspace as a git bundle; the GitHub token stays on the host |
+| `agent_ship` | Ship the Linear agent's container-use environment (its sandbox cannot push): Codex on the host runs `container-use merge` for it in a worktree of the `linear-agent` workspace, then `git push` to the issue's Linear branch (`branch`), without force. Returns at once |
+| `agent_ship_status` | The ship job's exit code, the commit now on the branch once GitHub confirms the environment is on it, Codex's last message and log tail |
 | `codex_review_status` | The review job's exit code, one line per finding (environment id, Linear issue, branch, title) and log tail |
 | `codespace_status` | Whether a GitHub codespace is running, starting, stopping, stopped or rebuilding, and its repository and branch |
 | `codespace_start` / `codespace_stop` | Start or stop a GitHub codespace by name, through the GitHub API (CIT-436); says so and does nothing if it already is |
@@ -81,6 +82,57 @@ required ones, the server offers only `ping`. With them, it refuses to start wit
 
 `setup-host.sh` creates the VM and service account and writes these to
 Render. Rerunning it replaces the SSH key.
+
+## Shipping
+
+`agent_ship` starts one job at a time (`ship` in `~/.toolbox/jobs`). It adds a
+worktree to the `linear-agent` workspace at the issue's branch, or at
+`origin/main` if the branch does not exist yet, so the push is a fast-forward.
+Codex then runs two scripts, `~/.toolbox/ship/bin/ship-merge` and
+`ship-push`, which run `container-use merge <env>` and `git push origin
+HEAD:refs/heads/<branch>` in that worktree through `devpod ssh`. (The binary
+is `container-use`, which `cu` aliases.) A worktree shares the checkout's git
+config, so `container-use` finds the same fork repository through its
+`container-use` remote. Codex runs with its own `CODEX_HOME`
+(`~/.toolbox/ship`, sharing the host's login), a read-only sandbox, and
+rules that allow those two scripts and nothing else. When Codex exits, the
+job fetches the branch from GitHub and fails unless it contains the
+environment's tip.
+
+The push credential is a file on the host, set once over Tailscale SSH. Use a
+fine-grained token with contents write on the repository and nothing else:
+
+```sh
+ssh toolbox@toolbox-host
+install -d -m 700 ~/.toolbox/ship && install -m 600 /dev/stdin ~/.toolbox/ship/push-token   # paste the token, then Ctrl-D
+```
+
+`agent_ship` sends no secret from Render and refuses if the file is missing.
+The Linear key is not on this path: the job does not log pass-cli in. The token
+is not in Codex's environment or on any command line; `ship-push` reads it and
+hands it to the push, and the check at the end, through `devpod ssh
+--send-env`.
+
+What this does not guarantee:
+
+- The two commands are scripts, not the commands themselves, because a rule
+  matches a command plus anything appended to it, so an appended `--command`
+  could replace the allowed one. Any other command Codex tries is not
+  refused: it runs in the read-only sandbox without network. Read-only
+  still reads, and the token file belongs to the same Unix user as Codex, so
+  such a command could print it. Closing that takes a root-owned token and a
+  sudoers entry for `ship-push` alone.
+- The token is in the process environment inside the `linear-agent` container
+  while the push runs, where the Linear agent also runs.
+- That the sandbox keeps those other commands off the docker socket (the
+  `toolbox` user is in the `docker` group, so a command that reaches it can run
+  anything in the workspace container) depends on Codex's seccomp filter
+  refusing `connect` on unix sockets. Check on the host:
+  `codex sandbox -- python3 -c "import socket; socket.socket(socket.AF_UNIX).connect('/var/run/docker.sock')"`
+  must fail.
+- `~/.toolbox/ship/codex/auth.json` is a link to the host's login. If Codex
+  replaces the file when it refreshes the token, the link is replaced by a
+  copy; log in again on the host if `codex_review` stops working after a ship.
 
 ## Test
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -62,9 +61,7 @@ type reviewIn struct {
 
 type shipIn struct {
 	Env    string `json:"env" jsonschema:"the Linear agent's container-use environment id, e.g. trusty-burro"`
-	Branch string `json:"branch" jsonschema:"branch to push to: the issue's Linear branch name; created if it does not exist"`
-	Base   string `json:"base" jsonschema:"branch the pull request merges into, e.g. main or the head branch of the PR whose review filed the issue"`
-	Title  string `json:"title" jsonschema:"commit and pull request title"`
+	Branch string `json:"branch" jsonschema:"the issue's Linear branch name (its gitBranchName); created if it does not exist"`
 }
 
 type prIn struct {
@@ -308,25 +305,31 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "agent_ship",
-		Description: "Push the Linear agent's finished container-use environment, whose sandbox cannot push, and open a pull request. " +
-			"The environment's change since it forked becomes one commit on top of branch (created off base if missing), pushed without force; " +
-			"a pull request from branch into base is opened unless one is already open. Returns the commit, the PR URL and a diffstat.",
+		Description: "Ship the Linear agent's finished container-use environment, whose sandbox cannot push. Codex on the host merges it " +
+			"(container-use merge) and pushes the result to branch, the issue's Linear branch name, without force. " +
+			"Returns at once; poll agent_ship_status until job_exit is set.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in shipIn) (*mcp.CallToolResult, any, error) {
 		if !envRE.MatchString(in.Env) {
 			return nil, nil, fmt.Errorf("env %q is not a container-use environment id", in.Env)
 		}
-		for _, r := range []string{in.Branch, in.Base} {
-			if !refRE.MatchString(r) {
-				return nil, nil, fmt.Errorf("%q is not a plain branch name", r)
-			}
+		if !refRE.MatchString(in.Branch) {
+			return nil, nil, fmt.Errorf("%q is not a plain branch name", in.Branch)
 		}
-		if in.Branch == "main" || in.Branch == in.Base {
-			return nil, nil, fmt.Errorf("branch %q must be the issue's own branch, not main or the base", in.Branch)
+		if in.Branch == "main" {
+			return nil, nil, fmt.Errorf("branch must be the issue's own branch, not main")
 		}
-		if in.Title == "" || len(in.Title) > 200 || strings.ContainsAny(in.Title, "\r\n") {
-			return nil, nil, fmt.Errorf("title must be one line of at most 200 characters")
+		b, err := t.host.Run(ctx, nil, "ship", agentWorkspace, in.Env, in.Branch)
+		if err != nil {
+			return nil, nil, err
 		}
-		b, err := t.host.Run(ctx, map[string]string{"GITHUB_TOKEN": t.githubToken}, "ship", agentWorkspace, in.Env, in.Branch, in.Base, in.Title)
+		return text(b), nil, nil
+	})
+	mcp.AddTool(s, &mcp.Tool{
+		Name: "agent_ship_status",
+		Description: "Report the latest agent_ship job: its exit code (null while running), the environment, branch and commit " +
+			"now on GitHub once it has succeeded, Codex's last message and the end of the log.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
+		b, err := t.host.Run(ctx, nil, "ship-status")
 		if err != nil {
 			return nil, nil, err
 		}
