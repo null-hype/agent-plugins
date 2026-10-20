@@ -14,7 +14,6 @@ services:
       - key: WORKSPACE_ID
         value: devenv-base-gce
 
-
   # The dispatch supervisor (CIT-443, CIT-453): one hourly service that
   # continues one Claude session and works every open `Dispatch: <name>`
   # issue.
