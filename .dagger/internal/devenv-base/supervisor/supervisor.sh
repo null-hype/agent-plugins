@@ -68,7 +68,7 @@ SESSION_PROJECT=-workspaces-agent-plugins
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 
 if [ "$stage" = --bounded-run ]; then
-  export PROTON_PASS_AGENT_REASON="supervisor: resolve the Claude Code token, Linear key and restic secrets for an hourly tick"
+  export PROTON_PASS_AGENT_REASON="supervisor: resolve the Claude Code token, Linear key, toolbox token and restic secrets for an hourly tick"
 
   echo "supervisor: checking Proton Pass session"
   if ! timeout --foreground --kill-after=10s 60s pass-cli info > /dev/null 2>&1; then
