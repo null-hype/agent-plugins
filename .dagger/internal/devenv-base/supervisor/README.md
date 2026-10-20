@@ -81,7 +81,8 @@ Whether `--strict-mcp-config` would *also* drop a connector under a
 full-scope login was not established.
 
 **Open point, not settled here:** `LINEAR_API_KEY` is
-`pass://anthropic.ai/claude/LINEAR_API_KEY`. Whether that key belongs to a
+`pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY`, the
+reference `toolbox/host.sh` already uses for `codex_review`. Whether that key belongs to a
 person or to the app decides whether a `@linear …` mention a tick posts is
 acted on. The first real run will show it; nobody should read the key to find
 out.
