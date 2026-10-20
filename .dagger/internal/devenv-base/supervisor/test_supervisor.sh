@@ -166,11 +166,11 @@ calls() { paste -sd' ' "$CALLS"; }
 # One service, one schedule. The block is commented out until the image
 # digest can be pinned, so it is read as comments.
 [ -f "$RENDER_YAML" ] || fail "render.yaml should sit next to the supervisor directory"
-[ "$(grep -cE '^ *# +name: ' "$RENDER_YAML")" = 1 ] ||
+[ "$(grep -cE '^ *#   name: ' "$RENDER_YAML")" = 1 ] ||
   fail "render.yaml should describe exactly one supervisor service"
 grep -qxE ' *#   name: supervisor' "$RENDER_YAML" ||
   fail "the one service should be named supervisor"
-[ "$(grep -cE '^ *# +schedule: ' "$RENDER_YAML")" = 1 ] ||
+[ "$(grep -cE '^ *#   schedule: ' "$RENDER_YAML")" = 1 ] ||
   fail "the supervisor should have exactly one schedule"
 grep -qE '^ *#   schedule: "13 \* \* \* \*"$' "$RENDER_YAML" ||
   fail "the supervisor should run at minute 13 of every hour"
