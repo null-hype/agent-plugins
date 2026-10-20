@@ -276,8 +276,8 @@ fi
 
 # --- the tools ---------------------------------------------------------------
 
-grep -q 'stub-toolbox-token' "$CLAUDE_MCP" ||
-  fail "the MCP config should carry the toolbox bearer token"
+grep -q 'Bearer resolved-TOOLBOX_TOKEN' "$CLAUDE_MCP" ||
+  fail "the MCP config should carry the toolbox bearer token, resolved from pass"
 grep -q 'resolved-LINEAR_API_KEY' "$CLAUDE_MCP" ||
   fail "the MCP config should carry the Linear key"
 [ "$(jq -r '.mcpServers.linear.url' "$CLAUDE_MCP")" = "https://mcp.linear.app/mcp" ] ||
