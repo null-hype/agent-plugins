@@ -21,7 +21,7 @@ gh() {
         cat > "$POSTS/$(ls "$POSTS" | wc -l).json"
         echo "https://github.com/o/r/pull/7#review"
       else
-        for f in "$POSTS"/*.json; do [ -e "$f" ] && jq -r .body "$f"; done
+        for f in "$POSTS"/*.json; do if [ -e "$f" ]; then jq -c '{body}' "$f"; fi; done
       fi ;;
   esac
 }
@@ -67,6 +67,30 @@ class SyncTests(unittest.TestCase):
         result = self.sync()
         self.assertEqual(len(self.posted()), 1)
         self.assertIn('already posted', result.stderr)
+
+    def seed_legacy_review(self, explanation, correctness='patch is incorrect'):
+        body = (f'**Codex review:** {correctness} (confidence 0.8)\n\n{explanation}'
+                '\n\n<!-- codex-session: sess-1 -->')
+        (self.posts / f'{len(list(self.posts.iterdir()))}.json').write_text(
+            json.dumps({'event': 'COMMENT', 'body': body}))
+
+    def test_unchanged_verdict_already_posted_with_legacy_marker_is_not_reposted(self):
+        self.seed_legacy_review('first')
+        self.lines.append(exited('first'))
+        result = self.sync()
+        self.assertEqual(len(self.posted()), 1)
+        self.assertIn('already posted', result.stderr)
+
+    def test_later_verdict_after_legacy_marker_review_is_published(self):
+        self.seed_legacy_review('first')
+        self.lines.append(exited('second', correctness='patch is correct'))
+        self.sync()
+        bodies = self.posted()
+        self.assertEqual(len(bodies), 2)
+        self.assertIn('second', bodies[1])
+        self.assertIn('codex-review:', bodies[1])
+        self.sync()
+        self.assertEqual(len(self.posted()), 2)
 
     def test_later_review_in_same_session_is_published(self):
         self.lines.append(exited('first'))
