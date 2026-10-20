@@ -108,10 +108,11 @@ export interface DocumentRange {
   endColumn: number;
 }
 
-/** A diagnostic squiggle on one line. */
+/** A diagnostic squiggle from `line` to `endLine` (the same line when absent). */
 export interface Marker {
   line: number;
   column: number;
+  endLine?: number;
   endColumn: number;
   message: string;
   severity: Severity;

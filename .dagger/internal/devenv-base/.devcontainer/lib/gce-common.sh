@@ -211,3 +211,21 @@ gce_common_restic_push_sessions() {
   fi
   return "$status"
 }
+
+# Codex rollout transcripts added or modified between the two most recent
+# codex-session-state snapshots, one "<newest snapshot id> <path>" per line --
+# what the last push's backup captured. Prints nothing (with a note on stderr)
+# when there are fewer than two snapshots or no transcript changed. Call from
+# inside the `pass-cli run` subshell, after gce_common_write_sa_key.
+gce_common_codex_changed_rollouts() {
+  local ids old new
+  ids=$(restic snapshots --tag codex-session-state --json | jq -r '.[-2:][].id')
+  if [ "$(printf '%s\n' "$ids" | grep -c .)" -lt 2 ]; then
+    echo "fewer than two codex-session-state snapshots -- nothing to diff yet" >&2
+    return 0
+  fi
+  old=$(printf '%s\n' "$ids" | sed -n 1p)
+  new=$(printf '%s\n' "$ids" | sed -n 2p)
+  restic diff "$old" "$new" |
+    awk -v snap="$new" '/\/sessions\/.*\.jsonl$/ && ($1 == "M" || $1 == "+") {print snap, $2}'
+}
