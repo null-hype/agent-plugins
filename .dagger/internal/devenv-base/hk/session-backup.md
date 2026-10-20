@@ -48,3 +48,11 @@ Regression checks (including a real restic lock conflict in a disposable repo):
 ```sh
 python3 .dagger/internal/devenv-base/hk/test_session_backup.py
 ```
+
+`codex-review-sync.sh` posts each distinct review verdict once (marker
+`codex-review: <session>:<verdict hash>`), so a later review in the same Codex
+session is published too. Check it with stubbed restic and gh:
+
+```sh
+python3 .dagger/internal/devenv-base/hk/test_codex_review_sync.py
+```

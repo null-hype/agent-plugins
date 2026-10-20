@@ -97,7 +97,10 @@ review() { # remote branch sha
   [ -d "$REPO_ROOT/tutorial-app/node_modules" ] && ln -s "$REPO_ROOT/tutorial-app/node_modules" "$wt/tutorial-app/node_modules"
 
   log "reviewing $repo $branch@${sha:0:7} against $default"
-  (cd "$wt" && timeout "${CODEX_REVIEW_TIMEOUT:-900}" codex exec review "${CODEX_ARGS[@]}" --base "$default" --json) > "$events" 2> "$STATE_DIR/$sha.err" || true
+  # A verdict written before a nonzero exit is kept and posted as data, but
+  # the process failing is a broken instrument: the status is error.
+  local codex_rc=0
+  (cd "$wt" && timeout "${CODEX_REVIEW_TIMEOUT:-900}" codex exec review "${CODEX_ARGS[@]}" --base "$default" --json) > "$events" 2> "$STATE_DIR/$sha.err" || codex_rc=$?
 
   thread=$(jq -r 'select(.type == "thread.started") | .thread_id' "$events" | head -1)
   rollout=$( [ -n "$thread" ] && find "${CODEX_HOME:-$HOME/.codex}/sessions" -name "*$thread*.jsonl" | head -1 || true)
@@ -115,6 +118,8 @@ review() { # remote branch sha
     + .overall_explanation
     + (.findings | map("\n\n---\n\n### \(.title)\n\n\(.body)\n\n`\(.code_location.absolute_file_path | ltrimstr($wt)):\(.code_location.line_range.start)-\(.code_location.line_range.end)`") | join(""))
     + "\n\n<!-- codex-session: \($thread) -->"' <<< "$out")
+  [ "$codex_rc" -eq 0 ] ||
+    body+=$'\n\n'"> **Note:** \`codex exec review\` exited $codex_rc after writing this verdict, so the \`$CONTEXT\` status is \`error\`, not a verdict."
 
   if [ -n "${pr:-}" ]; then
     url=$(jq -n --arg body "$body" --arg sha "$sha" '{event: "COMMENT", commit_id: $sha, body: $body}' |
@@ -130,6 +135,11 @@ review() { # remote branch sha
   fi
   log "posted $url"
 
+  if [ "$codex_rc" -ne 0 ]; then
+    log "codex exec review exited $codex_rc for ${sha:0:7} (see $STATE_DIR/$sha.err)"
+    finish "$repo" "$sha" error "Codex exited $codex_rc after writing a verdict" "$url"
+    return 1
+  fi
   if [ "$(jq '.findings | length' <<< "$out")" -gt 0 ]; then
     state=failure desc="$(jq -r '.findings | length' <<< "$out") finding(s): $(jq -r '.findings[0].title' <<< "$out")"
   else
