@@ -48,6 +48,11 @@ git_auth() {
     '!f() { test "$1" = get && echo username=x-access-token && echo "password=$GITHUB_TOKEN"; }; f'
 }
 
+# GitHub's REST API; the token reaches curl as a header file, not an argument.
+api() {
+  curl -fsS -H @<(printf 'Authorization: Bearer %s' "$GITHUB_TOKEN") -H 'Accept: application/vnd.github+json' "$@"
+}
+
 run_up() {
   set -euo pipefail
   local id=$1 ref=$2 agent=$3 s
@@ -86,8 +91,11 @@ run_up() {
 # Linear links it to the issue, and the pre-push hook's backup runs.
 run_review() {
   set -euo pipefail
-  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env hk
+  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env hk base
   git_auth
+  # Against the PR's own base: a stacked PR reviewed against main would also
+  # get findings for the code it sits on.
+  base=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls/$pr" | jq -er .base.ref)
   # Codex never sees the Linear key: its curl runs under `pass-cli run`,
   # which resolves this reference. Same login as tailscale-up.sh.
   export PROTON_PASS_KEY_PROVIDER=fs
@@ -101,7 +109,7 @@ run_review() {
   git config --global user.email toolbox@toolbox-host
   [ -d "$dir" ] || git clone -q "$REPO" "$dir"
   cd "$dir"
-  git fetch -q origin +main:refs/remotes/origin/main "+pull/$pr/head:refs/pr/$pr"
+  git fetch -q origin +main:refs/remotes/origin/main "+refs/heads/$base:refs/remotes/origin/$base" "+pull/$pr/head:refs/pr/$pr"
   git checkout -q -B "pr-$pr" "refs/pr/$pr"
   # workspace-write lets the AGENTS.md QA pass run commands in the checkout.
   # Network access is for Linear's API, and pass-cli writes its session.
@@ -113,7 +121,7 @@ run_review() {
     -c 'mcp_servers.container-use.args=["stdio"]' \
     -c 'mcp_servers.container-use.default_tools_approval_mode="approve"' \
     -o "$out" - <<PROMPT
-Review this branch against origin/main using the review guidelines in AGENTS.md.
+Review this branch against origin/$base using the review guidelines in AGENTS.md.
 For each finding, call the container-use environment_create tool (environment_source: this repository's
 directory), titled with the finding, with the finding's explanation. Then file the finding in Linear with
 an issueCreate mutation: teamId $LINEAR_TEAM_ID, stateId $LINEAR_TRIAGE_STATE_ID, the finding as the title,
@@ -124,7 +132,8 @@ https://github.com/null-hype/agent-plugins/tree/<branchName> to the issue with a
 PROTON_PASS_KEY_PROVIDER=fs pass-cli run --env-file $env -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: \$LINEAR_API_KEY" --data @-'
 Then print one line per finding: environment id, Linear issue identifier, Linear branchName, title.
 PROMPT
-  grep -E '^[a-z]+-[a-z]+, [A-Z]+-[0-9]+, [^ ,]+, ' "$out" | while IFS=', ' read -r env issue branch _; do
+  # sed, not grep: a review with no findings is a success.
+  sed -nE '/^[a-z]+-[a-z]+, [A-Z]+-[0-9]+, [^ ,]+, /p' "$out" | while IFS=', ' read -r env issue branch _; do
     git fetch -q container-use "$env"
     git push -q origin "FETCH_HEAD:refs/heads/$branch"
     echo "== pushed $env as $branch ($issue)"
@@ -182,7 +191,6 @@ run_ship() {
   sha=$(git -C "$dir" commit-tree "$(GIT_INDEX_FILE=$tmp/index git -C "$dir" write-tree)" -p "$parent" \
     -m "$title" -m "Shipped by agent_ship from container-use environment $env.")
   git -C "$dir" push -q origin "$sha:refs/heads/$branch"
-  api() { curl -fsS -H @<(printf 'Authorization: Bearer %s' "$GITHUB_TOKEN") -H 'Accept: application/vnd.github+json' "$@"; }
   pr=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls?state=open&head=null-hype:$branch" | jq -r '.[0].html_url // empty')
   if [ -z "$pr" ]; then
     pr=$(jq -n --arg title "$title" --arg head "$branch" --arg base "$base" \
@@ -243,7 +251,7 @@ review)
   pr=$1 model=${2:-} id=review-$1
   refuse_if_busy "$id"
   rm -f "$JOBS/$id.exit" "$JOBS/$id.md"
-  setsid nohup bash -c "$(declare -f git_auth run_review)"'
+  setsid nohup bash -c "$(declare -f git_auth api run_review)"'
     (run_review "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$pr" "$model" "$JOBS/$id.md" \
     > "$JOBS/$id.log" 2>&1 < /dev/null &
   echo $! > "$JOBS/$id.pid"
