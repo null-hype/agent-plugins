@@ -482,20 +482,20 @@ func (m *DevenvBase) PublishSupervisor(
 }
 
 // CheckSupervisor runs the supervisor's stub tests against the packaged
-// image. They assert that a run restores the zone's session, resumes it with
-// Remote Control, and backs it up after a success and a failure alike; that a
-// missing snapshot fails the run; that a decision passes while prose or a
-// failed claude does not; and that the run cannot reach a tool that moves
-// infrastructure.
+// image. They assert that render.yaml describes the one hourly service; that
+// a run restores the newest snapshot tagged supervisor, continues the session
+// with Remote Control from /workspaces/agent-plugins, and backs it up after a
+// success and a failure alike, reading no session id or zone; that a missing
+// snapshot fails the run; that a decision passes -- including the tick with
+// no dispatch issue -- while prose or a failed claude does not; and that the
+// run cannot reach a tool that moves infrastructure.
 // +check
 func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 	out, err := m.Supervisor("").
+		WithFile("/app/render.yaml", dag.CurrentModule().Source().File("render.yaml")).
 		WithExec([]string{"bash", "-n", "/app/supervisor/supervisor.sh"}).
 		WithExec([]string{"claude", "--version"}).
 		WithExec([]string{"restic", "version"}).
-		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Asia/Hong_Kong"}).
-		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Europe/Berlin"}).
-		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/America/New_York"}).
 		WithExec([]string{"bash", "/app/supervisor/test_supervisor.sh"}).
 		Stdout(ctx)
 	if err != nil {
