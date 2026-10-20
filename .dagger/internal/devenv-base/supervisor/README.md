@@ -163,7 +163,8 @@ pinned:
    whenever `supervisor/**` (or the shared Dagger chain) changes on `main`.
 2. Pin that digest into the `supervisor` block in `render.yaml` and uncomment
    it.
-3. Set the two `sync: false` env vars on the service.
+3. Set `PROTON_PASS_PERSONAL_ACCESS_TOKEN` (`sync: false`) on the service, and create the
+   Proton Pass item `pass://infra/render.com/TOOLBOX_TOKEN`.
 
 ## Iterating
 
