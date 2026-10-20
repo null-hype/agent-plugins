@@ -430,14 +430,15 @@ func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
 }
 
 // Supervisor packages one zone's dispatch-window supervisor (CIT-443): a
-// Render Cron Job that asks a headless claude, holding only the toolbox's
-// read-only tools, what it would do with the window, and fails the run if no
-// decision comes back.
+// Render Cron Job that restores the zone's Claude session transcript from
+// restic, resumes it in the foreground with the toolbox's read-only tools and
+// the Linear tools, backs the transcript up again whatever happened, and
+// fails the run if no decision comes back.
 //
-// Built on PassCli rather than Devpod: unlike the keepalive this never drives
-// a devpod or snapshots state, so it needs neither gcloud nor restic. One
-// image serves every zone, parameterised by SUPERVISOR_ZONE the way the
-// keepalive is by WORKSPACE_ID.
+// Built on PassCli rather than Devpod: it never drives a devpod, so it needs
+// no gcloud. It does need restic, for the session transcript. One image
+// serves every zone, parameterised by SUPERVISOR_ZONE the way the keepalive
+// is by WORKSPACE_ID.
 //
 // tzdata is not optional here: a window is decided from the team's own
 // clock, and without the zoneinfo files GNU date answers in UTC without
@@ -447,7 +448,7 @@ func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withAptPackages(withClaude(m.PassCli(platform)), "tzdata").
+	return withAptPackages(withClaude(m.PassCli(platform)), "tzdata", "restic").
 		WithFile(
 			"/app/supervisor/supervisor.sh",
 			dag.CurrentModule().Source().File("supervisor/supervisor.sh"),
@@ -488,14 +489,17 @@ func (m *DevenvBase) PublishSupervisor(
 }
 
 // CheckSupervisor runs the supervisor's stub tests against the packaged
-// image. They assert the three properties the dry run promises: a decision
-// passes, prose or a failed claude does not, and the run cannot reach a tool
-// that moves infrastructure.
+// image. They assert that a run restores the zone's session, resumes it with
+// Remote Control, and backs it up after a success and a failure alike; that a
+// missing snapshot fails the run; that a decision passes while prose or a
+// failed claude does not; and that the run cannot reach a tool that moves
+// infrastructure.
 // +check
 func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 	out, err := m.Supervisor("").
 		WithExec([]string{"bash", "-n", "/app/supervisor/supervisor.sh"}).
 		WithExec([]string{"claude", "--version"}).
+		WithExec([]string{"restic", "version"}).
 		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Asia/Hong_Kong"}).
 		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Europe/Berlin"}).
 		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/America/New_York"}).
