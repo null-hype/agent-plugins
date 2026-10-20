@@ -115,6 +115,24 @@ esac
 	if strings.Contains(string(calls), "GITHUB_TOKEN") || strings.Contains(string(calls), " t ") {
 		t.Fatalf("token reached a devpod command line:\n%s", calls)
 	}
+
+	// An agent workspace's scripts run from origin/main.
+	os.Remove(filepath.Join(home, "devpod.calls"))
+	os.Remove(filepath.Join(home, ".toolbox/jobs/ws1.exit"))
+	run(exports(map[string]string{"GITHUB_TOKEN": "t"}), "up", "ws1", "main", "1")
+	exitFile = filepath.Join(home, ".toolbox/jobs/ws1.exit")
+	for i := 0; i < 100; i++ {
+		if _, err := os.Stat(exitFile); err == nil {
+			break
+		}
+		exec.Command("sleep", "0.05").Run()
+	}
+	calls, _ = os.ReadFile(filepath.Join(home, "devpod.calls"))
+	checkout := strings.Index(string(calls), "git checkout -q --detach origin/main")
+	firstScript := strings.Index(string(calls), "generate-env-files.sh")
+	if checkout < 0 || firstScript < checkout {
+		t.Fatalf("checkout not moved to origin/main before the scripts:\n%s", calls)
+	}
 }
 
 // TestHostShip runs host.sh's ship against real git: a local origin stands in
