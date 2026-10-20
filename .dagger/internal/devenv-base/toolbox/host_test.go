@@ -344,7 +344,8 @@ esac
 		}
 	}
 	filepath.WalkDir(home, func(path string, d os.DirEntry, err error) error {
-		if err == nil && d.Type().IsRegular() {
+		// The fake pass-cli itself spells the token out.
+		if err == nil && d.Type().IsRegular() && filepath.Dir(path) != bin {
 			if b, _ := os.ReadFile(path); strings.Contains(string(b), "s3cret") {
 				t.Errorf("the push token is in a file on the host: %s", path)
 			}
