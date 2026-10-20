@@ -429,21 +429,14 @@ func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
 	return assertContains(out, "executable")
 }
 
-// Supervisor packages one zone's dispatch-window supervisor (CIT-443): a
-// Render Cron Job that restores the zone's Claude session transcript from
-// restic, resumes it in the foreground with the toolbox's read-only tools and
-// the Linear tools, backs the transcript up again whatever happened, and
-// fails the run if no decision comes back.
+// Supervisor packages the dispatch supervisor (CIT-443, CIT-453): a Render
+// Cron Job that restores ~/.claude from the newest restic snapshot tagged
+// supervisor, continues the one Claude session in it in the foreground with
+// the toolbox's read-only tools and the Linear tools, backs ~/.claude up
+// again whatever happened, and fails the run if no decision comes back.
 //
 // Built on PassCli rather than Devpod: it never drives a devpod, so it needs
-// no gcloud. It does need restic, for the session transcript. One image
-// serves every zone, parameterised by SUPERVISOR_ZONE the way the keepalive
-// is by WORKSPACE_ID.
-//
-// tzdata is not optional here: a window is decided from the team's own
-// clock, and without the zoneinfo files GNU date answers in UTC without
-// complaint, which would put every window hours out while the run still
-// looked healthy. supervisor.sh refuses a timezone it cannot find.
+// no gcloud. It does need restic, for the session transcript.
 func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
