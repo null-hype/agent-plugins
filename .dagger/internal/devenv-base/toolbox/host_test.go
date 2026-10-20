@@ -197,8 +197,22 @@ while [ "$1" != -o ]; do shift; done
 echo done > "$2"
 `), 0o755)
 
-	os.MkdirAll(filepath.Join(home, ".toolbox", "ship"), 0o700)
-	os.WriteFile(filepath.Join(home, ".toolbox", "ship", "push-token"), []byte("s3cret\n"), 0o600)
+	// The fake pass-cli has a session unless FAKE_PASS_DOWN is set, and
+	// resolves every pass:// reference in an env file to s3cret, as the real
+	// one resolves the push token. It logs its arguments and key provider.
+	os.WriteFile(filepath.Join(bin, "pass-cli"), []byte(`#!/bin/bash
+echo "$* [provider=${PROTON_PASS_KEY_PROVIDER:-}]" >> "$HOME/pass.calls"
+case $1 in
+info) [ -z "${FAKE_PASS_DOWN:-}" ] ;;
+run)
+	shift
+	while [ "$1" != -- ]; do [ "$1" = --env-file ] && f=$2; shift; done
+	shift
+	while IFS== read -r k v; do [ "${v#pass://}" = "$v" ] || export "$k=s3cret"; done < "$f"
+	exec "$@"
+	;;
+esac
+`), 0o755)
 
 	ship := func(envID, branch string, extra ...string) (exit string, result map[string]string) {
 		t.Helper()
