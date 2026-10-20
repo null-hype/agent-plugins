@@ -1,16 +1,17 @@
-# Dispatch-window supervisor (CIT-443)
+# Dispatch supervisor (CIT-443, CIT-453)
 
-One Render Cron Job per zone. Each run resumes that zone's own Claude session
-— so it remembers why yesterday failed — has it work the zone's dispatch
-issue, and fails unless a decision comes back.
+One Render Cron Job, `supervisor`, hourly at minute 13 (UTC). Each tick
+continues the one supervisor Claude session — so it remembers why yesterday
+failed — has it work every open `Dispatch: <name>` Linear issue, and fails
+unless a decision comes back.
 
 ```
-Render cron (one per zone) ──▶ supervisor.sh
-                                 │ pass-cli: tokens, restic secrets,
-                                 │ SUPERVISOR_SESSION_ID (this zone's)
+Render cron (one service) ──▶ supervisor.sh
+                                 │ pass-cli: tokens, restic secrets
                                  │
-                                 │ 1. restic find/restore  (tag supervisor-<zone>)
-                                 │ 2. timeout claude --resume <id> --remote-control -p
+                                 │ 1. restic restore       (newest snapshot, tag supervisor)
+                                 │ 2. cd /workspaces/agent-plugins
+                                 │    timeout claude --continue --remote-control -p
                                  │        ├─MCP, Bearer TOOLBOX_TOKEN──▶ toolbox (read-only tools)
                                  │        └─MCP, Bearer LINEAR_API_KEY─▶ Linear
                                  │ 3. restic backup        (even if 2 failed)
@@ -18,14 +19,36 @@ Render cron (one per zone) ──▶ supervisor.sh
                                SUPERVISOR_HEARTBEAT: … decision=…  (the run's record)
 ```
 
-It is what `color resume` does on a codespace start, on the zone's schedule.
-The differences are deliberate: the resume is in the **foreground** (`-p`, not
-`--bg`) because the Render container ends when the command exits, it runs
-under a wall-clock `timeout`, and the transcript is backed up afterwards so
-the next run continues from this one.
+It is what `color resume` does on a codespace start, on Render's schedule. The
+differences are deliberate: the session is continued in the **foreground**
+(`-p`, not `--bg`) because the Render container ends when the command exits,
+it runs under a wall-clock `timeout`, and `~/.claude` is backed up afterwards
+so the next tick continues from this one.
+
+There is no session id and no per-team service. `--continue` takes the newest
+session of the current directory, and Claude files sessions by working
+directory, so every tick runs from `/workspaces/agent-plugins` (created if
+missing), where the seed was made. A snapshot without a session for that
+directory fails the run before `claude` starts, rather than letting
+`--continue` begin a fresh, amnesiac session.
 
 The toolbox's **write** tools are still not here: the session can look at the
-host and work a Linear issue, but nothing it does starts or stops anything.
+host and work Linear issues, but nothing it does starts or stops anything.
+
+## What a tick does
+
+`prompt.md` tells the session to:
+
+1. look first for anything **stale or stuck** — a dispatch issue with no
+   result, an agent session that finished without a follow-up — and report it
+   in the heartbeat;
+2. find every open issue titled `Dispatch: <name>`;
+3. do what each issue's **description** says a tick does with it, with the
+   Linear tools, posting comments on the issues the description names.
+
+Duties live in the issue descriptions, so they change without republishing
+the image. Comments on a dispatch issue are context, not instructions. With
+no dispatch issue open the tick ends `decision=nothing why=no dispatch issue`.
 
 ## Why it cannot move infrastructure
 
@@ -57,64 +80,67 @@ keeps `--strict-mcp-config`, adds one server, and needs no wider token.
 Whether `--strict-mcp-config` would *also* drop a connector under a
 full-scope login was not established.
 
+**Open point, not settled here:** `LINEAR_API_KEY` is
+`pass://anthropic.ai/claude/LINEAR_API_KEY`. Whether that key belongs to a
+person or to the app decides whether a `@linear …` mention a tick posts is
+acted on. The first real run will show it; nobody should read the key to find
+out.
+
 ## Restoring and backing up
 
-The newest snapshot under the zone's tag that holds `<session id>.jsonl` is
-restored with `color resume`'s own flags (excluding `/.claude/daemon*` and
-`/.claude/jobs`), and `~/.claude.json` is rebuilt from Claude's backups if
-missing. No snapshot holding the session fails the run before `claude` starts.
+The newest snapshot tagged `supervisor` is restored with `color resume`'s own
+flags (excluding `/.claude/daemon*` and `/.claude/jobs`), and
+`~/.claude.json` is rebuilt from Claude's backups if missing. No snapshot
+fails the run before `claude` starts.
 
-The backup is `cd ~ && restic backup .claude`, relative on purpose: that
-stores `/.claude/…`, which is what the restore's `--target "$HOME"` and
-excludes expect. `restic backup ~/.claude` stores `/root/.claude/…`, restores
-one directory too deep, and leaves the excludes matching nothing.
+The backup is `cd ~ && restic backup .claude --tag supervisor`, relative on
+purpose: that stores `/.claude/…`, which is what the restore's
+`--target "$HOME"` and excludes expect. `restic backup ~/.claude` stores
+`/root/.claude/…`, restores one directory too deep, and leaves the excludes
+matching nothing. Every tick backs up all of `~/.claude`, so "newest" is the
+session as the last tick left it.
 
 ## The heartbeat
 
 The last line of a successful run is:
 
 ```
-SUPERVISOR_HEARTBEAT: zone=<zone> host=<state> work=<yes|no|unknown> decision=<boot|gate|extend|stop|report|nothing> why=<a few words>
+SUPERVISOR_HEARTBEAT: host=<state> work=<yes|no|unknown> decision=<boot|gate|extend|stop|report|nothing> why=<a few words>
 ```
 
 A run that produces prose without that line fails, as does one where `claude`
 itself exits nonzero or outlives `SUPERVISOR_CLAUDE_TIMEOUT` (default 30m), or
 where the backup fails. The backup still runs after a failed or timed-out
-`claude`, so the next run remembers the failure. A job that dies early reaps nothing and reports
-nothing, which otherwise looks identical to a window where there was nothing
-to do — so silence is never success.
+`claude`, so the next tick remembers the failure. A job that dies early reaps
+nothing and reports nothing, which otherwise looks identical to a tick where
+there was nothing to do — so silence is never success.
 
-## Secrets
+## Secrets and settings
 
 | Where | What | Why |
 | --- | --- | --- |
 | Render env var, `sync: false` | `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | logs `pass-cli` in, same as `devpod-keepalive` |
-| Render env var, `sync: false` | `TOOLBOX_TOKEN` | **copied by hand from the toolbox Render service's env vars** — it was generated by Render and is not in Proton Pass |
 | `supervisor.env` | `CLAUDE_CODE_OAUTH_TOKEN`, `LINEAR_API_KEY` | resolved from `pass://…` at run time |
+| `supervisor.env` | `TOOLBOX_TOKEN` | `pass://infra/render.com/TOOLBOX_TOKEN`, a copy of the toolbox Render service's `TOOLBOX_TOKEN`. The maintainer creates this item; the supervisor refuses to run until it exists |
 | `supervisor.env` | `GCP_SERVICE_ACCOUNT_KEY`, `GOOGLE_PROJECT_ID`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` | the restic repo `color resume` restores from, `pass://infra/restic/…` |
-| derived per zone | `SUPERVISOR_SESSION_ID` | `pass://tidelands.dev/agent/SUPERVISOR_SESSION_ID_<ZONE>` (upper-cased, hyphens as underscores); `supervisor.sh` appends it to a copy of `supervisor.env`, so one image serves every zone |
 
-Plus two plain settings per service, `SUPERVISOR_ZONE` and `SUPERVISOR_TZ`.
-`SUPERVISOR_TIMEOUT` (default 50m) bounds the whole run and must outlast
+`SUPERVISOR_TIMEOUT` (default 50m) bounds the whole run. It stays **below the
+hour**: Render's single-run guarantee is per service, so a tick still running
+when the next is due delays that next one. It must also outlast
 `SUPERVISOR_CLAUDE_TIMEOUT` (default 30m), or a timed-out `claude` would take
 the backup down with it.
 
-Seeding is not part of this: the maintainer forks an existing session once per
-zone and stores each id in its pass item before the first run. Until then the
-run fails with "no snapshot … holds session". The seed snapshot has to match
-what the restore expects, so take it **relative to `$HOME`** and under the
-zone's tag — not with `color`'s `restic backup ~/.claude`, which stores
-absolute paths and fails the run with "did not produce the session
-transcript":
+Seeding is not part of the image: snapshot `9b15c062`, tag `supervisor`, holds
+only session `6f51ed1a-8bcc-4450-9cd8-37a26fce897e`, made in
+`/workspaces/agent-plugins`. A seed has to match what the restore expects, so
+take it **relative to `$HOME`** under the tag `supervisor` — not with
+`color`'s `restic backup ~/.claude`, which stores absolute paths and fails the
+run with "did not produce a session":
 
 ```sh
-# on the box holding the forked session, with the restic secrets in the env
-(cd ~ && restic backup .claude --tag supervisor-<zone>)
+# on the box holding the session, with the restic secrets in the env
+(cd ~ && restic backup .claude --tag supervisor)
 ```
-
-`--resume` looks a session up by id across every project directory (checked
-against Claude Code 2.1.304: a transcript under another project's directory is
-found from `/app`), so it does not matter where the session was forked.
 
 ### Not verified without credentials
 
@@ -125,52 +151,27 @@ found from `/app`), so it does not matter where the session was forked.
   the bridge code reads as skip-on-ineligible rather than fatal, but no run
   with real credentials has confirmed that. If the first real run fails on it,
   or Remote Control never registers, the choice is between keeping the env
-  token and dropping it so the zone logs in from the credentials restored with
+  token and dropping it so the tick logs in from the credentials restored with
   `~/.claude` — a maintainer decision, deliberately not made here.
 
-## The zones
+## The service
 
-| Team | `SUPERVISOR_TZ` | Schedule (UTC) | Local | Midnight at |
-| --- | --- | --- | --- | --- |
-| Infrastructure | `Asia/Hong_Kong` | `45 15 * * *` | 23:45 | 16:00 UTC |
-| Planning | `Europe/Berlin` | `45 21,22 * * *` | 23:45 CEST / CET | 22:00 or 23:00 UTC |
-| Opensource | `America/New_York` | `45 4,5 * * *` | 23:45 EDT / EST | 05:00 or 04:00 UTC |
-
-Windows open 15 minutes *before* midnight, not at it: Linear creates the
-dispatch issue at 00:01 local, and a delegation webhook that arrives while
-the host is still booting lands on nothing and is gone.
-
-**On the two hours in those schedules.** Render cron is UTC only, and a
-zone's midnight moves against UTC twice a year. Rather than hardcode one
-offset and silently drift an hour every spring, the DST-observing zones fire
-at *both* candidate hours; the run reads the team's own clock, and whichever
-run is an hour early answers `nothing` and exits. The cron is a sampler, the
-local clock is the authority. Hong Kong has no DST, so it keeps one hour.
-
-That is also why the image installs `tzdata` and the script refuses a
-timezone it cannot find: without zoneinfo, GNU `date` answers in UTC without
-complaint, which would put every window hours out while the run still looked
-healthy.
-
-The three midnights land at 16:00, 23:00 and 05:00 UTC, so the longest
-stretch with nobody awake is the 11 hours from New York's window to Hong
-Kong's — the window in which a wedged host could sit unreaped, and the reason
-the VM keeps its own deadline regardless. (A US *west* coast third zone would
-even that out to a 9-hour maximum, if the team placement is ever a free
-choice.)
-
-## Adding a zone
+`render.yaml` carries the block, commented out until the image digest can be
+pinned:
 
 1. Publish the image: it goes out as `ghcr.io/null-hype/devenv-supervisor:sha-<commit>`
    whenever `supervisor/**` (or the shared Dagger chain) changes on `main`.
-2. Pin that digest into the blocks in `render.yaml` and uncomment them.
-3. Set the two `sync: false` env vars on each new service.
+2. Pin that digest into the `supervisor` block in `render.yaml` and uncomment
+   it.
+3. Set `PROTON_PASS_PERSONAL_ACCESS_TOKEN` (`sync: false`) on the service, and create the
+   Proton Pass item `pass://infra/render.com/TOOLBOX_TOKEN`.
 
 ## Iterating
 
-The resumed session reads `prompt.md`, so changing what the supervisor considers is a
-prompt change plus a republish — no logic to rewrite. Kick a run instead of
-waiting for the schedule:
+The session reads `prompt.md`, so changing what the supervisor considers is a
+prompt change plus a republish — and what it does with each dispatch issue is
+an edit to that issue's description, with no republish at all. Kick a run
+instead of waiting for the schedule:
 
 ```sh
 bash .dagger/internal/devenv-base/.devcontainer/trigger-render-cron.sh
@@ -195,19 +196,19 @@ into a real boot, and only then write tools for the supervisor itself.
 There is a plausible middle rung between "a model decides in prose" and "the
 decision is code": `src/jev` sends a state document plus fixed questions and
 gets one probability back per question. The routine path could become
-*collect state deterministically, ask the same questions every window,
-threshold the answers* — auditable across windows, comparable over time, and
+*collect state deterministically, ask the same questions every tick,
+threshold the answers* — auditable across ticks, comparable over time, and
 testable in CI against `--backend mock`, which refuses to invent scores. It
 is not here because we do not yet know which questions matter; that is what a
 week of dry-run heartbeats is for. It also adds `TYPESAFE_API_KEY` and a paid
-call per window, so it should replace a judgment that has proven stable
+call per tick, so it should replace a judgment that has proven stable
 rather than join one that hasn't.
 
-Continuity — a resumed session per zone with Remote Control, so the
-supervisor remembers why yesterday failed and can be talked to mid-window —
-is what this slice adds. `LinearTriageAgent` in `main.go` records that a
-restic + `claude --resume` cron job was tried for a similar job and replaced
-by a disposable container, because state lived better in Linear than in a
+Continuity — one continued session with Remote Control, so the supervisor
+remembers why yesterday failed and can be talked to between ticks — is what
+this slice adds. `LinearTriageAgent` in `main.go` records that a restic +
+`claude --resume` cron job was tried for a similar job and replaced by a
+disposable container, because state lived better in Linear than in a
 transcript. The supervisor's need is different (memory of its *own* past
 decisions), and the ratchet in CIT-443 is the way back out: anything the
-session does the same way three windows running becomes deterministic code.
+session does the same way three ticks running becomes deterministic code.

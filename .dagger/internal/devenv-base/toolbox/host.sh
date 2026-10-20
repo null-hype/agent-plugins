@@ -12,6 +12,8 @@ export REPO=https://github.com/null-hype/agent-plugins.git
 export LINEAR_TEAM_ID=c59e559d-fd9c-43da-a049-108672cb6bb4
 export LINEAR_TRIAGE_STATE_ID=5b35854e-8954-4fec-a99b-61752cd2400c
 export LINEAR_API_KEY_REF=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY
+# agent_ship's push token: can push this repository and nothing else.
+export SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN
 export DEVCONTAINER_DIR=.dagger/internal/devenv-base/.devcontainer
 # Same order as keepalive/runner/bootstrap.go.
 export AGENT_SCRIPTS="generate-env-files.sh tailscale-up.sh install-tools.sh start-linear-agent.sh start-cloudflared.sh check-linear-agent-webhook-live.sh"
@@ -161,10 +163,12 @@ PROMPT
 # origin/main when the branch does not exist yet, so the push is a
 # fast-forward and never needs force.
 #
-# The push token lives in ~/.toolbox/ship/push-token on this host and can push
-# this repository and nothing else. Only ship-push and the check below read it;
-# it is not in Codex's environment, and the Linear key never comes near: this
-# job does not log pass-cli in. After Codex exits, this script checks on GitHub that
+# The push token is not stored on this host. ~/.toolbox/ship/ship.env holds
+# only its pass:// reference, and `pass-cli run --env-file` resolves it, with
+# the host's own Proton Pass session, at the moment ship-push and the check
+# below need it. It is not in Codex's environment, and the Linear key never
+# comes near. The ship action refuses when the host has no pass session; the
+# job never logs in. After Codex exits, this script checks on GitHub that
 # the environment's tip is on the branch, so a Codex that stopped early or
 # only said it pushed is not a success. The result is $out:
 # {env, branch, sha, status}.
@@ -173,10 +177,11 @@ SHIP_CREDENTIAL_HELPER=/workspaces/.ship-git-credential
 # Runs the script in the workspace as `bash -s -- args`. The script travels
 # in the command, not on stdin, which devpod ssh does not promise to forward.
 # devpod prints its own messages too, so callers pick out marker lines.
-ship_in_workspace() { # ws script send args... (SHIP_PUSH_PAT is forwarded if send is 1)
-  local ws=$1 script=$2 send=$3
+ship_in_workspace() { # ws script send args... (SHIP_PUSH_PAT, resolved by pass-cli, is forwarded if send is 1)
+  local ws=$1 script=$2 send=$3 resolve=()
   shift 3
-  devpod ssh "$ws" ${send:+--send-env SHIP_PUSH_PAT} \
+  [ -z "$send" ] || resolve=(pass-cli run --env-file "$HOME/.toolbox/ship/ship.env" --)
+  "${resolve[@]}" devpod ssh "$ws" ${send:+--send-env SHIP_PUSH_PAT} \
     --command "echo $(printf %s "$script" | base64 -w0) | base64 -d | bash -s -- $*" </dev/null
 }
 
@@ -235,8 +240,8 @@ run_ship() {
   push="cd $wt && git -c credential.helper= -c credential.helper=$SHIP_CREDENTIAL_HELPER push origin HEAD:refs/heads/$branch"
   mkdir -p "$dir/bin"
   printf '#!/bin/bash\nexec devpod ssh %s --command %s\n' "$ws" "'$merge'" > "$dir/bin/ship-merge"
-  printf '#!/bin/bash\nSHIP_PUSH_PAT=$(cat %s) || exit 1\nexport SHIP_PUSH_PAT\nexec devpod ssh %s --send-env SHIP_PUSH_PAT --command %s\n' \
-    "$dir/push-token" "$ws" "'$push'" > "$dir/bin/ship-push"
+  printf '#!/bin/bash\nexport PROTON_PASS_KEY_PROVIDER=fs\nexec pass-cli run --env-file %s -- devpod ssh %s --send-env SHIP_PUSH_PAT --command %s\n' \
+    "$dir/ship.env" "$ws" "'$push'" > "$dir/bin/ship-push"
   chmod 755 "$dir/bin/ship-merge" "$dir/bin/ship-push"
   cat > "$dir/codex/rules/default.rules" <<RULES
 prefix_rule(
@@ -272,7 +277,7 @@ PROMPT
   )
 
   # The postcondition is read from GitHub, not taken from Codex.
-  sha=$(SHIP_PUSH_PAT=$(cat "$dir/push-token") ship_in_workspace "$ws" "$SHIP_VERIFY" 1 "$args" | sed -n 's/^SHIP_TIP //p')
+  sha=$(ship_in_workspace "$ws" "$SHIP_VERIFY" 1 "$args" | sed -n 's/^SHIP_TIP //p')
   [ -n "$sha" ] || { echo "$env is not on $branch after the ship" >&2; return 1; }
   jq -n --arg env "$env" --arg branch "$branch" --arg sha "$sha" \
     '{env: $env, branch: $branch, sha: $sha, status: "pushed"}' > "$out"
@@ -337,7 +342,13 @@ ship)
   # They go into a remote shell and a rules file: only plain names pass.
   [[ $env =~ ^[a-z]+-[a-z]+$ ]] || { echo "$env is not a container-use environment id" >&2; exit 2; }
   [[ $branch =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]{0,99}$ && $branch != main ]] || { echo "$branch is not an issue branch" >&2; exit 2; }
-  [ -s "$HOME/.toolbox/ship/push-token" ] || { echo "no push token: put one in $HOME/.toolbox/ship/push-token (mode 0600)" >&2; exit 2; }
+  # The push token is resolved from Proton Pass by the host's own session.
+  export PROTON_PASS_KEY_PROVIDER=fs
+  pass-cli info >/dev/null 2>&1 || { echo "no Proton Pass session on this host, so the push token cannot be resolved: log pass-cli in once on the host (PROTON_PASS_KEY_PROVIDER=fs pass-cli login)" >&2; exit 2; }
+  install -d -m 700 "$HOME/.toolbox/ship"
+  # The plaintext copy an earlier version of this action read.
+  rm -f "$HOME/.toolbox/ship/push-token"
+  echo "SHIP_PUSH_PAT=$SHIP_PUSH_PAT_REF" > "$HOME/.toolbox/ship/ship.env"
   # One ship at a time: they share Codex's home, and its rules.
   refuse_if_busy "$id"
   rm -f "$JOBS/$id.exit" "$JOBS/$id.json" "$HOME/.toolbox/ship/last-message.md"
