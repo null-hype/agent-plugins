@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -213,5 +214,76 @@ esac
 		if b, _ := os.ReadFile(filepath.Join(home, f)); strings.Contains(string(b), "s3cret") {
 			t.Fatalf("token reached a command line in %s:\n%s", f, b)
 		}
+	}
+}
+
+// TestHostReview runs host.sh's review against real git, with a fake Codex
+// that records its prompt, and checks the review is against the PR's own base.
+func TestHostReview(t *testing.T) {
+	for _, tool := range []string{"bash", "jq", "git", "setsid"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	home := t.TempDir()
+	bin := filepath.Join(home, "bin")
+	os.Mkdir(bin, 0o755)
+	origin := filepath.Join(home, "origin.git")
+	env := []string{"HOME=" + home, "PATH=" + bin + ":" + os.Getenv("PATH"),
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t"}
+	// origin: main with the hk backup script, base on top, and the PR on base.
+	setup := exec.Command("bash", "-euo", "pipefail", "-c", `git init -q --bare -b main origin.git && git clone -q origin.git src && cd src &&
+		mkdir -p .dagger/internal/devenv-base/hk .dagger/internal/devenv-base/.devcontainer &&
+		echo 'touch "$HOME/backup.ran"' > .dagger/internal/devenv-base/hk/claude-session-backup.sh &&
+		touch .dagger/internal/devenv-base/.devcontainer/devcontainer.json &&
+		git add . && git commit -qm main && git push -q origin main &&
+		git switch -qc agent/x && echo b > b && git add b && git commit -qm base && git push -q origin agent/x &&
+		git switch -qc cit-1 && echo c > c && git add c && git commit -qm pr && git push -q origin cit-1:refs/pull/7/head`)
+	setup.Dir, setup.Env = home, env
+	if out, err := setup.CombinedOutput(); err != nil {
+		t.Fatalf("setup: %v\n%s", err, out)
+	}
+	os.WriteFile(filepath.Join(home, ".gitconfig"), []byte(
+		"[url \""+origin+"\"]\n\tinsteadOf = https://github.com/null-hype/agent-plugins.git\n"), 0o644)
+	for name, script := range map[string]string{
+		"pass-cli": "exit 0",
+		"curl": `echo "$*" >> "$HOME/curl.calls"
+echo '{"base": {"ref": "agent/x"}}'`,
+		"codex": `cat > "$HOME/prompt"
+while [ "$1" != -o ]; do shift; done
+echo "no findings" > "$2"`,
+	} {
+		os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/bash\n"+script+"\n"), 0o755)
+	}
+
+	cmd := exec.Command("bash", "-s", "--", "review", "7")
+	cmd.Env = env
+	cmd.Stdin = strings.NewReader(exports(map[string]string{"GITHUB_TOKEN": "s3cret"}) + hostScript)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("review: %v\n%s", err, out)
+	}
+	jobs := filepath.Join(home, ".toolbox", "jobs")
+	var exit []byte
+	for i := 0; i < 100 && len(exit) == 0; i++ {
+		time.Sleep(100 * time.Millisecond)
+		exit, _ = os.ReadFile(filepath.Join(jobs, "review-7.exit"))
+	}
+	if strings.TrimSpace(string(exit)) != "0" {
+		log, _ := os.ReadFile(filepath.Join(jobs, "review-7.log"))
+		t.Fatalf("review job exit %q\n%s", exit, log)
+	}
+	if prompt, _ := os.ReadFile(filepath.Join(home, "prompt")); !strings.Contains(string(prompt), "against origin/agent/x using") {
+		t.Fatalf("Codex was not asked to review against the PR's base:\n%s", prompt)
+	}
+	check := exec.Command("git", "rev-parse", "--verify", "-q", "origin/agent/x")
+	check.Dir, check.Env = filepath.Join(home, ".toolbox", "reviews", "7"), env
+	if err := check.Run(); err != nil {
+		t.Fatal("the review clone has no origin/agent/x for Codex to diff against")
+	}
+	if _, err := os.Stat(filepath.Join(home, "backup.ran")); err != nil {
+		t.Fatal("the pre-push backup did not run")
+	}
+	if b, _ := os.ReadFile(filepath.Join(home, "curl.calls")); strings.Contains(string(b), "s3cret") {
+		t.Fatalf("token reached curl's command line:\n%s", b)
 	}
 }
