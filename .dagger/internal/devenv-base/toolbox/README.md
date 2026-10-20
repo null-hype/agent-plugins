@@ -57,7 +57,7 @@ name.
 | `GCP_SERVICE_ACCOUNT_KEY` | `toolbox-render` service account, admin of the host instance only |
 | `TOOLBOX_SSH_KEY` | Private key whose public half is the VM's `toolbox` ssh-keys metadata |
 | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`, for cloning the private repo, and with Codespaces lifecycle admin for the codespace tools |
-| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does; logs in `codex_review`'s pass-cli, which gives Codex's curl the Linear key |
+| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does; logs in `codex_review`'s pass-cli, which gives Codex's curl the Linear key and leaves the host a pass session that `agent_ship` resolves its push token with |
 | `TS_AUTHKEY` | `pass://infra/tailscale/TS_AUTHKEY`, joins the host itself to the tailnet (optional) |
 
 ## Tailscale and Codex
