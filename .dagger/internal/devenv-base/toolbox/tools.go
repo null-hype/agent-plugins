@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -20,6 +21,8 @@ var (
 	refRE  = regexp.MustCompile(`^[A-Za-z0-9._][A-Za-z0-9._/-]{0,99}$`)
 	// GitHub codespace names, e.g. bug-free-space-broccoli-jgp9vp7q75r2q96j.
 	codespaceRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,99}$`)
+	// container-use environment ids, e.g. trusty-burro.
+	envRE = regexp.MustCompile(`^[a-z]+-[a-z]+$`)
 )
 
 // toolbox holds what the infrastructure tools act on.
@@ -55,6 +58,13 @@ type refIn struct {
 type reviewIn struct {
 	PR    int    `json:"pr" jsonschema:"pull request number in agent-plugins"`
 	Model string `json:"model,omitempty" jsonschema:"Codex model to review with; default the host's configured model"`
+}
+
+type shipIn struct {
+	Env    string `json:"env" jsonschema:"the Linear agent's container-use environment id, e.g. trusty-burro"`
+	Branch string `json:"branch" jsonschema:"branch to push to: the issue's Linear branch name; created if it does not exist"`
+	Base   string `json:"base" jsonschema:"branch the pull request merges into, e.g. main or the head branch of the PR whose review filed the issue"`
+	Title  string `json:"title" jsonschema:"commit and pull request title"`
 }
 
 type prIn struct {
@@ -291,6 +301,32 @@ func (t *toolbox) addTools(s *mcp.Server) {
 			return nil, nil, fmt.Errorf("model %q is not a model name", in.Model)
 		}
 		b, err := t.host.Run(ctx, map[string]string{"GITHUB_TOKEN": t.githubToken, "PROTON_PASS_PERSONAL_ACCESS_TOKEN": t.passToken}, "review", strconv.Itoa(in.PR), in.Model)
+		if err != nil {
+			return nil, nil, err
+		}
+		return text(b), nil, nil
+	})
+	mcp.AddTool(s, &mcp.Tool{
+		Name: "agent_ship",
+		Description: "Push the Linear agent's finished container-use environment, whose sandbox cannot push, and open a pull request. " +
+			"The environment's change since it forked becomes one commit on top of branch (created off base if missing), pushed without force; " +
+			"a pull request from branch into base is opened unless one is already open. Returns the commit, the PR URL and a diffstat.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in shipIn) (*mcp.CallToolResult, any, error) {
+		if !envRE.MatchString(in.Env) {
+			return nil, nil, fmt.Errorf("env %q is not a container-use environment id", in.Env)
+		}
+		for _, r := range []string{in.Branch, in.Base} {
+			if !refRE.MatchString(r) {
+				return nil, nil, fmt.Errorf("%q is not a plain branch name", r)
+			}
+		}
+		if in.Branch == "main" || in.Branch == in.Base {
+			return nil, nil, fmt.Errorf("branch %q must be the issue's own branch, not main or the base", in.Branch)
+		}
+		if in.Title == "" || len(in.Title) > 200 || strings.ContainsAny(in.Title, "\r\n") {
+			return nil, nil, fmt.Errorf("title must be one line of at most 200 characters")
+		}
+		b, err := t.host.Run(ctx, map[string]string{"GITHUB_TOKEN": t.githubToken}, "ship", agentWorkspace, in.Env, in.Branch, in.Base, in.Title)
 		if err != nil {
 			return nil, nil, err
 		}
