@@ -318,6 +318,58 @@ esac
 	if b, _ := os.ReadFile(filepath.Join(home, "devpod.sent")); strings.Contains(string(b), "\n\n") || strings.Count(string(b), "token") != strings.Count(string(b), "\n") || len(b) == 0 {
 		t.Fatalf("devpod was asked to forward the token without having it:\n%s", b)
 	}
+
+	// The token is resolved with pass-cli run from a file of references: once
+	// for each ship-push and once for each check, never from a file on the
+	// host. ship.env holds the reference and nothing else, and no file under
+	// the host's home holds the token.
+	shipEnv := filepath.Join(home, ".toolbox", "ship", "ship.env")
+	if b, _ := os.ReadFile(shipEnv); string(b) != "SHIP_PUSH_PAT=pass://infra/github.com/GITHUB_TOKEN\n" {
+		t.Fatalf("ship.env is %q", b)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".toolbox", "ship", "push-token")); err == nil {
+		t.Error("a plaintext push-token file is on the host")
+	}
+	passCalls, _ := os.ReadFile(filepath.Join(home, "pass.calls"))
+	resolve := "run --env-file " + shipEnv + " -- devpod ssh linear-agent --send-env SHIP_PUSH_PAT "
+	if n := strings.Count(string(passCalls), resolve); n < 4 {
+		t.Fatalf("the token was resolved through pass-cli run %d times, want a push and a check for each of two ships:\n%s", n, passCalls)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(passCalls)), "\n") {
+		if !strings.HasSuffix(line, "[provider=fs]") {
+			t.Errorf("pass-cli ran without the fs key provider: %s", line)
+		}
+		if strings.Contains(line, "s3cret") {
+			t.Errorf("the push token reached pass-cli's command line: %s", line)
+		}
+	}
+	filepath.WalkDir(home, func(path string, d os.DirEntry, err error) error {
+		if err == nil && d.Type().IsRegular() {
+			if b, _ := os.ReadFile(path); strings.Contains(string(b), "s3cret") {
+				t.Errorf("the push token is in a file on the host: %s", path)
+			}
+		}
+		return nil
+	})
+
+	// With no Proton Pass session the ship is refused before anything starts:
+	// no job, no Codex.
+	os.Remove(filepath.Join(home, "codex.args"))
+	os.Remove(filepath.Join(home, ".toolbox", "jobs", "ship.exit"))
+	cmd := exec.Command("bash", "-s", "--", "ship", "linear-agent", "quiet-fox", "cit-3-fix")
+	cmd.Env = append(append([]string{}, env...), "FAKE_PASS_DOWN=1")
+	cmd.Stdin = strings.NewReader(hostScript)
+	out, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "no Proton Pass session on this host") {
+		t.Fatalf("ship without a pass session: err %v\n%s", err, out)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if _, err := os.Stat(filepath.Join(home, ".toolbox", "jobs", "ship.exit")); err == nil {
+		t.Error("a ship job started without a pass session")
+	}
+	if _, err := os.Stat(filepath.Join(home, "codex.args")); err == nil {
+		t.Error("Codex ran without a pass session")
+	}
 }
 
 // TestHostReview runs host.sh's review against real git, with a fake Codex
