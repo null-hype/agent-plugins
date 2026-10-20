@@ -163,10 +163,12 @@ PROMPT
 # origin/main when the branch does not exist yet, so the push is a
 # fast-forward and never needs force.
 #
-# The push token lives in ~/.toolbox/ship/push-token on this host and can push
-# this repository and nothing else. Only ship-push and the check below read it;
-# it is not in Codex's environment, and the Linear key never comes near: this
-# job does not log pass-cli in. After Codex exits, this script checks on GitHub that
+# The push token is not stored on this host. ~/.toolbox/ship/ship.env holds
+# only its pass:// reference, and `pass-cli run --env-file` resolves it, with
+# the host's own Proton Pass session, at the moment ship-push and the check
+# below need it. It is not in Codex's environment, and the Linear key never
+# comes near. The ship action refuses when the host has no pass session; the
+# job never logs in. After Codex exits, this script checks on GitHub that
 # the environment's tip is on the branch, so a Codex that stopped early or
 # only said it pushed is not a success. The result is $out:
 # {env, branch, sha, status}.
