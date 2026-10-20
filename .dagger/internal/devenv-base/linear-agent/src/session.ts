@@ -2,6 +2,7 @@ import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
 import { runClaude, WORKSPACE_DIR } from "./claude.ts";
 import { syncWorkspace } from "./workspace.ts";
+import { handOff } from "./handoff.ts";
 
 /**
  * Tracks the most recent agent session id per issue, keyed by issue id, so a
@@ -160,12 +161,15 @@ async function runTurn(
     const withRef = issueRef
       ? `${prompt}\n\n---\n\nThis issue's code is on ${issueRef}, not main: create container-use environments with from_git_ref "${issueRef}".`
       : prompt;
-    const result = await runClaude(withRef, claudeCodeOAuthToken, (content) =>
+    const { result, environmentId } = await runClaude(withRef, claudeCodeOAuthToken, (content) =>
       // Best-effort narration: a failed intermediate post shouldn't abort
       // the turn the way a failed final response/error post should.
       postActivity(linear, agentSessionId, content).catch(() => undefined),
     );
-    await postActivity(linear, agentSessionId, { type: "response", body: result });
+    // A turn that edited an environment has work to ship. It can't push it
+    // itself, so it hands the environment on.
+    const handedOff = issueId && environmentId ? `\n\n---\n\n${await handOff(linear, issueId, environmentId)}` : "";
+    await postActivity(linear, agentSessionId, { type: "response", body: result + handedOff });
   } catch (err) {
     await postActivity(linear, agentSessionId, {
       type: "error",
