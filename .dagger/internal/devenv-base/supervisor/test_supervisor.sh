@@ -358,6 +358,33 @@ tail -1 "$WORK/nodispatch" | grep -qx 'SUPERVISOR_HEARTBEAT: host=unknown work=u
 [ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
   fail "a tick with no dispatch issue should still be restored and backed up; got: $(calls)"
 
+# --- there is no Proton Pass session -----------------------------------------
+
+# Every secret, the toolbox token among them, comes through pass-cli, so with
+# no session and a login that fails nothing may run: not the restore, not
+# claude, not a backup.
+reset
+if PASS_STUB_SESSION=none bash "$DIR/supervisor.sh" > "$WORK/nopass" 2>&1; then
+  fail "a run with no Proton Pass session should fail"
+fi
+grep -q 'could not log in to Proton Pass' "$WORK/nopass" ||
+  fail "a missing pass session should say so, got: $(cat "$WORK/nopass")"
+[ -z "$(calls)" ] ||
+  fail "with no pass session nothing should run; got: $(calls)"
+if grep -q -- 'pass-cli run' "$PASS_ARGV_LOG"; then
+  fail "with no pass session no secret should be resolved"
+fi
+
+# Without the pass token the service cannot log in at all.
+reset
+if env -u PROTON_PASS_PERSONAL_ACCESS_TOKEN bash "$DIR/supervisor.sh" > "$WORK/notoken" 2>&1; then
+  fail "a run without PROTON_PASS_PERSONAL_ACCESS_TOKEN should fail"
+fi
+grep -q 'PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set' "$WORK/notoken" ||
+  fail "a missing pass token should name the variable, got: $(cat "$WORK/notoken")"
+[ -z "$(calls)" ] ||
+  fail "without the pass token nothing should run; got: $(calls)"
+
 # --- the restore fails -------------------------------------------------------
 
 # No snapshot carries the tag: fail loudly, and do not continue a session
