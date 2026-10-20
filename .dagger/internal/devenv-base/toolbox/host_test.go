@@ -333,7 +333,7 @@ esac
 		t.Fatalf("ship.env is %q", b)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".toolbox", "ship", "push-token")); err == nil {
-		t.Error("a plaintext push-token file is on the host")
+		t.Error("the plaintext push-token file was not deleted")
 	}
 	passCalls, _ := os.ReadFile(filepath.Join(home, "pass.calls"))
 	resolve := "run --env-file " + shipEnv + " -- devpod ssh linear-agent --send-env SHIP_PUSH_PAT "
