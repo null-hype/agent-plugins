@@ -277,7 +277,7 @@ PROMPT
   )
 
   # The postcondition is read from GitHub, not taken from Codex.
-  sha=$(SHIP_PUSH_PAT=$(cat "$dir/push-token") ship_in_workspace "$ws" "$SHIP_VERIFY" 1 "$args" | sed -n 's/^SHIP_TIP //p')
+  sha=$(ship_in_workspace "$ws" "$SHIP_VERIFY" 1 "$args" | sed -n 's/^SHIP_TIP //p')
   [ -n "$sha" ] || { echo "$env is not on $branch after the ship" >&2; return 1; }
   jq -n --arg env "$env" --arg branch "$branch" --arg sha "$sha" \
     '{env: $env, branch: $branch, sha: $sha, status: "pushed"}' > "$out"
