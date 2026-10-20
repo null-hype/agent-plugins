@@ -74,7 +74,8 @@ if [ "$stage" = --bounded-run ]; then
   if ! timeout --foreground --kill-after=10s 60s pass-cli info > /dev/null 2>&1; then
     timeout --foreground --kill-after=10s 60s pass-cli logout --force > /dev/null 2>&1 || true
     echo "supervisor: logging in to Proton Pass"
-    timeout --foreground --kill-after=10s 2m pass-cli login
+    timeout --foreground --kill-after=10s 2m pass-cli login ||
+      { echo "supervisor: could not log in to Proton Pass; every secret, the toolbox token included, comes from it" >&2; exit 1; }
   fi
 
   # Only pass:// references are in this file; the values are resolved by
