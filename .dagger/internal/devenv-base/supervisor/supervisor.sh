@@ -55,7 +55,6 @@ stage=$1
 shift
 
 : "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:?PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set}"
-: "${TOOLBOX_TOKEN:?TOOLBOX_TOKEN must be set: copy it from the env vars of the toolbox Render service}"
 TOOLBOX_URL=${TOOLBOX_URL:-https://toolbox-spike.onrender.com/mcp}
 LINEAR_MCP_URL=${LINEAR_MCP_URL:-https://mcp.linear.app/mcp}
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
