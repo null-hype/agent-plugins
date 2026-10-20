@@ -47,7 +47,7 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 		return json.Marshal(f.workspaces)
 	case "ping":
 		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true}}`), nil
-	case "status", "up", "stop", "delete", "review", "review-status":
+	case "status", "up", "stop", "delete", "review", "review-status", "ship":
 		return []byte(`{}`), nil
 	}
 	return nil, fmt.Errorf("unexpected action %s", args[0])
@@ -205,6 +205,49 @@ func TestCodexReviewPassesTheModelAndTokens(t *testing.T) {
 	c := h.calls[0]
 	if got := strings.Join(c.args, " "); got != "review 221 gpt-5.5" || c.env["GITHUB_TOKEN"] != "gh-token" || c.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "pass-token" {
 		t.Fatalf("host call %q env %v", got, c.env)
+	}
+}
+
+func TestAgentShipSendsOnlyTheGitHubToken(t *testing.T) {
+	tb, _, h := newTestToolbox("RUNNING")
+	args := map[string]any{"env": "trusty-burro", "branch": "cit-432-fix", "base": "agent/733b00af", "title": "Fix it (CIT-432)"}
+	if res := callTool(t, tb, "agent_ship", args); res.IsError {
+		t.Fatalf("agent_ship: %s", resultText(res))
+	}
+	c := h.calls[0]
+	if got := strings.Join(c.args, " "); got != "ship linear-agent trusty-burro cit-432-fix agent/733b00af Fix it (CIT-432)" {
+		t.Fatalf("args %q", got)
+	}
+	if len(c.env) != 1 || c.env["GITHUB_TOKEN"] != "gh-token" {
+		t.Fatalf("env %v, want only GITHUB_TOKEN", c.env)
+	}
+}
+
+func TestAgentShipRejects(t *testing.T) {
+	ok := map[string]any{"env": "trusty-burro", "branch": "cit-432-fix", "base": "main", "title": "Fix it"}
+	for k, v := range map[string]any{
+		"env":    "trusty-burro; rm -rf /",
+		"branch": "main",
+		"base":   "--force",
+		"title":  "two\nlines",
+	} {
+		args := map[string]any{}
+		for kk, vv := range ok {
+			args[kk] = vv
+		}
+		args[k] = v
+		tb, _, h := newTestToolbox("RUNNING")
+		if res := callTool(t, tb, "agent_ship", args); !res.IsError {
+			t.Errorf("agent_ship with %s=%q was accepted", k, v)
+		}
+		if len(h.calls) != 0 {
+			t.Errorf("agent_ship with %s=%q reached the host", k, v)
+		}
+	}
+	tb, _, _ := newTestToolbox("RUNNING")
+	args := map[string]any{"env": "trusty-burro", "branch": "x", "base": "x", "title": "t"}
+	if res := callTool(t, tb, "agent_ship", args); !res.IsError {
+		t.Error("agent_ship onto its own base was accepted")
 	}
 }
 

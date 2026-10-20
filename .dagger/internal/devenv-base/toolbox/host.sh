@@ -65,6 +65,14 @@ run_up() {
     if [ "$s" = tailscale-up.sh ]; then
       devpod ssh "$id" --send-env PROTON_PASS_PERSONAL_ACCESS_TOKEN \
         --command "bash /workspaces/$id/$DEVCONTAINER_DIR/$s"
+      # MagicDNS points the container's resolv.conf at 100.100.100.100, and
+      # then public names stop resolving, so the next script's pass-cli
+      # cannot reach Proton. Turned off here as well as in tailscale-up.sh,
+      # because a workspace runs the scripts from the checkout it was
+      # created from.
+      devpod ssh "$id" --command 's=; [ "$(id -u)" = 0 ] || s=sudo
+        $s tailscale --socket=/var/run/tailscale/tailscaled.sock set --accept-dns=false
+        getent ahosts pass.proton.me >/dev/null || { echo "public names do not resolve in the container" >&2; exit 1; }'
     else
       devpod ssh "$id" --command "bash /workspaces/$id/$DEVCONTAINER_DIR/$s"
     fi
@@ -130,6 +138,63 @@ PROMPT
   rm -rf "$hk"
 }
 
+# Ships a container-use environment from the Linear agent's workspace, whose
+# sandbox has no git remote by design. The environment's change since it
+# forked becomes one commit on top of the issue's branch (or a new branch off
+# $base), pushed without force, and a PR into $base is opened if the branch
+# has none. The commits leave the workspace as a bundle on stdout, so the
+# GitHub token never enters the agent's container.
+run_ship() {
+  local id=$1 env=$2 branch=$3 base=$4 title=$5 dir=$HOME/.toolbox/ship parent fork stat sha pr
+  git_auth
+  git config --global user.name toolbox
+  git config --global user.email toolbox@toolbox-host
+  # Global, since the trap runs after this function returns.
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+  # devpod prints its own messages too, hence the markers.
+  devpod ssh "$id" --command "cd /workspaces/$id && git fetch -q container-use &&
+    git bundle create -q /tmp/ship.bundle refs/remotes/container-use/$env &&
+    echo BUNDLE && base64 -w0 /tmp/ship.bundle && echo && echo END; rm -f /tmp/ship.bundle" </dev/null |
+    sed -n '/^BUNDLE$/,/^END$/p' | sed '1d;$d' | base64 -d > "$tmp/ship.bundle" || true
+  if [ ! -s "$tmp/ship.bundle" ]; then
+    echo "no container-use environment $env in $id" >&2
+    return 1
+  fi
+  [ -d "$dir" ] || git clone -q --no-checkout "$REPO" "$dir"
+  git -C "$dir" fetch -q "$tmp/ship.bundle" "+refs/remotes/container-use/$env:refs/ship/$env"
+  git -C "$dir" fetch -q origin "+refs/heads/$base:refs/remotes/origin/$base"
+  parent=refs/remotes/origin/$base
+  if git -C "$dir" ls-remote --exit-code -q origin "refs/heads/$branch" >/dev/null; then
+    git -C "$dir" fetch -q origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+    parent=refs/remotes/origin/$branch
+  fi
+  fork=$(git -C "$dir" merge-base "$parent" "refs/ship/$env")
+  if git -C "$dir" diff --quiet "$fork" "refs/ship/$env"; then
+    echo "$env has no changes since it forked at ${fork:0:7}" >&2
+    return 1
+  fi
+  stat=$(git -C "$dir" diff --stat "$fork" "refs/ship/$env")
+  # The change is applied to $parent in a scratch index, so a branch that
+  # moved on since the environment forked still gets a fast-forward.
+  GIT_INDEX_FILE=$tmp/index git -C "$dir" read-tree "$parent"
+  git -C "$dir" diff --binary "$fork" "refs/ship/$env" | GIT_INDEX_FILE=$tmp/index git -C "$dir" apply --cached
+  sha=$(git -C "$dir" commit-tree "$(GIT_INDEX_FILE=$tmp/index git -C "$dir" write-tree)" -p "$parent" \
+    -m "$title" -m "Shipped by agent_ship from container-use environment $env.")
+  git -C "$dir" push -q origin "$sha:refs/heads/$branch"
+  api() { curl -fsS -H @<(printf 'Authorization: Bearer %s' "$GITHUB_TOKEN") -H 'Accept: application/vnd.github+json' "$@"; }
+  pr=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls?state=open&head=null-hype:$branch" | jq -r '.[0].html_url // empty')
+  if [ -z "$pr" ]; then
+    pr=$(jq -n --arg title "$title" --arg head "$branch" --arg base "$base" \
+      --arg body "Shipped by \`agent_ship\` from container-use environment \`$env\`: its change since ${fork:0:7}, as one commit." \
+      '{title: $title, head: $head, base: $base, body: $body}' |
+      api -X POST https://api.github.com/repos/null-hype/agent-plugins/pulls --data @- | jq -r .html_url) ||
+      { echo "pushed $branch at ${sha:0:7}, but opening the PR into $base failed" >&2; return 1; }
+  fi
+  jq -n --arg branch "$branch" --arg sha "$sha" --arg pr "$pr" --arg diffstat "$stat" \
+    '{branch: $branch, sha: $sha, pr: $pr, diffstat: $diffstat}'
+}
+
 action=${1:?action}
 shift
 case $action in
@@ -183,6 +248,10 @@ review)
     > "$JOBS/$id.log" 2>&1 < /dev/null &
   echo $! > "$JOBS/$id.pid"
   jq -n --argjson pr "$pr" '{pr: $pr, job_running: true}'
+  ;;
+ship)
+  refuse_if_busy "$1"
+  run_ship "$@"
   ;;
 review-status)
   id=review-$1
