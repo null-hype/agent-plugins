@@ -1,5 +1,10 @@
-[P2] [QA] Preserve the Codex process failure in the final status
+# [P2] [Product] Publish later reviews from the same Codex session
 
-At `.dagger/internal/devenv-base/hk/codex-review-push.sh:94`, preserve and check the exit status of `codex exec review` instead of unconditionally discarding it with `|| true`. A structured result does not establish that the process finished successfully. Local QA ran the review function with stubbed git/GitHub commands and a Codex stub that emitted `thread.started`, left a valid nonzero-confidence ExitedReviewMode record with zero findings, and then exited 23. The hook posted the review, wrote `codex-review=success`, and exited 0. Thus a CLI failure after writing a verdict can satisfy the required status check despite the commit description promising an error when the review cannot run successfully. Retain the verdict as data, but make an execution failure an error status. This applies “A broken instrument fails the run. A refuted hypothesis is a result.” All posts and statuses in this reproduction were local stubs; no real services were contacted.
+At `.dagger/internal/devenv-base/hk/codex-review-sync.sh:40-42`, any existing `codex-session` marker causes the whole transcript to be skipped. An interactive Codex session can run review more than once; after its first review has been synced, every subsequent verdict in that session is silently suppressed even though line 22 explicitly selects the latest verdict. The author sees a successful sync while GitHub retains the older findings or verdict. Deduplicate by the individual review event (or update the posted review when the verdict changes), rather than the session alone. This is a product gap: success gives the author no indication that their new review was not published.
 
-PR: https://github.com/null-hype/agent-plugins/pull/215
+QA: derived a JSONL transcript from the committed PR #211 evidence and ran the actual sync function with local snapshot and GitHub stubs. The first invocation posted a review. Appended a second ExitedReviewMode verdict with a different explanation and ran sync again. It printed `already posted`, returned 0, and the captured post still contained only the first verdict. No real service was called.
+
+PR: https://github.com/null-hype/agent-plugins/pull/231
+Linear: CIT-445
+Environment: thorough-elephant
+Branch attachment: https://github.com/null-hype/agent-plugins/tree/cit-445-p2-product-publish-later-reviews-from-the-same-codex-session

@@ -1,6 +1,11 @@
 Review against origin/main
 
-Linear: CIT-432
-PR: https://github.com/null-hype/agent-plugins/pull/215
+Local QA used stubs only; no GitHub or backup service was called by the scripts.
+- Snapshot listing failure: simulated restic exit 17 became successful empty sync (CIT-444).
+- Repeated review in one session: second verdict skipped with exit 0 (CIT-445).
+- Push review: recorded findings set failure and script exit 0; Codex exit 23 after a verdict set error and script exit 1.
+- check-organs: 6 rules checked against 2 principles. Ast-grep was not run, per repository instructions.
+- codexReviewModel: all 3 Vitest tests passed.
+- Storybook launched with npm run storybook -- --no-open. Used index.json to discover Investigations/A Codex review, opened its Findings on the reviewed lines story with project-local playwright-cli and Chromium. Observed the reviewed commit and verdict in the path, finding lenses and warnings; clicked Monaco and pressed F8 to show the second finding's full explanation. Captured snapshot and screenshot (tutorial-app/codex-review-qa.png in helping-locust). No additional UI findings.
 
-The three codexReviewModel Vitest tests passed. Started Storybook with npm run storybook -- --no-open; discovered the story through index.json; opened Findings on the reviewed lines using the project-local playwright-cli, clicked the Monaco editor, pressed F8, and captured a snapshot and screenshot. Observed the recorded verdict, warning ranges, and the second finding's full explanation in the problem widget. No additional UI or product findings.
+QA environment: helping-locust. Its configuration adds Node 24, jq, Python and Pkl; persist that setup with `cu config import helping-locust` if needed. Initial missing runtimes and a Vite overlay cache rename error were resolved before the completed browser check.

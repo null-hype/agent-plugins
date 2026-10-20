@@ -11,7 +11,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/../.devcontainer/lib/gce-common.sh"
 
 codex_review_sync() {
-  local changed snap f rollout meta repo branch session pr confidence failed=0
+  local changed snap f rollout meta repo branch session pr review confidence verdict content reviews failed=0
   changed=$(gce_common_codex_changed_rollouts)
   [ -n "$changed" ] || { echo "no rollout transcripts changed in the latest snapshot" >&2; return 0; }
   rollout=$(mktemp)
@@ -19,8 +19,13 @@ codex_review_sync() {
 
   while read -r snap f; do
     restic dump "$snap" "$f" > "$rollout"
-    confidence=$(jq -rs 'map(select(.payload.item.type? == "ExitedReviewMode"))[-1].payload.item.review_output.overall_confidence_score // empty' "$rollout")
+    # A session can run `codex review` more than once; the last verdict is the
+    # one that stands, and its content identifies it.
+    review=$(jq -sc 'map(select(.payload.item.type? == "ExitedReviewMode"))[-1].payload.item.review_output // empty' "$rollout")
+    [ -n "$review" ] || continue
+    confidence=$(jq -r '.overall_confidence_score // empty' <<< "$review")
     [ -n "$confidence" ] || continue
+    verdict=$(jq -cS . <<< "$review" | sha256sum | cut -c1-16)
     meta=$(jq -c 'select(.type == "session_meta") | .payload' "$rollout")
     # A review whose confidence is 0 inspected nothing (e.g. a sandbox
     # failure); posting it would read as an approval. The rest still sync,
@@ -37,21 +42,30 @@ codex_review_sync() {
 
     pr=$(gh pr list --repo "$repo" --head "$branch" --state open --json number --jq '.[0].number // empty')
     [ -n "$pr" ] || { echo "$session: no open PR for $repo:$branch -- skipping" >&2; continue; }
-    if gh api "repos/$repo/pulls/$pr/reviews" --paginate --jq '.[].body' | grep -qF "codex-session: $session"; then
-      echo "$session: already posted to $repo#$pr" >&2
+    content=$(jq -c '
+      "**Codex review:** \(.overall_correctness) (confidence \(.overall_confidence_score))\n\n"
+      + .overall_explanation
+      + (.findings | map("\n\n---\n\n" + (. | tostring)) | join(""))
+    ' <<< "$review")
+    # Reviews posted before the verdict hash existed end in
+    # `codex-session: <session>` and carry only the session's last verdict at
+    # the time. One whose text equals this verdict is this verdict, already
+    # posted; one that differs predates a later verdict, which still posts.
+    reviews=$(gh api "repos/$repo/pulls/$pr/reviews" --paginate --jq '.[] | {body}')
+    if jq -en --arg marker "codex-review: $session:$verdict" --argjson content "$content" --arg session "$session" '
+         ($content + "\n\n<!-- codex-session: \($session) -->") as $legacy
+         | any(inputs | .body // ""; contains($marker) or . == $legacy)
+       ' <<< "$reviews" > /dev/null; then
+      echo "$session: this review ($verdict) is already posted to $repo#$pr" >&2
       continue
     fi
 
     # Pinned to the reviewed commit, so a branch that moved on since does not
     # show this verdict against code it never saw.
-    jq -s --arg session "$session" --arg sha "$(jq -r '.git.commit_hash' <<< "$meta")" '
-      (map(select(.payload.item.type? == "ExitedReviewMode"))[-1].payload.item.review_output) as $r
-      | {event: "COMMENT", commit_id: $sha,
-         body: ("**Codex review:** \($r.overall_correctness) (confidence \($r.overall_confidence_score))\n\n"
-                + $r.overall_explanation
-                + ($r.findings | map("\n\n---\n\n" + (. | tostring)) | join(""))
-                + "\n\n<!-- codex-session: \($session) -->")}
-    ' "$rollout" | gh api "repos/$repo/pulls/$pr/reviews" --input - --jq '.html_url'
+    jq -n --argjson content "$content" --arg session "$session" --arg verdict "$verdict" --arg sha "$(jq -r '.git.commit_hash' <<< "$meta")" '
+      {event: "COMMENT", commit_id: $sha,
+       body: ($content + "\n\n<!-- codex-review: \($session):\($verdict) -->")}
+    ' | gh api "repos/$repo/pulls/$pr/reviews" --input - --jq '.html_url'
   done <<< "$changed"
   return "$failed"
 }
