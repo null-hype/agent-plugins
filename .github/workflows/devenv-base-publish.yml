@@ -21,8 +21,9 @@ jobs:
 
       # main.go/checks.go/dagger.json/go.{mod,sum} feed every image (they
       # hold the shared Base/PassCli/.../Devpod chain everything else layers
-      # onto), so a change there re-publishes all five. keepalive/** and
-      # linear-agent/** only feed their own image on top of that chain.
+      # onto), so a change there re-publishes all six. keepalive/**,
+      # linear-agent/** and supervisor/** only feed their own image on top
+      # of that chain.
       - uses: dorny/paths-filter@v3
         id: filter
         if: github.event_name != 'workflow_dispatch'
@@ -38,19 +39,23 @@ jobs:
               - '.dagger/internal/devenv-base/keepalive/**'
             linear_agent:
               - '.dagger/internal/devenv-base/linear-agent/**'
+            supervisor:
+              - '.dagger/internal/devenv-base/supervisor/**'
 
       # workflow_dispatch is an explicit manual request with no "before"
       # commit to diff against, so it always publishes everything.
       - id: set
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ steps.filter.outputs.common }}" = "true" ]; then
-            targets='["publish","publish-playwright","publish-agent","publish-keepalive","publish-linear-agent"]'
+            targets='["publish","publish-playwright","publish-agent","publish-keepalive","publish-linear-agent","publish-supervisor"]'
           else
             targets=$(jq -nc \
               --argjson keepalive '${{ steps.filter.outputs.keepalive == 'true' }}' \
               --argjson linear_agent '${{ steps.filter.outputs.linear_agent == 'true' }}' \
+              --argjson supervisor '${{ steps.filter.outputs.supervisor == 'true' }}' \
               '[if $keepalive then "publish-keepalive" else empty end,
-                if $linear_agent then "publish-linear-agent" else empty end]')
+                if $linear_agent then "publish-linear-agent" else empty end,
+                if $supervisor then "publish-supervisor" else empty end]')
           fi
           echo "targets=$targets" >> "$GITHUB_OUTPUT"
 
