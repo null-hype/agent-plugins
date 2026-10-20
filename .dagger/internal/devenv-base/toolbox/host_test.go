@@ -278,7 +278,7 @@ esac
 	}
 	for script, want := range map[string]string{
 		"ship-merge": "exec devpod ssh linear-agent --command 'cd /workspaces/ship-trusty-burro && container-use merge trusty-burro'\n",
-		"ship-push":  "SHIP_PUSH_PAT=$(cat " + filepath.Join(home, ".toolbox", "ship", "push-token") + ") || exit 1\nexport SHIP_PUSH_PAT\nexec devpod ssh linear-agent --send-env SHIP_PUSH_PAT --command 'cd /workspaces/ship-trusty-burro && git -c credential.helper= -c credential.helper=/workspaces/.ship-git-credential push origin HEAD:refs/heads/cit-1-fix'\n",
+		"ship-push":  "export PROTON_PASS_KEY_PROVIDER=fs\nexec pass-cli run --env-file " + filepath.Join(home, ".toolbox", "ship", "ship.env") + " -- devpod ssh linear-agent --send-env SHIP_PUSH_PAT --command 'cd /workspaces/ship-trusty-burro && git -c credential.helper= -c credential.helper=/workspaces/.ship-git-credential push origin HEAD:refs/heads/cit-1-fix'\n",
 	} {
 		if b, _ := os.ReadFile(filepath.Join(bin2, script)); string(b) != "#!/bin/bash\n"+want {
 			t.Errorf("%s is %q", script, b)
