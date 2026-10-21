@@ -1,7 +1,110 @@
-// Planning's changeset (CIT-472), rewritten by each calibration run and
-// rendered to changeset.json with `pkl eval -f json -o changeset.json
-// changeset.pkl`. Merging it is applying it. Empty until the first
-// calibration plans something.
+// Planning's changeset (CIT-472), written by calibration against
+// main@8873963ce2d01a417fd3dd47ec625b4218b21158. Merging it is applying it; render with
+// `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
-seen {}
+seen {
+  ["CIT-131"] = "2026-10-18T07:33:28.149Z"
+  ["CIT-134"] = "2026-10-10T22:25:29.341Z"
+  ["CIT-135"] = "2026-10-10T22:25:31.621Z"
+  ["CIT-136"] = "2026-10-10T22:25:29.778Z"
+  ["CIT-137"] = "2026-10-10T22:25:31.622Z"
+  ["CIT-138"] = "2026-10-18T07:33:28.149Z"
+  ["CIT-234"] = "2026-10-10T22:25:34.436Z"
+  ["CIT-249"] = "2026-10-10T22:25:32.458Z"
+  ["CIT-263"] = "2026-10-10T22:25:32.778Z"
+  ["CIT-283"] = "2026-10-10T22:25:58.893Z"
+  ["CIT-290"] = "2026-10-10T22:25:25.267Z"
+  ["CIT-360"] = "2026-10-10T22:25:27.434Z"
+  ["CIT-379"] = "2026-10-10T22:25:30.343Z"
+  ["CIT-380"] = "2026-10-10T22:25:29.073Z"
+  ["CIT-381"] = "2026-10-10T22:25:29.523Z"
+  ["CIT-383"] = "2026-10-10T22:25:30.335Z"
+  ["CIT-387"] = "2026-10-10T22:25:31.272Z"
+  ["CIT-393"] = "2026-10-10T22:25:28.473Z"
+  ["CIT-394"] = "2026-10-10T22:25:34.292Z"
+  ["CIT-396"] = "2026-10-13T20:53:56.743Z"
+  ["CIT-431"] = "2026-10-20T01:16:36.280Z"
+  ["CIT-433"] = "2026-10-19T01:48:41.375Z"
+  ["CIT-434"] = "2026-10-19T01:48:50.632Z"
+  ["CIT-435"] = "2026-10-19T01:48:53.573Z"
+  ["CIT-450"] = "2026-10-20T05:07:38.520Z"
+  ["CIT-452"] = "2026-10-20T06:04:18.815Z"
+  ["CIT-458"] = "2026-10-20T08:13:16.301Z"
+  ["CIT-459"] = "2026-10-20T08:13:16.301Z"
+  ["CIT-462"] = "2026-10-21T07:26:49.466Z"
+  ["CIT-463"] = "2026-10-21T07:26:49.466Z"
+  ["CIT-467"] = "2026-10-21T07:26:49.466Z"
+  ["CIT-468"] = "2026-10-21T05:29:47.426Z"
+  ["CIT-469"] = "2026-10-21T05:29:53.406Z"
+  ["CIT-470"] = "2026-10-21T05:29:56.586Z"
+  ["CIT-471"] = "2026-10-21T05:29:56.571Z"
+  ["CIT-62"] = "2026-10-10T22:25:51.279Z"
+  ["CIT-63"] = "2026-10-10T22:25:27.657Z"
+}
+
+releases {
+  new {
+    name = "supervisor-workflow"
+    description = "Supervisor host and review jobs survive shutdown, restart and status reporting without false success, and Remote Control and the local test suite work between ticks."
+  }
+}
+clusters {
+  new {
+    key = "CIT-434"
+    title = "Host shutdown and review-job safety"
+    description = "Shutdown, restart and status-reporting defects in the host and review job lifecycle; they share one code path and one failure mode."
+    hat = "infra"
+    model = "sonnet"
+    effort = "high"
+    serves = "release:supervisor-workflow"
+    issues { "CIT-467"; "CIT-468"; "CIT-469"; "CIT-470"; "CIT-471"; "CIT-433"; "CIT-431"; "CIT-435"; "CIT-450" }
+  }
+  new {
+    key = "CIT-452"
+    title = "Supervisor Remote Control and local test suite"
+    description = "Remote Control between ticks and the local stub suite; both block supervisor use and testing on this machine."
+    hat = "infra"
+    model = "sonnet"
+    effort = "medium"
+    serves = "release:supervisor-workflow"
+    issues { "CIT-459"; "CIT-458" }
+  }
+  new {
+    key = "new:duo-standalone-export"
+    title = "Duo standalone page export for the native client"
+    description = "The Pkl-evaluated demo claim, loaded as a self-contained page in the iPhone app; the stale-preview fix lands in the same page."
+    hat = "infra"
+    model = "sonnet"
+    effort = "medium"
+    serves = "CIT-439"
+    blockedBy { "CIT-465"; "CIT-446" }
+    issues { "CIT-462"; "CIT-463" }
+  }
+}
+decline {
+  new { issue = "CIT-360"; reason = "Proton Drive CLI is unrelated to any open Release or delivery issue" }
+  new { issue = "CIT-62"; reason = "bountybench imaginairy history; no open Release or delivery issue depends on it" }
+  new { issue = "CIT-63"; reason = "bountybench llama_index history; no open Release or delivery issue depends on it" }
+  new { issue = "CIT-396"; reason = "image attachment on CIT-395 with no content to act on" }
+}
+escalate {
+  new { issue = "CIT-379"; question = "Which Release ships lesson continuity and replay evidence? Proposing a second Release needs its own changeset." }
+  new { issue = "CIT-380"; question = "Same as CIT-379: which Release ships this lesson-state decision?" }
+  new { issue = "CIT-381"; question = "Same as CIT-379: which Release ships lesson 1 to lesson 2 state carry-over?" }
+  new { issue = "CIT-383"; question = "Same as CIT-379: which Release ships the CI lesson-split fix?" }
+  new { issue = "CIT-387"; question = "Same as CIT-379: which Release ships the four-world Storybook fixture?" }
+  new { issue = "CIT-283"; question = "Which Release, if any, ships the repository-wide architecture and maintenance review?" }
+  new { issue = "CIT-234"; question = "Which Release ships the diagnostics-as-language-services slice?" }
+  new { issue = "CIT-249"; question = "Which Release ships the tutorial storyboard and lesson continuity work?" }
+  new { issue = "CIT-263"; question = "Which Release ships ACP continuity evaluation with Jev?" }
+  new { issue = "CIT-290"; question = "Which Release, if any, ships Jev typesafe.ai?" }
+  new { issue = "CIT-393"; question = "Is revising the review agent dispatch prompt a process decision for the maintainer?" }
+  new { issue = "CIT-394"; question = "Which Release ships semantic drift monitoring, and is it in scope for this project?" }
+  new { issue = "CIT-131"; question = "Which Release ships worker and supervisor DevPod provisioning (CIT-126 chain)?" }
+  new { issue = "CIT-134"; question = "Same as CIT-131: which Release ships the devcontainer feature extraction?" }
+  new { issue = "CIT-135"; question = "Same as CIT-131: which Release ships worker and supervisor feature composition?" }
+  new { issue = "CIT-136"; question = "Same as CIT-131: which Release ships worker session packaging and restic recovery?" }
+  new { issue = "CIT-137"; question = "Same as CIT-131: which Release ships the Phoenix two-workspace scenario?" }
+  new { issue = "CIT-138"; question = "Same as CIT-131: which Release ships the GCE composed-role provisioning?" }
+}
