@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // lifecycleHost runs host-lifecycle.sh against a temp state and jobs dir,
@@ -17,6 +19,10 @@ type lifecycleHost struct {
 	dir, state, jobs      string
 	idle, lease, ext, max int
 	agent                 bool
+	// bootID is the kernel's boot id; a new one is a reboot.
+	bootID string
+	// hangList makes `devpod list` block, like a provider that never answers.
+	hangList bool
 }
 
 const t0 = 1_800_000_000
@@ -29,7 +35,7 @@ func newLifecycleHost(t *testing.T) *lifecycleHost {
 	}
 	dir := t.TempDir()
 	h := &lifecycleHost{t: t, dir: dir, state: filepath.Join(dir, "state"), jobs: filepath.Join(dir, "jobs"),
-		idle: 15, lease: 120, ext: 15, max: 240}
+		idle: 15, lease: 120, ext: 15, max: 240, bootID: "boot-1"}
 	os.MkdirAll(h.jobs, 0o755)
 	bin := filepath.Join(dir, "bin")
 	os.Mkdir(bin, 0o755)
@@ -37,8 +43,10 @@ func newLifecycleHost(t *testing.T) *lifecycleHost {
 		// Only the agent's process can be found, and only when the test says so.
 		"pgrep": `[ "$1 $2" = "-f claude-agent-sdk" ] && [ -f "$FAKE_DIR/agent" ]`,
 		// su - user -c CMD: run CMD here.
-		"su":     `shift 3; bash -c "$1"`,
-		"devpod": `echo "$*" >> "$FAKE_DIR/devpod.calls"; [ "$1" = list ] && echo '[{"id":"linear-agent"}]'; exit 0`,
+		"su": `shift 3; bash -c "$1"`,
+		"devpod": `echo "$*" >> "$FAKE_DIR/devpod.calls"
+[ "$1" = list ] && [ -f "$FAKE_DIR/hang" ] && exec sleep 600
+[ "$1" = list ] && echo '[{"id":"linear-agent"}]'; exit 0`,
 	} {
 		os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/bash\n"+script+"\n"), 0o755)
 	}
@@ -47,12 +55,17 @@ func newLifecycleHost(t *testing.T) *lifecycleHost {
 
 func (h *lifecycleHost) run(at int, action string) string {
 	h.t.Helper()
-	if h.agent {
-		os.WriteFile(filepath.Join(h.dir, "agent"), nil, 0o644)
-	} else {
-		os.Remove(filepath.Join(h.dir, "agent"))
+	for name, on := range map[string]bool{"agent": h.agent, "hang": h.hangList} {
+		if on {
+			os.WriteFile(filepath.Join(h.dir, name), nil, 0o644)
+		} else {
+			os.Remove(filepath.Join(h.dir, name))
+		}
 	}
-	cmd := exec.Command("bash", "host-lifecycle.sh", action)
+	// A hung script fails the test rather than hanging it.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "bash", "host-lifecycle.sh", action)
 	cmd.Env = []string{
 		"PATH=" + filepath.Join(h.dir, "bin") + ":" + os.Getenv("PATH"),
 		"FAKE_DIR=" + h.dir,
@@ -61,6 +74,7 @@ func (h *lifecycleHost) run(at int, action string) string {
 		"LIFECYCLE_IDLE_MIN=" + strconv.Itoa(h.idle), "LIFECYCLE_LEASE_MIN=" + strconv.Itoa(h.lease),
 		"LIFECYCLE_EXTEND_MIN=" + strconv.Itoa(h.ext), "LIFECYCLE_MAX_MIN=" + strconv.Itoa(h.max),
 		"LIFECYCLE_POWEROFF=touch " + filepath.Join(h.dir, "poweroff"),
+		"LIFECYCLE_BOOT_ID=" + h.bootID, "LIFECYCLE_STOP_BUDGET_S=2",
 	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -196,5 +210,57 @@ func TestLifecycleBootMarksInterruptedJobs(t *testing.T) {
 	}
 	if m, _ := filepath.Glob(filepath.Join(h.jobs, "*.pid")); len(m) != 0 {
 		t.Fatalf("stale pid files left: %v", m)
+	}
+}
+
+// A finished job keeps its pid file until the next boot, and its pid may
+// still answer (an unreaped zombie, a reused pid): its exit file says it is
+// done, so it is not work (CIT-470).
+func TestLifecycleFinishedJobIsNotWork(t *testing.T) {
+	h := newLifecycleHost(t)
+	h.run(0, "boot")
+	h.job("ship", true)
+	os.WriteFile(filepath.Join(h.jobs, "ship.exit"), []byte("0\n"), 0o644)
+	h.run(15, "tick")
+	if !strings.HasPrefix(h.stopped(), "idle for 15 min") {
+		t.Fatalf("a finished job kept the host up: stopped %q", h.stopped())
+	}
+}
+
+// A hung workspace listing cannot hold the host past its cap: preparation
+// has one budget, and poweroff follows when it runs out (CIT-468).
+func TestLifecycleHungDevpodStillPowersOff(t *testing.T) {
+	h := newLifecycleHost(t)
+	h.hangList = true
+	h.run(0, "boot")
+	start := time.Now()
+	h.run(240, "tick")
+	if !strings.HasPrefix(h.stopped(), "hard cap of 240 min reached") {
+		t.Fatalf("hung devpod list: stopped %q", h.stopped())
+	}
+	if d := time.Since(start); d > 30*time.Second {
+		t.Fatalf("poweroff took %s", d)
+	}
+}
+
+// The timer can tick before the startup script runs boot. State from the
+// last boot must not stop a host that has just started (CIT-471), and the
+// startup script's own boot afterwards does not reset this boot's clocks.
+func TestLifecycleTickBeforeBootUsesThisBootsClock(t *testing.T) {
+	h := newLifecycleHost(t)
+	h.run(0, "boot")
+	h.bootID = "boot-2"
+	h.run(24*60+2, "tick")
+	if why := h.stopped(); why != "" {
+		t.Fatalf("two minutes into a new boot: stopped %q", why)
+	}
+	h.run(24*60+5, "boot")
+	b, _ := os.ReadFile(filepath.Join(h.state, "boot"))
+	if strings.TrimSpace(string(b)) != strconv.Itoa(t0+(24*60+2)*60) {
+		t.Fatalf("boot was reset by the second call in the same boot: %s", b)
+	}
+	h.run(24*60+17, "tick")
+	if !strings.HasPrefix(h.stopped(), "idle for 15 min") {
+		t.Fatalf("15 idle minutes into the new boot: stopped %q", h.stopped())
 	}
 }

@@ -43,6 +43,8 @@ type fakeHost struct {
 	jobs        []string
 	agent       bool
 	agentStatus string
+	// agentLive is the agent-live action's answer: the webhook check, now.
+	agentLive bool
 }
 
 func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string) ([]byte, error) {
@@ -63,6 +65,8 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 			return []byte(f.agentStatus), nil
 		}
 		return []byte(`{}`), nil
+	case "agent-live":
+		return json.Marshal(map[string]any{"live": f.agentLive, "detail": "LIVE_WEBHOOK_CHECK: FAIL"})
 	case "ping":
 		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true}}`), nil
 	case "up", "stop", "delete", "review", "review-status", "ship", "ship-status":
@@ -239,6 +243,7 @@ func TestHostWakeStepsToReady(t *testing.T) {
 	} {
 		tb, _, h = newTestToolbox("RUNNING")
 		h.agentStatus = status
+		h.agentLive = true
 		out := wake(tb)
 		if out.Phase != want || out.Ready != (want == "ready") {
 			t.Fatalf("agent status %s: %+v, want %s", status, out, want)
@@ -248,6 +253,22 @@ func TestHostWakeStepsToReady(t *testing.T) {
 				t.Fatalf("agent status %s: host_wake started the agent again", status)
 			}
 		}
+	}
+}
+
+// An old start result is not readiness: the webhook is checked on every
+// call, and an agent whose webhook stopped answering is restarted (CIT-467).
+func TestHostWakeChecksTheWebhookNow(t *testing.T) {
+	tb, _, h := newTestToolbox("RUNNING")
+	h.agentStatus = `{"state": "Running", "job_running": false, "job_exit": 0}`
+	res := callTool(t, tb, "host_wake", nil)
+	var out wakeOut
+	if err := json.Unmarshal([]byte(resultText(res)), &out); err != nil || out.Ready || out.Phase != "agent-restarting" {
+		t.Fatalf("dead webhook: %s", resultText(res))
+	}
+	acts := h.actions()
+	if acts[len(acts)-2] != "agent-live linear-agent" || acts[len(acts)-1] != "up linear-agent main 1" {
+		t.Fatalf("host calls %v, want the live check then a restart", acts)
 	}
 }
 
