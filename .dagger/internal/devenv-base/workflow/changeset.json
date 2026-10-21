@@ -1,9 +1,158 @@
 {
-  "seen": {},
-  "releases": [],
-  "clusters": [],
-  "decline": [],
+  "seen": {
+    "CIT-136": "2026-10-10T22:25:29.778Z",
+    "CIT-137": "2026-10-10T22:25:31.622Z",
+    "CIT-138": "2026-10-18T07:33:28.149Z",
+    "CIT-234": "2026-10-10T22:25:34.436Z",
+    "CIT-249": "2026-10-10T22:25:32.458Z",
+    "CIT-263": "2026-10-10T22:25:32.778Z",
+    "CIT-283": "2026-10-10T22:25:58.893Z",
+    "CIT-379": "2026-10-10T22:25:30.343Z",
+    "CIT-380": "2026-10-10T22:25:29.073Z",
+    "CIT-381": "2026-10-10T22:25:29.523Z",
+    "CIT-383": "2026-10-10T22:25:30.335Z",
+    "CIT-387": "2026-10-10T22:25:31.272Z",
+    "CIT-394": "2026-10-10T22:25:34.292Z",
+    "CIT-431": "2026-10-20T01:16:36.280Z",
+    "CIT-433": "2026-10-19T01:48:41.375Z",
+    "CIT-434": "2026-10-19T01:48:50.632Z",
+    "CIT-435": "2026-10-19T01:48:53.573Z",
+    "CIT-450": "2026-10-20T05:07:38.520Z",
+    "CIT-452": "2026-10-20T06:04:18.815Z",
+    "CIT-458": "2026-10-20T08:13:16.301Z",
+    "CIT-459": "2026-10-20T08:13:16.301Z",
+    "CIT-462": "2026-10-21T07:26:49.466Z",
+    "CIT-463": "2026-10-21T07:26:49.466Z",
+    "CIT-468": "2026-10-21T05:29:47.426Z",
+    "CIT-469": "2026-10-21T05:29:53.406Z",
+    "CIT-470": "2026-10-21T05:29:56.586Z",
+    "CIT-471": "2026-10-21T05:29:56.571Z",
+    "CIT-62": "2026-10-10T22:25:51.279Z",
+    "CIT-63": "2026-10-10T22:25:27.657Z"
+  },
+  "releases": [
+    {
+      "name": "host-lifecycle-safety",
+      "description": "Host shutdown and review-job status fixes, seen by the people who run the supervisor host.",
+      "pipeline": "supervisor"
+    }
+  ],
+  "clusters": [
+    {
+      "key": "new:host-lifecycle-safety",
+      "title": "Host shutdown and review-job status safety",
+      "description": "Shutdown refusal, bounded workspace discovery, publication recovery, and failure propagation through review, DevPod and snapshot status. These share the host lifecycle and the rule that failed or absent state must not report success.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "high",
+      "serves": "release:host-lifecycle-safety",
+      "blockedBy": [],
+      "issues": [
+        "CIT-434",
+        "CIT-468",
+        "CIT-469",
+        "CIT-471",
+        "CIT-470",
+        "CIT-433",
+        "CIT-435",
+        "CIT-450",
+        "CIT-431"
+      ]
+    },
+    {
+      "key": "new:duo-standalone-page",
+      "title": "Duo standalone page delivery",
+      "description": "Generated self-contained Duo page with bundled Monaco assets, loadable in WKWebView, plus stale-preview reconciliation. Both are needed for the iPhone editor to ship.",
+      "hat": "open-source",
+      "model": "sonnet",
+      "effort": "medium",
+      "serves": "CIT-439",
+      "blockedBy": [
+        "CIT-465",
+        "CIT-446"
+      ],
+      "issues": [
+        "CIT-462",
+        "CIT-463"
+      ]
+    }
+  ],
+  "decline": [
+    {
+      "issue": "CIT-458",
+      "reason": "local QA harness only; nothing published depends on it"
+    },
+    {
+      "issue": "CIT-62",
+      "reason": "BountyBench dagger troubleshooting history; nothing published depends on it"
+    },
+    {
+      "issue": "CIT-63",
+      "reason": "llama_index Jules PR tracking; nothing published depends on it"
+    }
+  ],
   "duplicate": [],
-  "escalate": [],
+  "escalate": [
+    {
+      "issue": "CIT-459",
+      "question": "Is a live process between ticks a product commitment for Remote Control, and which Release ships it?"
+    },
+    {
+      "issue": "CIT-452",
+      "question": "Should Remote Control use full-scope authentication now, and which Release does that ship in?"
+    },
+    {
+      "issue": "CIT-379",
+      "question": "Which Release or delivery issue does lesson-replay state derivation serve? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-380",
+      "question": "Which Release serves lesson continuity in the lesson data? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-381",
+      "question": "Which Release serves the lesson 1 to lesson 2 state carry-over decision? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-383",
+      "question": "Which Release should the CI lesson-split regression ship in? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-136",
+      "question": "Which Release serves capability-acquisition governance? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-137",
+      "question": "Which Release serves the executable integration scenario? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-138",
+      "question": "Which Release serves composed-role provisioning and readiness? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-234",
+      "question": "Which Release serves the diagnostic bridge and language-service direction? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-249",
+      "question": "Which Release serves the tutorial storyboard and lesson-continuity work? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-263",
+      "question": "Which Release serves ACP frame continuity evaluation? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-283",
+      "question": "Which Release serves deterministic lesson generation and provenance? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-387",
+      "question": "Which Release serves the four-world Storybook slice? No open sink reaches it."
+    },
+    {
+      "issue": "CIT-394",
+      "question": "Is the completion-gate monitor a deliverable, and which Release does it serve?"
+    }
+  ],
   "delegate": []
 }
