@@ -68,6 +68,25 @@ facts {
       "delegate CIT-502 is also in decline"
     )
   }
+  ["a cluster can serve a Release in the changeset's releases"] {
+    (valid) {
+      releases { new { name = "supervisor-workflow" } }
+      clusters { [0] { serves = "release:supervisor-workflow" } }
+    }.problems.isEmpty
+  }
+  ["a Release must be declared to be served, and served to be declared"] {
+    problemsOf((valid) {
+      releases {
+        new { name = "nobody-serves-this" }
+        new { name = "nobody-serves-this" }
+      }
+      clusters { [0] { serves = "release:not-declared" } }
+    }) == List(
+      "release nobody-serves-this appears twice",
+      "cluster new:review-findings: serves release:not-declared, which is not in releases",
+      "release nobody-serves-this is served by no cluster"
+    )
+  }
   ["a cluster key is new:<slug> or an identifier, and its hat, model and effort are closed sets"] {
     for (bad in List("Review Findings", "new:Review", "cit-1")) {
       module.catchOrNull(() -> (Changeset.Cluster) {

@@ -7,10 +7,12 @@ const T0 = "2026-10-21T00:00:00Z";
 
 // Linear in memory. Every write is logged, so a dry run can be checked for
 // making none, and every write bumps updatedAt, the way Linear does.
-function fakeLinear(issues: Partial<LinearIssue>[]) {
+function fakeLinear(issues: Partial<LinearIssue>[], existing: { pipelines?: string[]; releases?: string[] } = {}) {
+  const pipelines = new Set(existing.pipelines ?? []);
+  const releases = new Set(existing.releases ?? []);
   const store = new Map<string, LinearIssue & { description: string }>();
   for (const i of issues) {
-    store.set(i.identifier!, { updatedAt: T0, stage: "triage", labels: [], blockedBy: [], description: "", ...i } as LinearIssue & { description: string });
+    store.set(i.identifier!, { updatedAt: T0, stage: "triage", labels: [], blockedBy: [], releases: [], description: "", ...i } as LinearIssue & { description: string });
   }
   const writes: string[] = [];
   let next = 900;
@@ -29,7 +31,7 @@ function fakeLinear(issues: Partial<LinearIssue>[]) {
     async createIssue({ title, description, parent }) {
       const identifier = `CIT-${next++}`;
       writes.push(`create ${identifier} ${title} under ${parent}`);
-      const i = { identifier, updatedAt: T0, stage: "unstarted", parent, labels: [], blockedBy: [], description };
+      const i = { identifier, updatedAt: T0, stage: "unstarted", parent, labels: [], blockedBy: [], releases: [], description };
       store.set(identifier, i);
       return structuredClone(i);
     },
@@ -68,6 +70,27 @@ function fakeLinear(issues: Partial<LinearIssue>[]) {
       store.get(id)!.delegate = agent;
       touch(id);
     },
+    async hasPipeline(name) {
+      return pipelines.has(name);
+    },
+    async createPipeline(name) {
+      writes.push(`pipeline ${name}`);
+      pipelines.add(name);
+    },
+    async hasRelease(name) {
+      return releases.has(name);
+    },
+    async createRelease({ name, pipeline }) {
+      assert.ok(pipelines.has(pipeline), `release ${name} created before its pipeline ${pipeline}`);
+      writes.push(`release ${name} in ${pipeline}`);
+      releases.add(name);
+    },
+    async addToRelease(id, release) {
+      assert.ok(releases.has(release), `${id} added to release ${release} before it exists`);
+      writes.push(`attach ${id} ${release}`);
+      store.get(id)!.releases.push(release);
+      touch(id);
+    },
   };
   return { client, store, writes };
 }
@@ -85,6 +108,7 @@ const world = () =>
 
 const changeset = (): Changeset => ({
   seen: { "CIT-465": T0, "CIT-500": T0, "CIT-501": T0, "CIT-502": T0, "CIT-503": T0, "CIT-504": T0 },
+  releases: [],
   clusters: [
     {
       key: "new:review-findings",
@@ -185,6 +209,63 @@ test("an existing issue can be the cluster's parent", async () => {
   assert.equal(store.get("CIT-465")!.delegate, "tidelands-agent");
 });
 
+// The theme planning would otherwise decline for want of a sink: it gets a
+// Release of its own.
+const withRelease = (): Changeset => {
+  const cs = changeset();
+  cs.releases = [{ name: "supervisor-workflow", description: "The supervisor as a Render Workflow.", pipeline: "agent-plugins" }];
+  cs.clusters[0] = { ...cs.clusters[0], serves: "release:supervisor-workflow" };
+  return cs;
+};
+
+test("a cluster can serve a Release the changeset creates, pipeline and all", async () => {
+  const { client, store, writes } = world();
+  const dry = await apply(withRelease(), client, { dryRun: true });
+  assert.deepEqual(writes, []);
+  assert.deepEqual(
+    dry.applied.slice(0, 3).map((o) => `${o.op} ${o.target}: ${o.detail}`),
+    [
+      "pipeline agent-plugins: a new release pipeline",
+      "release supervisor-workflow: in agent-plugins: The supervisor as a Render Workflow.",
+      'create new:review-findings: "Review findings on the supervisor" in release supervisor-workflow (infra, sonnet, high)',
+    ],
+  );
+
+  const first = await apply(withRelease(), client, { dryRun: false });
+  assert.deepEqual(first.skipped, []);
+  const parent = first.clusters["new:review-findings"];
+  assert.equal(store.get(parent)!.parent, undefined, "a cluster serving a Release has no parent issue");
+  assert.deepEqual(store.get(parent)!.releases, ["supervisor-workflow"]);
+  assert.equal(store.get("CIT-500")!.parent, parent);
+
+  const count = writes.length;
+  const second = await apply(withRelease(), client, { dryRun: false });
+  assert.equal(writes.length, count, `a second apply wrote: ${writes.slice(count).join("; ")}`);
+  assert.deepEqual(second.applied, []);
+});
+
+test("a Release that already exists is used, and an existing cluster parent is added to it", async () => {
+  const { client, store, writes } = fakeLinear(
+    [
+      { identifier: "CIT-465", stage: "backlog" },
+      { identifier: "CIT-500" },
+      { identifier: "CIT-501" },
+      { identifier: "CIT-502" },
+      { identifier: "CIT-503" },
+      { identifier: "CIT-504" },
+    ],
+    { pipelines: ["agent-plugins"], releases: ["supervisor-workflow"] },
+  );
+  const cs = withRelease();
+  cs.clusters[0] = { ...cs.clusters[0], key: "CIT-465", blockedBy: [] };
+  cs.delegate = [];
+  const r = await apply(cs, client, { dryRun: false });
+  assert.ok(!r.applied.some((o) => o.op === "pipeline" || o.op === "release"));
+  assert.deepEqual(r.applied[0], { op: "attach", target: "CIT-465", detail: "in release supervisor-workflow (infra, sonnet, high)" });
+  assert.deepEqual(store.get("CIT-465")!.releases, ["supervisor-workflow"]);
+  assert.ok(!writes.some((w) => w.startsWith("pipeline") || w.startsWith("release")));
+});
+
 test("an invalid changeset is refused before anything is read or written", async () => {
   const { client, writes } = world();
   const cs = changeset();
@@ -208,5 +289,18 @@ test("validate names every problem", () => {
     "delegate CIT-502 is also in decline",
     "delegate new:nothing is neither a cluster nor an issue planning saw",
     "delegate new:nothing names no agent",
+  ]);
+});
+
+test("validate holds a cluster's Release to the changeset's releases", () => {
+  const cs = withRelease();
+  cs.releases.push({ name: "nobody-serves-this", description: "", pipeline: "" }, { ...cs.releases[0] });
+  cs.clusters.push({ ...cs.clusters[0], key: "new:other", serves: "release:not-declared", blockedBy: [], issues: ["CIT-504"] });
+  cs.escalate = [];
+  assert.deepEqual(validate(cs), [
+    "release nobody-serves-this names no pipeline",
+    "release supervisor-workflow appears twice",
+    "cluster new:other: serves release:not-declared, which is not in releases",
+    "release nobody-serves-this is served by no cluster",
   ]);
 });

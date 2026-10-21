@@ -82,6 +82,7 @@ const ISSUE_FIELDS = `id identifier updatedAt description
   parent { identifier }
   labels { nodes { name } }
   delegate { name }
+  releases { nodes { name completedAt canceledAt } }
   inverseRelations { nodes { type issue { identifier } } }`;
 
 interface IssueNode {
@@ -93,6 +94,7 @@ interface IssueNode {
   parent: { identifier: string } | null;
   labels: { nodes: { name: string }[] };
   delegate: { name: string } | null;
+  releases: { nodes: { name: string; completedAt: string | null; canceledAt: string | null }[] };
   inverseRelations: { nodes: { type: string; issue: { identifier: string } }[] };
 }
 
@@ -104,6 +106,7 @@ const toLinearIssue = (n: IssueNode): LinearIssue => ({
   labels: n.labels.nodes.map((l) => l.name),
   blockedBy: n.inverseRelations.nodes.filter((r) => r.type === "blocks").map((r) => r.issue.identifier),
   delegate: n.delegate?.name,
+  releases: n.releases.nodes.filter((r) => !r.completedAt && !r.canceledAt).map((r) => r.name),
 });
 
 export function linearClient(apiKey: string, team: string, fetcher = fetch): LinearClient {
@@ -143,6 +146,21 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
     if (!s) throw new Error(`team ${team} has no ${type} state`);
     return s.id;
   };
+  const pipelineId = async (name: string) =>
+    (
+      await gql<{ releasePipelines: { nodes: { id: string }[] } }>(
+        `query($name: String!) { releasePipelines(filter: { name: { eq: $name } }) { nodes { id } } }`,
+        { name },
+      )
+    ).releasePipelines.nodes[0]?.id;
+  // Only an open Release counts: a finished one with the same name is history.
+  const releaseId = async (name: string) =>
+    (
+      await gql<{ releases: { nodes: { id: string; completedAt: string | null; canceledAt: string | null }[] } }>(
+        `query($name: String!) { releases(filter: { name: { eq: $name } }) { nodes { id completedAt canceledAt } } }`,
+        { name },
+      )
+    ).releases.nodes.find((r) => !r.completedAt && !r.canceledAt)?.id;
   const update = (id: string, input: Record<string, unknown>) =>
     gql(`mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success } }`, { id, input });
   const relate = async (issue: string, related: string, type: "blocks" | "duplicate") =>
@@ -171,7 +189,15 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
     async createIssue({ title, description, parent }) {
       const d = await gql<{ issueCreate: { issue: IssueNode } }>(
         `mutation($input: IssueCreateInput!) { issueCreate(input: $input) { issue { ${ISSUE_FIELDS} } } }`,
-        { input: { teamId: (await teamInfo()).id, title, description, parentId: await uuid(parent), stateId: await stateOf("unstarted") } },
+        {
+          input: {
+            teamId: (await teamInfo()).id,
+            title,
+            description,
+            ...(parent ? { parentId: await uuid(parent) } : {}),
+            stateId: await stateOf("unstarted"),
+          },
+        },
       );
       return toLinearIssue(d.issueCreate.issue);
     },
@@ -215,6 +241,32 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
       );
       if (!d.users.nodes[0]) throw new Error(`no Linear user or agent named ${agent}`);
       await update(issue, { delegateId: d.users.nodes[0].id });
+    },
+    async hasPipeline(name) {
+      return !!(await pipelineId(name));
+    },
+    async createPipeline(name) {
+      // Continuous: a release ships when its work is done, not on a calendar.
+      await gql(`mutation($input: ReleasePipelineCreateInput!) { releasePipelineCreate(input: $input) { success } }`, {
+        input: { name, type: "continuous", teamIds: [(await teamInfo()).id] },
+      });
+    },
+    async hasRelease(name) {
+      return !!(await releaseId(name));
+    },
+    async createRelease({ name, description, pipeline }) {
+      const id = await pipelineId(pipeline);
+      if (!id) throw new Error(`no Linear release pipeline ${pipeline}`);
+      await gql(`mutation($input: ReleaseCreateInput!) { releaseCreate(input: $input) { success } }`, {
+        input: { name, description, pipelineId: id },
+      });
+    },
+    async addToRelease(issue, release) {
+      const id = await releaseId(release);
+      if (!id) throw new Error(`no open Linear release ${release}`);
+      await gql(`mutation($input: IssueToReleaseCreateInput!) { issueToReleaseCreate(input: $input) { success } }`, {
+        input: { issueId: await uuid(issue), releaseId: id },
+      });
     },
   };
 }

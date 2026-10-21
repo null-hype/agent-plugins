@@ -89,9 +89,11 @@ the maintainer merges (= applies), or doesn't
 
 - **What a changeset holds** (`workflow/pkl/Changeset.pkl`, mirrored by
   `workflow/src/changeset.ts`): *clusters* of Triage issues under a parent
-  (`new:<slug>` or an existing issue), each with the delivery issue it
-  serves, a hat (`infra` or `open-source`), a model and an effort, and its
-  `blockedBy` edges; and *decline*, *duplicate*, *escalate* and *delegate*
+  (`new:<slug>` or an existing issue), each with what it serves, a hat (`infra` or `open-source`), a model and an effort, and its
+  `blockedBy` edges; the *releases* the clusters serve, which apply creates,
+  with their pipeline, when no open one has the name, so planning proposes a
+  Release for a theme rather than declining it for want of a sink; and
+  *decline*, *duplicate*, *escalate* and *delegate*
   ops. Delegating to the self-hosted agent replaces asking for work with an
   @mention. Toolbox ops are the next kind to add.
 - **`apply` is idempotent.** Each op first checks whether Linear already

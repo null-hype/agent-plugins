@@ -12,7 +12,7 @@
 //
 // Dry run is calibration's test: it reads real Linear, decides every op the
 // same way, and writes nothing.
-import { validate, type Changeset } from "./changeset.ts";
+import { RELEASE_PREFIX, validate, type Changeset, type Cluster } from "./changeset.ts";
 
 export interface LinearIssue {
   identifier: string;
@@ -23,6 +23,8 @@ export interface LinearIssue {
   blockedBy: string[];
   // The agent the issue is delegated to, by its Linear name.
   delegate?: string;
+  // The open Releases it is in, by name.
+  releases: string[];
 }
 
 // The reads and writes apply needs. linear.ts implements it over GraphQL;
@@ -32,7 +34,9 @@ export interface LinearClient {
   // The open or closed issue whose description carries the marker: how a
   // cluster created by an earlier apply is found again.
   findByMarker(marker: string): Promise<LinearIssue | null>;
-  createIssue(input: { title: string; description: string; parent: string }): Promise<LinearIssue>;
+  // With no parent, the issue is created at the top, to be added to a
+  // Release.
+  createIssue(input: { title: string; description: string; parent?: string }): Promise<LinearIssue>;
   // Sets the parent and moves the issue out of Triage, to the team's first
   // unstarted state, if it is still there.
   setParent(issue: string, parent: string): Promise<void>;
@@ -42,10 +46,16 @@ export interface LinearClient {
   addLabel(issue: string, label: string): Promise<void>;
   comment(issue: string, body: string): Promise<void>;
   delegate(issue: string, agent: string): Promise<void>;
+  // Releases and their pipelines, by name. Only open Releases are found.
+  hasPipeline(name: string): Promise<boolean>;
+  createPipeline(name: string): Promise<void>;
+  hasRelease(name: string): Promise<boolean>;
+  createRelease(input: { name: string; description: string; pipeline: string }): Promise<void>;
+  addToRelease(issue: string, release: string): Promise<void>;
 }
 
 export interface Op {
-  op: "create" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate";
+  op: "pipeline" | "release" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate";
   target: string;
   detail: string;
 }
@@ -93,27 +103,54 @@ export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { d
     result.applied.push(op);
   };
 
-  // 1. Every cluster's parent issue exists, under what it serves.
+  // 0. The Releases the clusters serve exist, each in its pipeline. They
+  // are the changeset's own, so there is no drift to check: a Release of the
+  // same name that someone made since is simply used.
+  const pipelines = new Set<string>();
+  for (const r of cs.releases) {
+    if (await linear.hasRelease(r.name)) continue;
+    if (!pipelines.has(r.pipeline) && !(await linear.hasPipeline(r.pipeline))) {
+      if (!dryRun) await linear.createPipeline(r.pipeline);
+      result.applied.push({ op: "pipeline", target: r.pipeline, detail: "a new release pipeline" });
+    }
+    pipelines.add(r.pipeline);
+    if (!dryRun) await linear.createRelease(r);
+    result.applied.push({ op: "release", target: r.name, detail: `in ${r.pipeline}: ${r.description}` });
+  }
+
+  // 1. Every cluster's parent issue exists, under the issue it serves or in
+  // the Release it serves.
+  const release = (c: Cluster) => (c.serves.startsWith(RELEASE_PREFIX) ? c.serves.slice(RELEASE_PREFIX.length) : undefined);
+  const into = (c: Cluster) => `${release(c) ? `in release ${release(c)}` : `under ${c.serves}`} (${c.hat}, ${c.model}, ${c.effort})`;
   for (const c of cs.clusters) {
+    const name = release(c);
     if (c.key.startsWith("new:")) {
       const found = await linear.findByMarker(marker(c.key));
       if (found) {
         result.clusters[c.key] = found.identifier;
+        cache.set(found.identifier, found);
+        // An earlier apply created it; it may have stopped short of adding
+        // it to its Release.
+        if (name && !found.releases.includes(name)) {
+          if (!dryRun) await linear.addToRelease(found.identifier, name);
+          result.applied.push({ op: "attach", target: found.identifier, detail: `to release ${name}` });
+        }
         continue;
       }
-      if (!(await get(c.serves))) {
+      if (!name && !(await get(c.serves))) {
         result.skipped.push({ op: "create", target: c.key, detail: c.title, why: `${c.serves} does not exist` });
         continue;
       }
-      const op: Op = { op: "create", target: c.key, detail: `"${c.title}" under ${c.serves} (${c.hat}, ${c.model}, ${c.effort})` };
+      const op: Op = { op: "create", target: c.key, detail: `"${c.title}" ${into(c)}` };
       if (dryRun) {
         result.clusters[c.key] = c.key;
       } else {
         const created = await linear.createIssue({
           title: c.title,
           description: `${c.description}\n\n${marker(c.key)}`,
-          parent: c.serves,
+          ...(name ? {} : { parent: c.serves }),
         });
+        if (name) await linear.addToRelease(created.identifier, name);
         cache.set(created.identifier, created);
         result.clusters[c.key] = created.identifier;
       }
@@ -121,9 +158,11 @@ export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { d
     } else {
       result.clusters[c.key] = c.key;
       await run(
-        { op: "parent", target: c.key, detail: `under ${c.serves} (${c.hat}, ${c.model}, ${c.effort})` },
-        (i) => i.parent === c.serves,
-        () => linear.setParent(c.key, c.serves),
+        name
+          ? { op: "attach", target: c.key, detail: into(c) }
+          : { op: "parent", target: c.key, detail: into(c) },
+        (i) => (name ? i.releases.includes(name) : i.parent === c.serves),
+        () => (name ? linear.addToRelease(c.key, name) : linear.setParent(c.key, c.serves)),
       );
     }
   }

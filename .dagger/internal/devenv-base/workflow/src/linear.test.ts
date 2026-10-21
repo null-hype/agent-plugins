@@ -112,3 +112,25 @@ test("the client moves a parented Triage issue to the team's first unstarted sta
   const update = sent.find((r) => r.query.includes("issueUpdate"))!;
   assert.deepEqual(update.variables, { id: "CIT-500", input: { parentId: "uuid-CIT-900", stateId: "s-todo" } });
 });
+
+test("the client adds an issue to the open Release of that name, not a finished one", async () => {
+  const sent: { query: string; variables: Record<string, unknown> }[] = [];
+  const fetcher = (async (_url: string, init: RequestInit) => {
+    const req = JSON.parse(init.body as string);
+    sent.push(req);
+    const q: string = req.query;
+    const data = q.includes("releases(")
+      ? { releases: { nodes: [
+          { id: "r-old", completedAt: "2026-09-01T00:00:00Z", canceledAt: null },
+          { id: "r-open", completedAt: null, canceledAt: null },
+        ] } }
+      : q.includes("issue(id: $id) { id }")
+        ? { issue: { id: `uuid-${req.variables.id}` } }
+        : { issueToReleaseCreate: { success: true } };
+    return new Response(JSON.stringify({ data }), { status: 200 });
+  }) as typeof fetch;
+
+  await linearClient("key", "CIT", fetcher).addToRelease("CIT-900", "supervisor-workflow");
+  const create = sent.find((r) => r.query.includes("issueToReleaseCreate"))!;
+  assert.deepEqual(create.variables, { input: { issueId: "uuid-CIT-900", releaseId: "r-open" } });
+});
