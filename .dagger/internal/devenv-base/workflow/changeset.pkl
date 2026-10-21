@@ -1,7 +1,129 @@
-// Planning's changeset (CIT-472), rewritten by each calibration run and
-// rendered to changeset.json with `pkl eval -f json -o changeset.json
-// changeset.pkl`. Merging it is applying it. Empty until the first
-// calibration plans something.
+// Planning's changeset (CIT-472), written by calibration against
+// claude/project-thread-b6rac7@eb9b571613178c451b409cd25c332ae43c3ed73c. Merging it is applying it; render with
+// `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
-seen {}
+seen {
+  ["CIT-131"] = "2026-10-18T07:33:28.149Z"
+  ["CIT-134"] = "2026-10-10T22:25:29.341Z"
+  ["CIT-135"] = "2026-10-10T22:25:31.621Z"
+  ["CIT-136"] = "2026-10-10T22:25:29.778Z"
+  ["CIT-137"] = "2026-10-10T22:25:31.622Z"
+  ["CIT-138"] = "2026-10-18T07:33:28.149Z"
+  ["CIT-234"] = "2026-10-10T22:25:34.436Z"
+  ["CIT-249"] = "2026-10-10T22:25:32.458Z"
+  ["CIT-263"] = "2026-10-10T22:25:32.778Z"
+  ["CIT-283"] = "2026-10-10T22:25:58.893Z"
+  ["CIT-290"] = "2026-10-10T22:25:25.267Z"
+  ["CIT-360"] = "2026-10-10T22:25:27.434Z"
+  ["CIT-379"] = "2026-10-10T22:25:30.343Z"
+  ["CIT-380"] = "2026-10-10T22:25:29.073Z"
+  ["CIT-381"] = "2026-10-10T22:25:29.523Z"
+  ["CIT-383"] = "2026-10-10T22:25:30.335Z"
+  ["CIT-387"] = "2026-10-10T22:25:31.272Z"
+  ["CIT-393"] = "2026-10-10T22:25:28.473Z"
+  ["CIT-394"] = "2026-10-10T22:25:34.292Z"
+  ["CIT-396"] = "2026-10-13T20:53:56.743Z"
+  ["CIT-431"] = "2026-10-20T01:16:36.280Z"
+  ["CIT-433"] = "2026-10-19T01:48:41.375Z"
+  ["CIT-434"] = "2026-10-19T01:48:50.632Z"
+  ["CIT-435"] = "2026-10-19T01:48:53.573Z"
+  ["CIT-450"] = "2026-10-20T05:07:38.520Z"
+  ["CIT-452"] = "2026-10-20T06:04:18.815Z"
+  ["CIT-458"] = "2026-10-20T08:13:16.301Z"
+  ["CIT-459"] = "2026-10-20T08:13:16.301Z"
+  ["CIT-462"] = "2026-10-21T07:26:49.466Z"
+  ["CIT-463"] = "2026-10-21T07:26:49.466Z"
+  ["CIT-467"] = "2026-10-21T07:26:49.466Z"
+  ["CIT-468"] = "2026-10-21T05:29:47.426Z"
+  ["CIT-469"] = "2026-10-21T05:29:53.406Z"
+  ["CIT-470"] = "2026-10-21T05:29:56.586Z"
+  ["CIT-471"] = "2026-10-21T05:29:56.571Z"
+  ["CIT-62"] = "2026-10-10T22:25:51.279Z"
+  ["CIT-63"] = "2026-10-10T22:25:27.657Z"
+}
+
+releases {
+  new {
+    name = "supervisor-workflow"
+    description = "Supervisor host and review pipeline: review jobs publish correctly, and the host shuts down and wakes safely."
+  }
+  new {
+    name = "dev-environments"
+    description = "Worker and supervisor DevPod workspaces: provisioning, status reporting, and branch checks."
+  }
+}
+clusters {
+  new {
+    key = "new:review-publication"
+    title = "Review job correctness and publication"
+    description = "Review jobs must count as successful when they have no findings, must not file findings twice on resume, and must keep snapshot inventory failures visible to review sync."
+    hat = "infra"
+    model = "sonnet"
+    effort = "medium"
+    serves = "release:supervisor-workflow"
+    issues { "CIT-433"; "CIT-431"; "CIT-469"; "CIT-393" }
+  }
+  new {
+    key = "new:host-lifecycle"
+    title = "Host lifecycle safety: shutdown, wake, and idle observation"
+    description = "The host must refuse shutdown during review jobs, bound discovery before poweroff, verify the webhook before reporting ready, and read job state and leases correctly on boot."
+    hat = "infra"
+    model = "sonnet"
+    effort = "medium"
+    serves = "release:supervisor-workflow"
+    issues { "CIT-434"; "CIT-468"; "CIT-467"; "CIT-470"; "CIT-471" }
+  }
+  new {
+    key = "new:devpod-status"
+    title = "DevPod status and branch checks"
+    description = "Status failures must propagate instead of reading as NotFound, branches that do not exist must not report success, and Remote Control needs full-scope auth. The local stub suite also needs a writable scratch directory."
+    hat = "infra"
+    model = "sonnet"
+    effort = "medium"
+    serves = "release:dev-environments"
+    issues { "CIT-435"; "CIT-450"; "CIT-452"; "CIT-458" }
+  }
+  new {
+    key = "new:dev-environments-provisioning"
+    title = "Worker and supervisor DevPod provisioning"
+    description = "Provision independent worker and supervisor workspaces through the existing path, package their setup, and extract the container-use and Dagger installers into devcontainer features."
+    hat = "infra"
+    model = "sonnet"
+    effort = "medium"
+    serves = "release:dev-environments"
+    issues { "CIT-131"; "CIT-134"; "CIT-135"; "CIT-136"; "CIT-137"; "CIT-138" }
+  }
+  new {
+    key = "new:duo-cards"
+    title = "Duo question cards: stale option preview"
+    description = "The Duo demo claim's cards are defined in Pkl (CIT-465), and replacing cards must clear the old option preview. It ships with the iPhone Duo editor."
+    hat = "open-source"
+    model = "sonnet"
+    effort = "medium"
+    serves = "CIT-439"
+    blockedBy { "CIT-465"; "CIT-446" }
+    issues { "CIT-463" }
+  }
+}
+decline {
+  new { issue = "CIT-62"; reason = "imaginairy is an unrelated library stub; nothing published depends on it" }
+  new { issue = "CIT-63"; reason = "llama_index is an unrelated library stub; nothing published depends on it" }
+  new { issue = "CIT-290"; reason = "unrelated typesafe.ai note; nothing published depends on it" }
+  new { issue = "CIT-360"; reason = "Proton Drive CLI is unrelated to any open Release; nothing published depends on it" }
+  new { issue = "CIT-283"; reason = "a static review note with no action; nothing published depends on it" }
+}
+duplicate { new { issue = "CIT-396"; of = "CIT-395" } }
+escalate {
+  new { issue = "CIT-462"; question = "Is a standalone loadable page for the native client in scope for CIT-439, and does the Duo release need it?" }
+  new { issue = "CIT-459"; question = "Should a live process for interaction between ticks be built? This is a design decision." }
+  new { issue = "CIT-394"; question = "Should semantic drift monitoring across goals, dependencies and PR stacks be built, and which Release would it serve?" }
+  new { issue = "CIT-249"; question = "Is the agent stuck in tutorial-mode a product bug to fix now, and which Release does it belong to?" }
+  new { issue = "CIT-234"; question = "Is the vertical slice of CIT-152 still wanted, and which Release does it serve?" }
+  new { issue = "CIT-263"; question = "Should Jev act as the continuity judge for ACP frames? This is a product and budget decision." }
+  new { issue = "CIT-379"; question = "Is this lesson status draft still needed, or should it be corrected and closed?" }
+  new { issue = "CIT-380"; question = "Which state carries over from lesson 1 to lesson 2? This is a product decision." }
+  new { issue = "CIT-381"; question = "Which Release does the lesson-2 accepted-answers fix serve, given that the carry-over question is open?" }
+  new { issue = "CIT-383"; question = "Which Release does the lesson-split CI fix serve, and should it wait for the CIT-380 decision?" }
+  new { issue = "CIT-387"; question = "Does the pre-merge snapshot work serve a Release, or does it belong with the CIT-384 parent?" }
+}
