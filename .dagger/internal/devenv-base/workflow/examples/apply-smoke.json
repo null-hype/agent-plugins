@@ -1,6 +1,7 @@
 {
   "seen": {
-    "CIT-473": "2026-10-21T08:03:29.131Z"
+    "CIT-473": "2026-10-21T08:03:29.131Z",
+    "CIT-478": "2026-10-21T19:42:51.430Z"
   },
   "releases": [
     {
@@ -20,7 +21,8 @@
       "serves": "release:supervisor-apply-smoke",
       "blockedBy": [],
       "issues": [
-        "CIT-473"
+        "CIT-473",
+        "CIT-478"
       ]
     }
   ],

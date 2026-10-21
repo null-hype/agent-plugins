@@ -1,5 +1,4 @@
-// The first real apply (CIT-472): one throwaway Triage issue, CIT-473,
-// clustered under a new parent in a test Release. `src/smoke.ts` applies it
+// The first real apply (CIT-472): throwaway Triage issues clustered under a new parent in a test Release. `src/smoke.ts` applies it
 // twice against live Linear; the second run must change nothing. Rendered
 // with `pkl eval -f json -o examples/apply-smoke.json examples/apply-smoke.pkl`.
 amends "../pkl/Changeset.pkl"
@@ -8,6 +7,7 @@ amends "../pkl/Changeset.pkl"
 // now, so a touch since this was written does not read as drift.
 seen {
   ["CIT-473"] = "2026-10-21T08:03:29.131Z"
+  ["CIT-478"] = "2026-10-21T19:42:51.430Z"
 }
 releases {
   new {
@@ -24,6 +24,8 @@ clusters {
     model = "haiku"
     effort = "low"
     serves = "release:supervisor-apply-smoke"
-    issues { "CIT-473" }
+    // CIT-478 was added after the first runs, so a rerun still has a member
+    // to move out of Triage.
+    issues { "CIT-473"; "CIT-478" }
   }
 }

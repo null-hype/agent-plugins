@@ -941,12 +941,28 @@ func (m *DevenvBase) CalibrateSupervisor(
 	return out, nil
 }
 
-// ApplySmoke is the supervisor workflow's first real apply (CIT-472): it
-// runs workflow/src/smoke.ts on workflow/examples/apply-smoke.json against
-// live Linear, outside Render. The changeset is dry-run, applied, and applied
-// again, and the second apply must change nothing. It writes to Linear, so it
-// is never a check: CI runs it only from a commit that asks for it.
+// ApplySmoke is the supervisor workflow's real apply (CIT-472), through the
+// workflow's own `apply` task on `render workflows dev`, the way the deployed
+// workflow runs it: workflow/src/smoke.ts asks that task to dry-run, apply,
+// and apply again workflow/examples/apply-smoke.json against live Linear, and
+// the second apply must change nothing. It writes to Linear, so it is never a
+// check: CI runs it only from a commit that asks for it.
 func (m *DevenvBase) ApplySmoke(ctx context.Context, protonPassToken *dagger.Secret) (string, error) {
+	// The task server runs inside pass-cli run, so the task it starts has the
+	// Linear key; smoke.ts is its client, and needs the key only to read.
+	script := `set -euo pipefail
+export RENDER_USE_LOCAL_DEV=true RENDER_LOCAL_DEV_URL=http://127.0.0.1:8120
+render workflows dev -- npm start > /tmp/dev.log 2>&1 &
+dev=$!
+trap 'kill $dev 2> /dev/null || true' EXIT
+for _ in $(seq 1 60); do
+  kill -0 $dev 2> /dev/null || { cat /tmp/dev.log; echo "the local task server exited"; exit 1; }
+  curl -s -o /dev/null --max-time 2 $RENDER_LOCAL_DEV_URL/ && break
+  sleep 1
+done
+curl -s -o /dev/null --max-time 2 $RENDER_LOCAL_DEV_URL/ || { cat /tmp/dev.log; echo "the local task server never came up"; exit 1; }
+node dist/smoke.js examples/apply-smoke.json || { cat /tmp/dev.log; exit 1; }
+`
 	run := m.Supervisor("linux/amd64").
 		WithDirectory("/app/workflow", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
 			Exclude: []string{"node_modules", "dist"},
@@ -959,8 +975,9 @@ func (m *DevenvBase) ApplySmoke(ctx context.Context, protonPassToken *dagger.Sec
 		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: resolve the Linear key for the apply smoke test").
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
 		WithNewFile("/app/workflow/smoke.env", "LINEAR_API_KEY=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY\n").
+		WithNewFile("/app/workflow/smoke.sh", script).
 		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && " +
-			"pass-cli run --env-file smoke.env -- node dist/smoke.js examples/apply-smoke.json 2>&1"}, dagger.ContainerWithExecOpts{
+			"pass-cli run --env-file smoke.env -- bash smoke.sh 2>&1"}, dagger.ContainerWithExecOpts{
 			Expect: dagger.ReturnTypeAny,
 		})
 	out, err := run.Stdout(ctx)

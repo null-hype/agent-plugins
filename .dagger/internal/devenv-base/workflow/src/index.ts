@@ -32,10 +32,19 @@ task(
 // looked at before it is run again, not repeated blind.
 task(
   { name: "apply" },
-  async function apply(_ctx: TaskContext, dryRun: boolean = true, team: string = "CIT"): Promise<ApplyResult> {
-    // changeset.json sits next to package.json, rendered from changeset.pkl;
-    // dist/ is one level down.
-    const cs = JSON.parse(await readFile(new URL("../changeset.json", import.meta.url), "utf8")) as Changeset;
+  async function apply(
+    _ctx: TaskContext,
+    dryRun: boolean = true,
+    team: string = "CIT",
+    changeset: string = "changeset.json",
+  ): Promise<ApplyResult> {
+    // The committed changeset.json sits next to package.json, rendered from
+    // changeset.pkl; dist/ is one level down. Another file is named relative
+    // to the same place, for the smoke test, and may not leave it.
+    if (!/^[a-z0-9][a-z0-9._/-]*\.json$/.test(changeset) || changeset.includes("..")) {
+      throw new Error(`changeset must be a .json file inside the workflow, got ${changeset}`);
+    }
+    const cs = JSON.parse(await readFile(new URL(`../${changeset}`, import.meta.url), "utf8")) as Changeset;
     return applyChangeset(cs, linearClient(linearKey(), team), { dryRun });
   },
 );
