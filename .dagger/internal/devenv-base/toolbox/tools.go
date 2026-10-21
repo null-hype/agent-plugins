@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -80,7 +81,34 @@ type hostStatusOut struct {
 	IP      string   `json:"ip,omitempty"`
 	Ready   bool     `json:"ready"`
 	Tailnet *tailnet `json:"tailnet,omitempty"`
-	Detail  string   `json:"detail,omitempty"`
+	// Lifecycle is the host's idle clock and lease (host-lifecycle.sh), or
+	// null on a host set up before it.
+	Lifecycle json.RawMessage `json:"lifecycle,omitempty"`
+	Detail    string          `json:"detail,omitempty"`
+}
+
+// activityOut is the host's work in progress: every toolbox job, not only
+// those named after a workspace, and the Linear agent working an issue.
+type activityOut struct {
+	Jobs         []string        `json:"jobs"`
+	AgentRunning bool            `json:"agent_running"`
+	Lifecycle    json.RawMessage `json:"lifecycle,omitempty"`
+}
+
+func (a activityOut) busy() string {
+	if len(a.Jobs) > 0 {
+		return "job " + a.Jobs[0] + " is running"
+	}
+	if a.AgentRunning {
+		return "the Linear agent is working an issue"
+	}
+	return ""
+}
+
+type wakeOut struct {
+	Ready  bool   `json:"ready"`
+	Phase  string `json:"phase"`
+	Detail string `json:"detail,omitempty"`
 }
 
 type workspace struct {
@@ -128,12 +156,80 @@ func (t *toolbox) hostStatus(ctx context.Context) (hostStatusOut, error) {
 		out.Detail = "booting: " + err.Error()
 		return out, nil
 	}
-	var ping struct{ Tailnet *tailnet }
+	var ping struct {
+		Tailnet   *tailnet
+		Lifecycle json.RawMessage
+	}
 	if err := json.Unmarshal(b, &ping); err != nil {
 		return out, fmt.Errorf("host ping: %w", err)
 	}
-	out.Ready, out.Tailnet = true, ping.Tailnet
+	out.Ready, out.Tailnet, out.Lifecycle = true, ping.Tailnet, ping.Lifecycle
 	return out, nil
+}
+
+func (t *toolbox) activity(ctx context.Context) (activityOut, error) {
+	var a activityOut
+	b, err := t.host.Run(ctx, nil, "activity")
+	if err != nil {
+		return a, err
+	}
+	if err := json.Unmarshal(b, &a); err != nil {
+		return a, fmt.Errorf("host activity: %w", err)
+	}
+	return a, nil
+}
+
+// wake moves the host one step towards taking work and says where it is:
+// VM started, host booted, Linear agent started, agent up. The agent's
+// start ends with check-linear-agent-webhook-live.sh, so an agent job that
+// exited 0 since this boot means Linear's webhooks reach it. Until ready is
+// true, nothing should be delegated: the work waits in Linear.
+func (t *toolbox) wake(ctx context.Context) (wakeOut, error) {
+	in, err := t.gce.Instance(ctx)
+	if err != nil {
+		return wakeOut{}, err
+	}
+	switch in.Status {
+	case "RUNNING":
+	case "TERMINATED", "STOPPED", "SUSPENDED":
+		if err := t.gce.Start(ctx); err != nil {
+			return wakeOut{}, err
+		}
+		return wakeOut{Phase: "vm-starting", Detail: "the host was " + in.Status + "; started it. Call host_wake again in a minute."}, nil
+	default:
+		return wakeOut{Phase: "vm-" + strings.ToLower(in.Status), Detail: "the host is " + in.Status + "; call host_wake again in a minute."}, nil
+	}
+	hs, err := t.hostStatus(ctx)
+	if err != nil {
+		return wakeOut{}, err
+	}
+	if !hs.Ready {
+		return wakeOut{Phase: "host-booting", Detail: hs.Detail}, nil
+	}
+	b, err := t.host.Run(ctx, nil, "status", agentWorkspace)
+	if err != nil {
+		return wakeOut{}, err
+	}
+	var st struct {
+		State      string `json:"state"`
+		JobRunning bool   `json:"job_running"`
+		JobExit    *int   `json:"job_exit"`
+	}
+	if err := json.Unmarshal(b, &st); err != nil {
+		return wakeOut{}, fmt.Errorf("host status: %w", err)
+	}
+	switch {
+	case st.JobRunning:
+		return wakeOut{Phase: "agent-starting", Detail: "the agent's start job is running; call host_wake again in a minute."}, nil
+	case st.JobExit != nil && *st.JobExit == 0 && st.State == "Running":
+		return wakeOut{Ready: true, Phase: "ready", Detail: "the Linear agent is up and its webhook is live; delegate now."}, nil
+	case st.JobExit != nil && *st.JobExit != 0:
+		return wakeOut{Phase: "agent-failed", Detail: fmt.Sprintf("the agent's start job exited %d; workspace_status %s has its log. agent_start retries it.", *st.JobExit, agentWorkspace)}, nil
+	}
+	if _, err := t.up(ctx, agentWorkspace, "main", true); err != nil {
+		return wakeOut{}, err
+	}
+	return wakeOut{Phase: "agent-starting", Detail: "started the Linear agent; call host_wake again in a minute."}, nil
 }
 
 func (t *toolbox) list(ctx context.Context) ([]workspace, error) {
@@ -149,7 +245,8 @@ func (t *toolbox) list(ctx context.Context) ([]workspace, error) {
 }
 
 // hostStop stops every running workspace, then the VM, so a scheduled
-// shutdown is one call. It refuses while a workspace job is in progress.
+// shutdown is one call. It refuses while any toolbox job (workspace up,
+// ship, review) is running or the Linear agent is working an issue.
 func (t *toolbox) hostStop(ctx context.Context) (string, error) {
 	in, err := t.gce.Instance(ctx)
 	if err != nil {
@@ -158,14 +255,16 @@ func (t *toolbox) hostStop(ctx context.Context) (string, error) {
 	if in.Status != "RUNNING" {
 		return "", fmt.Errorf("the host is %s, not RUNNING", in.Status)
 	}
-	ws, err := t.list(ctx)
+	a, err := t.activity(ctx)
 	if err != nil {
 		return "", err
 	}
-	for _, w := range ws {
-		if w.JobRunning {
-			return "", fmt.Errorf("workspace %s has a job in progress; wait for it (workspace_status) before stopping the host", w.Name)
-		}
+	if why := a.busy(); why != "" {
+		return "", fmt.Errorf("%s; wait for it before stopping the host", why)
+	}
+	ws, err := t.list(ctx)
+	if err != nil {
+		return "", err
 	}
 	stopped := 0
 	for _, w := range ws {
@@ -203,6 +302,14 @@ func (t *toolbox) addTools(s *mcp.Server) {
 		return nil, out, err
 	})
 	mcp.AddTool(s, &mcp.Tool{
+		Name: "host_wake",
+		Description: "Bring the host up for work, one step per call: start the VM, wait for it to boot, start the Linear agent, wait until its webhook is live. " +
+			"Returns ready and the phase; call it again until ready is true before delegating anything. Pending work stays in Linear until then.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, wakeOut, error) {
+		out, err := t.wake(ctx)
+		return nil, out, err
+	})
+	mcp.AddTool(s, &mcp.Tool{
 		Name:        "host_start",
 		Description: "Start the GCE host VM. Returns at once; call host_status until ready is true (about two minutes) before using workspace tools.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
@@ -220,7 +327,7 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "host_stop",
-		Description: "Stop every running workspace, then stop the GCE host VM. Refuses while a workspace job is in progress.",
+		Description: "Stop every running workspace, then stop the GCE host VM. Refuses while any job (workspace, ship or review) is running or the Linear agent is working an issue. The host also stops itself when idle or at the end of its lease; host_status shows those clocks.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
 		msg, err := t.hostStop(ctx)
 		if err != nil {

@@ -409,7 +409,7 @@ func TestHostReview(t *testing.T) {
 	for name, script := range map[string]string{
 		"pass-cli": "exit 0",
 		"curl": `echo "$*" >> "$HOME/curl.calls"
-echo '{"base": {"ref": "agent/x"}}'`,
+echo '{"base": {"ref": "agent/x"}, "head": {"sha": "abc123"}}'`,
 		"codex": `cat > "$HOME/prompt"
 while [ "$1" != -o ]; do shift; done
 echo "no findings" > "$2"`,
@@ -446,5 +446,20 @@ echo "no findings" > "$2"`,
 	}
 	if b, _ := os.ReadFile(filepath.Join(home, "curl.calls")); strings.Contains(string(b), "s3cret") {
 		t.Fatalf("token reached curl's command line:\n%s", b)
+	}
+
+	// The same head again is a duplicate: no second Codex run, no second set
+	// of triage issues.
+	os.Remove(filepath.Join(home, "prompt"))
+	again := exec.Command("bash", "-s", "--", "review", "7")
+	again.Env = env
+	again.Stdin = strings.NewReader(exports(map[string]string{"GITHUB_TOKEN": "s3cret"}) + hostScript)
+	out, err := again.Output()
+	if err != nil || !strings.Contains(string(out), `"duplicate": true`) {
+		t.Fatalf("second review of the same head: %v\n%s", err, out)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if _, err := os.Stat(filepath.Join(home, "prompt")); err == nil {
+		t.Fatal("Codex reviewed the same head twice")
 	}
 }

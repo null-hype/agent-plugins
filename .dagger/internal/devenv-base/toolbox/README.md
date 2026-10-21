@@ -24,9 +24,10 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 
 | Tool | Does |
 | --- | --- |
-| `host_status` | VM status and IP; `ready` once the boot script has finished; the tailnet node, joining it first if needed |
+| `host_status` | VM status and IP; `ready` once the boot script has finished; the tailnet node, joining it first if needed; `lifecycle`, the idle clock and lease (see [Lifecycle](#lifecycle)) |
+| `host_wake` | One step towards taking work per call: start the VM, wait for it to boot, start the Linear agent, wait for its webhook check. Delegate only once `ready` is true |
 | `host_start` | Start the VM |
-| `host_stop` | Stop every running workspace, then the VM; refuses while a job runs |
+| `host_stop` | Stop every running workspace, then the VM; refuses while any job (workspace, ship, review) runs or the Linear agent is working an issue |
 | `workspace_list` | Workspaces with their state |
 | `workspace_up` | Create (from agent-plugins at `ref`, default `main`) or start a workspace |
 | `agent_start` | `workspace_up` for `linear-agent`, then the keepalive's bootstrap scripts |
@@ -141,6 +142,39 @@ What this does not guarantee:
 - `~/.toolbox/ship/codex/auth.json` is a link to the host's login. If Codex
   replaces the file when it refreshes the token, the link is replaced by a
   copy; log in again on the host if `codex_review` stops working after a ship.
+
+## Lifecycle
+
+The host is on only while there is work (CIT-466). `host-lifecycle.sh`
+runs on the host as `toolbox-lifecycle`, from a systemd timer every minute,
+so no agent or LLM has to remember to stop it:
+
+- **Wake before dispatch.** Call `host_wake` until `ready` is true, then
+  delegate. Until then the work stays queued in Linear: nothing is
+  delegated to an agent whose webhook is not live.
+- **Productive work** is a running toolbox job (workspace up, ship,
+  review, whose last step is the restic backup), the Linear agent working an
+  issue (its `claude-agent-sdk` process), or a `restic` or `codex` process.
+  A poll, an SSH session or any other tool call is not, so it does not keep
+  the host up.
+- **Idle shutdown** after 15 minutes without productive work.
+- **Lease.** The host gets 120 minutes from boot. A tick with work in
+  progress at the deadline moves it 15 minutes later, never past a hard cap
+  of 240 minutes, where the host stops even mid-job.
+- **Before poweroff** each running workspace is stopped with `devpod stop`,
+  which keeps its files; the disk keeps the jobs' logs and results.
+- **On the next boot** a job left without an exit code gets `130` and a
+  `.interrupted` marker, stale pid files go, and workspace start results
+  from the last boot are set aside so `host_wake` starts the agent afresh.
+  `agent_ship` is idempotent, and `codex_review` skips a PR head it already
+  reviewed successfully, so a retried job does not duplicate pushes or
+  triage issues.
+
+The limits are `LIFECYCLE_IDLE_MIN`, `LIFECYCLE_LEASE_MIN`,
+`LIFECYCLE_EXTEND_MIN` and `LIFECYCLE_MAX_MIN`. `setup-host.sh` puts the
+script in the instance's `toolbox-lifecycle` metadata and the boot script
+installs it, so it takes effect after `setup-host.sh` and a restart. A host
+without it runs until `host_stop`, as before.
 
 ## Test
 
