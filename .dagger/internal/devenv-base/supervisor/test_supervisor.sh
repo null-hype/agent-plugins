@@ -188,8 +188,10 @@ STUB
 
 cat > "$BIN/curl" <<'STUB'
 #!/usr/bin/env bash
-# Only the dev server's readiness probe uses curl.
-[ "${CURL_STUB:-up}" = up ]
+# Only the dev server's readiness probe uses curl. Like the real probe, it
+# answers only once the dev server has started, which also keeps "render"
+# ahead of "node" in $CALLS: the server is started in the background.
+[ "${CURL_STUB:-up}" = up ] && [ -s "$RENDER_PID" ]
 STUB
 
 cat > "$BIN/npm" <<'STUB'
