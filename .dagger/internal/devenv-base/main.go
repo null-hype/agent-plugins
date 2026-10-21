@@ -902,6 +902,44 @@ func (m *DevenvBase) TriggerRenderCron(
 		Stdout(ctx)
 }
 
+// CalibrateSupervisor runs one live supervisor calibration (CIT-472) in the
+// packaged image: it clones `base`, runs the workflow on `render workflows
+// dev`, has planning write a changeset against live Linear (read-only), dry-
+// runs apply, and opens or updates the calibration PR into `base`. It never
+// writes to Linear and never deploys. Every secret but the Proton Pass token
+// comes from calibrate.env at run time. The whole log comes back either way,
+// so a failed calibration shows why in the CI run.
+func (m *DevenvBase) CalibrateSupervisor(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+	// The branch to calibrate against, and the PR's base.
+	// +optional
+	// +default="main"
+	base string,
+) (string, error) {
+	run := m.Supervisor("linux/amd64").
+		WithEnvVariable("SUPERVISOR_MODE", "calibrate").
+		WithEnvVariable("CALIBRATION_BASE", base).
+		// Never served from cache: each call is a fresh read of Linear.
+		WithEnvVariable("CALIBRATION_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", "-c", "/app/supervisor/supervisor.sh 2>&1"}, dagger.ContainerWithExecOpts{
+			Expect: dagger.ReturnTypeAny,
+		})
+	out, err := run.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	code, err := run.ExitCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("calibration exited %d:\n%s", code, out)
+	}
+	return out, nil
+}
+
 // CheckPlaywright asserts the slim image can actually drive a browser, and
 // that pass-cli and restic came along with it. It renders a real PNG rather
 // than printing a version — a version string says nothing about whether
