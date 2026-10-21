@@ -31,9 +31,10 @@ task(
 );
 
 // No retries: apply is idempotent, but a run that failed halfway should be
-// looked at before it is run again, not repeated blind.
+// looked at before it is run again, not repeated blind. Render retries a
+// task that names no policy, so this one says zero.
 task(
-  { name: "apply" },
+  { name: "apply", retry: { maxRetries: 0, waitDurationMs: 0, backoffScaling: 1 } },
   async function apply(
     _ctx: TaskContext,
     dryRun: boolean = true,

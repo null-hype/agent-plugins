@@ -44,6 +44,11 @@ export interface LinearClient {
   cancel(issue: string): Promise<void>;
   markDuplicate(issue: string, of: string): Promise<void>;
   addLabel(issue: string, label: string): Promise<void>;
+  // Labels and the users or agents work is delegated to, by name. A dry run
+  // asks for every name a write would need, so it fails where apply would.
+  hasLabel(name: string): Promise<boolean>;
+  createLabel(name: string): Promise<void>;
+  hasUser(name: string): Promise<boolean>;
   comment(issue: string, body: string): Promise<void>;
   delegate(issue: string, agent: string): Promise<void>;
   // Releases and their pipelines, by name. Only open Releases are found.
@@ -55,7 +60,7 @@ export interface LinearClient {
 }
 
 export interface Op {
-  op: "pipeline" | "release" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate";
+  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate";
   target: string;
   detail: string;
 }
@@ -118,6 +123,12 @@ export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { d
     pipelines.add(r.pipeline);
     if (!dryRun) await linear.createRelease(r);
     result.applied.push({ op: "release", target: r.name, detail: `in ${r.pipeline}: ${r.description}` });
+  }
+
+  // The label escalations carry exists. Like a Release, it is apply's own.
+  if (cs.escalate.length && !(await linear.hasLabel(ESCALATE_LABEL))) {
+    if (!dryRun) await linear.createLabel(ESCALATE_LABEL);
+    result.applied.push({ op: "label", target: ESCALATE_LABEL, detail: "a new label for escalations" });
   }
 
   // 1. Every cluster's parent issue exists, under the issue it serves or in
@@ -219,9 +230,11 @@ export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { d
     await run(
       { op: "decline", target: d.issue, detail: d.reason },
       (i) => CLOSED.includes(i.stage),
+      // The state first: it is what a rerun checks, so a comment is never
+      // written twice.
       async () => {
-        await linear.comment(d.issue, `Declined by planning: ${d.reason}`);
         await linear.cancel(d.issue);
+        await linear.comment(d.issue, `Declined by planning: ${d.reason}`);
       },
     );
   }
@@ -237,15 +250,21 @@ export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { d
       { op: "escalate", target: e.issue, detail: e.question },
       (i) => i.labels.includes(ESCALATE_LABEL),
       async () => {
-        await linear.comment(e.issue, `Escalated by planning: ${e.question}`);
         await linear.addLabel(e.issue, ESCALATE_LABEL);
+        await linear.comment(e.issue, `Escalated by planning: ${e.question}`);
       },
     );
   }
 
   // 5. Hand ready work to an agent, last, so it lands on the structure above.
   // Delegating fires the AgentSessionEvent the agent acts on.
+  const agents = new Map<string, boolean>();
   for (const d of cs.delegate) {
+    if (!agents.has(d.agent)) agents.set(d.agent, await linear.hasUser(d.agent));
+    if (!agents.get(d.agent)) {
+      result.skipped.push({ op: "delegate", target: d.issue, detail: `to ${d.agent}`, why: `no Linear user or agent named ${d.agent}` });
+      continue;
+    }
     if (d.issue.startsWith("new:") && !exists(d.issue)) {
       result.skipped.push({ op: "delegate", target: d.issue, detail: `to ${d.agent}`, why: `cluster ${d.issue} was not created` });
       continue;
