@@ -9,10 +9,13 @@ seen {
   ["CIT-473"] = "2026-10-21T08:03:29.131Z"
   ["CIT-478"] = "2026-10-21T19:42:51.430Z"
 }
+// `agent-plugins` is the standing test release pipeline: smoke Releases go
+// there, never into `supervisor`, where planning's real Releases live.
 releases {
   new {
-    name = "supervisor-apply-smoke"
-    description = "A test Release for the first real apply of a supervisor changeset (CIT-472). Safe to delete."
+    name = "apply-smoke"
+    description = "The apply smoke test's Release (CIT-472). Lives in the agent-plugins test pipeline."
+    pipeline = "agent-plugins"
   }
 }
 clusters {
@@ -23,7 +26,7 @@ clusters {
     hat = "infra"
     model = "haiku"
     effort = "low"
-    serves = "release:supervisor-apply-smoke"
+    serves = "release:apply-smoke"
     // CIT-478 was added after the first runs, so a rerun still has a member
     // to move out of Triage.
     issues { "CIT-473"; "CIT-478" }

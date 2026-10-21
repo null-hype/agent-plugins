@@ -79,6 +79,13 @@ changes `workflow/changeset.json` runs `devenv-base-apply-changeset`, which
 waits for Render's version of that commit and runs `supervisor-workflow/apply`
 for real (`supervisor/apply-changeset.sh`).
 
+Linear has two release pipelines. `supervisor` holds the Releases planning
+proposes. `agent-plugins` is the standing **test** pipeline. The apply smoke
+test (`[apply-smoke]`, `workflow/examples/apply-smoke.pkl`) puts its Release
+there, so test Releases never mix with real ones. Keep `agent-plugins` even
+when it looks unused. The smoke test keeps it scheduled and non-production,
+because a continuous pipeline's Releases are born completed.
+
 
 
 ```
