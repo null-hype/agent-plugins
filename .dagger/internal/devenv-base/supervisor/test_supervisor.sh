@@ -799,6 +799,19 @@ grep -q 'the local task server never came up' "$WORK/caldown" ||
 [ "$(calls)" = "render" ] ||
   fail "without a dev server nothing else should run; got: $(calls)"
 
+# Calibrating another branch never touches main's calibration branch or PR.
+git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
+git -C "$REMOTE" branch feature/x main
+rm -f "$GH_OPEN_PR"
+reset
+CALIBRATION_BASE=feature/x CLAUDE_STUB_MODE=plan calibrate > "$WORK/calbranch" 2>&1 ||
+  fail "a calibration of another branch should exit 0, got: $(cat "$WORK/calbranch")"
+[ -z "$(branch_sha)" ] || fail "a calibration of another branch should not push supervisor/calibration"
+git -C "$REMOTE" rev-parse --verify --quiet refs/heads/supervisor/calibration-feature-x > /dev/null ||
+  fail "a calibration of feature/x should push supervisor/calibration-feature-x"
+grep -q -- '--base feature/x --head supervisor/calibration-feature-x' "$GH_LOG" ||
+  fail "a calibration of feature/x should open its PR from its own branch, got: $(cat "$GH_LOG")"
+
 # Any other mode is refused before a secret is resolved.
 reset
 if SUPERVISOR_MODE=deploy bash "$DIR/supervisor.sh" > "$WORK/badmode" 2>&1; then
