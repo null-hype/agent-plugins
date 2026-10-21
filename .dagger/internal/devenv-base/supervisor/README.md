@@ -79,6 +79,20 @@ changes `workflow/changeset.json` runs `devenv-base-apply-changeset`, which
 waits for Render's version of that commit and runs `supervisor-workflow/apply`
 for real (`supervisor/apply-changeset.sh`).
 
+After apply comes the work itself. The workflow's `run` task takes every
+cluster of the committed changeset that the plan says is ready, and runs
+`execute` for each on its own compute. `execute` is a fresh Claude Code
+session worn by the cluster's hat, on its model and effort, with the prompt
+in `workflow/execute.md`. Infra may wake, start and stop the host and ship
+through the toolbox. Open source may only look at the host. Neither may
+delete a workspace or use Bash. A session must end with
+`SUPERVISOR_PASS: hat=… cluster=… outcome=done|handed-off|blocked`, and it
+hands leftovers back to Triage. `run` and `execute` are dry by default and
+return the prompt they would run, and `run` takes `only` to name clusters.
+`host` (status, wake, start, stop) and `ship` reach the toolbox without a
+model. The toolbox owns the host's lifecycle, so the workflow never
+re-implements idle stop. Nothing schedules `run` yet.
+
 Linear has two release pipelines. `supervisor` holds the Releases planning
 proposes. `agent-plugins` is the standing **test** pipeline. The apply smoke
 test (`[apply-smoke]`, `workflow/examples/apply-smoke.pkl`) puts its Release
