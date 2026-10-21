@@ -429,26 +429,19 @@ func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
 	return assertContains(out, "executable")
 }
 
-// Supervisor packages one zone's dispatch-window supervisor (CIT-443): a
-// Render Cron Job that restores the zone's Claude session transcript from
-// restic, resumes it in the foreground with the toolbox's read-only tools and
-// the Linear tools, backs the transcript up again whatever happened, and
-// fails the run if no decision comes back.
+// Supervisor packages the dispatch supervisor (CIT-443, CIT-453): a Render
+// Cron Job that restores ~/.claude from the newest restic snapshot tagged
+// supervisor, continues the one Claude session in it in the foreground with
+// the toolbox's read-only tools and the Linear tools, backs ~/.claude up
+// again whatever happened, and fails the run if no decision comes back.
 //
 // Built on PassCli rather than Devpod: it never drives a devpod, so it needs
-// no gcloud. It does need restic, for the session transcript. One image
-// serves every zone, parameterised by SUPERVISOR_ZONE the way the keepalive
-// is by WORKSPACE_ID.
-//
-// tzdata is not optional here: a window is decided from the team's own
-// clock, and without the zoneinfo files GNU date answers in UTC without
-// complaint, which would put every window hours out while the run still
-// looked healthy. supervisor.sh refuses a timezone it cannot find.
+// no gcloud. It does need restic, for the session transcript.
 func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withAptPackages(withClaude(m.PassCli(platform)), "tzdata", "restic").
+	return withAptPackages(withClaude(m.PassCli(platform)), "restic").
 		WithFile(
 			"/app/supervisor/supervisor.sh",
 			dag.CurrentModule().Source().File("supervisor/supervisor.sh"),
@@ -489,20 +482,20 @@ func (m *DevenvBase) PublishSupervisor(
 }
 
 // CheckSupervisor runs the supervisor's stub tests against the packaged
-// image. They assert that a run restores the zone's session, resumes it with
-// Remote Control, and backs it up after a success and a failure alike; that a
-// missing snapshot fails the run; that a decision passes while prose or a
-// failed claude does not; and that the run cannot reach a tool that moves
-// infrastructure.
+// image. They assert that render.yaml describes the one hourly service; that
+// a run restores the newest snapshot tagged supervisor, continues the session
+// with Remote Control from /workspaces/agent-plugins, and backs it up after a
+// success and a failure alike, reading no session id or zone; that a missing
+// snapshot fails the run; that a decision passes -- including the tick with
+// no dispatch issue -- while prose or a failed claude does not; and that the
+// run cannot reach a tool that moves infrastructure.
 // +check
 func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 	out, err := m.Supervisor("").
+		WithFile("/app/render.yaml", dag.CurrentModule().Source().File("render.yaml")).
 		WithExec([]string{"bash", "-n", "/app/supervisor/supervisor.sh"}).
 		WithExec([]string{"claude", "--version"}).
 		WithExec([]string{"restic", "version"}).
-		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Asia/Hong_Kong"}).
-		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/Europe/Berlin"}).
-		WithExec([]string{"test", "-f", "/usr/share/zoneinfo/America/New_York"}).
 		WithExec([]string{"bash", "/app/supervisor/test_supervisor.sh"}).
 		Stdout(ctx)
 	if err != nil {

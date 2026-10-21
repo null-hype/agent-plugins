@@ -197,8 +197,27 @@ while [ "$1" != -o ]; do shift; done
 echo done > "$2"
 `), 0o755)
 
+	// A host that shipped with the earlier version still has the plaintext
+	// token; the first ship deletes it.
 	os.MkdirAll(filepath.Join(home, ".toolbox", "ship"), 0o700)
 	os.WriteFile(filepath.Join(home, ".toolbox", "ship", "push-token"), []byte("s3cret\n"), 0o600)
+
+	// The fake pass-cli has a session unless FAKE_PASS_DOWN is set, and
+	// resolves every pass:// reference in an env file to s3cret, as the real
+	// one resolves the push token. It logs its arguments and key provider.
+	os.WriteFile(filepath.Join(bin, "pass-cli"), []byte(`#!/bin/bash
+echo "$* [provider=${PROTON_PASS_KEY_PROVIDER:-}]" >> "$HOME/pass.calls"
+case $1 in
+info) [ -z "${FAKE_PASS_DOWN:-}" ] ;;
+run)
+	shift
+	while [ "$1" != -- ]; do [ "$1" = --env-file ] && f=$2; shift; done
+	shift
+	while IFS== read -r k v; do [ "${v#pass://}" = "$v" ] || export "$k=s3cret"; done < "$f"
+	exec "$@"
+	;;
+esac
+`), 0o755)
 
 	ship := func(envID, branch string, extra ...string) (exit string, result map[string]string) {
 		t.Helper()
@@ -264,7 +283,7 @@ echo done > "$2"
 	}
 	for script, want := range map[string]string{
 		"ship-merge": "exec devpod ssh linear-agent --command 'cd /workspaces/ship-trusty-burro && container-use merge trusty-burro'\n",
-		"ship-push":  "SHIP_PUSH_PAT=$(cat " + filepath.Join(home, ".toolbox", "ship", "push-token") + ") || exit 1\nexport SHIP_PUSH_PAT\nexec devpod ssh linear-agent --send-env SHIP_PUSH_PAT --command 'cd /workspaces/ship-trusty-burro && git -c credential.helper= -c credential.helper=/workspaces/.ship-git-credential push origin HEAD:refs/heads/cit-1-fix'\n",
+		"ship-push":  "export PROTON_PASS_KEY_PROVIDER=fs\nexec pass-cli run --env-file " + filepath.Join(home, ".toolbox", "ship", "ship.env") + " -- devpod ssh linear-agent --send-env SHIP_PUSH_PAT --command 'cd /workspaces/ship-trusty-burro && git -c credential.helper= -c credential.helper=/workspaces/.ship-git-credential push origin HEAD:refs/heads/cit-1-fix'\n",
 	} {
 		if b, _ := os.ReadFile(filepath.Join(bin2, script)); string(b) != "#!/bin/bash\n"+want {
 			t.Errorf("%s is %q", script, b)
@@ -303,6 +322,59 @@ echo done > "$2"
 	}
 	if b, _ := os.ReadFile(filepath.Join(home, "devpod.sent")); strings.Contains(string(b), "\n\n") || strings.Count(string(b), "token") != strings.Count(string(b), "\n") || len(b) == 0 {
 		t.Fatalf("devpod was asked to forward the token without having it:\n%s", b)
+	}
+
+	// The token is resolved with pass-cli run from a file of references: once
+	// for each ship-push and once for each check, never from a file on the
+	// host. ship.env holds the reference and nothing else, and no file under
+	// the host's home holds the token.
+	shipEnv := filepath.Join(home, ".toolbox", "ship", "ship.env")
+	if b, _ := os.ReadFile(shipEnv); string(b) != "SHIP_PUSH_PAT=pass://infra/github.com/GITHUB_TOKEN\n" {
+		t.Fatalf("ship.env is %q", b)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".toolbox", "ship", "push-token")); err == nil {
+		t.Error("the plaintext push-token file was not deleted")
+	}
+	passCalls, _ := os.ReadFile(filepath.Join(home, "pass.calls"))
+	resolve := "run --env-file " + shipEnv + " -- devpod ssh linear-agent --send-env SHIP_PUSH_PAT "
+	if n := strings.Count(string(passCalls), resolve); n < 4 {
+		t.Fatalf("the token was resolved through pass-cli run %d times, want a push and a check for each of two ships:\n%s", n, passCalls)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(passCalls)), "\n") {
+		if !strings.HasSuffix(line, "[provider=fs]") {
+			t.Errorf("pass-cli ran without the fs key provider: %s", line)
+		}
+		if strings.Contains(line, "s3cret") {
+			t.Errorf("the push token reached pass-cli's command line: %s", line)
+		}
+	}
+	filepath.WalkDir(home, func(path string, d os.DirEntry, err error) error {
+		// The fake pass-cli itself spells the token out.
+		if err == nil && d.Type().IsRegular() && filepath.Dir(path) != bin {
+			if b, _ := os.ReadFile(path); strings.Contains(string(b), "s3cret") {
+				t.Errorf("the push token is in a file on the host: %s", path)
+			}
+		}
+		return nil
+	})
+
+	// With no Proton Pass session the ship is refused before anything starts:
+	// no job, no Codex.
+	os.Remove(filepath.Join(home, "codex.args"))
+	os.Remove(filepath.Join(home, ".toolbox", "jobs", "ship.exit"))
+	cmd := exec.Command("bash", "-s", "--", "ship", "linear-agent", "quiet-fox", "cit-3-fix")
+	cmd.Env = append(append([]string{}, env...), "FAKE_PASS_DOWN=1")
+	cmd.Stdin = strings.NewReader(hostScript)
+	out, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "no Proton Pass session on this host") {
+		t.Fatalf("ship without a pass session: err %v\n%s", err, out)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if _, err := os.Stat(filepath.Join(home, ".toolbox", "jobs", "ship.exit")); err == nil {
+		t.Error("a ship job started without a pass session")
+	}
+	if _, err := os.Stat(filepath.Join(home, "codex.args")); err == nil {
+		t.Error("Codex ran without a pass session")
 	}
 }
 
