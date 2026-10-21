@@ -116,7 +116,9 @@ https://github.com/null-hype/agent-plugins/tree/<branchName> to the issue with a
 PROTON_PASS_KEY_PROVIDER=fs pass-cli run --env-file $env -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: \$LINEAR_API_KEY" --data @-'
 Then print one line per finding: environment id, Linear issue identifier, Linear branchName, title.
 PROMPT
-  grep -E '^[a-z]+-[a-z]+, [A-Z]+-[0-9]+, [^ ,]+, ' "$out" | while IFS=', ' read -r env issue branch _; do
+  # A clean review has no finding lines, so grep exits 1; that is a result.
+  # Exit 2 (no $out, bad pattern) is a broken instrument and still fails.
+  { grep -E '^[a-z]+-[a-z]+, [A-Z]+-[0-9]+, [^ ,]+, ' "$out" || [ $? -eq 1 ]; } | while IFS=', ' read -r env issue branch _; do
     git fetch -q container-use "$env"
     git push -q origin "FETCH_HEAD:refs/heads/$branch"
     echo "== pushed $env as $branch ($issue)"
