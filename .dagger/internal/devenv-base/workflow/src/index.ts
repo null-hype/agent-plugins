@@ -132,9 +132,15 @@ task(
     // kept out.
     const clusters = (await ready(team)).filter((c) => !only.length || only.includes(c.key) || only.includes(c.issue));
     const results = await Promise.allSettled(clusters.map((c) => ctx.run(execute, c.key, dryRun, team)));
-    return results.map((r, i) =>
-      r.status === "fulfilled" ? r.value : { cluster: clusters[i]!.issue, hat: clusters[i]!.hat, error: String(r.reason) },
-    );
+    // A named cluster that is not ready is said, not silently dropped: the
+    // first real run of CIT-434 did nothing because its parent was closed.
+    const missing = only.filter((o) => !clusters.some((c) => c.key === o || c.issue === o));
+    return [
+      ...results.map((r, i) =>
+        r.status === "fulfilled" ? r.value : { cluster: clusters[i]!.issue, hat: clusters[i]!.hat, error: String(r.reason) },
+      ),
+      ...missing.map((o) => ({ cluster: o, error: `${o} is not a ready cluster of the committed changeset` })),
+    ];
   },
 );
 
