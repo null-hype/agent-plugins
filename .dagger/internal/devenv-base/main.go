@@ -941,6 +941,39 @@ func (m *DevenvBase) CalibrateSupervisor(
 	return out, nil
 }
 
+// SyncSupervisorWorkflowSecrets copies the Linear key from Proton Pass into
+// the supervisor's Render Workflow service (CIT-472) as its LINEAR_API_KEY,
+// through Render's env-var API. A Workflow service cannot be declared in
+// render.yaml, so its env vars are set here rather than with `sync: false`.
+// The key passes from pass-cli run to curl and is never printed.
+func (m *DevenvBase) SyncSupervisorWorkflowSecrets(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+	// The Workflow service's id.
+	// +optional
+	// +default="wfl-dbche33rjlhs73bgkrr0"
+	workflow string,
+) (string, error) {
+	script := `set -euo pipefail
+: "${RENDER_API_KEY:?}" "${LINEAR_API_KEY:?}"
+jq -n --arg v "$LINEAR_API_KEY" '{value: $v}' |
+  curl -sS --fail-with-body -o /dev/null -w "LINEAR_API_KEY: HTTP %{http_code}\n" \
+    -X PUT "https://api.render.com/v1/services/$WORKFLOW/env-vars/LINEAR_API_KEY" \
+    -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" --data @-
+`
+	return m.Supervisor("linux/amd64").
+		WithEnvVariable("WORKFLOW", workflow).
+		WithEnvVariable("SYNC_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: copy the Linear key into the supervisor's Render Workflow").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithNewFile("/app/sync.env", "RENDER_API_KEY=pass://infra/render.com/RENDER_API_KEY\n"+
+			"LINEAR_API_KEY=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY\n").
+		WithNewFile("/app/sync.sh", script).
+		WithWorkdir("/app").
+		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && pass-cli run --env-file sync.env -- bash sync.sh"}).
+		Stdout(ctx)
+}
+
 // ApplySmoke is the supervisor workflow's real apply (CIT-472), through the
 // workflow's own `apply` task on `render workflows dev`, the way the deployed
 // workflow runs it: workflow/src/smoke.ts asks that task to dry-run, apply,
