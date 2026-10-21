@@ -53,7 +53,14 @@ jobs:
           curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
           echo "PROTON_PASS_SESSION_DIR=/tmp/pass-session" >> "$GITHUB_ENV"
           echo "PROTON_PASS_KEY_PROVIDER=fs" >> "$GITHUB_ENV"
-          PROTON_PASS_SESSION_DIR=/tmp/pass-session PROTON_PASS_KEY_PROVIDER=fs pass-cli login
+          # Proton's login endpoint sometimes times out; a second try usually works.
+          for try in 1 2 3; do
+            PROTON_PASS_SESSION_DIR=/tmp/pass-session PROTON_PASS_KEY_PROVIDER=fs pass-cli login && exit 0
+            echo "pass-cli login failed (try $try); retrying" >&2
+            PROTON_PASS_SESSION_DIR=/tmp/pass-session pass-cli logout --force >/dev/null 2>&1 || true
+            sleep $((try * 10))
+          done
+          exit 1
 
       - name: Plan or apply
         env:
