@@ -74,7 +74,7 @@ jobs:
             run=$(jq -r ".scheduling.maxRunDuration.seconds // empty" "$tmp/vm.json")
             action=$(jq -r ".scheduling.instanceTerminationAction // empty" "$tmp/vm.json")
             meta() { jq -r --arg k "$1" "[.metadata.items[]? | select(.key == \$k) | .value][0] // empty" "$tmp/vm.json"; }
-            echo "== $NAME is $status; max run duration ${run:-none}s, termination action ${action:-none}"
+            echo "== $NAME is $status; max run duration ${run:-none} s, termination action ${action:-none}"
             echo "== metadata keys: $(jq -r "[.metadata.items[]?.key] | join(\", \")" "$tmp/vm.json")"
 
             stale=()
