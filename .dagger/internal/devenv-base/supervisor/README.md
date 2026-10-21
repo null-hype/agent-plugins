@@ -125,14 +125,16 @@ the maintainer merges (= applies), or doesn't
   reading only, every Linear tool that writes is named in
   `--disallowedTools`, and `apply` only runs dry here. `render` is only ever
   `workflows dev`, reached through the SDK's local mode.
-- **One branch, one PR, always into main.** `supervisor/calibration` is one
-  commit on the base, replaced each run. The changeset carries no
+- **One branch, one PR, per base.** `supervisor/calibration` is one
+  commit on main, replaced each run. Calibrating another branch (a `[calibrate]`
+  commit) uses `supervisor/calibration-<branch>` instead, so it never replaces
+  main's calibration PR. The changeset carries no
   timestamp, so an unchanged changeset on an unchanged base pushes nothing.
 
 | Setting | Default | |
 | --- | --- | --- |
 | `CALIBRATION_BASE` | `main` | the branch cloned, and the PR's base |
-| `CALIBRATION_BRANCH` | `supervisor/calibration` | calibration's own branch |
+| `CALIBRATION_BRANCH` | `supervisor/calibration`, or `supervisor/calibration-<base>` off main | calibration's own branch |
 | `CALIBRATION_MODEL`, `CALIBRATION_EFFORT` | `haiku`, `low` | the cheap run |
 | `CALIBRATION_TEAM`, `CALIBRATION_DELIVERIES` | `CIT`, `CIT-439` | the plan task's inputs |
 | `CALIBRATION_TASK_PREFIX` | empty | if the local server wants `<workflow>/<task>` slugs |
