@@ -702,6 +702,27 @@ func (m *DevenvBase) CheckLinearAgent(ctx context.Context) error {
 	return assertContains(out, "# fail 0")
 }
 
+// CheckSupervisorWorkflow runs the supervisor workflow's tests (CIT-472) and
+// type-checks it: the planning DAG and the Linear read behind it, with a
+// fake Linear, so no network or key is involved.
+// +check
+func (m *DevenvBase) CheckSupervisorWorkflow(ctx context.Context) error {
+	out, err := dag.Container().
+		From("node:22-slim").
+		WithDirectory("/app", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
+			Exclude: []string{"node_modules", "dist"},
+		}).
+		WithWorkdir("/app").
+		WithExec([]string{"npm", "ci"}).
+		WithExec([]string{"npx", "tsc", "-p", "tsconfig.json", "--noEmit"}).
+		WithExec([]string{"npm", "test"}).
+		Stdout(ctx)
+	if err != nil {
+		return err
+	}
+	return assertContains(out, "# fail 0")
+}
+
 // PublishLinearAgent pushes the built linear-agent app to
 // ghcr.io/null-hype/devenv-linear-agent:<tag>. amd64 only, matching Devpod
 // (this is the image devcontainer.json now targets). No entrypoint is set
