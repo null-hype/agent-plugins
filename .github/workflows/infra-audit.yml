@@ -1,41 +1,58 @@
 name: infra-audit
 
-# Read-only inventory of what is running in GCP: lists VMs, disks, static
-# addresses, Cloud Run services and GKE clusters. Changes nothing.
+# Cost cleanup for the infrastructure audit. Lists what restic holds, then
+# snapshots the two September devpod VM disks and deletes those VMs and
+# disks only once each new snapshot is READY.
 on:
   push:
     branches: [claude/project-thread-tg2a8e]
   workflow_dispatch:
 
 jobs:
-  audit:
+  cleanup:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: "List GCP resources"
+      - name: "Restic inventory, snapshot and delete old devpod VMs"
         env:
           PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
-          PROTON_PASS_AGENT_REASON: "infra-audit: read-only list of running GCP resources"
+          PROTON_PASS_AGENT_REASON: "infra-audit: snapshot and delete the stopped September devpod VMs"
         run: |
+          sudo apt-get install -y -qq restic jq >/dev/null
           curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
           export PROTON_PASS_SESSION_DIR=/tmp/pass-agent-ci PROTON_PASS_KEY_PROVIDER=fs
           pass-cli login
           pass-cli run --env-file .dagger/internal/devenv-base/.devcontainer/gcloud.env -- bash -euo pipefail -c '
             tmp=$(mktemp -d); chmod 700 "$tmp"; trap "rm -rf $tmp" EXIT
-            export CLOUDSDK_CONFIG=$tmp/gcloud
+            export CLOUDSDK_CONFIG=$tmp/gcloud GOOGLE_APPLICATION_CREDENTIALS=$tmp/key.json
             printf %s "$GCP_SERVICE_ACCOUNT_KEY" > "$tmp/key.json"
             gcloud auth activate-service-account --key-file="$tmp/key.json" --quiet
             gcloud config set project "$GOOGLE_PROJECT_ID" --quiet
-            echo "== projects visible"; gcloud projects list --format="table(projectId,name)" || true
-            echo "== instances"; gcloud compute instances list --format="table(name,zone.basename(),status,machineType.basename(),lastStartTimestamp,lastStopTimestamp,labels)" || true
-            echo "== disks"; gcloud compute disks list --format="table(name,zone.basename(),sizeGb,type.basename(),status,users.basename())" || true
-            echo "== snapshots"; gcloud compute snapshots list --format="table(name,diskSizeGb,storageBytes,creationTimestamp)" || true
-            echo "== addresses"; gcloud compute addresses list --format="table(name,region.basename(),address,status)" || true
-            echo "== cloud run"; gcloud run services list --format="table(metadata.name,region)" 2>&1 || true
-            echo "== gke"; gcloud container clusters list 2>&1 || true
-            echo "== buckets"; gcloud storage buckets list --format="table(name,location)" 2>&1 || true
+
+            echo "== restic snapshots by host and path"
+            restic snapshots --json > "$tmp/snaps.json" || echo "restic snapshots failed"
+            jq -r "group_by(.hostname + \" \" + (.paths|join(\",\"))) | map({k: (.[0].hostname + \"  \" + (.paths|join(\",\")|.[0:90])), n: length, first: (map(.time)|min|.[0:10]), last: (map(.time)|max|.[0:10])}) | sort_by(.last) | .[] | \"\(.last)  \(.first)  n=\(.n)  \(.k)\"" "$tmp/snaps.json" || true
+
+            ZONE=us-central1-a
+            STAMP=$(date -u +%Y%m%d)
+            for VM in devpod-devenv-bas-7b626 devpod-devpod-shared-phoenix-20260914-5188f; do
+              SNAP="final-${VM:0:40}-$STAMP"
+              echo "== $VM: snapshot $SNAP"
+              gcloud compute snapshots describe "$SNAP" >/dev/null 2>&1 ||
+                gcloud compute disks snapshot "$VM" --zone "$ZONE" --snapshot-names "$SNAP" \
+                  --description "Final snapshot of $VM before deleting the VM (infra audit 2026-10-21)"
+              status=$(gcloud compute snapshots describe "$SNAP" --format="value(status)")
+              echo "snapshot status: $status"
+              if [ "$status" != READY ]; then echo "not deleting $VM"; continue; fi
+              echo "== deleting $VM and its disk"
+              gcloud compute instances delete "$VM" --zone "$ZONE" --delete-disks=all --quiet
+            done
+
+            echo "== instances"; gcloud compute instances list --format="table(name,status,machineType.basename())"
+            echo "== disks"; gcloud compute disks list --format="table(name,sizeGb,type.basename(),users.basename())"
+            echo "== snapshots"; gcloud compute snapshots list --format="table(name,diskSizeGb,storageBytes,status,creationTimestamp)"
           '
           pass-cli logout || true
