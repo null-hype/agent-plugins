@@ -55,7 +55,6 @@ stage=$1
 shift
 
 : "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:?PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set}"
-: "${TOOLBOX_TOKEN:?TOOLBOX_TOKEN must be set: copy it from the env vars of the toolbox Render service}"
 TOOLBOX_URL=${TOOLBOX_URL:-https://toolbox-spike.onrender.com/mcp}
 LINEAR_MCP_URL=${LINEAR_MCP_URL:-https://mcp.linear.app/mcp}
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -69,13 +68,14 @@ SESSION_PROJECT=-workspaces-agent-plugins
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 
 if [ "$stage" = --bounded-run ]; then
-  export PROTON_PASS_AGENT_REASON="supervisor: resolve the Claude Code token, Linear key and restic secrets for an hourly tick"
+  export PROTON_PASS_AGENT_REASON="supervisor: resolve the Claude Code token, Linear key, toolbox token and restic secrets for an hourly tick"
 
   echo "supervisor: checking Proton Pass session"
   if ! timeout --foreground --kill-after=10s 60s pass-cli info > /dev/null 2>&1; then
     timeout --foreground --kill-after=10s 60s pass-cli logout --force > /dev/null 2>&1 || true
     echo "supervisor: logging in to Proton Pass"
-    timeout --foreground --kill-after=10s 2m pass-cli login
+    timeout --foreground --kill-after=10s 2m pass-cli login ||
+      { echo "supervisor: could not log in to Proton Pass; every secret, the toolbox token included, comes from it" >&2; exit 1; }
   fi
 
   # Only pass:// references are in this file; the values are resolved by
@@ -87,6 +87,7 @@ fi
 # --resolved: the secrets are in the environment from here on.
 : "${CLAUDE_CODE_OAUTH_TOKEN:?CLAUDE_CODE_OAUTH_TOKEN must come from the pass env file}"
 : "${LINEAR_API_KEY:?LINEAR_API_KEY must come from the pass env file}"
+: "${TOOLBOX_TOKEN:?TOOLBOX_TOKEN must come from the pass env file}"
 : "${GCP_SERVICE_ACCOUNT_KEY:?GCP_SERVICE_ACCOUNT_KEY must come from the pass env file (restic)}"
 : "${RESTIC_REPOSITORY:?RESTIC_REPOSITORY must come from the pass env file}"
 : "${RESTIC_PASSWORD:?RESTIC_PASSWORD must come from the pass env file}"

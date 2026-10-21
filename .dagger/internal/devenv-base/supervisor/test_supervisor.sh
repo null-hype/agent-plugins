@@ -19,6 +19,10 @@
 #      allowed, every toolbox tool that can move infrastructure is disallowed
 #      by name, and the bearer tokens reach claude through a 0600 file rather
 #      than through argv.
+#   7. Every secret, the toolbox token included, is resolved by `pass-cli run`
+#      from pass:// references; the Render service holds only the pass token.
+#      With no pass session, or no pass token, nothing runs. No secret is on
+#      an argv or left in a file once the run ends.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,13 +34,16 @@ mkdir -p "$BIN"
 
 cat > "$BIN/pass-cli" <<'STUB'
 #!/usr/bin/env bash
-# info: report a live session, so the script never attempts a login.
+# info: report a live session, so the script never attempts a login -- unless
+# PASS_STUB_SESSION=none, when there is no session and no login succeeds.
 # run --env-file F -- cmd...: resolve each KEY=pass://vault/item/NAME line to
 # "resolved-NAME" -- so the value shows which pass item it came from -- and
 # run the command with them, as the real one does. The file is logged first,
-# to show which references a tick asks for.
+# to show which references a tick asks for, and so is every argv.
+echo "pass-cli $*" >> "$PASS_ARGV_LOG"
 case "${1:-}" in
-  info) exit 0 ;;
+  info) [ "${PASS_STUB_SESSION:-live}" = live ] || exit 1 ;;
+  login) [ "${PASS_STUB_SESSION:-live}" = live ] || { echo "login failed" >&2; exit 1; } ;;
   run)
     shift
     envfile=""
@@ -130,14 +137,21 @@ export PATH="$BIN:$PATH"
 export HOME=$WORK/home
 mkdir -p "$HOME"
 export PROTON_PASS_PERSONAL_ACCESS_TOKEN=stub-pass-token
-export TOOLBOX_TOKEN=stub-toolbox-token
+# TOOLBOX_TOKEN is not set: the Render service holds only the pass token, and
+# the toolbox token must come from supervisor.env through pass-cli.
+unset TOOLBOX_TOKEN
 export SUPERVISOR_TIMEOUT=2m
+# Where mktemp puts the MCP and key files, so a run can be checked for
+# leaving none behind.
+export TMPDIR=$WORK/tmp
+mkdir -p "$TMPDIR"
 # Nothing a zone-per-service supervisor needed is set: the tick must not miss
 # it. The defaults are what the first run asserts, wherever the test runs.
 unset SUPERVISOR_ZONE SUPERVISOR_SESSION_ID SUPERVISOR_TZ SUPERVISOR_EFFORT
 export CALLS=$WORK/calls
 export RESTIC_LOG=$WORK/restic.log
 export PASS_ENVFILE_LOG=$WORK/pass-env.log
+export PASS_ARGV_LOG=$WORK/pass-argv.log
 export CLAUDE_ARGV=$WORK/argv
 export CLAUDE_PWD=$WORK/pwd
 export CLAUDE_MCP=$WORK/mcp.json
@@ -147,11 +161,12 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 # A fresh container for each run: nothing from the last one is on disk.
 reset() {
-  rm -rf "$HOME" "$CALLS" "$RESTIC_LOG" "$PASS_ENVFILE_LOG" "$CLAUDE_ARGV" "$CLAUDE_PWD" "$CLAUDE_MCP" "$CLAUDE_MCP_MODE"
-  mkdir -p "$HOME"
+  rm -rf "$HOME" "$TMPDIR" "$CALLS" "$RESTIC_LOG" "$PASS_ENVFILE_LOG" "$PASS_ARGV_LOG" "$CLAUDE_ARGV" "$CLAUDE_PWD" "$CLAUDE_MCP" "$CLAUDE_MCP_MODE"
+  mkdir -p "$HOME" "$TMPDIR"
   : > "$CALLS"
   : > "$RESTIC_LOG"
   : > "$PASS_ENVFILE_LOG"
+  : > "$PASS_ARGV_LOG"
 }
 
 # Prints the arguments that followed $1, up to the next flag.
@@ -265,19 +280,40 @@ fi
 
 # --- the tools ---------------------------------------------------------------
 
-grep -q 'stub-toolbox-token' "$CLAUDE_MCP" ||
-  fail "the MCP config should carry the toolbox bearer token"
+grep -q 'Bearer resolved-TOOLBOX_TOKEN' "$CLAUDE_MCP" ||
+  fail "the MCP config should carry the toolbox bearer token, resolved from pass"
 grep -q 'resolved-LINEAR_API_KEY' "$CLAUDE_MCP" ||
   fail "the MCP config should carry the Linear key"
 [ "$(jq -r '.mcpServers.linear.url' "$CLAUDE_MCP")" = "https://mcp.linear.app/mcp" ] ||
   fail "Linear should be an explicit MCP server: --strict-mcp-config leaves no connector to rely on"
 [ "$(cat "$CLAUDE_MCP_MODE")" = 600 ] ||
   fail "the MCP config holds bearer tokens and should be mode 0600, got $(cat "$CLAUDE_MCP_MODE")"
-for secret in stub-toolbox-token resolved-LINEAR_API_KEY resolved-CLAUDE_CODE_OAUTH_TOKEN resolved-RESTIC_PASSWORD; do
+for secret in resolved-TOOLBOX_TOKEN resolved-LINEAR_API_KEY resolved-CLAUDE_CODE_OAUTH_TOKEN resolved-RESTIC_PASSWORD; do
   if grep -q "$secret" "$CLAUDE_ARGV"; then
     fail "$secret must never appear in claude's argv"
   fi
+  if grep -q "$secret" "$PASS_ARGV_LOG" "$RESTIC_LOG"; then
+    fail "$secret must never appear in the argv of pass-cli or restic"
+  fi
+  if grep -rq "$secret" "$HOME" "$TMPDIR"; then
+    fail "$secret must not be left in a file once the run has ended"
+  fi
 done
+[ -z "$(ls -A "$TMPDIR")" ] ||
+  fail "the 0600 MCP and key files should be removed on exit, left: $(ls "$TMPDIR")"
+
+# The toolbox token is resolved by pass-cli run from supervisor.env, and the
+# Render service is not asked to carry it.
+grep -qx 'TOOLBOX_TOKEN=pass://infra/render.com/TOOLBOX_TOKEN' "$PASS_ENVFILE_LOG" ||
+  fail "the env file handed to pass-cli run should reference the toolbox token in Proton Pass"
+grep -q -- "pass-cli run --env-file $DIR/supervisor.env -- " "$PASS_ARGV_LOG" ||
+  fail "the secrets should be resolved with pass-cli run --env-file supervisor.env"
+if grep -v '^ *#' "$DIR/supervisor.env" | grep -E '^[A-Z_]+=' | grep -v '=pass://' ; then
+  fail "supervisor.env should hold pass:// references only"
+fi
+if grep -q 'TOOLBOX_TOKEN' "$RENDER_YAML"; then
+  fail "render.yaml should not ask the service for TOOLBOX_TOKEN: it comes from Proton Pass"
+fi
 grep -qx -- '--strict-mcp-config' "$CLAUDE_ARGV" ||
   fail "--strict-mcp-config should be passed, so no other MCP server joins in"
 
@@ -325,6 +361,33 @@ tail -1 "$WORK/nodispatch" | grep -qx 'SUPERVISOR_HEARTBEAT: host=unknown work=u
   fail "a tick with no open dispatch issue should end with its heartbeat, got: $(tail -1 "$WORK/nodispatch")"
 [ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
   fail "a tick with no dispatch issue should still be restored and backed up; got: $(calls)"
+
+# --- there is no Proton Pass session -----------------------------------------
+
+# Every secret, the toolbox token among them, comes through pass-cli, so with
+# no session and a login that fails nothing may run: not the restore, not
+# claude, not a backup.
+reset
+if PASS_STUB_SESSION=none bash "$DIR/supervisor.sh" > "$WORK/nopass" 2>&1; then
+  fail "a run with no Proton Pass session should fail"
+fi
+grep -q 'could not log in to Proton Pass' "$WORK/nopass" ||
+  fail "a missing pass session should say so, got: $(cat "$WORK/nopass")"
+[ -z "$(calls)" ] ||
+  fail "with no pass session nothing should run; got: $(calls)"
+if grep -q -- 'pass-cli run' "$PASS_ARGV_LOG"; then
+  fail "with no pass session no secret should be resolved"
+fi
+
+# Without the pass token the service cannot log in at all.
+reset
+if env -u PROTON_PASS_PERSONAL_ACCESS_TOKEN bash "$DIR/supervisor.sh" > "$WORK/notoken" 2>&1; then
+  fail "a run without PROTON_PASS_PERSONAL_ACCESS_TOKEN should fail"
+fi
+grep -q 'PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set' "$WORK/notoken" ||
+  fail "a missing pass token should name the variable, got: $(cat "$WORK/notoken")"
+[ -z "$(calls)" ] ||
+  fail "without the pass token nothing should run; got: $(calls)"
 
 # --- the restore fails -------------------------------------------------------
 

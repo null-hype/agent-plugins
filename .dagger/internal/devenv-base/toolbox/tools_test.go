@@ -219,7 +219,7 @@ func TestAgentShipSendsNoSecrets(t *testing.T) {
 		t.Fatalf("args %q", got)
 	}
 	if len(c.env) != 0 {
-		t.Fatalf("env %v, want none: the push token is on the host", c.env)
+		t.Fatalf("env %v, want none: the host resolves the push token through its own pass session", c.env)
 	}
 }
 
