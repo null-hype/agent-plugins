@@ -29,8 +29,9 @@ typealias Effort = "low"|"medium"|"high"
 class Release {
   name: String(!isBlank)
   description: String = ""
-  /// The release pipeline, by name.
-  pipeline: String(!isBlank) = "agent-plugins"
+  /// The release pipeline, by name. Apply creates a missing one as a
+  /// scheduled pipeline: a continuous one's Releases are born completed.
+  pipeline: String(!isBlank) = "supervisor"
 }
 
 /// A theme planning found in Triage: a parent issue its members become

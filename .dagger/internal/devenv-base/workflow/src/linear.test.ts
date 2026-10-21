@@ -134,3 +134,15 @@ test("the client adds an issue to the open Release of that name, not a finished 
   const create = sent.find((r) => r.query.includes("issueToReleaseCreate"))!;
   assert.deepEqual(create.variables, { input: { issueId: "uuid-CIT-900", releaseId: "r-open" } });
 });
+
+test("the client refuses to create a Release in a continuous pipeline, where it would be born completed", async () => {
+  const fetcher = (async (_url: string, init: RequestInit) => {
+    const q: string = JSON.parse(init.body as string).query;
+    assert.ok(!q.includes("releaseCreate"), "no Release should be created");
+    return new Response(JSON.stringify({ data: { releasePipelines: { nodes: [{ id: "p-1", type: "continuous" }] } } }), { status: 200 });
+  }) as typeof fetch;
+  await assert.rejects(
+    linearClient("key", "CIT", fetcher).createRelease({ name: "r", description: "", pipeline: "agent-plugins" }),
+    /release pipeline agent-plugins is continuous/,
+  );
+});

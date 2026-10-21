@@ -146,13 +146,13 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
     if (!s) throw new Error(`team ${team} has no ${type} state`);
     return s.id;
   };
-  const pipelineId = async (name: string) =>
+  const pipeline = async (name: string) =>
     (
-      await gql<{ releasePipelines: { nodes: { id: string }[] } }>(
-        `query($name: String!) { releasePipelines(filter: { name: { eq: $name } }) { nodes { id } } }`,
+      await gql<{ releasePipelines: { nodes: { id: string; type: string }[] } }>(
+        `query($name: String!) { releasePipelines(filter: { name: { eq: $name } }) { nodes { id type } } }`,
         { name },
       )
-    ).releasePipelines.nodes[0]?.id;
+    ).releasePipelines.nodes[0];
   // Only an open Release counts: a finished one with the same name is history.
   const releaseId = async (name: string) =>
     (
@@ -243,22 +243,27 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
       await update(issue, { delegateId: d.users.nodes[0].id });
     },
     async hasPipeline(name) {
-      return !!(await pipelineId(name));
+      return !!(await pipeline(name));
     },
     async createPipeline(name) {
-      // Continuous: a release ships when its work is done, not on a calendar.
+      // Scheduled, not continuous: a continuous pipeline has only a
+      // "Released" stage, so a Release created in it is born completed, and
+      // nothing can be added to it.
       await gql(`mutation($input: ReleasePipelineCreateInput!) { releasePipelineCreate(input: $input) { success } }`, {
-        input: { name, type: "continuous", teamIds: [(await teamInfo()).id] },
+        input: { name, type: "scheduled", teamIds: [(await teamInfo()).id] },
       });
     },
     async hasRelease(name) {
       return !!(await releaseId(name));
     },
-    async createRelease({ name, description, pipeline }) {
-      const id = await pipelineId(pipeline);
-      if (!id) throw new Error(`no Linear release pipeline ${pipeline}`);
+    async createRelease({ name, description, pipeline: pipelineName }) {
+      const p = await pipeline(pipelineName);
+      if (!p) throw new Error(`no Linear release pipeline ${pipelineName}`);
+      if (p.type !== "scheduled") {
+        throw new Error(`release pipeline ${pipelineName} is ${p.type}: a Release created in it is born completed, so name a scheduled one`);
+      }
       await gql(`mutation($input: ReleaseCreateInput!) { releaseCreate(input: $input) { success } }`, {
-        input: { name, description, pipelineId: id },
+        input: { name, description, pipelineId: p.id },
       });
     },
     async addToRelease(issue, release) {
