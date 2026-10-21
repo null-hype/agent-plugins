@@ -93,10 +93,10 @@ fi
 : "${RESTIC_PASSWORD:?RESTIC_PASSWORD must come from the pass env file}"
 
 # The toolbox's read-only tools, and the Linear server as a whole: the session
-# works the dispatch issues, so it reads them and comments on them. Every
-# toolbox tool that starts, stops, deletes or dispatches is spelled out as
-# disallowed as well, so an allowlist that ever fails open still cannot move
-# any infrastructure. Bash and the file-editing tools are disallowed for the
+# works the dispatch issues, so it reads them, comments, files handoffs and
+# clears Triage. Every toolbox tool that starts, stops, deletes or dispatches
+# is spelled out as disallowed as well, so an allowlist that ever fails open
+# still cannot move any infrastructure. Bash and the file-editing tools are disallowed for the
 # same reason: with Bash the model could reach the toolbox over curl and route
 # around this list entirely.
 ALLOWED_TOOLS="mcp__toolbox__ping
@@ -232,9 +232,19 @@ fi
 # instrument, not a tick with nothing to do.
 heartbeat=$(printf '%s\n' "$out" | grep -E '^SUPERVISOR_HEARTBEAT: ' | tail -1 || true)
 case "$heartbeat" in
-  *decision=*) echo "$heartbeat" ;;
+  *decision=*) ;;
   *)
     echo "supervisor: no SUPERVISOR_HEARTBEAT line carrying a decision" >&2
     exit 1
     ;;
 esac
+# Each hat's pass says what it handed off, in order. The handoffs are the
+# only memory the next pass reads, so a pass that never reported one is as
+# silent as a missing heartbeat.
+hats=$(printf '%s\n' "$out" |
+  sed -nE 's/^SUPERVISOR_PASS: hat=([a-z-]+) handoffs=[^ ]+ why=.*/\1/p' | paste -sd' ')
+[ "$hats" = "planning infra open-source" ] || {
+  echo "supervisor: expected SUPERVISOR_PASS lines for planning, infra and open-source in that order, got: ${hats:-none}" >&2
+  exit 1
+}
+echo "$heartbeat"
