@@ -941,6 +941,41 @@ func (m *DevenvBase) CalibrateSupervisor(
 	return out, nil
 }
 
+// ApplySupervisorChangeset is "merging is applying" (CIT-472): after a merge
+// to main changes workflow/changeset.json, it waits for Render to deploy that
+// commit as a new version of the supervisor Workflow, then runs the deployed
+// `apply` task for real (supervisor/apply-changeset.sh). The Render API key
+// comes from Proton Pass; the Workflow's own secret is the same token.
+func (m *DevenvBase) ApplySupervisorChangeset(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+	// The merged commit, whose version Render deploys.
+	commit string,
+) (string, error) {
+	run := m.Supervisor("linux/amd64").
+		WithFile("/app/apply-changeset.sh", dag.CurrentModule().Source().File("supervisor/apply-changeset.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755}).
+		WithNewFile("/app/apply.env", "RENDER_API_KEY=pass://infra/render.com/RENDER_API_KEY\n").
+		WithWorkdir("/app").
+		WithEnvVariable("COMMIT", commit).
+		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to run the merged changeset's apply").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && pass-cli run --env-file apply.env -- ./apply-changeset.sh 2>&1"},
+			dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
+	out, err := run.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	code, err := run.ExitCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("apply exited %d:\n%s", code, out)
+	}
+	return out, nil
+}
+
 // ApplySmoke is the supervisor workflow's real apply (CIT-472), through the
 // workflow's own `apply` task on `render workflows dev`, the way the deployed
 // workflow runs it: workflow/src/smoke.ts asks that task to dry-run, apply,

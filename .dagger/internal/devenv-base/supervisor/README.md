@@ -68,7 +68,18 @@ the tick ends `decision=nothing why=no dispatch issue`.
 **changeset of agentic work**, opened as a pull request. Merging the PR is
 applying it: Render deploys main, and the deployed workflow's `apply` task
 makes Linear match the committed changeset. Calibration is the test that
-runs first. Bash drives it, not the model:
+runs first. Bash drives it, not the model.
+
+The deployed side: the Render Workflow service `supervisor-workflow`
+(wfl-dbche33rjlhs73bgkrr0, created through the API because `render.yaml`
+cannot declare Workflows) builds `workflow/` with `render-build.sh` and
+starts it with `render-start.sh`. Its only secret is the Proton Pass token;
+the Linear key comes from Pass through `workflow/workflow.env`. A merge that
+changes `workflow/changeset.json` runs `devenv-base-apply-changeset`, which
+waits for Render's version of that commit and runs `supervisor-workflow/apply`
+for real (`supervisor/apply-changeset.sh`).
+
+
 
 ```
 supervisor.sh (SUPERVISOR_MODE=calibrate)
