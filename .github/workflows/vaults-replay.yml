@@ -1,6 +1,7 @@
 name: Retained Vaults replay
 on:
-  pull_request:
+  push:
+    branches: [main]
     paths:
       - '.dagger/cve_checker.go'
       - '.dagger/internal/devenv-base/pkl/vaults-replay/**'
