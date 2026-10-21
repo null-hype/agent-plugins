@@ -3,7 +3,8 @@
 // npm start`) before anything is merged:
 //
 // - `plan` reads the open issues from Linear and returns the DAG built back
-//   from what gets published. Read-only.
+//   from what gets published, with Triage Intelligence's hints for the
+//   Triage issues. Read-only.
 // - `apply` makes Linear match the committed changeset.json, which planning
 //   wrote and the maintainer merged. Merging is applying: the deployed
 //   workflow converges Linear to main. Calibration runs it with dryRun, its
@@ -13,7 +14,7 @@ import { task, type TaskContext } from "@renderinc/sdk/workflows";
 import { apply as applyChangeset, type ApplyResult } from "./apply.ts";
 import type { Changeset } from "./changeset.ts";
 import { plan as buildPlan, type Plan } from "./dag.ts";
-import { linearClient, openIssues } from "./linear.ts";
+import { linearClient, openIssues, triageHints } from "./linear.ts";
 
 const linearKey = () => {
   const key = process.env.LINEAR_API_KEY;
@@ -24,7 +25,8 @@ const linearKey = () => {
 task(
   { name: "plan", retry: { maxRetries: 2, waitDurationMs: 5000, backoffScaling: 2 } },
   async function plan(_ctx: TaskContext, team: string = "CIT", deliveries: string[] = ["CIT-439"]): Promise<Plan> {
-    return buildPlan(await openIssues(linearKey(), team), deliveries);
+    const [issues, hints] = await Promise.all([openIssues(linearKey(), team), triageHints(linearKey(), team)]);
+    return { ...buildPlan(issues, deliveries), hints };
   },
 );
 

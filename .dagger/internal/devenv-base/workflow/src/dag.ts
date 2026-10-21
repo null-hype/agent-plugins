@@ -38,6 +38,18 @@ export interface Plan {
   // updatedAt of every open issue read, by identifier: the snapshot a
   // changeset planned from this plan records as `seen`.
   seen: Record<string, string>;
+  // Linear Triage Intelligence's active suggestions for each Triage issue:
+  // issues it looks like, and the label or project it seems to belong to.
+  // Hints for clustering, never ops; filled in by the plan task.
+  hints: Record<string, Hint[]>;
+}
+
+export interface Hint {
+  type: "similarIssue" | "relatedIssue" | "label" | "project";
+  // The issue identifier, label name or project name suggested.
+  target: string;
+  // Why Linear suggested it, when it says.
+  reason?: string;
 }
 
 export interface PlannedIssue {
@@ -139,5 +151,5 @@ export function plan(issues: Issue[], deliveries: string[] = []): Plan {
   const cycles = [...remaining.keys()];
 
   const seen = Object.fromEntries(issues.filter((i) => i.updatedAt).map((i) => [i.id, i.updatedAt!]));
-  return { sinks: [...sinks].sort(), order, pruned, cycles, seen };
+  return { sinks: [...sinks].sort(), order, pruned, cycles, seen, hints: {} };
 }

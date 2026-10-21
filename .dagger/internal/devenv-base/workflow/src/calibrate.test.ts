@@ -53,3 +53,17 @@ test("a dry run that skipped an op, or was not a dry run, fails the calibration"
     /returned no dry run/,
   );
 });
+
+test("a dry run that would create more than one Release fails the calibration", async () => {
+  const release = (name: string) => ({ op: "release", target: name, detail: "in supervisor" });
+  const one = { dryRun: true, applied: [release("a")], skipped: [], clusters: {} };
+  assert.deepEqual(await runApplyDryRun(runner({ status: "completed", results: [one] }), "apply", "CIT"), one);
+  await assert.rejects(
+    runApplyDryRun(
+      runner({ status: "completed", results: [{ ...one, applied: [release("a"), release("b")] }] }),
+      "apply",
+      "CIT",
+    ),
+    /creates 2 Releases \(a, b\); at most 1 per calibration/,
+  );
+});
