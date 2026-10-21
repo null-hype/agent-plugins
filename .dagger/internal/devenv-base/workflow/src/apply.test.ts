@@ -181,6 +181,11 @@ test("apply makes Linear match the changeset, and a second apply changes nothing
   assert.equal(second.clusters["new:review-findings"], parent);
 });
 
+test("a marker survives Linear's emoji shortcodes: it has no colons", () => {
+  assert.equal(marker("new:review-findings"), "<!-- supervisor-changeset new/review-findings -->");
+  assert.doesNotMatch(marker("new:new"), /:/);
+});
+
 test("an issue changed since planning is left alone, and the rest is applied", async () => {
   const { client, store, writes } = world();
   store.get("CIT-501")!.updatedAt = "2026-10-21T05:00:00Z";

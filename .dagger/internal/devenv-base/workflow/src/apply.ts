@@ -72,7 +72,9 @@ export interface ApplyResult {
 }
 
 export const ESCALATE_LABEL = "needs-maintainer";
-export const marker = (key: string) => `<!-- supervisor-changeset:${key} -->`;
+// No colons: Linear turns ":new:" in a description into the 🆕 emoji, so a
+// marker written as "changeset:new:slug" is never found again.
+export const marker = (key: string) => `<!-- supervisor-changeset ${key.replaceAll(":", "/")} -->`;
 
 const CLOSED = ["completed", "canceled"];
 
