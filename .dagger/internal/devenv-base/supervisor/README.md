@@ -62,6 +62,81 @@ one `agent_ship` merges and pushes; until that environment exists, planning
 holds accepted issues against the delivery issue. With no dispatch issue open
 the tick ends `decision=nothing why=no dispatch issue`.
 
+## Calibration (CIT-472)
+
+`SUPERVISOR_MODE=calibrate` is the **planning hat**, and its output is a
+**changeset of agentic work**, opened as a pull request. Merging the PR is
+applying it: Render deploys main, and the deployed workflow's `apply` task
+makes Linear match the committed changeset. Calibration is the test that
+runs first. Bash drives it, not the model.
+
+The deployed side: the Render Workflow service `supervisor-workflow`
+(wfl-dbche33rjlhs73bgkrr0, created through the API because `render.yaml`
+cannot declare Workflows) builds `workflow/` with `render-build.sh` and
+starts it with `render-start.sh`. Its only secret is the Proton Pass token;
+the Linear key comes from Pass through `workflow/workflow.env`. A merge that
+changes `workflow/changeset.json` runs `devenv-base-apply-changeset`, which
+waits for Render's version of that commit and runs `supervisor-workflow/apply`
+for real (`supervisor/apply-changeset.sh`).
+
+
+
+```
+supervisor.sh (SUPERVISOR_MODE=calibrate)
+  │ pass-cli: calibrate.env (no restic; a GitHub token for the PR)
+  │ 1. git clone CALIBRATION_BASE (main); npm ci && npm run build in workflow/
+  │ 2. render workflows dev -- npm start          (local task server, :8120)
+  │    node dist/calibrate.js plan                (the DAG, and `seen`)
+  │ 3. claude -p planning.md + plan               (fresh, haiku, low, read-only)
+  │        → SUPERVISOR_CHANGESET: + a pkl block
+  │ 4. changeset.pkl = that block + `seen` from the plan, cut to what it touches
+  │    pkl eval -f json → changeset.json          (pkl/Changeset.pkl refuses a bad one)
+  │ 5. node dist/calibrate.js apply               (apply, dry, on the PR's own tree)
+  │ 6. commit changeset.pkl + changeset.json on supervisor/calibration,
+  │    force-push, and open one PR into CALIBRATION_BASE if none is open
+  ▼
+the maintainer merges (= applies), or doesn't
+```
+
+- **What a changeset holds** (`workflow/pkl/Changeset.pkl`, mirrored by
+  `workflow/src/changeset.ts`): *clusters* of Triage issues under a parent
+  (`new:<slug>` or an existing issue), each with what it serves, a hat (`infra` or `open-source`), a model and an effort, and its
+  `blockedBy` edges; the *releases* the clusters serve, which apply creates,
+  with their pipeline, when no open one has the name, so planning proposes a
+  Release for a theme rather than declining it for want of a sink; and
+  *decline*, *duplicate*, *escalate* and *delegate*
+  ops. Delegating to the self-hosted agent replaces asking for work with an
+  @mention. Toolbox ops are the next kind to add.
+- **`apply` is idempotent.** Each op first checks whether Linear already
+  says what the changeset says. A cluster created earlier is found again by
+  a marker in its description. So any trigger after a deploy converges
+  Linear, and the next run is a no-op. An op whose issue changed since
+  planning (`seen` is the plan's `updatedAt` snapshot) is skipped rather
+  than applied over someone's newer change, and the dry run fails on any
+  skip, so a stale plan never reaches a PR.
+- **Read-only, and nothing deploys.** Linear is allowed tool by tool for
+  reading only, every Linear tool that writes is named in
+  `--disallowedTools`, and `apply` only runs dry here. `render` is only ever
+  `workflows dev`, reached through the SDK's local mode.
+- **One branch, one PR, always into main.** `supervisor/calibration` is one
+  commit on the base, replaced each run. The changeset carries no
+  timestamp, so an unchanged changeset on an unchanged base pushes nothing.
+
+| Setting | Default | |
+| --- | --- | --- |
+| `CALIBRATION_BASE` | `main` | the branch cloned, and the PR's base |
+| `CALIBRATION_BRANCH` | `supervisor/calibration` | calibration's own branch |
+| `CALIBRATION_MODEL`, `CALIBRATION_EFFORT` | `haiku`, `low` | the cheap run |
+| `CALIBRATION_TEAM`, `CALIBRATION_DELIVERIES` | `CIT`, `CIT-439` | the plan task's inputs |
+| `CALIBRATION_TASK_PREFIX` | empty | if the local server wants `<workflow>/<task>` slugs |
+| `CALIBRATION_CLAUDE_TIMEOUT` | `20m` | |
+
+Not verified without credentials: `render workflows dev` itself and the task
+slugs it expects; the GraphQL mutations in `workflow/src/linear.ts` against
+live Linear (`issueCreate`, `issueUpdate` with `parentId`/`delegateId`,
+`issueRelationCreate`, `issueAddLabel`, `commentCreate`); and whether
+`pass://infra/github.com/GITHUB_TOKEN` can push and open PRs on this repo.
+
 ## Why it cannot move infrastructure
 
 Three things at once, because an allowlist that fails open is exactly the

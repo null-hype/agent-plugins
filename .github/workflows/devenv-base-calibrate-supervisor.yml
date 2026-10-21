@@ -1,0 +1,48 @@
+name: devenv-base-calibrate-supervisor
+
+# One live supervisor calibration (CIT-472), with real credentials: planning
+# reads Linear, writes a changeset, dry-runs apply on `render workflows dev`,
+# and opens or updates the calibration PR. It never writes to Linear and
+# never deploys.
+#
+# Runs on demand from main, or from any branch whose pushed head commit says
+# [calibrate], so a branch can be verified live before it merges. Either way
+# the branch it ran from is the one calibrated, and the PR's base.
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: The branch to calibrate against, and the PR's base
+        default: main
+  push:
+
+concurrency:
+  # One calibration at a time per base: they share the calibration branch.
+  group: ${{ github.workflow }}-${{ inputs.base || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  calibrate:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[calibrate]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # The base reaches a command line below, so it must be a plain branch
+      # name.
+      - name: Check the base
+        env:
+          BASE: ${{ inputs.base || github.ref_name }}
+        run: '[[ "$BASE" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "not a plain branch name: $BASE" >&2; exit 1; }'
+
+      # Every secret but the Proton Pass token comes from Proton Pass at run
+      # time, through supervisor/calibrate.env.
+      - uses: dagger/dagger-for-github@v8.4.1
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        with:
+          verb: call
+          workdir: .dagger/internal/devenv-base
+          args: calibrate-supervisor --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN --base=${{ inputs.base || github.ref_name }}
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
