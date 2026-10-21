@@ -7,9 +7,14 @@ const T0 = "2026-10-21T00:00:00Z";
 
 // Linear in memory. Every write is logged, so a dry run can be checked for
 // making none, and every write bumps updatedAt, the way Linear does.
-function fakeLinear(issues: Partial<LinearIssue>[], existing: { pipelines?: string[]; releases?: string[] } = {}) {
+function fakeLinear(
+  issues: Partial<LinearIssue>[],
+  existing: { pipelines?: string[]; releases?: string[]; labels?: string[]; users?: string[] } = {},
+) {
   const pipelines = new Set(existing.pipelines ?? []);
   const releases = new Set(existing.releases ?? []);
+  const labels = new Set(existing.labels ?? []);
+  const users = new Set(existing.users ?? ["tidelands-agent"]);
   const store = new Map<string, LinearIssue & { description: string }>();
   for (const i of issues) {
     store.set(i.identifier!, { updatedAt: T0, stage: "triage", labels: [], blockedBy: [], releases: [], description: "", ...i } as LinearIssue & { description: string });
@@ -57,9 +62,20 @@ function fakeLinear(issues: Partial<LinearIssue>[], existing: { pipelines?: stri
       touch(id);
     },
     async addLabel(id, label) {
+      assert.ok(labels.has(label), `${id} labelled ${label} before it exists`);
       writes.push(`label ${id} ${label}`);
       store.get(id)!.labels.push(label);
       touch(id);
+    },
+    async hasLabel(name) {
+      return labels.has(name);
+    },
+    async createLabel(name) {
+      writes.push(`new label ${name}`);
+      labels.add(name);
+    },
+    async hasUser(name) {
+      return users.has(name);
     },
     async comment(id, body) {
       writes.push(`comment ${id} ${body}`);
@@ -139,6 +155,7 @@ test("a dry run reads Linear, decides every op, and writes nothing", async () =>
   assert.deepEqual(
     r.applied.map((o) => `${o.op} ${o.target}`),
     [
+      "label needs-maintainer",
       "create new:review-findings",
       "parent CIT-500",
       "parent CIT-501",
@@ -228,10 +245,11 @@ test("a cluster can serve a Release the changeset creates, pipeline and all", as
   const dry = await apply(withRelease(), client, { dryRun: true });
   assert.deepEqual(writes, []);
   assert.deepEqual(
-    dry.applied.slice(0, 3).map((o) => `${o.op} ${o.target}: ${o.detail}`),
+    dry.applied.slice(0, 4).map((o) => `${o.op} ${o.target}: ${o.detail}`),
     [
       "pipeline agent-plugins: a new release pipeline",
       "release supervisor-workflow: in agent-plugins: The supervisor as a Render Workflow.",
+      "label needs-maintainer: a new label for escalations",
       'create new:review-findings: "Review findings on the supervisor" in release supervisor-workflow (infra, sonnet, high)',
     ],
   );
@@ -259,7 +277,7 @@ test("a Release that already exists is used, and an existing cluster parent is a
       { identifier: "CIT-503" },
       { identifier: "CIT-504" },
     ],
-    { pipelines: ["agent-plugins"], releases: ["supervisor-workflow"] },
+    { pipelines: ["agent-plugins"], releases: ["supervisor-workflow"], labels: ["needs-maintainer"] },
   );
   const cs = withRelease();
   cs.clusters[0] = { ...cs.clusters[0], key: "CIT-465", blockedBy: [] };
@@ -308,4 +326,44 @@ test("validate holds a cluster's Release to the changeset's releases", () => {
     "cluster new:other: serves release:not-declared, which is not in releases",
     "release nobody-serves-this is served by no cluster",
   ]);
+});
+
+// The first real apply (#246) failed on its first escalation: the label did
+// not exist, and the dry run had never asked.
+test("a dry run asks for every label and agent a write would need", async () => {
+  const { client } = fakeLinear(
+    [{ identifier: "CIT-439", stage: "started" }, { identifier: "CIT-504" }, { identifier: "CIT-505" }],
+    { labels: ["needs-maintainer"], users: [] },
+  );
+  const cs: Changeset = {
+    ...changeset(),
+    seen: { "CIT-504": T0, "CIT-505": T0 },
+    clusters: [],
+    decline: [],
+    duplicate: [],
+    escalate: [{ issue: "CIT-504", question: "is this a product decision?" }],
+    delegate: [{ issue: "CIT-505", agent: "nobody" }],
+  };
+  const r = await apply(cs, client, { dryRun: true });
+  assert.deepEqual(r.applied.map((o) => `${o.op} ${o.target}`), ["escalate CIT-504"], "an existing label is not created again");
+  assert.deepEqual(r.skipped.map((o) => `${o.op} ${o.target}: ${o.why}`), ["delegate CIT-505: no Linear user or agent named nobody"]);
+});
+
+test("a write that fails halfway is not repeated on the rerun", async () => {
+  const { client, writes } = world();
+  let failed = false;
+  const flaky = {
+    ...client,
+    async comment(id: string, body: string) {
+      if (!failed) {
+        failed = true;
+        throw new Error("Linear is down");
+      }
+      return client.comment(id, body);
+    },
+  };
+  await assert.rejects(apply(changeset(), flaky, { dryRun: false }), /Linear is down/);
+  await apply(changeset(), flaky, { dryRun: false });
+  assert.deepEqual(writes.filter((w) => w.startsWith("cancel CIT-502")), ["cancel CIT-502"]);
+  assert.deepEqual(writes.filter((w) => w.startsWith("comment CIT-502")), [], "the rerun sees CIT-502 canceled and leaves it");
 });

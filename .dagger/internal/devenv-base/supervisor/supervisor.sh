@@ -278,7 +278,13 @@ if [ "$MODE" = calibrate ]; then
   CALIBRATION_REPO=${CALIBRATION_REPO:-null-hype/agent-plugins}
   CALIBRATION_REMOTE=${CALIBRATION_REMOTE:-https://github.com/$CALIBRATION_REPO.git}
   CALIBRATION_BASE=${CALIBRATION_BASE:-main}
-  CALIBRATION_BRANCH=${CALIBRATION_BRANCH:-supervisor/calibration}
+  # main's calibration PR lives on supervisor/calibration. A calibration of
+  # another branch gets its own, so it never force-pushes over main's PR.
+  if [ "$CALIBRATION_BASE" = main ]; then
+    CALIBRATION_BRANCH=${CALIBRATION_BRANCH:-supervisor/calibration}
+  else
+    CALIBRATION_BRANCH=${CALIBRATION_BRANCH:-supervisor/calibration-$(printf '%s' "$CALIBRATION_BASE" | tr -c 'A-Za-z0-9._-' '-')}
+  fi
   WORKFLOW_PATH=.dagger/internal/devenv-base/workflow
   # The SDK's local mode talks to the dev server here.
   export RENDER_USE_LOCAL_DEV=true
