@@ -224,13 +224,13 @@ echo "gh" >> "$CALLS"
 echo "gh $*" >> "$GH_LOG"
 case "$1 $2" in
   "pr list") [ ! -s "$GH_OPEN_PR" ] || cat "$GH_OPEN_PR" ;;
-  "pr create")
+  "pr create"|"pr edit")
     prev=""
     for a in "$@"; do
       [ "$prev" = "--body-file" ] && cp "$a" "$GH_PR_BODY"
       prev=$a
     done
-    echo "https://github.com/null-hype/agent-plugins/pull/999" | tee "$GH_OPEN_PR"
+    [ "$2" = edit ] || echo "https://github.com/null-hype/agent-plugins/pull/999" | tee "$GH_OPEN_PR"
     ;;
 esac
 STUB
@@ -734,6 +734,9 @@ grep -q 'the changeset is unchanged' "$WORK/cal2" || fail "an unchanged changese
 if grep -q 'pr create' "$GH_LOG"; then
   fail "with the calibration PR open, no second PR should be opened"
 fi
+grep -qx 'gh pr edit https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --body-file .*' "$GH_LOG" &&
+  grep -qx '| delegate | new:review-findings | to tidelands-agent |' "$GH_PR_BODY" ||
+  fail "the open PR's body should be rewritten from this run's dry run, got: $(cat "$GH_LOG")"
 
 # A changeset that does not type-check never reaches the dry run or a PR.
 git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration

@@ -422,19 +422,24 @@ if [ "$MODE" = calibrate ]; then
   pr=$(gh pr list --repo "$CALIBRATION_REPO" --head "$CALIBRATION_BRANCH" --base "$CALIBRATION_BASE" \
     --state open --json url --jq '.[0].url // empty') ||
     { echo "supervisor: could not list the calibration PRs" >&2; exit 1; }
+  # The body is the dry run's op table, so it is rewritten on every run: an
+  # open PR's body must describe the changeset now on its branch.
+  jq -r --arg model "${CALIBRATION_MODEL:-haiku}" --arg effort "${CALIBRATION_EFFORT:-low}" --arg base "$base_sha" \
+    '"The changeset from planning (CIT-472), planned with \($model) at \($effort) effort against `\($base)`, and dry-run on the local task server.",
+    "",
+    "**Merging this applies it.** Nothing has been written to Linear yet.",
+    "",
+    "| op | target | detail |",
+    "| --- | --- | --- |",
+    (.applied[] | "| \(.op) | \(.target) | \(.detail | gsub("[|]"; "/")) |")' \
+    "$CAL_DIR/dry-run.json" > "$CAL_DIR/body.md"
   if [ -z "$pr" ]; then
-    jq -r --arg model "${CALIBRATION_MODEL:-haiku}" --arg effort "${CALIBRATION_EFFORT:-low}" --arg base "$base_sha" \
-      '"The changeset from planning (CIT-472), planned with \($model) at \($effort) effort against `\($base)`, and dry-run on the local task server.",
-      "",
-      "**Merging this applies it.** Nothing has been written to Linear yet.",
-      "",
-      "| op | target | detail |",
-      "| --- | --- | --- |",
-      (.applied[] | "| \(.op) | \(.target) | \(.detail | gsub("[|]"; "/")) |")' \
-      "$CAL_DIR/dry-run.json" > "$CAL_DIR/body.md"
     pr=$(gh pr create --repo "$CALIBRATION_REPO" --base "$CALIBRATION_BASE" --head "$CALIBRATION_BRANCH" \
       --title "Supervisor calibration: planning's changeset" --body-file "$CAL_DIR/body.md") ||
       { echo "supervisor: could not open the calibration PR" >&2; exit 1; }
+  else
+    gh pr edit "$pr" --repo "$CALIBRATION_REPO" --body-file "$CAL_DIR/body.md" > /dev/null ||
+      { echo "supervisor: could not update the calibration PR" >&2; exit 1; }
   fi
   echo "supervisor: calibration PR $pr"
   jq -r '"SUPERVISOR_CHANGESET: ops=\(.applied | length) clusters=\(.clusters | length)"' "$CAL_DIR/dry-run.json"
