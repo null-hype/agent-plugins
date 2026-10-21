@@ -301,9 +301,23 @@ ping)
     sudo tailscale up --auth-key="file:$key" --hostname=toolbox-host --ssh >&2 || true
     rm -f "$key"
   fi
+  # The idle clock and lease, or null on a host without toolbox-lifecycle.
+  lifecycle=$(toolbox-lifecycle status 2>/dev/null || echo null)
   tailscale status --json 2>/dev/null |
-    jq '{ready: true, tailnet: {state: .BackendState, name: (.Self.DNSName // "" | rtrimstr(".")), ips: (.Self.TailscaleIPs // []), online: (.Self.Online // false)}}' ||
-    echo '{"ready": true, "tailnet": {"state": "NotInstalled"}}'
+    jq --argjson lifecycle "$lifecycle" '{ready: true, tailnet: {state: .BackendState, name: (.Self.DNSName // "" | rtrimstr(".")), ips: (.Self.TailscaleIPs // []), online: (.Self.Online // false)}, lifecycle: $lifecycle}' ||
+    jq -n --argjson lifecycle "$lifecycle" '{ready: true, tailnet: {state: "NotInstalled"}, lifecycle: $lifecycle}'
+  ;;
+activity)
+  # Everything that counts as work in progress, for host_stop and host_wake:
+  # every toolbox job (workspace up, ship, review), not only the ones named
+  # after a workspace, and the Linear agent working an issue. lifecycle is
+  # the host's idle clock and lease, or null on a host without it.
+  for f in "$JOBS"/*.pid; do
+    [ -f "$f" ] || continue
+    job_running "$(basename "$f" .pid)" && basename "$f" .pid
+  done | jq -R . | jq -s --argjson agent "$(pgrep -f claude-agent-sdk >/dev/null 2>&1 && echo true || echo false)" \
+    --argjson lifecycle "$(toolbox-lifecycle status 2>/dev/null || echo null)" \
+    '{jobs: ., agent_running: $agent, lifecycle: $lifecycle}'
   ;;
 list)
   devpod list --output json | jq -r '.[]?.id' | while read -r id; do
@@ -330,7 +344,17 @@ up)
 review)
   pr=$1 model=${2:-} id=review-$1
   refuse_if_busy "$id"
-  rm -f "$JOBS/$id.exit" "$JOBS/$id.md"
+  # A head that was already reviewed successfully is not reviewed again: a
+  # second review would file every finding twice. A new commit on the PR is a
+  # new head and is reviewed.
+  head=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls/$pr" | jq -er .head.sha)
+  if [ "$(cat "$JOBS/$id.exit" 2>/dev/null)" = 0 ] && [ "$(cat "$JOBS/$id.sha" 2>/dev/null)" = "$head" ]; then
+    jq -n --argjson pr "$pr" --arg head "$head" \
+      '{pr: $pr, job_running: false, duplicate: true, head: $head, detail: "this head was already reviewed; codex_review_status has the findings"}'
+    exit 0
+  fi
+  echo "$head" > "$JOBS/$id.sha"
+  rm -f "$JOBS/$id.exit" "$JOBS/$id.md" "$JOBS/$id.interrupted"
   setsid nohup bash -c "$(declare -f git_auth api run_review)"'
     (run_review "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$pr" "$model" "$JOBS/$id.md" \
     > "$JOBS/$id.log" 2>&1 < /dev/null &

@@ -38,6 +38,11 @@ type hostCall struct {
 type fakeHost struct {
 	workspaces []workspace
 	calls      []hostCall
+	// jobs and agent are the work activity reports besides workspace jobs;
+	// agentStatus is the status action's answer for the agent workspace.
+	jobs        []string
+	agent       bool
+	agentStatus string
 }
 
 func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string) ([]byte, error) {
@@ -45,9 +50,22 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 	switch args[0] {
 	case "list":
 		return json.Marshal(f.workspaces)
+	case "activity":
+		jobs := append([]string{}, f.jobs...)
+		for _, w := range f.workspaces {
+			if w.JobRunning {
+				jobs = append(jobs, w.Name)
+			}
+		}
+		return json.Marshal(activityOut{Jobs: jobs, AgentRunning: f.agent})
+	case "status":
+		if args[1] == agentWorkspace && f.agentStatus != "" {
+			return []byte(f.agentStatus), nil
+		}
+		return []byte(`{}`), nil
 	case "ping":
 		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true}}`), nil
-	case "status", "up", "stop", "delete", "review", "review-status", "ship", "ship-status":
+	case "up", "stop", "delete", "review", "review-status", "ship", "ship-status":
 		return []byte(`{}`), nil
 	}
 	return nil, fmt.Errorf("unexpected action %s", args[0])
@@ -147,7 +165,7 @@ func TestHostStopStopsRunningWorkspacesFirst(t *testing.T) {
 	if res := callTool(t, tb, "host_stop", nil); res.IsError {
 		t.Fatalf("host_stop: %s", resultText(res))
 	}
-	if got := strings.Join(h.actions(), ", "); got != "list, stop linear-agent, stop cit-2" {
+	if got := strings.Join(h.actions(), ", "); got != "activity, list, stop linear-agent, stop cit-2" {
 		t.Fatalf("host actions %q", got)
 	}
 	if !g.stop {
@@ -162,6 +180,74 @@ func TestHostStopRefusesDuringAJob(t *testing.T) {
 	}
 	if g.stop {
 		t.Fatal("the VM was stopped")
+	}
+}
+
+// Ship and review jobs are not named after a workspace, and the agent's own
+// work is no job at all; host_stop used to miss all three.
+func TestHostStopRefusesDuringShipReviewOrAgentWork(t *testing.T) {
+	for name, set := range map[string]func(*fakeHost){
+		"ship":   func(h *fakeHost) { h.jobs = []string{"ship"} },
+		"review": func(h *fakeHost) { h.jobs = []string{"review-240"} },
+		"agent":  func(h *fakeHost) { h.agent = true },
+	} {
+		tb, g, h := newTestToolbox("RUNNING", workspace{Name: "linear-agent", State: "Running"})
+		set(h)
+		if res := callTool(t, tb, "host_stop", nil); !res.IsError {
+			t.Fatalf("%s: host_stop went ahead", name)
+		}
+		if g.stop || len(h.actions()) != 1 {
+			t.Fatalf("%s: host actions %v, VM stopped %v", name, h.actions(), g.stop)
+		}
+	}
+}
+
+func TestHostWakeStepsToReady(t *testing.T) {
+	wake := func(tb *toolbox) wakeOut {
+		t.Helper()
+		res := callTool(t, tb, "host_wake", nil)
+		if res.IsError {
+			t.Fatalf("host_wake: %s", resultText(res))
+		}
+		var out wakeOut
+		if err := json.Unmarshal([]byte(resultText(res)), &out); err != nil {
+			t.Fatalf("host_wake output %s: %v", resultText(res), err)
+		}
+		return out
+	}
+
+	tb, g, h := newTestToolbox("TERMINATED")
+	if out := wake(tb); out.Ready || out.Phase != "vm-starting" || !g.started || len(h.calls) != 0 {
+		t.Fatalf("stopped VM: %+v, started %v, host calls %v", out, g.started, h.actions())
+	}
+
+	// No agent start since this boot: host_wake starts it with the pass token.
+	tb, _, h = newTestToolbox("RUNNING")
+	h.agentStatus = `{"state": "Stopped", "job_running": false, "job_exit": null}`
+	if out := wake(tb); out.Ready || out.Phase != "agent-starting" {
+		t.Fatalf("agent not started: %+v", out)
+	}
+	last := h.calls[len(h.calls)-1]
+	if strings.Join(last.args, " ") != "up linear-agent main 1" || last.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "pass-token" {
+		t.Fatalf("agent start call %v", last)
+	}
+
+	for status, want := range map[string]string{
+		`{"state": "Running", "job_running": true, "job_exit": null}`: "agent-starting",
+		`{"state": "Running", "job_running": false, "job_exit": 0}`:   "ready",
+		`{"state": "Running", "job_running": false, "job_exit": 1}`:   "agent-failed",
+	} {
+		tb, _, h = newTestToolbox("RUNNING")
+		h.agentStatus = status
+		out := wake(tb)
+		if out.Phase != want || out.Ready != (want == "ready") {
+			t.Fatalf("agent status %s: %+v, want %s", status, out, want)
+		}
+		for _, c := range h.calls {
+			if c.args[0] == "up" {
+				t.Fatalf("agent status %s: host_wake started the agent again", status)
+			}
+		}
 	}
 }
 

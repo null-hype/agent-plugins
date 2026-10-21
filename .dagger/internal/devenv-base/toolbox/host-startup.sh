@@ -79,4 +79,31 @@ fi
 id toolbox >/dev/null 2>&1 || useradd -m -s /bin/bash toolbox
 usermod -aG docker toolbox
 su - toolbox -c 'devpod provider list --output json | jq -e ".docker" >/dev/null || devpod provider add docker'
+# The host's own idle shutdown and lease (host-lifecycle.sh, CIT-466).
+# setup-host.sh puts the script in the toolbox-lifecycle metadata key; a
+# host set up before that has none and keeps running until host_stop.
+if curl -fsS -H 'Metadata-Flavor: Google' -o /tmp/toolbox-lifecycle \
+  http://metadata.google.internal/computeMetadata/v1/instance/attributes/toolbox-lifecycle; then
+  install -m 0755 /tmp/toolbox-lifecycle /usr/local/bin/toolbox-lifecycle
+  rm -f /tmp/toolbox-lifecycle
+  toolbox-lifecycle boot
+  cat > /etc/systemd/system/toolbox-lifecycle.service <<'UNIT'
+[Unit]
+Description=Stop the toolbox host when idle or at the end of its lease
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/toolbox-lifecycle tick
+UNIT
+  cat > /etc/systemd/system/toolbox-lifecycle.timer <<'UNIT'
+[Unit]
+Description=Check the toolbox host's idle time and lease every minute
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl daemon-reload
+  systemctl enable --now toolbox-lifecycle.timer
+fi
 touch "$READY"
