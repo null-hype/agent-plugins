@@ -27,6 +27,7 @@ export NAME=${TOOLBOX_HOST_NAME:-toolbox-host}
 export MACHINE_TYPE=${TOOLBOX_HOST_MACHINE_TYPE:-e2-standard-4}
 export RENDER_SERVICE=${TOOLBOX_RENDER_SERVICE:-srv-dba7ibijnfac73elst20}
 export STARTUP=$HERE/host-startup.sh
+export LIFECYCLE=$HERE/host-lifecycle.sh
 
 export PROTON_PASS_AGENT_REASON="toolbox setup-host: create the toolbox host VM and configure the Render toolbox service"
 pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" --env-file "$ENV_DIR/tailscale.env" \
@@ -48,7 +49,7 @@ pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" -
     echo "== $NAME exists; replacing its toolbox SSH key and startup script"
     gcloud compute instances add-metadata "$NAME" --zone "$ZONE" \
       --metadata enable-guest-attributes=TRUE \
-      --metadata-from-file ssh-keys="$tmp/ssh-keys",startup-script="$STARTUP"
+      --metadata-from-file ssh-keys="$tmp/ssh-keys",startup-script="$STARTUP",toolbox-lifecycle="$LIFECYCLE"
   else
     echo "== creating $NAME"
     gcloud compute instances create "$NAME" --zone "$ZONE" \
@@ -58,7 +59,7 @@ pass-cli run --env-file "$ENV_DIR/gcloud.env" --env-file "$ENV_DIR/render.env" -
       --no-service-account --no-scopes \
       --labels purpose=toolbox-host \
       --metadata enable-guest-attributes=TRUE \
-      --metadata-from-file ssh-keys="$tmp/ssh-keys",startup-script="$STARTUP"
+      --metadata-from-file ssh-keys="$tmp/ssh-keys",startup-script="$STARTUP",toolbox-lifecycle="$LIFECYCLE"
   fi
 
   # Prefer an account limited to this instance. The deploy account may not
