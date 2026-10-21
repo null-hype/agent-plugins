@@ -1,0 +1,7 @@
+// Planning's changeset (CIT-472), rewritten by each calibration run and
+// rendered to changeset.json with `pkl eval -f json -o changeset.json
+// changeset.pkl`. Merging it is applying it. Empty until the first
+// calibration plans something.
+amends "pkl/Changeset.pkl"
+
+seen {}

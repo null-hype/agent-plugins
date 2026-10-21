@@ -25,13 +25,17 @@
 #      from pass:// references; the Render service holds only the pass token.
 #      With no pass session, or no pass token, nothing runs. No secret is on
 #      an argv or left in a file once the run ends.
-#   8. A calibration (SUPERVISOR_MODE=calibrate, CIT-472) builds the workflow
-#      from a clone, runs the plan task on `render workflows dev`, then runs
-#      the hats fresh and plan-only: it can read Linear but every Linear
-#      write is denied, and it never touches restic. A green calibration
-#      pushes the plan to its own branch and opens one PR, and calls nothing
-#      that deploys; an unchanged plan pushes nothing. A calibration missing
-#      a pass line, without a plan, or without a dev server opens no PR.
+#   8. A calibration (SUPERVISOR_MODE=calibrate, CIT-472) is the planning
+#      hat: it builds the workflow from a clone, runs the plan task on
+#      `render workflows dev`, then runs planning fresh and read-only (it can
+#      read Linear but every Linear write is denied, and it never touches
+#      restic). Its changeset renders through the real pkl/Changeset.pkl with
+#      `seen` filled in by the run, and apply is dry-run on the dev server
+#      against that tree. A green calibration pushes changeset.pkl and
+#      changeset.json to its own branch and opens one PR, and calls nothing
+#      that deploys; an unchanged changeset pushes nothing. A changeset that
+#      does not render, a missing changeset, a failed dry run, a missing
+#      plan or dev server: each opens no PR.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -146,13 +150,26 @@ case "${CLAUDE_STUB_MODE:-ok}" in
     echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
     echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=nothing due"
     ;;
-  plan)
-    echo "SUPERVISOR_WOULD: hat=planning tool=save_issue on=CIT-500 what=accept into CIT-439"
-    echo "SUPERVISOR_PASS: hat=planning handoffs=none why=plan-only"
-    echo "SUPERVISOR_WOULD: hat=infra tool=save_issue on=new what=planning -> infra: ship CIT-500"
-    echo "SUPERVISOR_PASS: hat=infra handoffs=none why=plan-only"
-    echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
-    echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=plan-only"
+  plan | badpkl)
+    hat=infra
+    [ "$CLAUDE_STUB_MODE" = plan ] || hat=planning
+    echo "Two findings on the supervisor belong together; one issue serves nothing."
+    echo "SUPERVISOR_CHANGESET:"
+    echo '```pkl'
+    echo 'clusters {'
+    echo '  new {'
+    echo '    key = "new:review-findings"'
+    echo '    title = "Review findings on the supervisor"'
+    echo "    hat = \"$hat\""
+    echo '    model = "sonnet"'
+    echo '    effort = "medium"'
+    echo '    serves = "CIT-439"'
+    echo '    issues { "CIT-500"; "CIT-501" }'
+    echo '  }'
+    echo '}'
+    echo 'decline { new { issue = "CIT-502"; reason = "nothing published depends on it" } }'
+    echo 'delegate { new { issue = "new:review-findings"; agent = "tidelands-agent" } }'
+    echo '```'
     ;;
   fail) echo "boom" >&2; exit 3 ;;
   hang) exec sleep 60 ;;
@@ -182,12 +199,22 @@ STUB
 
 cat > "$BIN/node" <<'STUB'
 #!/usr/bin/env bash
-# dist/calibrate.js: the plan task's result, as the SDK client prints it.
-echo "node" >> "$CALLS"
+# dist/calibrate.js: the plan task's result, or apply's dry run, as the SDK
+# client prints them. The dry run keeps the changeset.json it was run
+# against, to show it ran on the rendered tree.
+echo "node $2" >> "$CALLS"
 echo "node $* (cwd=$PWD) RENDER_USE_LOCAL_DEV=${RENDER_USE_LOCAL_DEV:-} RENDER_LOCAL_DEV_URL=${RENDER_LOCAL_DEV_URL:-}" >> "$NODE_LOG"
-case "${NODE_STUB_MODE:-ok}" in
-  ok) echo '{"sinks":["CIT-439"],"order":[{"id":"CIT-500","title":"a finding","status":"triage"}],"pruned":["CIT-501"],"cycles":[]}' ;;
-  fail) echo "Error: task plan ended failed: LINEAR_API_KEY must be set" >&2; exit 1 ;;
+case "$2 ${NODE_STUB_MODE:-ok}" in
+  "plan fail") echo "Error: task plan ended failed: LINEAR_API_KEY must be set" >&2; exit 1 ;;
+  "plan "*)
+    echo '{"sinks":["CIT-439"],"order":[],"pruned":["CIT-500","CIT-501","CIT-502","CIT-777"],"cycles":[],"seen":{"CIT-500":"2026-10-21T01:00:00Z","CIT-501":"2026-10-21T02:00:00Z","CIT-502":"2026-10-21T03:00:00Z","CIT-777":"2026-10-21T04:00:00Z"}}'
+    ;;
+  "apply applyfail") echo "Error: the changeset does not apply as written: parent CIT-501: CIT-501 changed since planning" >&2; exit 1 ;;
+  "apply "*)
+    cp changeset.json "$DRY_RUN_SAW"
+    echo '{"dryRun":true,"applied":[{"op":"create","target":"new:review-findings","detail":"\"Review findings on the supervisor\" under CIT-439 (infra, sonnet, medium)"},{"op":"parent","target":"CIT-500","detail":"into new:review-findings"},{"op":"parent","target":"CIT-501","detail":"into new:review-findings"},{"op":"decline","target":"CIT-502","detail":"nothing published depends on it"},{"op":"delegate","target":"new:review-findings","detail":"to tidelands-agent"}],"skipped":[],"clusters":{"new:review-findings":"new:review-findings"}}'
+    ;;
+  *) echo "unexpected node $*" >&2; exit 2 ;;
 esac
 STUB
 
@@ -240,6 +267,7 @@ export NODE_LOG=$WORK/node.log
 export GH_LOG=$WORK/gh.log
 export GH_OPEN_PR=$WORK/gh-open-pr
 export GH_PR_BODY=$WORK/gh-pr-body
+export DRY_RUN_SAW=$WORK/dry-run-saw.json
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -554,35 +582,43 @@ grep -q 'expected SUPERVISOR_PASS lines for planning, infra and open-source in t
 
 # --- calibration (CIT-472) ---------------------------------------------------
 
+# The changeset is rendered by the real pkl against the real schema.
+command -v pkl > /dev/null || fail "pkl must be on PATH: calibration renders the changeset with it"
+SCHEMA=$DIR/../workflow/pkl/Changeset.pkl
+[ -f "$SCHEMA" ] || fail "the changeset schema should be at $SCHEMA"
+
 # The repo a calibration clones and pushes to: a bare repo whose main carries
-# the workflow, so git itself is real and the pushed branch can be read back.
+# the workflow and its schema, so git itself is real and the pushed branch
+# can be read back.
 export GIT_AUTHOR_NAME=stub GIT_AUTHOR_EMAIL=stub@example.com
 export GIT_COMMITTER_NAME=stub GIT_COMMITTER_EMAIL=stub@example.com
 REMOTE=$WORK/remote.git
 git init --quiet --bare --initial-branch=main "$REMOTE"
 seed=$WORK/seed
+WF=.dagger/internal/devenv-base/workflow
 git init --quiet --initial-branch=main "$seed"
-mkdir -p "$seed/.dagger/internal/devenv-base/workflow"
-echo '{}' > "$seed/.dagger/internal/devenv-base/workflow/package.json"
+mkdir -p "$seed/$WF/pkl"
+echo '{}' > "$seed/$WF/package.json"
+cp "$SCHEMA" "$seed/$WF/pkl/Changeset.pkl"
 git -C "$seed" add . && git -C "$seed" commit --quiet -m seed
 git -C "$seed" push --quiet "$REMOTE" main
 BASE_SHA=$(git -C "$seed" rev-parse HEAD)
-PLAN_PATH=.dagger/internal/devenv-base/supervisor/calibration/plan.json
 
 calibrate() {
   SUPERVISOR_MODE=calibrate CALIBRATION_REMOTE=$REMOTE bash "$DIR/supervisor.sh" "$@"
 }
 branch_sha() { git -C "$REMOTE" rev-parse --verify --quiet refs/heads/supervisor/calibration || true; }
+no_pr() { [ -z "$(branch_sha)" ] && ! grep -q 'pr create' "$GH_LOG"; }
 
 # A green calibration.
 reset
 rm -f "$GH_OPEN_PR"
 CLAUDE_STUB_MODE=plan calibrate > "$WORK/cal" 2>&1 ||
   fail "a green calibration should exit 0, got: $(cat "$WORK/cal")"
-tail -1 "$WORK/cal" | grep -qx 'SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=plan-only' ||
-  fail "a calibration should end with its heartbeat, got: $(tail -1 "$WORK/cal")"
-[ "$(calls)" = "render node claude gh gh" ] ||
-  fail "a calibration should start the dev server, plan, run the hats, then open the PR, and never touch restic; got: $(calls)"
+tail -1 "$WORK/cal" | grep -qx 'SUPERVISOR_CHANGESET: ops=5 clusters=1' ||
+  fail "a calibration should end with its changeset summary, got: $(tail -1 "$WORK/cal")"
+[ "$(calls)" = "render node plan claude node apply gh gh" ] ||
+  fail "a calibration should start the dev server, plan, run planning, dry-run apply, then open the PR, and never touch restic; got: $(calls)"
 
 # Its secrets are its own: a GitHub token, and no restic.
 grep -q -- "pass-cli run --env-file $DIR/calibrate.env -- " "$PASS_ARGV_LOG" ||
@@ -600,6 +636,8 @@ grep -qx 'render workflows dev -- npm start (cwd=.*/repo/.dagger/internal/devenv
   fail "the dev server should be render workflows dev -- npm start in the clone's workflow, got: $(cat "$RENDER_LOG")"
 grep -q '^node dist/calibrate.js plan CIT CIT-439 (cwd=.*workflow) RENDER_USE_LOCAL_DEV=true RENDER_LOCAL_DEV_URL=http://127.0.0.1:8120$' "$NODE_LOG" ||
   fail "the plan task should run through the SDK's local mode, got: $(cat "$NODE_LOG")"
+grep -q '^node dist/calibrate.js apply CIT (cwd=.*workflow) RENDER_USE_LOCAL_DEV=true ' "$NODE_LOG" ||
+  fail "apply should be dry-run through the SDK's local mode, got: $(cat "$NODE_LOG")"
 if kill -0 "$(cat "$RENDER_PID")" 2> /dev/null; then
   fail "the dev server should be stopped when the calibration ends"
 fi
@@ -611,7 +649,7 @@ if grep -qiE 'deploy' "$RENDER_LOG" "$GH_LOG"; then
   fail "a calibration must not deploy"
 fi
 
-# The hats run fresh, cheap and plan-only.
+# Planning runs fresh, cheap and read-only, from the planning prompt alone.
 for flag in --continue --remote-control --resume; do
   if grep -qx -- "$flag" "$CLAUDE_ARGV"; then
     fail "a calibration is a fresh session and should not pass $flag"
@@ -619,15 +657,21 @@ for flag in --continue --remote-control --resume; do
 done
 [ "$(section --model)" = haiku ] && [ "$(section --effort)" = low ] ||
   fail "a calibration should run a small model at low effort, got: $(section --model) $(section --effort)"
-grep -q 'This is a calibration run, and it is plan-only' "$CLAUDE_ARGV" ||
-  fail "the prompt should open with the calibration preamble"
-grep -q '"pruned": \[' "$CLAUDE_ARGV" && grep -q 'in this order: planning, infra, open source' "$CLAUDE_ARGV" ||
-  fail "the prompt should carry the frozen plan and then the real run's prompt"
+grep -q "You are the supervisor's \*\*planning hat\*\*" "$CLAUDE_ARGV" ||
+  fail "the prompt should be planning.md"
+grep -q '"pruned": \[' "$CLAUDE_ARGV" ||
+  fail "the prompt should carry the frozen plan"
+if grep -q '"seen"' "$CLAUDE_ARGV"; then
+  fail "the prompt should leave out the plan's seen: the run fills it in"
+fi
+if grep -q 'in this order: planning, infra, open source' "$CLAUDE_ARGV"; then
+  fail "calibration is planning alone, not the tick's three passes"
+fi
 if grep -q '{{' "$CLAUDE_ARGV"; then
   fail "every calibration prompt placeholder should have been substituted"
 fi
 
-# A plan-only run makes no Linear writes: it may read Linear, every tool that
+# Planning makes no Linear writes: it may read Linear, every tool that
 # writes is denied, and Linear is not allowed as a whole.
 if section --allowedTools | grep -qx mcp__linear; then
   fail "a calibration must not allow the Linear server as a whole"
@@ -643,21 +687,29 @@ for tool in mcp__linear__save_issue mcp__linear__save_comment mcp__linear__delet
   section --disallowedTools | grep -qx "$tool" || fail "$tool should be disallowed by name in a calibration"
 done
 
-# The plan and the would-be writes are pushed to calibration's own branch,
-# one commit on the base, and one PR is opened into main.
+# The changeset is pushed to calibration's own branch, one commit on the
+# base: the Pkl source and its rendering, and `seen` holds exactly the
+# issues it touches, as the plan saw them.
 [ -n "$(branch_sha)" ] || fail "a green calibration should push supervisor/calibration"
 [ "$(git -C "$REMOTE" rev-parse supervisor/calibration~1)" = "$BASE_SHA" ] ||
   fail "the calibration branch should be one commit on the base"
-git -C "$REMOTE" show "supervisor/calibration:$PLAN_PATH" > "$WORK/plan.json"
-jq -e --arg base "$BASE_SHA" '.base == $base and .calibration == {model: "haiku", effort: "low"}
-  and .plan.order[0].id == "CIT-500" and .plan.pruned == ["CIT-501"]
-  and (.passes | length) == 3 and (.would | length) == 2
-  and (.heartbeat | startswith("SUPERVISOR_HEARTBEAT: "))' "$WORK/plan.json" > /dev/null ||
-  fail "the committed plan should hold the plan, the passes, the would-be writes and the heartbeat, got: $(cat "$WORK/plan.json")"
-grep -qx 'gh pr create --repo null-hype/agent-plugins --base main --head supervisor/calibration --title Supervisor calibration: the plan for the next real run --body-file .*' "$GH_LOG" ||
+[ "$(git -C "$REMOTE" diff --name-only main supervisor/calibration | paste -sd' ')" = "$WF/changeset.json $WF/changeset.pkl" ] ||
+  fail "the calibration commit should carry changeset.pkl and changeset.json only, got: $(git -C "$REMOTE" diff --name-only main supervisor/calibration)"
+git -C "$REMOTE" show "supervisor/calibration:$WF/changeset.json" > "$WORK/changeset.json"
+jq -e '.seen == {"CIT-500":"2026-10-21T01:00:00Z","CIT-501":"2026-10-21T02:00:00Z","CIT-502":"2026-10-21T03:00:00Z"}
+  and .clusters[0].key == "new:review-findings" and .clusters[0].issues == ["CIT-500","CIT-501"]
+  and .decline[0].issue == "CIT-502" and .delegate[0].agent == "tidelands-agent"' "$WORK/changeset.json" > /dev/null ||
+  fail "the committed changeset should hold planning's ops and seen for the issues it touches, got: $(cat "$WORK/changeset.json")"
+check=$WORK/check
+rm -rf "$check" && git clone --quiet --branch supervisor/calibration "$REMOTE" "$check"
+(cd "$check/$WF" && pkl eval -f json changeset.pkl) | cmp -s - "$check/$WF/changeset.json" ||
+  fail "the committed changeset.json should be the rendering of the committed changeset.pkl"
+cmp -s "$DRY_RUN_SAW" "$WORK/changeset.json" ||
+  fail "apply should have been dry-run against the changeset that was committed"
+grep -qx 'gh pr create --repo null-hype/agent-plugins --base main --head supervisor/calibration --title Supervisor calibration: planning'"'"'s changeset --body-file .*' "$GH_LOG" ||
   fail "a green calibration should open a PR from supervisor/calibration into main, got: $(cat "$GH_LOG")"
-grep -q 'SUPERVISOR_WOULD: hat=planning tool=save_issue on=CIT-500' "$GH_PR_BODY" ||
-  fail "the PR body should show the would-be writes"
+grep -q 'Merging this applies it' "$GH_PR_BODY" && grep -qx '| delegate | new:review-findings | to tidelands-agent |' "$GH_PR_BODY" ||
+  fail "the PR body should say merging applies it and list the dry run's ops, got: $(cat "$GH_PR_BODY")"
 grep -q 'calibration PR https://github.com/null-hype/agent-plugins/pull/999' "$WORK/cal" ||
   fail "the run should name its PR"
 
@@ -670,48 +722,67 @@ done
 [ -z "$(ls -A "$TMPDIR")" ] ||
   fail "a calibration should leave nothing in TMPDIR, left: $(ls "$TMPDIR")"
 
-# The same plan again, with the PR open: nothing is pushed and no second PR
-# is opened.
+# The same changeset again, with the PR open: nothing is pushed and no
+# second PR is opened.
 before=$(branch_sha)
 reset
 CLAUDE_STUB_MODE=plan calibrate > "$WORK/cal2" 2>&1 ||
   fail "a repeated calibration should exit 0, got: $(cat "$WORK/cal2")"
 [ "$(branch_sha)" = "$before" ] ||
-  fail "an unchanged plan should push nothing"
-grep -q 'the plan is unchanged' "$WORK/cal2" || fail "an unchanged plan should say so"
+  fail "an unchanged changeset should push nothing"
+grep -q 'the changeset is unchanged' "$WORK/cal2" || fail "an unchanged changeset should say so"
 if grep -q 'pr create' "$GH_LOG"; then
   fail "with the calibration PR open, no second PR should be opened"
 fi
 
-# A calibration missing a pass line fails and opens no PR.
+# A changeset that does not type-check never reaches the dry run or a PR.
 git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
 rm -f "$GH_OPEN_PR"
 reset
-if CLAUDE_STUB_MODE=skipped calibrate > "$WORK/calskip" 2>&1; then
-  fail "a calibration missing a pass line should fail"
+if CLAUDE_STUB_MODE=badpkl calibrate > "$WORK/calbad" 2>&1; then
+  fail "a changeset that does not render should fail the calibration"
 fi
-grep -q 'expected SUPERVISOR_PASS lines for planning, infra and open-source in that order, got: planning open-source' "$WORK/calskip" ||
-  fail "a calibration missing a pass line should name the hats it saw, got: $(cat "$WORK/calskip")"
-[ -z "$(branch_sha)" ] && [ ! -s "$GH_LOG" ] ||
-  fail "a calibration missing a pass line should push nothing and open no PR"
+grep -q 'the changeset does not render through pkl/Changeset.pkl' "$WORK/calbad" ||
+  fail "a changeset that does not render should say so, got: $(cat "$WORK/calbad")"
+[ "$(calls)" = "render node plan claude" ] && no_pr ||
+  fail "a changeset that does not render should not be dry-run, pushed or opened; got: $(calls)"
 
-# A calibration with no heartbeat fails the same way.
+# No changeset block, no PR.
 reset
 if CLAUDE_STUB_MODE=prose calibrate > "$WORK/calprose" 2>&1; then
-  fail "a calibration without a heartbeat should fail"
+  fail "a calibration without a changeset should fail"
 fi
-[ -z "$(branch_sha)" ] && [ ! -s "$GH_LOG" ] ||
-  fail "a calibration without a heartbeat should push nothing and open no PR"
+grep -q 'no SUPERVISOR_CHANGESET line followed by a pkl block' "$WORK/calprose" ||
+  fail "a missing changeset should say so, got: $(cat "$WORK/calprose")"
+no_pr || fail "a calibration without a changeset should push nothing and open no PR"
 
-# No plan, no hats: a failed plan task is never read as an empty plan.
+# A changeset whose dry run fails is not ready to merge.
+reset
+if NODE_STUB_MODE=applyfail CLAUDE_STUB_MODE=plan calibrate > "$WORK/caldry" 2>&1; then
+  fail "a calibration whose dry run failed should fail"
+fi
+grep -q "the changeset's dry run failed" "$WORK/caldry" ||
+  fail "a failed dry run should say so, got: $(cat "$WORK/caldry")"
+no_pr || fail "a calibration whose dry run failed should push nothing and open no PR"
+
+# A failed claude is a failed calibration.
+reset
+if CLAUDE_STUB_MODE=fail calibrate > "$WORK/calfail" 2>&1; then
+  fail "a calibration where claude exited nonzero should fail"
+fi
+grep -q 'claude exited 3 -- this calibrate has no decision' "$WORK/calfail" ||
+  fail "a failed claude should be reported, got: $(cat "$WORK/calfail")"
+no_pr || fail "a calibration where claude failed should push nothing and open no PR"
+
+# No plan, no planning: a failed plan task is never read as an empty plan.
 reset
 if NODE_STUB_MODE=fail CLAUDE_STUB_MODE=plan calibrate > "$WORK/calnoplan" 2>&1; then
   fail "a calibration whose plan task failed should fail"
 fi
 grep -q 'the plan task produced no plan' "$WORK/calnoplan" ||
   fail "a failed plan task should say so, got: $(cat "$WORK/calnoplan")"
-[ "$(calls)" = "render node" ] ||
-  fail "without a plan neither the hats nor gh should run; got: $(calls)"
+[ "$(calls)" = "render node plan" ] ||
+  fail "without a plan neither planning nor gh should run; got: $(calls)"
 
 # A dev server that never answers fails before the plan.
 reset

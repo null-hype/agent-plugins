@@ -10,6 +10,9 @@ export type Stage = "triage" | "backlog" | "unstarted" | "started";
 export interface Issue {
   id: string; // the identifier, e.g. CIT-465
   title: string;
+  // When Linear last changed it. Carried into the plan's `seen`, so a
+  // changeset planned from it can tell later changes from its own.
+  updatedAt?: string;
   stage: Stage;
   // Issues that must finish first. Only open ones count; a done blocker is
   // simply absent.
@@ -32,6 +35,9 @@ export interface Plan {
   // Issues on a blocks cycle, or behind one. No order can satisfy them, so
   // planning escalates them rather than guessing which edge is wrong.
   cycles: string[];
+  // updatedAt of every open issue read, by identifier: the snapshot a
+  // changeset planned from this plan records as `seen`.
+  seen: Record<string, string>;
 }
 
 export interface PlannedIssue {
@@ -132,5 +138,6 @@ export function plan(issues: Issue[], deliveries: string[] = []): Plan {
   }
   const cycles = [...remaining.keys()];
 
-  return { sinks: [...sinks].sort(), order, pruned, cycles };
+  const seen = Object.fromEntries(issues.filter((i) => i.updatedAt).map((i) => [i.id, i.updatedAt!]));
+  return { sinks: [...sinks].sort(), order, pruned, cycles, seen };
 }

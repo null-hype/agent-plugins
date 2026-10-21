@@ -441,10 +441,11 @@ func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	// git, gh, Node and the Render CLI are for SUPERVISOR_MODE=calibrate
+	// git, gh, Node, the Render CLI and pkl are for SUPERVISOR_MODE=calibrate
 	// (CIT-472): it clones the repo, builds the workflow, runs it on
-	// `render workflows dev` and opens its plan as a PR.
-	return withRenderCli(withNode(withGh(withGit(withAptPackages(withClaude(m.PassCli(platform)), "restic"))))).
+	// `render workflows dev`, renders planning's changeset through the Pkl
+	// schema and opens it as a PR.
+	return withPkl(withRenderCli(withNode(withGh(withGit(withAptPackages(withClaude(m.PassCli(platform)), "restic")))))).
 		WithFile(
 			"/app/supervisor/supervisor.sh",
 			dag.CurrentModule().Source().File("supervisor/supervisor.sh"),
@@ -466,8 +467,14 @@ func (m *DevenvBase) Supervisor(
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
 		WithFile(
-			"/app/supervisor/calibrate.md",
-			dag.CurrentModule().Source().File("supervisor/calibrate.md"),
+			"/app/supervisor/planning.md",
+			dag.CurrentModule().Source().File("supervisor/planning.md"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		// The stub tests render a changeset through the real schema.
+		WithFile(
+			"/app/workflow/pkl/Changeset.pkl",
+			dag.CurrentModule().Source().File("workflow/pkl/Changeset.pkl"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
 		WithFile(
@@ -512,6 +519,7 @@ func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 		WithExec([]string{"git", "--version"}).
 		WithExec([]string{"gh", "--version"}).
 		WithExec([]string{"node", "--version"}).
+		WithExec([]string{"pkl", "--version"}).
 		// Calibration needs `render workflows dev`, which only Render CLI
 		// 2.11 and later has.
 		WithExec([]string{"render", "workflows", "dev", "--help"}).
@@ -530,6 +538,19 @@ func withRenderCli(c *dagger.Container) *dagger.Container {
 	return withAptPackages(c, "curl", "ca-certificates", "unzip").
 		// As root it installs straight to /usr/local/bin.
 		WithExec([]string{"sh", "-c", "curl -fsSL https://raw.githubusercontent.com/render-oss/cli/main/bin/install.sh | sh"})
+}
+
+// pklVersion pins the Pkl CLI the supervisor and its checks render
+// changesets with (CIT-472).
+const pklVersion = "0.29.1"
+
+// withPkl puts the Pkl CLI's native amd64 binary on c's PATH.
+func withPkl(c *dagger.Container) *dagger.Container {
+	return c.WithFile(
+		"/usr/local/bin/pkl",
+		dag.HTTP("https://github.com/apple/pkl/releases/download/"+pklVersion+"/pkl-linux-amd64"),
+		dagger.ContainerWithFileOpts{Permissions: 0o755},
+	)
 }
 
 // withClaude installs the Claude Code CLI onto c via its native installer
@@ -731,8 +752,11 @@ func (m *DevenvBase) CheckLinearAgent(ctx context.Context) error {
 }
 
 // CheckSupervisorWorkflow runs the supervisor workflow's tests (CIT-472) and
-// type-checks it: the planning DAG and the Linear read behind it, with a
-// fake Linear, so no network or key is involved.
+// type-checks it: the planning DAG, apply and the Linear client behind them,
+// with a fake Linear, so no network or key is involved. It also runs the
+// changeset schema's pkl tests and checks that the committed changeset.json
+// is the rendering of the committed changeset.pkl, since merging it applies
+// it.
 // +check
 func (m *DevenvBase) CheckSupervisorWorkflow(ctx context.Context) error {
 	out, err := dag.Container().
@@ -748,7 +772,18 @@ func (m *DevenvBase) CheckSupervisorWorkflow(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return assertContains(out, "# fail 0")
+	if err := assertContains(out, "# fail 0"); err != nil {
+		return err
+	}
+	_, err = withPkl(dag.Container().From("node:22-slim")).
+		WithDirectory("/app", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
+			Include: []string{"pkl/**", "changeset.pkl", "changeset.json"},
+		}).
+		WithWorkdir("/app").
+		WithExec([]string{"pkl", "test", "pkl/Changeset.test.pkl"}).
+		WithExec([]string{"sh", "-c", "pkl eval -f json changeset.pkl | cmp - changeset.json"}).
+		Sync(ctx)
+	return err
 }
 
 // PublishLinearAgent pushes the built linear-agent app to

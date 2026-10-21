@@ -33,9 +33,11 @@
 # running when the next is due delays that next one. SUPERVISOR_TIMEOUT stays
 # below the hour for that reason: one tick must not delay the next.
 #
-# SUPERVISOR_MODE=calibrate (CIT-472) runs a calibration instead: a fresh,
-# plan-only rehearsal of tomorrow's real run that ends in a pull request and
-# never in a deploy or a Linear write. See calibrate() below and README.md.
+# SUPERVISOR_MODE=calibrate (CIT-472) runs a calibration instead: the
+# planning hat, fresh and read-only, whose output is a changeset of agentic
+# work, dry-run on the workflow's dev server and opened as a pull request.
+# Merging it is applying it; nothing here deploys or writes to Linear. See
+# the calibration block below and README.md.
 #
 # Usage: supervisor.sh                (from Render: the image entrypoint)
 #        supervisor.sh --bounded-run  (itself, re-executed under the timeout)
@@ -148,8 +150,8 @@ Task"
 # A calibration is plan-only, so Linear is not allowed as a whole: only the
 # tools that read it are. Every Linear tool that writes is disallowed by name
 # as well, on top of the tick's list, so a plan-only run cannot write to
-# Linear even if the allowlist ever failed open. It prints the writes it
-# would make instead.
+# Linear even if the allowlist ever failed open. Its writes go into the
+# changeset instead, which merging applies.
 if [ "$MODE" = calibrate ]; then
   ALLOWED_TOOLS="$(printf '%s\n' "$ALLOWED_TOOLS" | grep -vx mcp__linear)
 mcp__linear__list_issues
@@ -227,13 +229,11 @@ jq -n \
   }}' > "$MCP_FILE"
 
 now=$(date -u +%FT%TZ)
-prompt=$(sed -e "s|{{NOW}}|$now|g" "$DIR/prompt.md")
 
-# The checks every run ends with, tick or calibration: claude's exit, then
-# the heartbeat, then a pass line per hat. Sets $heartbeat; exits on failure.
-# $1 is the backup's exit status, which only a tick has.
-check_run() {
-  local backup_rc=$1 failed=0 hats
+# claude's exit, the first check every run ends with. $1 is the backup's
+# exit status, which only a tick has.
+check_claude() {
+  local backup_rc=${1:-0} failed=0
   # 124 is timeout's TERM, 137 its KILL after the grace period.
   case "$claude_rc" in
     0) ;;
@@ -251,50 +251,35 @@ check_run() {
     failed=1
   fi
   [ "$failed" -eq 0 ] || exit 1
-
-  # A run that produced prose but never reached a decision is a broken
-  # instrument, not a tick with nothing to do.
-  heartbeat=$(printf '%s\n' "$out" | grep -E '^SUPERVISOR_HEARTBEAT: ' | tail -1 || true)
-  case "$heartbeat" in
-    *decision=*) ;;
-    *)
-      echo "supervisor: no SUPERVISOR_HEARTBEAT line carrying a decision" >&2
-      exit 1
-      ;;
-  esac
-  # Each hat's pass says what it handed off, in order. The handoffs are the
-  # only memory the next pass reads, so a pass that never reported one is as
-  # silent as a missing heartbeat.
-  hats=$(printf '%s\n' "$out" |
-    sed -nE 's/^SUPERVISOR_PASS: hat=([a-z-]+) handoffs=[^ ]+ why=.*/\1/p' | paste -sd' ')
-  [ "$hats" = "planning infra open-source" ] || {
-    echo "supervisor: expected SUPERVISOR_PASS lines for planning, infra and open-source in that order, got: ${hats:-none}" >&2
-    exit 1
-  }
 }
 
 if [ "$MODE" = calibrate ]; then
   # --- calibration (CIT-472) -------------------------------------------------
   #
-  # A rehearsal of tomorrow's real run, cheap, and planned rather than done:
+  # Calibration is the planning hat, and its output is a changeset: a PR
+  # that, merged, is applied by the deployed workflow. Merging is applying.
+  # Driven by bash, not the model:
   #
   #   1. clone the repo at CALIBRATION_BASE and build the workflow there;
   #   2. start the local task server, `render workflows dev -- npm start`, and
   #      run the read-only `plan` task on it through the SDK's local mode;
-  #   3. run the three hats once, fresh, with a small model at low effort,
-  #      plan-only: Linear is read and never written, and each hat prints
-  #      the writes it would make;
-  #   4. if all of that is green, commit the plan and the would-be writes on
+  #   3. run planning once, fresh, with a small model at low effort: it reads
+  #      Linear, never writes it, and ends with the changeset's Pkl body;
+  #   4. render it through workflow/pkl/Changeset.pkl, which refuses a
+  #      changeset that does not type-check or whose references do not
+  #      resolve, with `seen` filled in from the plan, not by the model;
+  #   5. dry-run the `apply` task on the dev server against that very tree:
+  #      the test. A changeset that would not apply as written fails here;
+  #   6. if all of that is green, commit changeset.pkl and changeset.json on
   #      CALIBRATION_BRANCH and open (or update) one PR into CALIBRATION_BASE.
   #
-  # The output is a pull request, never a deploy: the maintainer merges it.
-  # The dev server only simulates Render, and nothing here calls Render's API.
+  # Nothing here deploys or writes to Linear: the dev server only simulates
+  # Render, nothing calls Render's API, and apply only ever runs dry.
   CALIBRATION_REPO=${CALIBRATION_REPO:-null-hype/agent-plugins}
   CALIBRATION_REMOTE=${CALIBRATION_REMOTE:-https://github.com/$CALIBRATION_REPO.git}
   CALIBRATION_BASE=${CALIBRATION_BASE:-main}
   CALIBRATION_BRANCH=${CALIBRATION_BRANCH:-supervisor/calibration}
   WORKFLOW_PATH=.dagger/internal/devenv-base/workflow
-  PLAN_PATH=.dagger/internal/devenv-base/supervisor/calibration/plan.json
   # The SDK's local mode talks to the dev server here.
   export RENDER_USE_LOCAL_DEV=true
   export RENDER_LOCAL_DEV_URL=${RENDER_LOCAL_DEV_URL:-http://127.0.0.1:8120}
@@ -310,13 +295,14 @@ if [ "$MODE" = calibrate ]; then
     { echo "supervisor: could not clone $CALIBRATION_BASE" >&2; exit 1; }
   git -C "$repo" config credential.helper '!gh auth git-credential'
   base_sha=$(git -C "$repo" rev-parse HEAD)
-  [ -d "$repo/$WORKFLOW_PATH" ] ||
+  wf=$repo/$WORKFLOW_PATH
+  [ -d "$wf" ] ||
     { echo "supervisor: $CALIBRATION_BASE has no $WORKFLOW_PATH to calibrate" >&2; exit 1; }
-  (cd "$repo/$WORKFLOW_PATH" && npm ci --no-audit --no-fund && npm run build) > "$CAL_DIR/build.log" 2>&1 ||
+  (cd "$wf" && npm ci --no-audit --no-fund && npm run build) > "$CAL_DIR/build.log" 2>&1 ||
     { cat "$CAL_DIR/build.log" >&2; echo "supervisor: the workflow did not build" >&2; exit 1; }
 
   echo "supervisor: starting the local task server"
-  (cd "$repo/$WORKFLOW_PATH" && exec render workflows dev -- npm start) > "$CAL_DIR/dev.log" 2>&1 &
+  (cd "$wf" && exec render workflows dev -- npm start) > "$CAL_DIR/dev.log" 2>&1 &
   dev_pid=$!
   # Up when anything answers on the port; a server that exits first, or
   # never answers, is a failed calibration rather than an empty plan.
@@ -338,24 +324,23 @@ if [ "$MODE" = calibrate ]; then
   echo "supervisor: running the plan task on the local task server"
   # Deliberately unquoted: each delivery is its own argument.
   # shellcheck disable=SC2086
-  plan=$(cd "$repo/$WORKFLOW_PATH" &&
-    node dist/calibrate.js "${CALIBRATION_TASK:-plan}" "${CALIBRATION_TEAM:-CIT}" ${CALIBRATION_DELIVERIES:-CIT-439}) &&
-    printf '%s' "$plan" | jq -e '.order | type == "array"' > /dev/null ||
+  plan=$(cd "$wf" && node dist/calibrate.js plan "${CALIBRATION_TEAM:-CIT}" ${CALIBRATION_DELIVERIES:-CIT-439}) &&
+    printf '%s' "$plan" | jq -e '(.order | type == "array") and (.seen | type == "object")' > /dev/null ||
     { echo "supervisor: the plan task produced no plan" >&2; exit 1; }
   printf '%s\n' "$plan" | jq . > "$CAL_DIR/plan.json"
 
-  # The calibration preamble, the frozen plan in place of {{PLAN}}, then the
-  # real run's own prompt.
-  prompt="$(awk -v plan="$CAL_DIR/plan.json" \
-    '$0 == "{{PLAN}}" { while ((getline l < plan) > 0) print l; next } { print }' \
-    "$DIR/calibrate.md")
-$prompt"
+  # Planning's prompt, with the frozen plan in place of {{PLAN}}. `seen` is
+  # left out: the run fills it in, and it is long.
+  jq 'del(.seen)' "$CAL_DIR/plan.json" > "$CAL_DIR/plan-for-prompt.json"
+  prompt=$(sed -e "s|{{NOW}}|$now|g" "$DIR/planning.md" |
+    awk -v plan="$CAL_DIR/plan-for-prompt.json" \
+      '$0 == "{{PLAN}}" { while ((getline l < plan) > 0) print l; next } { print }')
 
   # Fresh, small and cheap: no --continue and no Remote Control, because a
   # calibration remembers nothing and is not talked to. It runs from its
   # scratch directory so no session is filed under the tick's directory.
   claude_timeout=${CALIBRATION_CLAUDE_TIMEOUT:-20m}
-  echo "supervisor: running the hats plan-only"
+  echo "supervisor: planning, read-only"
   claude_rc=0
   # shellcheck disable=SC2086
   out=$(cd "$CAL_DIR" && timeout --signal=TERM --kill-after=30s "$claude_timeout" \
@@ -366,68 +351,124 @@ $prompt"
       --allowedTools $ALLOWED_TOOLS \
       --disallowedTools $DISALLOWED_TOOLS) || claude_rc=$?
   printf '%s\n' "$out"
-  check_run 0
+  check_claude
 
-  # Green: the plan and what each hat would write become the PR. The file
-  # carries no timestamp, so an unchanged plan on an unchanged base is no
-  # change at all and the PR is left alone.
-  mkdir -p "$(dirname "$repo/$PLAN_PATH")"
-  printf '%s\n' "$out" | jq -R -s \
-    --slurpfile plan "$CAL_DIR/plan.json" \
-    --arg base "$base_sha" \
-    --arg model "${CALIBRATION_MODEL:-haiku}" --arg effort "${CALIBRATION_EFFORT:-low}" \
-    'split("\n") as $lines | {
-       base: $base,
-       calibration: {model: $model, effort: $effort},
-       plan: $plan[0],
-       passes: [$lines[] | select(startswith("SUPERVISOR_PASS: "))],
-       would: [$lines[] | select(startswith("SUPERVISOR_WOULD: "))],
-       heartbeat: ([$lines[] | select(startswith("SUPERVISOR_HEARTBEAT: "))] | last)
-     }' > "$repo/$PLAN_PATH"
+  # The changeset's body is the fenced pkl block after the marker line, and
+  # nothing else the model said.
+  body=$(printf '%s\n' "$out" | awk '
+    /^SUPERVISOR_CHANGESET:/ { marked = 1; inblock = 0; body = ""; next }
+    marked && !inblock && /^```pkl[[:space:]]*$/ { inblock = 1; next }
+    inblock && /^```[[:space:]]*$/ { done = 1; inblock = 0; marked = 0; next }
+    inblock { body = body $0 "\n" }
+    END { if (done) printf "%s", body; else exit 1 }') || {
+    echo "supervisor: no SUPERVISOR_CHANGESET line followed by a pkl block" >&2
+    exit 1
+  }
 
-  previous=$CAL_DIR/previous.json
-  if git -C "$repo" fetch --quiet --depth 1 origin "$CALIBRATION_BRANCH" 2> /dev/null &&
-    git -C "$repo" show "FETCH_HEAD:$PLAN_PATH" > "$previous" 2> /dev/null &&
-    cmp -s "$previous" "$repo/$PLAN_PATH"; then
-    echo "supervisor: the plan is unchanged on $CALIBRATION_BRANCH"
+  # Render it twice: first with every open issue as `seen`, which checks the
+  # schema and yields the issues it touches; then with `seen` cut down to
+  # those, which is what gets committed.
+  write_changeset() { # $1: a JSON object of identifier -> updatedAt
+    {
+      # No timestamp: an unchanged plan must render to an unchanged file.
+      echo "// Planning's changeset (CIT-472), written by calibration against"
+      echo "// $CALIBRATION_BASE@$base_sha. Merging it is applying it; render with"
+      echo "// \`pkl eval -f json -o changeset.json changeset.pkl\`."
+      echo 'amends "pkl/Changeset.pkl"'
+      echo
+      printf '%s\n' "$1" | jq -r '"seen {", (to_entries[] | "  [\(.key | @json)] = \(.value | @json)"), "}"'
+      echo
+      printf '%s' "$body"
+    } > "$wf/changeset.pkl"
+    (cd "$wf" && pkl eval -f json -o changeset.json changeset.pkl) 2> "$CAL_DIR/pkl.log" || {
+      cat "$CAL_DIR/pkl.log" >&2
+      echo "supervisor: the changeset does not render through pkl/Changeset.pkl" >&2
+      exit 1
+    }
+  }
+  write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")"
+  touched=$(jq -c '[.clusters[] | .key, .issues[]] + [(.decline, .duplicate, .escalate, .delegate)[] | .issue]
+    | map(select(startswith("new:") | not)) | unique' "$wf/changeset.json")
+  write_changeset "$(jq -c --argjson t "$touched" '.seen | with_entries(select(.key as $k | $t | index($k)))' "$CAL_DIR/plan.json")"
+
+  # The test: apply, dry, on the dev server, against the tree the PR will
+  # carry. It reads changeset.json afresh on every call.
+  echo "supervisor: dry-running apply on the local task server"
+  dry=$(cd "$wf" && node dist/calibrate.js apply "${CALIBRATION_TEAM:-CIT}") ||
+    { echo "supervisor: the changeset's dry run failed" >&2; exit 1; }
+  printf '%s\n' "$dry" | jq . > "$CAL_DIR/dry-run.json"
+
+  # Green: the changeset is the PR. An unchanged changeset on an unchanged
+  # base is no change at all, and the PR is left alone.
+  same_as_branch() { # $1: a path under the workflow
+    git -C "$repo" show "FETCH_HEAD:$WORKFLOW_PATH/$1" 2> /dev/null | cmp -s - "$wf/$1"
+  }
+  if git -C "$repo" fetch --quiet --depth 2 origin "$CALIBRATION_BRANCH" 2> /dev/null &&
+    [ "$(git -C "$repo" rev-parse FETCH_HEAD~1 2> /dev/null)" = "$base_sha" ] &&
+    same_as_branch changeset.pkl && same_as_branch changeset.json; then
+    echo "supervisor: the changeset is unchanged on $CALIBRATION_BRANCH"
   else
     # The branch is calibration's own: one commit on top of the base, so it
     # is replaced each time rather than piling up.
     git -C "$repo" checkout --quiet -B "$CALIBRATION_BRANCH"
-    git -C "$repo" add "$PLAN_PATH"
-    git -C "$repo" commit --quiet -m "supervisor calibration: the plan for the next real run ($now)" \
-      -m "Plan-only calibration on the local task server. Nothing was written to Linear and nothing was deployed."
+    git -C "$repo" add "$WORKFLOW_PATH/changeset.pkl" "$WORKFLOW_PATH/changeset.json"
+    git -C "$repo" commit --quiet -m "supervisor calibration: planning's changeset ($now)" \
+      -m "Planned and dry-run on the local task server. Merging this applies it."
     git -C "$repo" push --quiet --force origin "$CALIBRATION_BRANCH" ||
       { echo "supervisor: could not push $CALIBRATION_BRANCH" >&2; exit 1; }
-    echo "supervisor: pushed the plan to $CALIBRATION_BRANCH"
+    echo "supervisor: pushed the changeset to $CALIBRATION_BRANCH"
   fi
 
   pr=$(gh pr list --repo "$CALIBRATION_REPO" --head "$CALIBRATION_BRANCH" --base "$CALIBRATION_BASE" \
     --state open --json url --jq '.[0].url // empty') ||
     { echo "supervisor: could not list the calibration PRs" >&2; exit 1; }
   if [ -z "$pr" ]; then
-    jq -r '"A plan-only calibration of the supervisor (CIT-472), on the local task server with \(.calibration.model) at \(.calibration.effort) effort, against `\(.base)`.",
+    jq -r --arg model "${CALIBRATION_MODEL:-haiku}" --arg effort "${CALIBRATION_EFFORT:-low}" --arg base "$base_sha" \
+      '"The changeset from planning (CIT-472), planned with \($model) at \($effort) effort against `\($base)`, and dry-run on the local task server.",
       "",
-      "Nothing was written to Linear and nothing was deployed. Merging records this as the plan for the next real run.",
+      "**Merging this applies it.** Nothing has been written to Linear yet.",
       "",
-      "- In order: \(.plan.order | length) issues",
-      "- Pruned: \(.plan.pruned | length)",
-      "- On a cycle: \(.plan.cycles | length)",
-      "- Would-be Linear writes: \(.would | length)",
-      "",
-      "```",
-      (.passes[], .would[], .heartbeat),
-      "```"' "$repo/$PLAN_PATH" > "$CAL_DIR/body.md"
+      "| op | target | detail |",
+      "| --- | --- | --- |",
+      (.applied[] | "| \(.op) | \(.target) | \(.detail | gsub("[|]"; "/")) |")' \
+      "$CAL_DIR/dry-run.json" > "$CAL_DIR/body.md"
     pr=$(gh pr create --repo "$CALIBRATION_REPO" --base "$CALIBRATION_BASE" --head "$CALIBRATION_BRANCH" \
-      --title "Supervisor calibration: the plan for the next real run" --body-file "$CAL_DIR/body.md") ||
+      --title "Supervisor calibration: planning's changeset" --body-file "$CAL_DIR/body.md") ||
       { echo "supervisor: could not open the calibration PR" >&2; exit 1; }
   fi
   echo "supervisor: calibration PR $pr"
-  echo "$heartbeat"
+  jq -r '"SUPERVISOR_CHANGESET: ops=\(.applied | length) clusters=\(.clusters | length)"' "$CAL_DIR/dry-run.json"
   exit 0
 fi
 
 # --- the tick ----------------------------------------------------------------
+
+# The checks a tick ends with, after claude's exit: the heartbeat, then a
+# pass line per hat. Sets $heartbeat; exits on failure.
+check_passes() {
+  local hats
+  # A run that produced prose but never reached a decision is a broken
+  # instrument, not a tick with nothing to do.
+  heartbeat=$(printf '%s\n' "$out" | grep -E '^SUPERVISOR_HEARTBEAT: ' | tail -1 || true)
+  case "$heartbeat" in
+    *decision=*) ;;
+    *)
+      echo "supervisor: no SUPERVISOR_HEARTBEAT line carrying a decision" >&2
+      exit 1
+      ;;
+  esac
+  # Each hat's pass says what it handed off, in order. The handoffs are the
+  # only memory the next pass reads, so a pass that never reported one is as
+  # silent as a missing heartbeat.
+  hats=$(printf '%s\n' "$out" |
+    sed -nE 's/^SUPERVISOR_PASS: hat=([a-z-]+) handoffs=[^ ]+ why=.*/\1/p' | paste -sd' ')
+  [ "$hats" = "planning infra open-source" ] || {
+    echo "supervisor: expected SUPERVISOR_PASS lines for planning, infra and open-source in that order, got: ${hats:-none}" >&2
+    exit 1
+  }
+}
+
+prompt=$(sed -e "s|{{NOW}}|$now|g" "$DIR/prompt.md")
 
 # The GCS backend wants GOOGLE_APPLICATION_CREDENTIALS to point at a key
 # file, not the inline JSON pass-cli resolves.
@@ -492,5 +533,6 @@ echo "supervisor: backing up the session to restic tag $RESTIC_TAG"
 backup_rc=0
 (cd "$HOME" && restic backup .claude --tag "$RESTIC_TAG") || backup_rc=$?
 
-check_run "$backup_rc"
+check_claude "$backup_rc"
+check_passes
 echo "$heartbeat"
