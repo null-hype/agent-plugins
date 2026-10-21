@@ -1,0 +1,31 @@
+name: devenv-base-apply-smoke
+
+# The supervisor workflow's first real apply (CIT-472): ApplySmoke applies
+# workflow/examples/apply-smoke.json to live Linear twice, and fails if the
+# second apply changes anything. It writes to Linear, so it runs only from a
+# pushed head commit that says [apply-smoke], or on demand.
+on:
+  workflow_dispatch:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  apply-smoke:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[apply-smoke]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Linear key comes from Proton Pass at run time.
+      - uses: dagger/dagger-for-github@v8.4.1
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        with:
+          verb: call
+          workdir: .dagger/internal/devenv-base
+          args: apply-smoke --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}

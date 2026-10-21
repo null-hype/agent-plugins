@@ -777,11 +777,12 @@ func (m *DevenvBase) CheckSupervisorWorkflow(ctx context.Context) error {
 	}
 	_, err = withPkl(dag.Container().From("node:22-slim")).
 		WithDirectory("/app", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
-			Include: []string{"pkl/**", "changeset.pkl", "changeset.json"},
+			Include: []string{"pkl/**", "changeset.pkl", "changeset.json", "examples/**"},
 		}).
 		WithWorkdir("/app").
 		WithExec([]string{"pkl", "test", "pkl/Changeset.test.pkl"}).
 		WithExec([]string{"sh", "-c", "pkl eval -f json changeset.pkl | cmp - changeset.json"}).
+		WithExec([]string{"sh", "-c", "pkl eval -f json examples/apply-smoke.pkl | cmp - examples/apply-smoke.json"}).
 		Sync(ctx)
 	return err
 }
@@ -936,6 +937,42 @@ func (m *DevenvBase) CalibrateSupervisor(
 	}
 	if code != 0 {
 		return "", fmt.Errorf("calibration exited %d:\n%s", code, out)
+	}
+	return out, nil
+}
+
+// ApplySmoke is the supervisor workflow's first real apply (CIT-472): it
+// runs workflow/src/smoke.ts on workflow/examples/apply-smoke.json against
+// live Linear, outside Render. The changeset is dry-run, applied, and applied
+// again, and the second apply must change nothing. It writes to Linear, so it
+// is never a check: CI runs it only from a commit that asks for it.
+func (m *DevenvBase) ApplySmoke(ctx context.Context, protonPassToken *dagger.Secret) (string, error) {
+	run := m.Supervisor("linux/amd64").
+		WithDirectory("/app/workflow", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
+			Exclude: []string{"node_modules", "dist"},
+		}).
+		WithWorkdir("/app/workflow").
+		WithExec([]string{"npm", "ci"}).
+		WithExec([]string{"npm", "run", "build"}).
+		// Never served from cache: each call is a fresh run against Linear.
+		WithEnvVariable("SMOKE_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: resolve the Linear key for the apply smoke test").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithNewFile("/app/workflow/smoke.env", "LINEAR_API_KEY=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY\n").
+		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && " +
+			"pass-cli run --env-file smoke.env -- node dist/smoke.js examples/apply-smoke.json 2>&1"}, dagger.ContainerWithExecOpts{
+			Expect: dagger.ReturnTypeAny,
+		})
+	out, err := run.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	code, err := run.ExitCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("apply smoke exited %d:\n%s", code, out)
 	}
 	return out, nil
 }

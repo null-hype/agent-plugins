@@ -1,0 +1,31 @@
+{
+  "seen": {
+    "CIT-473": "2026-10-21T08:03:29.131Z"
+  },
+  "releases": [
+    {
+      "name": "supervisor-apply-smoke",
+      "description": "A test Release for the first real apply of a supervisor changeset (CIT-472). Safe to delete.",
+      "pipeline": "agent-plugins"
+    }
+  ],
+  "clusters": [
+    {
+      "key": "new:apply-smoke",
+      "title": "Apply smoke test: cluster parent (CIT-472)",
+      "description": "Created by the first real apply of a supervisor changeset. Safe to cancel.",
+      "hat": "infra",
+      "model": "haiku",
+      "effort": "low",
+      "serves": "release:supervisor-apply-smoke",
+      "blockedBy": [],
+      "issues": [
+        "CIT-473"
+      ]
+    }
+  ],
+  "decline": [],
+  "duplicate": [],
+  "escalate": [],
+  "delegate": []
+}
