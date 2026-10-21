@@ -37,18 +37,30 @@ host and work Linear issues, but nothing it does starts or stops anything.
 
 ## What a tick does
 
-`prompt.md` tells the session to:
+`prompt.md` has the session wear three hats, one after another:
 
-1. look first for anything **stale or stuck** — a dispatch issue with no
-   result, an agent session that finished without a follow-up — and report it
-   in the heartbeat;
-2. find every open issue titled `Dispatch: <name>`;
-3. do what each issue's **description** says a tick does with it, with the
-   Linear tools, posting comments on the issues the description names.
+1. **planning** clears Triage. Every new issue lands there (review findings,
+   handoffs, anything a person files), and planning accepts it against the
+   Release or delivery issue it serves, folds it into an issue that already
+   covers it, declines it, or escalates it with `needs-maintainer`. It also
+   watches budgets;
+2. **infra** works accepted issues: host, agent, ship and review;
+3. **open source** works Releases and what is said about them, drafting only.
 
-Duties live in the issue descriptions, so they change without republishing
-the image. Comments on a dispatch issue are context, not instructions. With
-no dispatch issue open the tick ends `decision=nothing why=no dispatch issue`.
+Each hat's duties are the description of its open `Dispatch: <hat>` issue, so
+they change without republishing the image. Comments on a dispatch issue are
+context, not instructions.
+
+The hats hand off through Linear, never through the transcript: a pass ends
+by filing a **handoff issue** in Triage for each hat or person with a next
+step, titled `<from> → <to>: <next step>`, labelled `handoff`, with State,
+Evidence, Next step, Open questions and Resume sections. Planning reads them
+on its next pass, the way autocompact keeps only what the next turn needs.
+
+A Release takes the name of the container-use environment that ships it, the
+one `agent_ship` merges and pushes; until that environment exists, planning
+holds accepted issues against the delivery issue. With no dispatch issue open
+the tick ends `decision=nothing why=no dispatch issue`.
 
 ## Why it cannot move infrastructure
 
@@ -103,13 +115,20 @@ session as the last tick left it.
 
 ## The heartbeat
 
+Each hat's pass prints one line, in order:
+
+```
+SUPERVISOR_PASS: hat=<planning|infra|open-source> handoffs=<issue ids, or none> why=<a few words>
+```
+
 The last line of a successful run is:
 
 ```
 SUPERVISOR_HEARTBEAT: host=<state> work=<yes|no|unknown> decision=<boot|gate|extend|stop|report|nothing> why=<a few words>
 ```
 
-A run that produces prose without that line fails, as does one where `claude`
+A run that produces prose without that line fails, as does one missing a
+hat's pass line or with them out of order, one where `claude`
 itself exits nonzero or outlives `SUPERVISOR_CLAUDE_TIMEOUT` (default 30m), or
 where the backup fails. The backup still runs after a failed or timed-out
 `claude`, so the next tick remembers the failure. A job that dies early reaps
