@@ -252,6 +252,20 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
         { name },
       )
     ).releases.nodes.find((r) => !r.completedAt && !r.canceledAt)?.id;
+  const labelId = async (name: string) =>
+    (
+      await gql<{ issueLabels: { nodes: { id: string }[] } }>(
+        `query($name: String!) { issueLabels(filter: { name: { eq: $name } }) { nodes { id } } }`,
+        { name },
+      )
+    ).issueLabels.nodes[0]?.id;
+  const userId = async (name: string) =>
+    (
+      await gql<{ users: { nodes: { id: string }[] } }>(
+        `query($name: String!) { users(filter: { name: { eq: $name } }) { nodes { id } } }`,
+        { name },
+      )
+    ).users.nodes[0]?.id;
   const update = (id: string, input: Record<string, unknown>) =>
     gql(`mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success } }`, { id, input });
   const relate = async (issue: string, related: string, type: "blocks" | "duplicate") =>
@@ -310,15 +324,23 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
       await update(issue, { stateId: await stateOf("canceled") });
     },
     async addLabel(issue, label) {
-      const d = await gql<{ issueLabels: { nodes: { id: string }[] } }>(
-        `query($name: String!) { issueLabels(filter: { name: { eq: $name } }) { nodes { id } } }`,
-        { name: label },
-      );
-      if (!d.issueLabels.nodes[0]) throw new Error(`no Linear label ${label}`);
+      const id = await labelId(label);
+      if (!id) throw new Error(`no Linear label ${label}`);
       await gql(`mutation($id: String!, $labelId: String!) { issueAddLabel(id: $id, labelId: $labelId) { success } }`, {
         id: issue,
-        labelId: d.issueLabels.nodes[0].id,
+        labelId: id,
       });
+    },
+    async hasLabel(name) {
+      return !!(await labelId(name));
+    },
+    async createLabel(name) {
+      await gql(`mutation($input: IssueLabelCreateInput!) { issueLabelCreate(input: $input) { success } }`, {
+        input: { name, teamId: (await teamInfo()).id },
+      });
+    },
+    async hasUser(name) {
+      return !!(await userId(name));
     },
     async comment(issue, body) {
       await gql(`mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }`, {
@@ -326,12 +348,9 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
       });
     },
     async delegate(issue, agent) {
-      const d = await gql<{ users: { nodes: { id: string }[] } }>(
-        `query($name: String!) { users(filter: { name: { eq: $name } }) { nodes { id } } }`,
-        { name: agent },
-      );
-      if (!d.users.nodes[0]) throw new Error(`no Linear user or agent named ${agent}`);
-      await update(issue, { delegateId: d.users.nodes[0].id });
+      const id = await userId(agent);
+      if (!id) throw new Error(`no Linear user or agent named ${agent}`);
+      await update(issue, { delegateId: id });
     },
     async hasPipeline(name) {
       return !!(await pipeline(name));
