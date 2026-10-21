@@ -20,8 +20,11 @@ export AGENT_SCRIPTS="generate-env-files.sh tailscale-up.sh install-tools.sh sta
 JOBS=$HOME/.toolbox/jobs
 mkdir -p "$JOBS"
 
+# A job writes its exit code as its last step, so a job with one has
+# finished even while its pid still answers (an unreaped zombie, or a pid
+# reused after a reboot).
 job_running() {
-  [ -f "$JOBS/$1.pid" ] && kill -0 "$(cat "$JOBS/$1.pid")" 2>/dev/null
+  [ -f "$JOBS/$1.pid" ] && [ ! -f "$JOBS/$1.exit" ] && kill -0 "$(cat "$JOBS/$1.pid")" 2>/dev/null
 }
 
 state() {
@@ -96,9 +99,14 @@ run_up() {
 # for each finding. Its final message, one line per finding, lands in $out.
 # Each environment's branch is then pushed under its issue's branch name, so
 # Linear links it to the issue, and the pre-push hook's backup runs.
+# Progress is kept per head, so a review the host stopped part way through
+# resumes instead of filing its findings again (CIT-469): $out.published
+# holds the head whose findings Codex finished filing, and a retry of that
+# head only pushes and backs up. A retry after Codex was cut off mid-run asks
+# Codex to look up what it already filed for this head first.
 run_review() {
   set -euo pipefail
-  local pr=$1 model=$2 out=$3 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env hk base
+  local pr=$1 model=$2 out=$3 head=$4 dir=$HOME/.toolbox/reviews/$1 env=$HOME/.toolbox/linear.env hk base
   git_auth
   # Against the PR's own base: a stacked PR reviewed against main would also
   # get findings for the code it sits on.
@@ -118,27 +126,34 @@ run_review() {
   cd "$dir"
   git fetch -q origin +main:refs/remotes/origin/main "+refs/heads/$base:refs/remotes/origin/$base" "+pull/$pr/head:refs/pr/$pr"
   git checkout -q -B "pr-$pr" "refs/pr/$pr"
-  # workspace-write lets the AGENTS.md QA pass run commands in the checkout.
-  # Network access is for Linear's API, and pass-cli writes its session.
-  # exec runs with approval policy never, so the MCP tools are pre-approved.
-  codex exec -c 'sandbox_mode="workspace-write"' ${model:+-m "$model"} \
-    -c 'sandbox_workspace_write.network_access=true' \
-    -c "sandbox_workspace_write.writable_roots=[\"$HOME/.local/share/proton-pass-cli\"]" \
-    -c 'mcp_servers.container-use.command="/usr/local/bin/container-use"' \
-    -c 'mcp_servers.container-use.args=["stdio"]' \
-    -c 'mcp_servers.container-use.default_tools_approval_mode="approve"' \
-    -o "$out" - <<PROMPT
+  if [ "$(cat "$out.published" 2>/dev/null)" = "$head" ]; then
+    echo "== findings for $head were already filed; resuming at the push"
+  else
+    # workspace-write lets the AGENTS.md QA pass run commands in the checkout.
+    # Network access is for Linear's API, and pass-cli writes its session.
+    # exec runs with approval policy never, so the MCP tools are pre-approved.
+    codex exec -c 'sandbox_mode="workspace-write"' ${model:+-m "$model"} \
+      -c 'sandbox_workspace_write.network_access=true' \
+      -c "sandbox_workspace_write.writable_roots=[\"$HOME/.local/share/proton-pass-cli\"]" \
+      -c 'mcp_servers.container-use.command="/usr/local/bin/container-use"' \
+      -c 'mcp_servers.container-use.args=["stdio"]' \
+      -c 'mcp_servers.container-use.default_tools_approval_mode="approve"' \
+      -o "$out" - <<PROMPT
 Review this branch against origin/$base using the review guidelines in AGENTS.md.
 For each finding, call the container-use environment_create tool (environment_source: this repository's
 directory), titled with the finding, with the finding's explanation. Then file the finding in Linear with
 an issueCreate mutation: teamId $LINEAR_TEAM_ID, stateId $LINEAR_TRIAGE_STATE_ID, the finding as the title,
 and a description with its explanation, the PR (https://github.com/null-hype/agent-plugins/pull/$pr) and
-the environment id. Ask for the created issue's identifier and branchName, then attach
+the environment id, and the line "Reviewed commit: $head". Before filing anything, query Linear for issues in
+that team whose description contains "Reviewed commit: $head" and the PR URL: a finding already filed there
+(an earlier run of this review was cut off) is reused, not filed again. Ask for the created issue's identifier and branchName, then attach
 https://github.com/null-hype/agent-plugins/tree/<branchName> to the issue with attachmentLinkURL, titled
 "Finding environment branch"; the environment is pushed there after you finish. Send each GraphQL request body on stdin to:
 PROTON_PASS_KEY_PROVIDER=fs pass-cli run --env-file $env -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: \$LINEAR_API_KEY" --data @-'
 Then print one line per finding: environment id, Linear issue identifier, Linear branchName, title.
 PROMPT
+    echo "$head" > "$out.published"
+  fi
   # sed, not grep: a review with no findings is a success.
   sed -nE '/^[a-z]+-[a-z]+, [A-Z]+-[0-9]+, [^ ,]+, /p' "$out" | while IFS=', ' read -r env issue branch _; do
     git fetch -q container-use "$env"
@@ -301,9 +316,35 @@ ping)
     sudo tailscale up --auth-key="file:$key" --hostname=toolbox-host --ssh >&2 || true
     rm -f "$key"
   fi
+  # The idle clock and lease, or null on a host without toolbox-lifecycle.
+  lifecycle=$(toolbox-lifecycle status 2>/dev/null || echo null)
   tailscale status --json 2>/dev/null |
-    jq '{ready: true, tailnet: {state: .BackendState, name: (.Self.DNSName // "" | rtrimstr(".")), ips: (.Self.TailscaleIPs // []), online: (.Self.Online // false)}}' ||
-    echo '{"ready": true, "tailnet": {"state": "NotInstalled"}}'
+    jq --argjson lifecycle "$lifecycle" '{ready: true, tailnet: {state: .BackendState, name: (.Self.DNSName // "" | rtrimstr(".")), ips: (.Self.TailscaleIPs // []), online: (.Self.Online // false)}, lifecycle: $lifecycle}' ||
+    jq -n --argjson lifecycle "$lifecycle" '{ready: true, tailnet: {state: "NotInstalled"}, lifecycle: $lifecycle}'
+  ;;
+activity)
+  # Everything that counts as work in progress, for host_stop and host_wake:
+  # every toolbox job (workspace up, ship, review), not only the ones named
+  # after a workspace, and the Linear agent working an issue. lifecycle is
+  # the host's idle clock and lease, or null on a host without it.
+  # A finished job is an observation of no work, not a failure (CIT-470).
+  for f in "$JOBS"/*.pid; do
+    [ -f "$f" ] || continue
+    if job_running "$(basename "$f" .pid)"; then basename "$f" .pid; fi
+  done | jq -R . | jq -s --argjson agent "$(pgrep -f claude-agent-sdk >/dev/null 2>&1 && echo true || echo false)" \
+    --argjson lifecycle "$(toolbox-lifecycle status 2>/dev/null || echo null)" \
+    '{jobs: ., agent_running: $agent, lifecycle: $lifecycle}'
+  ;;
+agent-live)
+  # The agent's live webhook check, run now: a start job that once exited 0
+  # says nothing about whether node and the tunnel are still up (CIT-467).
+  if out=$(timeout 90 devpod ssh "$1" --command "bash /workspaces/$1/$DEVCONTAINER_DIR/check-linear-agent-webhook-live.sh" </dev/null 2>&1) &&
+    grep -q '^LIVE_WEBHOOK_CHECK: OK' <<<"$out"; then
+    live=true
+  else
+    live=false
+  fi
+  jq -n --argjson live "$live" --arg detail "$(tail -n 5 <<<"$out")" '{live: $live, detail: $detail}'
   ;;
 list)
   devpod list --output json | jq -r '.[]?.id' | while read -r id; do
@@ -330,12 +371,30 @@ up)
 review)
   pr=$1 model=${2:-} id=review-$1
   refuse_if_busy "$id"
-  rm -f "$JOBS/$id.exit" "$JOBS/$id.md"
+  # A head that was already reviewed successfully is not reviewed again: a
+  # second review would file every finding twice. A new commit on the PR is a
+  # new head and is reviewed.
+  head=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls/$pr" | jq -er .head.sha)
+  if [ "$(cat "$JOBS/$id.exit" 2>/dev/null)" = 0 ] && [ "$(cat "$JOBS/$id.sha" 2>/dev/null)" = "$head" ]; then
+    jq -n --argjson pr "$pr" --arg head "$head" \
+      '{pr: $pr, job_running: false, duplicate: true, head: $head, detail: "this head was already reviewed; codex_review_status has the findings"}'
+    exit 0
+  fi
+  # The findings of a head whose filing finished are kept for the resumed
+  # push; anything else starts over.
+  resumed=false
+  if [ "$(cat "$JOBS/$id.md.published" 2>/dev/null)" = "$head" ]; then
+    resumed=true
+  else
+    rm -f "$JOBS/$id.md" "$JOBS/$id.md.published"
+  fi
+  echo "$head" > "$JOBS/$id.sha"
+  rm -f "$JOBS/$id.exit" "$JOBS/$id.interrupted"
   setsid nohup bash -c "$(declare -f git_auth api run_review)"'
-    (run_review "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$pr" "$model" "$JOBS/$id.md" \
+    (run_review "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$pr" "$model" "$JOBS/$id.md" "$head" \
     > "$JOBS/$id.log" 2>&1 < /dev/null &
   echo $! > "$JOBS/$id.pid"
-  jq -n --argjson pr "$pr" '{pr: $pr, job_running: true}'
+  jq -n --argjson pr "$pr" --argjson resumed "$resumed" '{pr: $pr, job_running: true, resumed: $resumed}'
   ;;
 ship)
   ws=$1 env=$2 branch=$3 id=ship
