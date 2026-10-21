@@ -25,6 +25,13 @@
 #      from pass:// references; the Render service holds only the pass token.
 #      With no pass session, or no pass token, nothing runs. No secret is on
 #      an argv or left in a file once the run ends.
+#   8. A calibration (SUPERVISOR_MODE=calibrate, CIT-472) builds the workflow
+#      from a clone, runs the plan task on `render workflows dev`, then runs
+#      the hats fresh and plan-only: it can read Linear but every Linear
+#      write is denied, and it never touches restic. A green calibration
+#      pushes the plan to its own branch and opens one PR, and calls nothing
+#      that deploys; an unchanged plan pushes nothing. A calibration missing
+#      a pass line, without a plan, or without a dev server opens no PR.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -139,12 +146,69 @@ case "${CLAUDE_STUB_MODE:-ok}" in
     echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
     echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=nothing due"
     ;;
+  plan)
+    echo "SUPERVISOR_WOULD: hat=planning tool=save_issue on=CIT-500 what=accept into CIT-439"
+    echo "SUPERVISOR_PASS: hat=planning handoffs=none why=plan-only"
+    echo "SUPERVISOR_WOULD: hat=infra tool=save_issue on=new what=planning -> infra: ship CIT-500"
+    echo "SUPERVISOR_PASS: hat=infra handoffs=none why=plan-only"
+    echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
+    echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=plan-only"
+    ;;
   fail) echo "boom" >&2; exit 3 ;;
   hang) exec sleep 60 ;;
 esac
 STUB
 
-chmod +x "$BIN/pass-cli" "$BIN/restic" "$BIN/claude"
+# The calibration's tools. render stays up as the dev server until it is
+# killed, and records its pid so the run can be checked for killing it.
+cat > "$BIN/render" <<'STUB'
+#!/usr/bin/env bash
+echo "render" >> "$CALLS"
+echo "render $* (cwd=$PWD)" >> "$RENDER_LOG"
+echo $$ > "$RENDER_PID"
+exec sleep 30
+STUB
+
+cat > "$BIN/curl" <<'STUB'
+#!/usr/bin/env bash
+# Only the dev server's readiness probe uses curl.
+[ "${CURL_STUB:-up}" = up ]
+STUB
+
+cat > "$BIN/npm" <<'STUB'
+#!/usr/bin/env bash
+echo "npm $* (cwd=$PWD)" >> "$NPM_LOG"
+STUB
+
+cat > "$BIN/node" <<'STUB'
+#!/usr/bin/env bash
+# dist/calibrate.js: the plan task's result, as the SDK client prints it.
+echo "node" >> "$CALLS"
+echo "node $* (cwd=$PWD) RENDER_USE_LOCAL_DEV=${RENDER_USE_LOCAL_DEV:-} RENDER_LOCAL_DEV_URL=${RENDER_LOCAL_DEV_URL:-}" >> "$NODE_LOG"
+case "${NODE_STUB_MODE:-ok}" in
+  ok) echo '{"sinks":["CIT-439"],"order":[{"id":"CIT-500","title":"a finding","status":"triage"}],"pruned":["CIT-501"],"cycles":[]}' ;;
+  fail) echo "Error: task plan ended failed: LINEAR_API_KEY must be set" >&2; exit 1 ;;
+esac
+STUB
+
+cat > "$BIN/gh" <<'STUB'
+#!/usr/bin/env bash
+echo "gh" >> "$CALLS"
+echo "gh $*" >> "$GH_LOG"
+case "$1 $2" in
+  "pr list") [ ! -s "$GH_OPEN_PR" ] || cat "$GH_OPEN_PR" ;;
+  "pr create")
+    prev=""
+    for a in "$@"; do
+      [ "$prev" = "--body-file" ] && cp "$a" "$GH_PR_BODY"
+      prev=$a
+    done
+    echo "https://github.com/null-hype/agent-plugins/pull/999" | tee "$GH_OPEN_PR"
+    ;;
+esac
+STUB
+
+chmod +x "$BIN/pass-cli" "$BIN/restic" "$BIN/claude" "$BIN/render" "$BIN/curl" "$BIN/npm" "$BIN/node" "$BIN/gh"
 
 export PATH="$BIN:$PATH"
 export HOME=$WORK/home
@@ -169,6 +233,13 @@ export CLAUDE_ARGV=$WORK/argv
 export CLAUDE_PWD=$WORK/pwd
 export CLAUDE_MCP=$WORK/mcp.json
 export CLAUDE_MCP_MODE=$WORK/mcp.mode
+export RENDER_LOG=$WORK/render.log
+export RENDER_PID=$WORK/render.pid
+export NPM_LOG=$WORK/npm.log
+export NODE_LOG=$WORK/node.log
+export GH_LOG=$WORK/gh.log
+export GH_OPEN_PR=$WORK/gh-open-pr
+export GH_PR_BODY=$WORK/gh-pr-body
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -180,6 +251,11 @@ reset() {
   : > "$RESTIC_LOG"
   : > "$PASS_ENVFILE_LOG"
   : > "$PASS_ARGV_LOG"
+  rm -f "$RENDER_PID" "$GH_PR_BODY"
+  : > "$RENDER_LOG"
+  : > "$NPM_LOG"
+  : > "$NODE_LOG"
+  : > "$GH_LOG"
 }
 
 # Prints the arguments that followed $1, up to the next flag.
@@ -475,5 +551,185 @@ grep -q 'expected SUPERVISOR_PASS lines for planning, infra and open-source in t
   fail "a missing pass line should name the hats it saw, got: $(cat "$WORK/skipped")"
 [ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
   fail "the transcript of a run missing a pass should still be backed up; got: $(calls)"
+
+# --- calibration (CIT-472) ---------------------------------------------------
+
+# The repo a calibration clones and pushes to: a bare repo whose main carries
+# the workflow, so git itself is real and the pushed branch can be read back.
+export GIT_AUTHOR_NAME=stub GIT_AUTHOR_EMAIL=stub@example.com
+export GIT_COMMITTER_NAME=stub GIT_COMMITTER_EMAIL=stub@example.com
+REMOTE=$WORK/remote.git
+git init --quiet --bare --initial-branch=main "$REMOTE"
+seed=$WORK/seed
+git init --quiet --initial-branch=main "$seed"
+mkdir -p "$seed/.dagger/internal/devenv-base/workflow"
+echo '{}' > "$seed/.dagger/internal/devenv-base/workflow/package.json"
+git -C "$seed" add . && git -C "$seed" commit --quiet -m seed
+git -C "$seed" push --quiet "$REMOTE" main
+BASE_SHA=$(git -C "$seed" rev-parse HEAD)
+PLAN_PATH=.dagger/internal/devenv-base/supervisor/calibration/plan.json
+
+calibrate() {
+  SUPERVISOR_MODE=calibrate CALIBRATION_REMOTE=$REMOTE bash "$DIR/supervisor.sh" "$@"
+}
+branch_sha() { git -C "$REMOTE" rev-parse --verify --quiet refs/heads/supervisor/calibration || true; }
+
+# A green calibration.
+reset
+rm -f "$GH_OPEN_PR"
+CLAUDE_STUB_MODE=plan calibrate > "$WORK/cal" 2>&1 ||
+  fail "a green calibration should exit 0, got: $(cat "$WORK/cal")"
+tail -1 "$WORK/cal" | grep -qx 'SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=plan-only' ||
+  fail "a calibration should end with its heartbeat, got: $(tail -1 "$WORK/cal")"
+[ "$(calls)" = "render node claude gh gh" ] ||
+  fail "a calibration should start the dev server, plan, run the hats, then open the PR, and never touch restic; got: $(calls)"
+
+# Its secrets are its own: a GitHub token, and no restic.
+grep -q -- "pass-cli run --env-file $DIR/calibrate.env -- " "$PASS_ARGV_LOG" ||
+  fail "a calibration should resolve calibrate.env"
+grep -qx 'GITHUB_TOKEN=pass://infra/github.com/GITHUB_TOKEN' "$PASS_ENVFILE_LOG" ||
+  fail "calibrate.env should reference the GitHub token in Proton Pass"
+if grep -q RESTIC "$PASS_ENVFILE_LOG"; then
+  fail "a calibration keeps no transcript and should resolve no restic secret"
+fi
+
+# The workflow is built from the clone and run on the local task server.
+grep -q '^npm ci .*workflow)$' "$NPM_LOG" && grep -q '^npm run build .*workflow)$' "$NPM_LOG" ||
+  fail "the workflow should be built in the clone, got: $(cat "$NPM_LOG")"
+grep -qx 'render workflows dev -- npm start (cwd=.*/repo/.dagger/internal/devenv-base/workflow)' "$RENDER_LOG" ||
+  fail "the dev server should be render workflows dev -- npm start in the clone's workflow, got: $(cat "$RENDER_LOG")"
+grep -q '^node dist/calibrate.js plan CIT CIT-439 (cwd=.*workflow) RENDER_USE_LOCAL_DEV=true RENDER_LOCAL_DEV_URL=http://127.0.0.1:8120$' "$NODE_LOG" ||
+  fail "the plan task should run through the SDK's local mode, got: $(cat "$NODE_LOG")"
+if kill -0 "$(cat "$RENDER_PID")" 2> /dev/null; then
+  fail "the dev server should be stopped when the calibration ends"
+fi
+
+# Nothing deploys: render is only ever the dev server.
+[ "$(wc -l < "$RENDER_LOG")" = 1 ] ||
+  fail "render should be called once, for the dev server, got: $(cat "$RENDER_LOG")"
+if grep -qiE 'deploy' "$RENDER_LOG" "$GH_LOG"; then
+  fail "a calibration must not deploy"
+fi
+
+# The hats run fresh, cheap and plan-only.
+for flag in --continue --remote-control --resume; do
+  if grep -qx -- "$flag" "$CLAUDE_ARGV"; then
+    fail "a calibration is a fresh session and should not pass $flag"
+  fi
+done
+[ "$(section --model)" = haiku ] && [ "$(section --effort)" = low ] ||
+  fail "a calibration should run a small model at low effort, got: $(section --model) $(section --effort)"
+grep -q 'This is a calibration run, and it is plan-only' "$CLAUDE_ARGV" ||
+  fail "the prompt should open with the calibration preamble"
+grep -q '"pruned": \[' "$CLAUDE_ARGV" && grep -q 'in this order: planning, infra, open source' "$CLAUDE_ARGV" ||
+  fail "the prompt should carry the frozen plan and then the real run's prompt"
+if grep -q '{{' "$CLAUDE_ARGV"; then
+  fail "every calibration prompt placeholder should have been substituted"
+fi
+
+# A plan-only run makes no Linear writes: it may read Linear, every tool that
+# writes is denied, and Linear is not allowed as a whole.
+if section --allowedTools | grep -qx mcp__linear; then
+  fail "a calibration must not allow the Linear server as a whole"
+fi
+for tool in mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments mcp__toolbox__host_status; do
+  section --allowedTools | grep -qx "$tool" || fail "$tool should be allowed in a calibration"
+done
+if section --allowedTools | grep -E '^mcp__linear__(save|create|delete|update|merge|submit|resolve|share|unshare|mark)_'; then
+  fail "a calibration must not allow a Linear tool that writes"
+fi
+for tool in mcp__linear__save_issue mcp__linear__save_comment mcp__linear__delete_comment \
+  mcp__linear__create_issue_label mcp__toolbox__host_start Bash; do
+  section --disallowedTools | grep -qx "$tool" || fail "$tool should be disallowed by name in a calibration"
+done
+
+# The plan and the would-be writes are pushed to calibration's own branch,
+# one commit on the base, and one PR is opened into main.
+[ -n "$(branch_sha)" ] || fail "a green calibration should push supervisor/calibration"
+[ "$(git -C "$REMOTE" rev-parse supervisor/calibration~1)" = "$BASE_SHA" ] ||
+  fail "the calibration branch should be one commit on the base"
+git -C "$REMOTE" show "supervisor/calibration:$PLAN_PATH" > "$WORK/plan.json"
+jq -e --arg base "$BASE_SHA" '.base == $base and .calibration == {model: "haiku", effort: "low"}
+  and .plan.order[0].id == "CIT-500" and .plan.pruned == ["CIT-501"]
+  and (.passes | length) == 3 and (.would | length) == 2
+  and (.heartbeat | startswith("SUPERVISOR_HEARTBEAT: "))' "$WORK/plan.json" > /dev/null ||
+  fail "the committed plan should hold the plan, the passes, the would-be writes and the heartbeat, got: $(cat "$WORK/plan.json")"
+grep -qx 'gh pr create --repo null-hype/agent-plugins --base main --head supervisor/calibration --title Supervisor calibration: the plan for the next real run --body-file .*' "$GH_LOG" ||
+  fail "a green calibration should open a PR from supervisor/calibration into main, got: $(cat "$GH_LOG")"
+grep -q 'SUPERVISOR_WOULD: hat=planning tool=save_issue on=CIT-500' "$GH_PR_BODY" ||
+  fail "the PR body should show the would-be writes"
+grep -q 'calibration PR https://github.com/null-hype/agent-plugins/pull/999' "$WORK/cal" ||
+  fail "the run should name its PR"
+
+# No token on any argv, and nothing left behind.
+for secret in resolved-GITHUB_TOKEN resolved-LINEAR_API_KEY resolved-TOOLBOX_TOKEN; do
+  if grep -q "$secret" "$CLAUDE_ARGV" "$PASS_ARGV_LOG" "$GH_LOG" "$RENDER_LOG" "$NODE_LOG" "$NPM_LOG"; then
+    fail "$secret must never appear on an argv"
+  fi
+done
+[ -z "$(ls -A "$TMPDIR")" ] ||
+  fail "a calibration should leave nothing in TMPDIR, left: $(ls "$TMPDIR")"
+
+# The same plan again, with the PR open: nothing is pushed and no second PR
+# is opened.
+before=$(branch_sha)
+reset
+CLAUDE_STUB_MODE=plan calibrate > "$WORK/cal2" 2>&1 ||
+  fail "a repeated calibration should exit 0, got: $(cat "$WORK/cal2")"
+[ "$(branch_sha)" = "$before" ] ||
+  fail "an unchanged plan should push nothing"
+grep -q 'the plan is unchanged' "$WORK/cal2" || fail "an unchanged plan should say so"
+if grep -q 'pr create' "$GH_LOG"; then
+  fail "with the calibration PR open, no second PR should be opened"
+fi
+
+# A calibration missing a pass line fails and opens no PR.
+git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
+rm -f "$GH_OPEN_PR"
+reset
+if CLAUDE_STUB_MODE=skipped calibrate > "$WORK/calskip" 2>&1; then
+  fail "a calibration missing a pass line should fail"
+fi
+grep -q 'expected SUPERVISOR_PASS lines for planning, infra and open-source in that order, got: planning open-source' "$WORK/calskip" ||
+  fail "a calibration missing a pass line should name the hats it saw, got: $(cat "$WORK/calskip")"
+[ -z "$(branch_sha)" ] && [ ! -s "$GH_LOG" ] ||
+  fail "a calibration missing a pass line should push nothing and open no PR"
+
+# A calibration with no heartbeat fails the same way.
+reset
+if CLAUDE_STUB_MODE=prose calibrate > "$WORK/calprose" 2>&1; then
+  fail "a calibration without a heartbeat should fail"
+fi
+[ -z "$(branch_sha)" ] && [ ! -s "$GH_LOG" ] ||
+  fail "a calibration without a heartbeat should push nothing and open no PR"
+
+# No plan, no hats: a failed plan task is never read as an empty plan.
+reset
+if NODE_STUB_MODE=fail CLAUDE_STUB_MODE=plan calibrate > "$WORK/calnoplan" 2>&1; then
+  fail "a calibration whose plan task failed should fail"
+fi
+grep -q 'the plan task produced no plan' "$WORK/calnoplan" ||
+  fail "a failed plan task should say so, got: $(cat "$WORK/calnoplan")"
+[ "$(calls)" = "render node" ] ||
+  fail "without a plan neither the hats nor gh should run; got: $(calls)"
+
+# A dev server that never answers fails before the plan.
+reset
+if CURL_STUB=down CALIBRATION_DEV_WAIT=2 CLAUDE_STUB_MODE=plan calibrate > "$WORK/caldown" 2>&1; then
+  fail "a calibration whose dev server never came up should fail"
+fi
+grep -q 'the local task server never came up' "$WORK/caldown" ||
+  fail "a dev server that never came up should say so, got: $(cat "$WORK/caldown")"
+[ "$(calls)" = "render" ] ||
+  fail "without a dev server nothing else should run; got: $(calls)"
+
+# Any other mode is refused before a secret is resolved.
+reset
+if SUPERVISOR_MODE=deploy bash "$DIR/supervisor.sh" > "$WORK/badmode" 2>&1; then
+  fail "an unknown SUPERVISOR_MODE should fail"
+fi
+grep -q 'SUPERVISOR_MODE must be tick or calibrate, got: deploy' "$WORK/badmode" ||
+  fail "an unknown mode should be named, got: $(cat "$WORK/badmode")"
+[ ! -s "$PASS_ARGV_LOG" ] || fail "an unknown mode should resolve no secret"
 
 echo "supervisor stub tests: ok"

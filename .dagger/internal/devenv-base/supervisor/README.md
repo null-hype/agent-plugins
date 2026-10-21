@@ -62,6 +62,54 @@ one `agent_ship` merges and pushes; until that environment exists, planning
 holds accepted issues against the delivery issue. With no dispatch issue open
 the tick ends `decision=nothing why=no dispatch issue`.
 
+## Calibration (CIT-472)
+
+`SUPERVISOR_MODE=calibrate` runs a cheap, plan-only rehearsal of the next
+real run, and its output is a pull request, never a deploy. It is driven by
+bash, not the model:
+
+```
+supervisor.sh (SUPERVISOR_MODE=calibrate)
+  │ pass-cli: calibrate.env (no restic; a GitHub token for the PR)
+  │ 1. git clone CALIBRATION_BASE (main); npm ci && npm run build in workflow/
+  │ 2. render workflows dev -- npm start           (local task server, :8120)
+  │    node dist/calibrate.js plan CIT CIT-439     (SDK local mode → the plan JSON)
+  │ 3. claude -p calibrate.md + plan + prompt.md   (fresh, haiku, low effort)
+  │        Linear read tools only; every Linear write tool disallowed by name
+  │        → SUPERVISOR_WOULD lines instead of writes
+  │    fail unless three SUPERVISOR_PASS lines and the heartbeat
+  │ 4. commit supervisor/calibration/plan.json on supervisor/calibration,
+  │    force-push, and open one PR into CALIBRATION_BASE if none is open
+  ▼
+the maintainer merges, or doesn't
+```
+
+- **Fresh and plan-only.** No `--continue`, no Remote Control, no restic.
+  Linear is allowed tool by tool for reading only, and the tools that write
+  are named in `--disallowedTools`, so a plan-only run cannot write to Linear
+  even if the allowlist failed open. Since nothing is filed, the later hats
+  read the earlier hats' `SUPERVISOR_WOULD` lines instead of Triage.
+- **Nothing deploys.** `render` is only ever `workflows dev`, and the plan
+  task is reached through the SDK's local mode (`RENDER_USE_LOCAL_DEV`), not
+  Render's API.
+- **One branch, one PR.** `supervisor/calibration` is always one commit on the
+  base, replaced each run. `plan.json` carries no timestamp, so an unchanged
+  plan on an unchanged base pushes nothing and leaves the PR alone.
+- A calibration missing a pass line or the heartbeat, whose plan task failed,
+  or whose dev server never answered, opens no PR and fails.
+
+| Setting | Default | |
+| --- | --- | --- |
+| `CALIBRATION_BASE` | `main` | the branch cloned, and the PR's base |
+| `CALIBRATION_BRANCH` | `supervisor/calibration` | calibration's own branch |
+| `CALIBRATION_MODEL`, `CALIBRATION_EFFORT` | `haiku`, `low` | the cheap run |
+| `CALIBRATION_TASK`, `CALIBRATION_TEAM`, `CALIBRATION_DELIVERIES` | `plan`, `CIT`, `CIT-439` | the plan task and its inputs |
+| `CALIBRATION_CLAUDE_TIMEOUT` | `20m` | |
+
+Not verified without credentials: `render workflows dev` itself, the task
+slug the local server expects (`CALIBRATION_TASK`), and whether
+`pass://infra/github.com/GITHUB_TOKEN` can push and open PRs on this repo.
+
 ## Why it cannot move infrastructure
 
 Three things at once, because an allowlist that fails open is exactly the

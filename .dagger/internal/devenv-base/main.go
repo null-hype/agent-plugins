@@ -441,7 +441,10 @@ func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withAptPackages(withClaude(m.PassCli(platform)), "restic").
+	// git, gh, Node and the Render CLI are for SUPERVISOR_MODE=calibrate
+	// (CIT-472): it clones the repo, builds the workflow, runs it on
+	// `render workflows dev` and opens its plan as a PR.
+	return withRenderCli(withNode(withGh(withGit(withAptPackages(withClaude(m.PassCli(platform)), "restic"))))).
 		WithFile(
 			"/app/supervisor/supervisor.sh",
 			dag.CurrentModule().Source().File("supervisor/supervisor.sh"),
@@ -460,6 +463,16 @@ func (m *DevenvBase) Supervisor(
 		WithFile(
 			"/app/supervisor/supervisor.env",
 			dag.CurrentModule().Source().File("supervisor/supervisor.env"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		WithFile(
+			"/app/supervisor/calibrate.md",
+			dag.CurrentModule().Source().File("supervisor/calibrate.md"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		WithFile(
+			"/app/supervisor/calibrate.env",
+			dag.CurrentModule().Source().File("supervisor/calibrate.env"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
 		WithWorkdir("/app").
@@ -496,12 +509,27 @@ func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 		WithExec([]string{"bash", "-n", "/app/supervisor/supervisor.sh"}).
 		WithExec([]string{"claude", "--version"}).
 		WithExec([]string{"restic", "version"}).
+		WithExec([]string{"git", "--version"}).
+		WithExec([]string{"gh", "--version"}).
+		WithExec([]string{"node", "--version"}).
+		// Calibration needs `render workflows dev`, which only Render CLI
+		// 2.11 and later has.
+		WithExec([]string{"render", "workflows", "dev", "--help"}).
 		WithExec([]string{"bash", "/app/supervisor/test_supervisor.sh"}).
 		Stdout(ctx)
 	if err != nil {
 		return err
 	}
 	return assertContains(out, "supervisor stub tests: ok")
+}
+
+// withRenderCli installs the Render CLI onto c with Render's own installer,
+// which takes the latest release. Calibration (CIT-472) runs the supervisor
+// workflow on its local task server, `render workflows dev`.
+func withRenderCli(c *dagger.Container) *dagger.Container {
+	return withAptPackages(c, "curl", "ca-certificates", "unzip").
+		// As root it installs straight to /usr/local/bin.
+		WithExec([]string{"sh", "-c", "curl -fsSL https://raw.githubusercontent.com/render-oss/cli/main/bin/install.sh | sh"})
 }
 
 // withClaude installs the Claude Code CLI onto c via its native installer
