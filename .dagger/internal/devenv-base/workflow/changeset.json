@@ -1,9 +1,210 @@
 {
-  "seen": {},
-  "releases": [],
-  "clusters": [],
-  "decline": [],
+  "seen": {
+    "CIT-131": "2026-10-18T07:33:28.149Z",
+    "CIT-134": "2026-10-10T22:25:29.341Z",
+    "CIT-135": "2026-10-10T22:25:31.621Z",
+    "CIT-136": "2026-10-10T22:25:29.778Z",
+    "CIT-137": "2026-10-10T22:25:31.622Z",
+    "CIT-138": "2026-10-18T07:33:28.149Z",
+    "CIT-234": "2026-10-10T22:25:34.436Z",
+    "CIT-249": "2026-10-10T22:25:32.458Z",
+    "CIT-263": "2026-10-10T22:25:32.778Z",
+    "CIT-283": "2026-10-10T22:25:58.893Z",
+    "CIT-290": "2026-10-10T22:25:25.267Z",
+    "CIT-360": "2026-10-10T22:25:27.434Z",
+    "CIT-379": "2026-10-10T22:25:30.343Z",
+    "CIT-380": "2026-10-10T22:25:29.073Z",
+    "CIT-381": "2026-10-10T22:25:29.523Z",
+    "CIT-383": "2026-10-10T22:25:30.335Z",
+    "CIT-387": "2026-10-10T22:25:31.272Z",
+    "CIT-393": "2026-10-10T22:25:28.473Z",
+    "CIT-394": "2026-10-10T22:25:34.292Z",
+    "CIT-396": "2026-10-13T20:53:56.743Z",
+    "CIT-431": "2026-10-20T01:16:36.280Z",
+    "CIT-433": "2026-10-19T01:48:41.375Z",
+    "CIT-434": "2026-10-19T01:48:50.632Z",
+    "CIT-435": "2026-10-19T01:48:53.573Z",
+    "CIT-450": "2026-10-20T05:07:38.520Z",
+    "CIT-452": "2026-10-20T06:04:18.815Z",
+    "CIT-458": "2026-10-20T08:13:16.301Z",
+    "CIT-459": "2026-10-20T08:13:16.301Z",
+    "CIT-462": "2026-10-21T07:26:49.466Z",
+    "CIT-463": "2026-10-21T07:26:49.466Z",
+    "CIT-467": "2026-10-21T07:26:49.466Z",
+    "CIT-468": "2026-10-21T05:29:47.426Z",
+    "CIT-469": "2026-10-21T05:29:53.406Z",
+    "CIT-470": "2026-10-21T05:29:56.586Z",
+    "CIT-471": "2026-10-21T05:29:56.571Z",
+    "CIT-62": "2026-10-10T22:25:51.279Z",
+    "CIT-63": "2026-10-10T22:25:27.657Z"
+  },
+  "releases": [
+    {
+      "name": "supervisor-workflow",
+      "description": "Supervisor host, review and remote-control reliability, shipped from the supervisor container-use environment and seen by the people who run review and wake the host.",
+      "pipeline": "supervisor"
+    }
+  ],
+  "clusters": [
+    {
+      "key": "new:host-shutdown-safety",
+      "title": "Host shutdown and review-job safety",
+      "description": "Shutdown must not stop running review jobs, must not duplicate published findings on restart, and must bound workspace discovery before the hard-cap poweroff.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "high",
+      "serves": "release:supervisor-workflow",
+      "blockedBy": [],
+      "issues": [
+        "CIT-434",
+        "CIT-468",
+        "CIT-469",
+        "CIT-471"
+      ]
+    },
+    {
+      "key": "new:shell-status-accuracy",
+      "title": "Success and failure reporting in host and review status",
+      "description": "Empty findings, completed PID files, DevPod status and snapshot inventory failures are all reported as the wrong outcome, and host_wake reports ready before the webhook is verified.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "medium",
+      "serves": "release:supervisor-workflow",
+      "blockedBy": [],
+      "issues": [
+        "CIT-433",
+        "CIT-470",
+        "CIT-431",
+        "CIT-435",
+        "CIT-450",
+        "CIT-467"
+      ]
+    },
+    {
+      "key": "new:remote-control-lifecycle",
+      "title": "Remote Control usable from the supervisor",
+      "description": "Remote Control needs a token with full scope and a live bridge running between ticks, or it is not usable from the supervisor.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "medium",
+      "serves": "release:supervisor-workflow",
+      "blockedBy": [],
+      "issues": [
+        "CIT-452",
+        "CIT-459"
+      ]
+    },
+    {
+      "key": "new:duo-standalone-page",
+      "title": "Duo standalone page for the native client",
+      "description": "The iPhone Duo editor loads a generated, self-contained page with bundled Monaco and the claim JSON, and the stale-preview and option-card fixes go with it.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "medium",
+      "serves": "CIT-439",
+      "blockedBy": [
+        "CIT-465",
+        "CIT-446"
+      ],
+      "issues": [
+        "CIT-462",
+        "CIT-463"
+      ]
+    },
+    {
+      "key": "new:devpod-workspace-provisioning",
+      "title": "DevPod worker and supervisor workspaces",
+      "description": "Provision the independent worker and supervisor workspaces through the existing GCE path, with readiness verified, and keep the local test suite runnable.",
+      "hat": "infra",
+      "model": "opus",
+      "effort": "medium",
+      "serves": "release:supervisor-workflow",
+      "blockedBy": [],
+      "issues": [
+        "CIT-131",
+        "CIT-134",
+        "CIT-135",
+        "CIT-136",
+        "CIT-137",
+        "CIT-138",
+        "CIT-458"
+      ]
+    },
+    {
+      "key": "new:dispatch-guard",
+      "title": "Review agent dispatch protects work in flight",
+      "description": "The review dispatch prompt must protect in-flight and stacked work, and the drift monitor checks that dispatch and completion evidence agree.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "medium",
+      "serves": "release:supervisor-workflow",
+      "blockedBy": [],
+      "issues": [
+        "CIT-393",
+        "CIT-394"
+      ]
+    }
+  ],
+  "decline": [
+    {
+      "issue": "CIT-396",
+      "reason": "a review image attachment; nothing published depends on it"
+    },
+    {
+      "issue": "CIT-62",
+      "reason": "imaginairy reproduction work is not in any published Release; its history is kept on CIT-28"
+    },
+    {
+      "issue": "CIT-63",
+      "reason": "llama_index work is not in any published Release; its history is kept on CIT-29"
+    },
+    {
+      "issue": "CIT-360",
+      "reason": "a Proton Drive command line is unrelated to anything published"
+    },
+    {
+      "issue": "CIT-290",
+      "reason": "a Jev typesafe.ai note is unrelated to anything published"
+    }
+  ],
   "duplicate": [],
-  "escalate": [],
+  "escalate": [
+    {
+      "issue": "CIT-379",
+      "question": "Which Release should the lesson and replay-evidence work ship in? The plan has no open Release for it, and this changeset may propose only one."
+    },
+    {
+      "issue": "CIT-380",
+      "question": "Same as CIT-379: which Release should the lesson-state work ship in?"
+    },
+    {
+      "issue": "CIT-381",
+      "question": "Same as CIT-379: which Release should the lesson-1-to-2 state fix ship in?"
+    },
+    {
+      "issue": "CIT-383",
+      "question": "Same as CIT-379: which Release should the CI lesson-split regression fix ship in?"
+    },
+    {
+      "issue": "CIT-387",
+      "question": "Same as CIT-379: which Release should the four-world Storybook slice ship in?"
+    },
+    {
+      "issue": "CIT-249",
+      "question": "Which Release should the tutorial-mode stuck-agent fix ship in? The plan has no open Release for tutorial work."
+    },
+    {
+      "issue": "CIT-234",
+      "question": "Which Release should the lesson and evaluation-model observations ship in? The plan has no open Release for them."
+    },
+    {
+      "issue": "CIT-263",
+      "question": "Which Release should the Jev ACP continuity judge ship in? The plan has no open Release for it."
+    },
+    {
+      "issue": "CIT-283",
+      "question": "Should this static architecture review be scheduled at all, and under which Release? It is a review rather than an execution defect."
+    }
+  ],
   "delegate": []
 }
