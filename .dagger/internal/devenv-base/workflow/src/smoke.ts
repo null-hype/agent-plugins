@@ -30,6 +30,36 @@ for (const id of Object.keys(cs.seen)) {
 const run = path.replace(/\.json$/, ".run.json");
 await writeFile(new URL(`../${run}`, import.meta.url), JSON.stringify(cs));
 
+// The standing test pipeline (Richard, 2026-10-21): smoke Releases live in
+// `agent-plugins`, never in the planning pipeline. The first smoke run made it
+// continuous and production, where a Release is born completed; it is set to
+// scheduled and non-production here, once, before apply uses it.
+const TEST_PIPELINE = "agent-plugins";
+const gql = async <T>(query: string, variables: Record<string, unknown>): Promise<T> => {
+  const res = await fetch("https://api.linear.app/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: key },
+    body: JSON.stringify({ query, variables }),
+  });
+  const body = (await res.json()) as { data?: T; errors?: unknown };
+  if (!res.ok || body.errors || !body.data) throw new Error(`Linear request failed: ${JSON.stringify(body.errors ?? body)}`);
+  return body.data;
+};
+if (cs.releases.some((r) => r.pipeline === TEST_PIPELINE)) {
+  const { releasePipelines } = await gql<{ releasePipelines: { nodes: { id: string; type: string; isProduction: boolean }[] } }>(
+    `query($name: String!) { releasePipelines(filter: { name: { eq: $name } }) { nodes { id type isProduction } } }`,
+    { name: TEST_PIPELINE },
+  );
+  const p = releasePipelines.nodes[0];
+  if (p && (p.type !== "scheduled" || p.isProduction)) {
+    await gql(`mutation($id: String!, $input: ReleasePipelineUpdateInput!) { releasePipelineUpdate(id: $id, input: $input) { success } }`, {
+      id: p.id,
+      input: { type: "scheduled", isProduction: false },
+    });
+    console.log(`test pipeline ${TEST_PIPELINE}: was ${p.type}${p.isProduction ? ", production" : ""}; now scheduled, not production`);
+  }
+}
+
 const client = createWorkflowsClient({ useLocalDev: true });
 const slug = `${process.env.CALIBRATION_TASK_PREFIX ?? ""}apply`;
 const applyTask = async (label: string, dryRun: boolean): Promise<ApplyResult> => {
