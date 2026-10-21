@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { linearClient, openIssues } from "./linear.ts";
+import { linearClient, openIssues, triageHints } from "./linear.ts";
 
 function node(id: string, over: Record<string, unknown> = {}) {
   return {
@@ -86,6 +86,55 @@ test("a failed read fails the plan rather than returning an empty graph", async 
     openIssues("key", "CIT", fakeLinear([{ errors: [{ message: "bad filter" }] }])),
     /Linear query failed/,
   );
+});
+
+test("Triage hints keep only active suggestions clustering can use", async () => {
+  const s = (over: Record<string, unknown>) => ({
+    type: "similarIssue",
+    state: "active",
+    suggestedIssue: null,
+    suggestedLabel: null,
+    suggestedProject: null,
+    presentedReasons: [],
+    ...over,
+  });
+  const hints = await triageHints(
+    "key",
+    "CIT",
+    fakeLinear([
+      {
+        data: {
+          issues: {
+            pageInfo: { hasNextPage: false, endCursor: "c1" },
+            nodes: [
+              {
+                identifier: "CIT-500",
+                suggestions: {
+                  nodes: [
+                    s({ suggestedIssue: { identifier: "CIT-400" }, presentedReasons: [{ text: "Both are about" }, { text: "the cron." }] }),
+                    s({ type: "label", suggestedLabel: { name: "infra" } }),
+                    s({ type: "project", state: "dismissed", suggestedProject: { name: "Old" } }),
+                    s({ type: "assignee" }),
+                  ],
+                },
+              },
+              { identifier: "CIT-501", suggestions: { nodes: [s({ state: "accepted", suggestedIssue: { identifier: "CIT-1" } })] } },
+            ],
+          },
+        },
+      },
+    ]),
+  );
+  assert.deepEqual(hints, {
+    "CIT-500": [
+      { type: "similarIssue", target: "CIT-400", reason: "Both are about the cron." },
+      { type: "label", target: "infra" },
+    ],
+  });
+});
+
+test("unavailable Triage hints leave planning without hints instead of failing it", async () => {
+  assert.deepEqual(await triageHints("key", "CIT", fakeLinear([{ errors: [{ message: "Cannot query field suggestions" }] }])), {});
 });
 
 test("the client moves a parented Triage issue to the team's first unstarted state", async () => {
