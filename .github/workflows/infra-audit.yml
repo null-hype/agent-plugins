@@ -1,0 +1,41 @@
+name: infra-audit
+
+# Read-only inventory of what is running in GCP: lists VMs, disks, static
+# addresses, Cloud Run services and GKE clusters. Changes nothing.
+on:
+  push:
+    branches: [claude/project-thread-tg2a8e]
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "List GCP resources"
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+          PROTON_PASS_AGENT_REASON: "infra-audit: read-only list of running GCP resources"
+        run: |
+          curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          export PROTON_PASS_SESSION_DIR=/tmp/pass-agent-ci PROTON_PASS_KEY_PROVIDER=fs
+          pass-cli login
+          pass-cli run --env-file .dagger/internal/devenv-base/.devcontainer/gcloud.env -- bash -euo pipefail -c '
+            tmp=$(mktemp -d); chmod 700 "$tmp"; trap "rm -rf $tmp" EXIT
+            export CLOUDSDK_CONFIG=$tmp/gcloud
+            printf %s "$GCP_SERVICE_ACCOUNT_KEY" > "$tmp/key.json"
+            gcloud auth activate-service-account --key-file="$tmp/key.json" --quiet
+            gcloud config set project "$GOOGLE_PROJECT_ID" --quiet
+            echo "== projects visible"; gcloud projects list --format="table(projectId,name)" || true
+            echo "== instances"; gcloud compute instances list --format="table(name,zone.basename(),status,machineType.basename(),lastStartTimestamp,lastStopTimestamp,labels)" || true
+            echo "== disks"; gcloud compute disks list --format="table(name,zone.basename(),sizeGb,type.basename(),status,users.basename())" || true
+            echo "== snapshots"; gcloud compute snapshots list --format="table(name,diskSizeGb,storageBytes,creationTimestamp)" || true
+            echo "== addresses"; gcloud compute addresses list --format="table(name,region.basename(),address,status)" || true
+            echo "== cloud run"; gcloud run services list --format="table(metadata.name,region)" 2>&1 || true
+            echo "== gke"; gcloud container clusters list 2>&1 || true
+            echo "== buckets"; gcloud storage buckets list --format="table(name,location)" 2>&1 || true
+          '
+          pass-cli logout || true
