@@ -11,9 +11,11 @@
 #      session in the working directory, fails the run before claude starts.
 #   4. A run that reaches a decision passes, with the heartbeat as the last
 #      word -- including the tick where no dispatch issue is open. One that
-#      produces prose but no decision fails, as does one where claude itself
-#      exits nonzero -- silence must not look like success.
-#   5. The prompt tells the session to work the dispatch issues and carries no
+#      produces prose but no decision fails, as does one missing a hat's pass
+#      line or one where claude itself exits nonzero -- silence must not look
+#      like success.
+#   5. The prompt has the session wear planning, infra and open source in
+#      that order, hand off through Linear issues in Triage, and carries no
 #      midnight, timezone or zone framing.
 #   6. The run cannot move infrastructure: the read tools and Linear are
 #      allowed, every toolbox tool that can move infrastructure is disallowed
@@ -118,14 +120,25 @@ if [ -n "$cfg" ]; then
 fi
 case "${CLAUDE_STUB_MODE:-ok}" in
   ok)
+    echo "SUPERVISOR_PASS: hat=planning handoffs=CIT-500 why=accepted one finding"
+    echo "SUPERVISOR_PASS: hat=infra handoffs=none why=nothing accepted to ship"
+    echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
     echo "The host is stopped and nothing is due."
     echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=nothing due"
     ;;
   nodispatch)
     echo "No open issue is titled Dispatch: anything."
+    for hat in planning infra open-source; do
+      echo "SUPERVISOR_PASS: hat=$hat handoffs=none why=no dispatch issue"
+    done
     echo "SUPERVISOR_HEARTBEAT: host=unknown work=unknown decision=nothing why=no dispatch issue"
     ;;
   prose) echo "I had a look around and it all seems fine." ;;
+  skipped)
+    echo "SUPERVISOR_PASS: hat=planning handoffs=none why=triage empty"
+    echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
+    echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=nothing due"
+    ;;
   fail) echo "boom" >&2; exit 3 ;;
   hang) exec sleep 60 ;;
 esac
@@ -261,8 +274,18 @@ fi
 
 # --- the prompt --------------------------------------------------------------
 
-grep -q 'Dispatch: <name>' "$CLAUDE_ARGV" ||
-  fail "the prompt should say which issues to work: those titled Dispatch: <name>"
+grep -q 'Dispatch: <hat>' "$CLAUDE_ARGV" ||
+  fail "the prompt should say which issues to work: those titled Dispatch: <hat>"
+grep -q 'in this order: planning, infra, open source' "$CLAUDE_ARGV" ||
+  fail "the prompt should run the planning, infra and open source passes in that order"
+grep -q 'SUPERVISOR_PASS: hat=<planning|infra|open-source> handoffs=' "$CLAUDE_ARGV" ||
+  fail "the prompt should give the pass line format"
+grep -q 'new issue in Triage' "$CLAUDE_ARGV" ||
+  fail "the prompt should make a handoff a new issue in Triage"
+grep -q 'State.*Evidence.*Next step.*Open questions.*Resume' "$CLAUDE_ARGV" ||
+  fail "the prompt should give the handoff's sections in order"
+grep -q 'only planning may' "$CLAUDE_ARGV" ||
+  fail "the prompt should leave moving issues out of Triage to planning alone"
 grep -q "description says" "$CLAUDE_ARGV" ||
   fail "the prompt should tell the session to do what each description says"
 grep -q 'decision=nothing why=no dispatch issue' "$CLAUDE_ARGV" ||
@@ -441,5 +464,16 @@ grep -q 'no SUPERVISOR_HEARTBEAT line' "$WORK/prose" ||
   fail "a missing heartbeat should say so"
 [ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
   fail "the transcript of a run without a heartbeat should still be backed up; got: $(calls)"
+
+# A heartbeat is not enough: a hat that never reported its pass handed
+# nothing on, and the next pass has nothing to read.
+reset
+if CLAUDE_STUB_MODE=skipped bash "$DIR/supervisor.sh" > "$WORK/skipped" 2>&1; then
+  fail "a run missing a hat's pass line should fail"
+fi
+grep -q 'expected SUPERVISOR_PASS lines for planning, infra and open-source in that order, got: planning open-source' "$WORK/skipped" ||
+  fail "a missing pass line should name the hats it saw, got: $(cat "$WORK/skipped")"
+[ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
+  fail "the transcript of a run missing a pass should still be backed up; got: $(calls)"
 
 echo "supervisor stub tests: ok"
