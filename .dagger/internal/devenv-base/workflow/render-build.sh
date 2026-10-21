@@ -10,7 +10,14 @@ mkdir -p bin
 if ! command -v pass-cli > /dev/null; then
   curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 fi
-found=$(command -v pass-cli || ls "$HOME/.local/bin/pass-cli" /usr/local/bin/pass-cli 2> /dev/null | head -1)
+# The installer puts it in ~/.local/bin, which is not on the build's PATH.
+found=""
+for p in "$(command -v pass-cli || true)" "$HOME/.local/bin/pass-cli" /usr/local/bin/pass-cli; do
+  if [ -n "$p" ] && [ -x "$p" ]; then
+    found=$p
+    break
+  fi
+done
 [ -n "$found" ] || { echo "render-build: pass-cli did not install" >&2; exit 1; }
 cp "$found" bin/pass-cli
 bin/pass-cli --version
