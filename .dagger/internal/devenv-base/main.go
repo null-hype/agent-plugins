@@ -413,22 +413,6 @@ func (m *DevenvBase) PublishKeepalive(
 	})
 }
 
-// CheckKeepalive runs Go regression tests during the build and verifies packaging.
-// +check
-func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
-	out, err := m.Keepalive("").
-		WithExec([]string{"devpod-keepalive", "keepalive", "--help"}).
-		WithExec([]string{"bash", "-n", "/app/keepalive/devpod-keepalive.sh"}).
-		WithExec([]string{"bash", "-n", "/app/.devcontainer/lib/gce-common.sh"}).
-		WithExec([]string{"test", "-s", "/opt/devenv/vm-tailscale.tar"}).
-		WithExec([]string{"sh", "-c", "test -x /app/keepalive/devpod-keepalive.sh && echo executable"}).
-		Stdout(ctx)
-	if err != nil {
-		return err
-	}
-	return assertContains(out, "executable")
-}
-
 // Supervisor packages the dispatch supervisor (CIT-443, CIT-453): a Render
 // Cron Job that restores ~/.claude from the newest restic snapshot tagged
 // supervisor, continues the one Claude session in it in the foreground with
@@ -441,7 +425,11 @@ func (m *DevenvBase) Supervisor(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.Container {
-	return withAptPackages(withClaude(m.PassCli(platform)), "restic").
+	// git, gh, Node, the Render CLI and pkl are for SUPERVISOR_MODE=calibrate
+	// (CIT-472): it clones the repo, builds the workflow, runs it on
+	// `render workflows dev`, renders planning's changeset through the Pkl
+	// schema and opens it as a PR.
+	return withPkl(withRenderCli(withNode(withGh(withGit(withAptPackages(withClaude(m.PassCli(platform)), "restic")))))).
 		WithFile(
 			"/app/supervisor/supervisor.sh",
 			dag.CurrentModule().Source().File("supervisor/supervisor.sh"),
@@ -460,6 +448,22 @@ func (m *DevenvBase) Supervisor(
 		WithFile(
 			"/app/supervisor/supervisor.env",
 			dag.CurrentModule().Source().File("supervisor/supervisor.env"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		WithFile(
+			"/app/supervisor/planning.md",
+			dag.CurrentModule().Source().File("supervisor/planning.md"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		// The stub tests render a changeset through the real schema.
+		WithFile(
+			"/app/workflow/pkl/Changeset.pkl",
+			dag.CurrentModule().Source().File("workflow/pkl/Changeset.pkl"),
+			dagger.ContainerWithFileOpts{Permissions: 0o644},
+		).
+		WithFile(
+			"/app/supervisor/calibrate.env",
+			dag.CurrentModule().Source().File("supervisor/calibrate.env"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
 		WithWorkdir("/app").
@@ -496,12 +500,41 @@ func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 		WithExec([]string{"bash", "-n", "/app/supervisor/supervisor.sh"}).
 		WithExec([]string{"claude", "--version"}).
 		WithExec([]string{"restic", "version"}).
+		WithExec([]string{"git", "--version"}).
+		WithExec([]string{"gh", "--version"}).
+		WithExec([]string{"node", "--version"}).
+		WithExec([]string{"pkl", "--version"}).
+		// Calibration needs `render workflows dev`, which only Render CLI
+		// 2.11 and later has.
+		WithExec([]string{"render", "workflows", "dev", "--help"}).
 		WithExec([]string{"bash", "/app/supervisor/test_supervisor.sh"}).
 		Stdout(ctx)
 	if err != nil {
 		return err
 	}
 	return assertContains(out, "supervisor stub tests: ok")
+}
+
+// withRenderCli installs the Render CLI onto c with Render's own installer,
+// which takes the latest release. Calibration (CIT-472) runs the supervisor
+// workflow on its local task server, `render workflows dev`.
+func withRenderCli(c *dagger.Container) *dagger.Container {
+	return withAptPackages(c, "curl", "ca-certificates", "unzip").
+		// As root it installs straight to /usr/local/bin.
+		WithExec([]string{"sh", "-c", "curl -fsSL https://raw.githubusercontent.com/render-oss/cli/main/bin/install.sh | sh"})
+}
+
+// pklVersion pins the Pkl CLI the supervisor and its checks render
+// changesets with (CIT-472).
+const pklVersion = "0.29.1"
+
+// withPkl puts the Pkl CLI's native amd64 binary on c's PATH.
+func withPkl(c *dagger.Container) *dagger.Container {
+	return c.WithFile(
+		"/usr/local/bin/pkl",
+		dag.HTTP("https://github.com/apple/pkl/releases/download/"+pklVersion+"/pkl-linux-amd64"),
+		dagger.ContainerWithFileOpts{Permissions: 0o755},
+	)
 }
 
 // withClaude installs the Claude Code CLI onto c via its native installer
@@ -702,6 +735,42 @@ func (m *DevenvBase) CheckLinearAgent(ctx context.Context) error {
 	return assertContains(out, "# fail 0")
 }
 
+// CheckSupervisorWorkflow runs the supervisor workflow's tests (CIT-472) and
+// type-checks it: the planning DAG, apply and the Linear client behind them,
+// with a fake Linear, so no network or key is involved. It also runs the
+// changeset schema's pkl tests and checks that the committed changeset.json
+// is the rendering of the committed changeset.pkl, since merging it applies
+// it.
+// +check
+func (m *DevenvBase) CheckSupervisorWorkflow(ctx context.Context) error {
+	out, err := dag.Container().
+		From("node:22-slim").
+		WithDirectory("/app", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
+			Exclude: []string{"node_modules", "dist"},
+		}).
+		WithWorkdir("/app").
+		WithExec([]string{"npm", "ci"}).
+		WithExec([]string{"npx", "tsc", "-p", "tsconfig.json", "--noEmit"}).
+		WithExec([]string{"npm", "test"}).
+		Stdout(ctx)
+	if err != nil {
+		return err
+	}
+	if err := assertContains(out, "# fail 0"); err != nil {
+		return err
+	}
+	_, err = withPkl(dag.Container().From("node:22-slim")).
+		WithDirectory("/app", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
+			Include: []string{"pkl/**", "changeset.pkl", "changeset.json", "examples/**"},
+		}).
+		WithWorkdir("/app").
+		WithExec([]string{"pkl", "test", "pkl/Changeset.test.pkl"}).
+		WithExec([]string{"sh", "-c", "pkl eval -f json changeset.pkl | cmp - changeset.json"}).
+		WithExec([]string{"sh", "-c", "pkl eval -f json examples/apply-smoke.pkl | cmp - examples/apply-smoke.json"}).
+		Sync(ctx)
+	return err
+}
+
 // PublishLinearAgent pushes the built linear-agent app to
 // ghcr.io/null-hype/devenv-linear-agent:<tag>. amd64 only, matching Devpod
 // (this is the image devcontainer.json now targets). No entrypoint is set
@@ -816,6 +885,132 @@ func (m *DevenvBase) TriggerRenderCron(
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
 		WithExec([]string{"bash", ".devcontainer/trigger-render-cron.sh"}).
 		Stdout(ctx)
+}
+
+// CalibrateSupervisor runs one live supervisor calibration (CIT-472) in the
+// packaged image: it clones `base`, runs the workflow on `render workflows
+// dev`, has planning write a changeset against live Linear (read-only), dry-
+// runs apply, and opens or updates the calibration PR into `base`. It never
+// writes to Linear and never deploys. Every secret but the Proton Pass token
+// comes from calibrate.env at run time. The whole log comes back either way,
+// so a failed calibration shows why in the CI run.
+func (m *DevenvBase) CalibrateSupervisor(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+	// The branch to calibrate against, and the PR's base.
+	// +optional
+	// +default="main"
+	base string,
+) (string, error) {
+	run := m.Supervisor("linux/amd64").
+		WithEnvVariable("SUPERVISOR_MODE", "calibrate").
+		WithEnvVariable("CALIBRATION_BASE", base).
+		// Never served from cache: each call is a fresh read of Linear.
+		WithEnvVariable("CALIBRATION_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", "-c", "/app/supervisor/supervisor.sh 2>&1"}, dagger.ContainerWithExecOpts{
+			Expect: dagger.ReturnTypeAny,
+		})
+	out, err := run.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	code, err := run.ExitCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("calibration exited %d:\n%s", code, out)
+	}
+	return out, nil
+}
+
+// ApplySupervisorChangeset is "merging is applying" (CIT-472): after a merge
+// to main changes workflow/changeset.json, it waits for Render to deploy that
+// commit as a new version of the supervisor Workflow, then runs the deployed
+// `apply` task for real (supervisor/apply-changeset.sh). The Render API key
+// comes from Proton Pass; the Workflow's own secret is the same token.
+func (m *DevenvBase) ApplySupervisorChangeset(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+	// The merged commit, whose version Render deploys.
+	commit string,
+) (string, error) {
+	run := m.Supervisor("linux/amd64").
+		WithFile("/app/apply-changeset.sh", dag.CurrentModule().Source().File("supervisor/apply-changeset.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755}).
+		WithNewFile("/app/apply.env", "RENDER_API_KEY=pass://infra/render.com/RENDER_API_KEY\n").
+		WithWorkdir("/app").
+		WithEnvVariable("COMMIT", commit).
+		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to run the merged changeset's apply").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && pass-cli run --env-file apply.env -- ./apply-changeset.sh 2>&1"},
+			dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
+	out, err := run.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	code, err := run.ExitCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("apply exited %d:\n%s", code, out)
+	}
+	return out, nil
+}
+
+// ApplySmoke is the supervisor workflow's real apply (CIT-472), through the
+// workflow's own `apply` task on `render workflows dev`, the way the deployed
+// workflow runs it: workflow/src/smoke.ts asks that task to dry-run, apply,
+// and apply again workflow/examples/apply-smoke.json against live Linear, and
+// the second apply must change nothing. It writes to Linear, so it is never a
+// check: CI runs it only from a commit that asks for it.
+func (m *DevenvBase) ApplySmoke(ctx context.Context, protonPassToken *dagger.Secret) (string, error) {
+	// The task server runs inside pass-cli run, so the task it starts has the
+	// Linear key; smoke.ts is its client, and needs the key only to read.
+	script := `set -euo pipefail
+export RENDER_USE_LOCAL_DEV=true RENDER_LOCAL_DEV_URL=http://127.0.0.1:8120
+render workflows dev -- npm start > /tmp/dev.log 2>&1 &
+dev=$!
+trap 'kill $dev 2> /dev/null || true' EXIT
+for _ in $(seq 1 60); do
+  kill -0 $dev 2> /dev/null || { cat /tmp/dev.log; echo "the local task server exited"; exit 1; }
+  curl -s -o /dev/null --max-time 2 $RENDER_LOCAL_DEV_URL/ && break
+  sleep 1
+done
+curl -s -o /dev/null --max-time 2 $RENDER_LOCAL_DEV_URL/ || { cat /tmp/dev.log; echo "the local task server never came up"; exit 1; }
+node dist/smoke.js examples/apply-smoke.json || { cat /tmp/dev.log; exit 1; }
+`
+	run := m.Supervisor("linux/amd64").
+		WithDirectory("/app/workflow", dag.CurrentModule().Source().Directory("workflow"), dagger.ContainerWithDirectoryOpts{
+			Exclude: []string{"node_modules", "dist"},
+		}).
+		WithWorkdir("/app/workflow").
+		WithExec([]string{"npm", "ci"}).
+		WithExec([]string{"npm", "run", "build"}).
+		// Never served from cache: each call is a fresh run against Linear.
+		WithEnvVariable("SMOKE_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: resolve the Linear key for the apply smoke test").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithNewFile("/app/workflow/smoke.env", "LINEAR_API_KEY=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY\n").
+		WithNewFile("/app/workflow/smoke.sh", script).
+		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && " +
+			"pass-cli run --env-file smoke.env -- bash smoke.sh 2>&1"}, dagger.ContainerWithExecOpts{
+			Expect: dagger.ReturnTypeAny,
+		})
+	out, err := run.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	code, err := run.ExitCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("apply smoke exited %d:\n%s", code, out)
+	}
+	return out, nil
 }
 
 // CheckPlaywright asserts the slim image can actually drive a browser, and

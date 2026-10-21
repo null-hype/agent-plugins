@@ -54,8 +54,9 @@ cd ..
 python3 test_timeout.py
 ```
 
-`dagger -m .dagger/internal/devenv-base call check-keepalive` also builds and tests
-the runner and checks image packaging. These tests use no production credentials.
+Building the image (`dagger -m .dagger/internal/devenv-base call keepalive`) also
+runs the runner's Go tests. CI no longer checks or publishes it: the
+devpod-keepalive Render cron is retired. These tests use no production credentials.
 A live run requires restored DevPod state and authenticated provider credentials;
 run the entrypoint in the keepalive image to exercise that complete path.
 
