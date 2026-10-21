@@ -6,7 +6,10 @@
 #
 #   boot    marks jobs the last boot left unfinished as interrupted and
 #           clears their pid files (a pid from the old boot can be reused),
-#           then starts this boot's idle clock and lease.
+#           then starts this boot's idle clock and lease. It runs once per
+#           kernel boot id: a second call in the same boot does nothing, and
+#           a tick that finds state from an earlier boot runs it first, so
+#           the last boot's clocks never stop a freshly started host.
 #   tick    looks for productive work; stops the host when it has been idle
 #           for LIFECYCLE_IDLE_MIN, when the lease has ended with no work, or
 #           at the hard cap whatever is running.
@@ -26,7 +29,9 @@
 #
 # Before powering off it stops each running workspace with `devpod stop`,
 # which keeps its files; the persistent disk keeps everything else, jobs'
-# logs and results included.
+# logs and results included. All of that, listing the workspaces included,
+# shares one LIFECYCLE_STOP_BUDGET_S deadline; poweroff follows when it runs
+# out, whatever devpod is doing.
 set -euo pipefail
 
 STATE=${LIFECYCLE_STATE_DIR:-/var/lib/toolbox-lifecycle}
@@ -36,19 +41,23 @@ IDLE_MIN=${LIFECYCLE_IDLE_MIN:-15}
 LEASE_MIN=${LIFECYCLE_LEASE_MIN:-120}
 EXTEND_MIN=${LIFECYCLE_EXTEND_MIN:-15}
 MAX_MIN=${LIFECYCLE_MAX_MIN:-240}
+STOP_BUDGET_S=${LIFECYCLE_STOP_BUDGET_S:-300}
+BOOT_ID=${LIFECYCLE_BOOT_ID:-$(cat /proc/sys/kernel/random/boot_id)}
 mkdir -p "$STATE"
 
 now() { echo "${LIFECYCLE_NOW:-$(date +%s)}"; }
 log() { echo "$(date -u -d "@$(now)" +%FT%TZ) $*" >> "$STATE/log"; }
 get() { cat "$STATE/$1" 2>/dev/null || echo 0; }
 
-# Ids of toolbox jobs whose process is alive.
+# Ids of toolbox jobs still running: a job writes its exit code last, so
+# one with an exit file is done even if its pid still answers.
 running_jobs() {
-  local f pid
+  local f id
   for f in "$JOBS"/*.pid; do
     [ -f "$f" ] || continue
-    pid=$(cat "$f")
-    kill -0 "$pid" 2>/dev/null && basename "$f" .pid
+    id=$(basename "$f" .pid)
+    [ -f "$JOBS/$id.exit" ] && continue
+    if kill -0 "$(cat "$f")" 2>/dev/null; then echo "$id"; fi
   done
   return 0
 }
@@ -65,6 +74,7 @@ activity() {
 
 boot() {
   local f id t
+  [ "$(cat "$STATE/boot-id" 2>/dev/null)" != "$BOOT_ID" ] || return 0
   t=$(now)
   for f in "$JOBS"/*.pid; do
     [ -f "$f" ] || continue
@@ -90,25 +100,35 @@ boot() {
   echo "$t" > "$STATE/last-active"
   echo $((t + LEASE_MIN * 60)) > "$STATE/deadline"
   echo 0 > "$STATE/extensions"
+  # Last: a boot cut off before here runs again.
+  echo "$BOOT_ID" > "$STATE/boot-id"
   log "boot: lease until $(date -u -d "@$((t + LEASE_MIN * 60))" +%FT%TZ), hard cap $((MAX_MIN)) min"
 }
 
-shutdown_host() {
-  local reason=$1 ws
-  log "stop: $reason"
-  echo "$reason" > "$STATE/last-stop"
-  # Running workspaces are stopped, not deleted, so their files stay.
+# Running workspaces are stopped, not deleted, so their files stay.
+stop_workspaces() {
+  local ws
   for ws in $(su - "$TOOLBOX_USER" -c 'devpod list --output json' 2>/dev/null | jq -r '.[]?.id'); do
     timeout 120 su - "$TOOLBOX_USER" -c "devpod stop $ws" >> "$STATE/log" 2>&1 ||
       log "stop: devpod stop $ws failed; powering off anyway"
   done
+}
+
+shutdown_host() {
+  local reason=$1
+  log "stop: $reason"
+  echo "$reason" > "$STATE/last-stop"
+  # One deadline for the whole preparation, so a hung devpod cannot hold the
+  # host past its cap (CIT-468).
+  timeout -k 10 "$STOP_BUDGET_S" bash "$0" stop-workspaces ||
+    log "stop: workspaces not all stopped within ${STOP_BUDGET_S}s; powering off anyway"
   ${LIFECYCLE_POWEROFF:-systemctl poweroff}
 }
 
 tick() {
   local t boot last deadline ext cap busy
   t=$(now)
-  [ -f "$STATE/boot" ] || boot
+  boot
   boot=$(get boot) last=$(get last-active) deadline=$(get deadline) ext=$(get extensions)
   cap=$((boot + MAX_MIN * 60))
   busy=$(activity | paste -sd, -)
@@ -149,6 +169,7 @@ status() {
 case ${1:-} in
 boot) boot ;;
 tick) tick ;;
+stop-workspaces) stop_workspaces ;;
 status) status ;;
 *) echo "usage: toolbox-lifecycle boot|tick|status" >&2; exit 2 ;;
 esac

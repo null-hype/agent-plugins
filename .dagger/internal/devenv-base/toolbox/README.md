@@ -151,7 +151,9 @@ so no agent or LLM has to remember to stop it:
 
 - **Wake before dispatch.** Call `host_wake` until `ready` is true, then
   delegate. Until then the work stays queued in Linear: nothing is
-  delegated to an agent whose webhook is not live.
+  delegated to an agent whose webhook is not live. `ready` comes from the
+  live webhook check run on that call, not from an old start result; an
+  agent whose webhook stopped answering is restarted.
 - **Productive work** is a running toolbox job (workspace up, ship,
   review, whose last step is the restic backup), the Linear agent working an
   issue (its `claude-agent-sdk` process), or a `restic` or `codex` process.
@@ -162,19 +164,30 @@ so no agent or LLM has to remember to stop it:
   progress at the deadline moves it 15 minutes later, never past a hard cap
   of 240 minutes, where the host stops even mid-job.
 - **Before poweroff** each running workspace is stopped with `devpod stop`,
-  which keeps its files; the disk keeps the jobs' logs and results.
+  which keeps its files; the disk keeps the jobs' logs and results. Listing
+  and stopping the workspaces share one 5-minute budget, after which the
+  host powers off whatever devpod is doing.
 - **On the next boot** a job left without an exit code gets `130` and a
   `.interrupted` marker, stale pid files go, and workspace start results
   from the last boot are set aside so `host_wake` starts the agent afresh.
   `agent_ship` is idempotent, and `codex_review` skips a PR head it already
   reviewed successfully, so a retried job does not duplicate pushes or
-  triage issues.
+  triage issues. A review cut off after Codex filed its findings resumes at
+  the push, and one cut off during Codex's run asks Codex to reuse the
+  issues it already filed for that head (`Reviewed commit:` in each).
+  The boot step runs once per kernel boot id, and a tick that finds state
+  from an earlier boot runs it first, so a host that has just started is
+  never stopped by the last boot's clocks.
+- **Backstop.** The instance has a GCE max run duration of 4h30m with a
+  STOP action, so Compute Engine stops it even if the timer on the host
+  died.
 
 The limits are `LIFECYCLE_IDLE_MIN`, `LIFECYCLE_LEASE_MIN`,
-`LIFECYCLE_EXTEND_MIN` and `LIFECYCLE_MAX_MIN`. `setup-host.sh` puts the
-script in the instance's `toolbox-lifecycle` metadata and the boot script
-installs it, so it takes effect after `setup-host.sh` and a restart. A host
-without it runs until `host_stop`, as before.
+`LIFECYCLE_EXTEND_MIN`, `LIFECYCLE_MAX_MIN` and `LIFECYCLE_STOP_BUDGET_S`.
+The `toolbox-host lifecycle` workflow keeps the instance's `startup-script`
+and `toolbox-lifecycle` metadata and its max run duration in step with
+`main`; the boot script installs the lifecycle script, so a change takes
+effect at the host's next boot. A push to another branch only plans.
 
 ## Test
 

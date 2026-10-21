@@ -222,7 +222,25 @@ func (t *toolbox) wake(ctx context.Context) (wakeOut, error) {
 	case st.JobRunning:
 		return wakeOut{Phase: "agent-starting", Detail: "the agent's start job is running; call host_wake again in a minute."}, nil
 	case st.JobExit != nil && *st.JobExit == 0 && st.State == "Running":
-		return wakeOut{Ready: true, Phase: "ready", Detail: "the Linear agent is up and its webhook is live; delegate now."}, nil
+		// The start job's exit is history; ready means the webhook answers now.
+		b, err := t.host.Run(ctx, nil, "agent-live", agentWorkspace)
+		if err != nil {
+			return wakeOut{}, err
+		}
+		var live struct {
+			Live   bool   `json:"live"`
+			Detail string `json:"detail"`
+		}
+		if err := json.Unmarshal(b, &live); err != nil {
+			return wakeOut{}, fmt.Errorf("host agent-live: %w", err)
+		}
+		if live.Live {
+			return wakeOut{Ready: true, Phase: "ready", Detail: "the Linear agent's webhook answered just now; delegate now."}, nil
+		}
+		if _, err := t.up(ctx, agentWorkspace, "main", true); err != nil {
+			return wakeOut{}, err
+		}
+		return wakeOut{Phase: "agent-restarting", Detail: "the agent's webhook did not answer (" + strings.TrimSpace(live.Detail) + "); restarted the agent. Call host_wake again in a minute."}, nil
 	case st.JobExit != nil && *st.JobExit != 0:
 		return wakeOut{Phase: "agent-failed", Detail: fmt.Sprintf("the agent's start job exited %d; workspace_status %s has its log. agent_start retries it.", *st.JobExit, agentWorkspace)}, nil
 	}
