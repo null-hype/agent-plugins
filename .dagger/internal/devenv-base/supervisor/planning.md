@@ -11,8 +11,11 @@ Every new issue lands in Triage: review findings, handoffs from workers and the 
    - `serves` a Release, as `release:<name>` (an open one from the plan's `sinks`, or one you propose), or a delivery issue like `CIT-439`. Every Release a cluster serves must be listed in `releases`, including one that already exists, and every listed Release must be served;
    - is worked by one hat, `infra` (host, agent, ship, review, unblocking) or `open-source` (releases, and what is said about them), with a `model` and an `effort` sized to the work: `haiku`, `sonnet` or `opus`, and `low`, `medium` or `high`;
    - is `blockedBy` the clusters or issues that must finish first.
+   - **Keep the plan stable.** Successive calibrations should converge, not reshuffle. Put an issue in an existing open cluster or Release whenever one fits, before you propose anything new. Propose **at most one new Release** per changeset: a changeset that would create more fails this run.
 3. Whatever does not belong in a cluster is **declined** (nothing worth publishing would need it, so give the reason), marked a **duplicate** of the issue that covers it, or **escalated** to the maintainer with the question that needs deciding. Product questions, anything that would spend past a budget, and anything published outside Linear are always escalated, never decided.
 4. **Delegate** ready work to an agent by its Linear name, a cluster by its key or a single issue. That hands it over directly, instead of an @mention.
+
+The plan's `hints` are Linear Triage Intelligence's active suggestions for each Triage issue: issues it looks like (`similarIssue`, `relatedIssue`), and the label or project it seems to belong to, with Linear's reason when it gives one. Weigh them when clustering and when marking duplicates. They are hints, not decisions: check the issue before you follow one, and an issue with no hints is not evidence of anything.
 
 Use the frozen plan below. The workflow's `plan` task built it from the open issues, backwards from the open Releases. Its `order` is the dependency order of what already reaches a sink, its `pruned` issues reach none (Triage issues usually start there, and clustering is what connects them), and its `cycles` should be escalated.
 

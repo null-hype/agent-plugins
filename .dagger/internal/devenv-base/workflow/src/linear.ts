@@ -1,6 +1,7 @@
-// Reads the open issues the DAG is built from. Read-only by construction:
-// the only request it sends is a GraphQL query.
-import type { Issue, Stage } from "./dag.ts";
+// Reads the open issues the DAG is built from, and Triage Intelligence's
+// hints for planning. Read-only by construction: the only requests they send
+// are GraphQL queries.
+import type { Hint, Issue, Stage } from "./dag.ts";
 import type { LinearClient, LinearIssue } from "./apply.ts";
 
 const OPEN: Stage[] = ["triage", "backlog", "unstarted", "started"];
@@ -72,6 +73,96 @@ export async function openIssues(apiKey: string, team: string, fetcher = fetch):
     after = body.data.issues.pageInfo.hasNextPage ? body.data.issues.pageInfo.endCursor : null;
   } while (after);
   return issues;
+}
+
+// Triage Intelligence's suggestions for the team's Triage issues. Linear
+// marks these fields internal, so they may change or vanish: unlike the DAG,
+// a failed read here leaves planning without hints rather than failing it.
+const HINTS_QUERY = `query Hints($team: String!, $after: String) {
+  issues(first: 50, after: $after, filter: {
+    team: { key: { eq: $team } },
+    state: { type: { eq: "triage" } }
+  }) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      identifier
+      suggestions(first: 10) {
+        nodes {
+          type
+          state
+          suggestedIssue { identifier }
+          suggestedLabel { name }
+          suggestedProject { name }
+          presentedReasons { text }
+        }
+      }
+    }
+  }
+}`;
+
+interface SuggestionNode {
+  type: string;
+  state: string;
+  suggestedIssue: { identifier: string } | null;
+  suggestedLabel: { name: string } | null;
+  suggestedProject: { name: string } | null;
+  presentedReasons: { text: string }[] | null;
+}
+
+// Only active suggestions of the kinds clustering can use; one already
+// accepted or dismissed has been decided by someone.
+export function toHints(nodes: SuggestionNode[]): Hint[] {
+  const hints: Hint[] = [];
+  for (const s of nodes) {
+    if (s.state !== "active") continue;
+    const target =
+      s.type === "similarIssue" || s.type === "relatedIssue"
+        ? s.suggestedIssue?.identifier
+        : s.type === "label"
+          ? s.suggestedLabel?.name
+          : s.type === "project"
+            ? s.suggestedProject?.name
+            : undefined;
+    if (!target) continue;
+    const reason = s.presentedReasons?.map((r) => r.text).join(" ").trim();
+    hints.push({ type: s.type as Hint["type"], target, ...(reason ? { reason } : {}) });
+  }
+  return hints;
+}
+
+export async function triageHints(apiKey: string, team: string, fetcher = fetch): Promise<Record<string, Hint[]>> {
+  const hints: Record<string, Hint[]> = {};
+  let after: string | null = null;
+  try {
+    do {
+      const res = await fetcher("https://api.linear.app/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: apiKey },
+        body: JSON.stringify({ query: HINTS_QUERY, variables: { team, after } }),
+      });
+      const body = (await res.json()) as {
+        data?: {
+          issues: {
+            pageInfo: { hasNextPage: boolean; endCursor: string };
+            nodes: { identifier: string; suggestions: { nodes: SuggestionNode[] } }[];
+          };
+        };
+        errors?: unknown;
+      };
+      if (!res.ok || body.errors || !body.data) {
+        throw new Error(`(${res.status}): ${JSON.stringify(body.errors ?? body)}`);
+      }
+      for (const n of body.data.issues.nodes) {
+        const h = toHints(n.suggestions.nodes);
+        if (h.length) hints[n.identifier] = h;
+      }
+      after = body.data.issues.pageInfo.hasNextPage ? body.data.issues.pageInfo.endCursor : null;
+    } while (after);
+  } catch (e) {
+    console.warn(`Triage Intelligence suggestions unavailable, planning without hints: ${e instanceof Error ? e.message : e}`);
+    return {};
+  }
+  return hints;
 }
 
 // apply's reads and writes over GraphQL. Issues are named by identifier
