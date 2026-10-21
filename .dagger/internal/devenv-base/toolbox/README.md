@@ -57,7 +57,7 @@ name.
 | `GCP_SERVICE_ACCOUNT_KEY` | `toolbox-render` service account, admin of the host instance only |
 | `TOOLBOX_SSH_KEY` | Private key whose public half is the VM's `toolbox` ssh-keys metadata |
 | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`, for cloning the private repo, and with Codespaces lifecycle admin for the codespace tools |
-| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does; logs in `codex_review`'s pass-cli, which gives Codex's curl the Linear key |
+| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does; logs in `codex_review`'s pass-cli, which gives Codex's curl the Linear key and leaves the host a pass session that `agent_ship` resolves its push token with |
 | `TS_AUTHKEY` | `pass://infra/tailscale/TS_AUTHKEY`, joins the host itself to the tailnet (optional) |
 
 ## Tailscale and Codex
@@ -99,19 +99,25 @@ rules that allow those two scripts and nothing else. When Codex exits, the
 job fetches the branch from GitHub and fails unless it contains the
 environment's tip.
 
-The push credential is a file on the host, set once over Tailscale SSH. Use a
-fine-grained token with contents write on the repository and nothing else:
+The push credential is not stored on the host. `agent_ship` writes
+`~/.toolbox/ship/ship.env`, which holds only the reference
+`SHIP_PUSH_PAT=pass://infra/github.com/GITHUB_TOKEN`, and `ship-push` and the
+check at the end resolve it with `pass-cli run --env-file` (with
+`PROTON_PASS_KEY_PROVIDER=fs`) under the host's own Proton Pass session. That
+item should be a fine-grained token with contents write on the repository and
+nothing else. The host needs a pass session; the `codex_review` job creates one
+with the Proton Pass token Render holds, or log in once by hand:
 
 ```sh
 ssh toolbox@toolbox-host
-install -d -m 700 ~/.toolbox/ship && install -m 600 /dev/stdin ~/.toolbox/ship/push-token   # paste the token, then Ctrl-D
+PROTON_PASS_KEY_PROVIDER=fs pass-cli login
 ```
 
-`agent_ship` sends no secret from Render and refuses if the file is missing.
-The Linear key is not on this path: the job does not log pass-cli in. The token
-is not in Codex's environment or on any command line; `ship-push` reads it and
-hands it to the push, and the check at the end, through `devpod ssh
---send-env`.
+`agent_ship` sends no secret from Render and refuses, before it starts a job,
+if the host has no pass session. The Linear key is not on this path. The token
+is not in Codex's environment or on any command line, and no file holds it:
+`pass-cli run` puts it in the environment of `devpod ssh`, which forwards it
+to the push, and to the check at the end, through `--send-env`.
 
 What this does not guarantee:
 
@@ -119,9 +125,11 @@ What this does not guarantee:
   matches a command plus anything appended to it, so an appended `--command`
   could replace the allowed one. Any other command Codex tries is not
   refused: it runs in the read-only sandbox without network. Read-only
-  still reads, and the token file belongs to the same Unix user as Codex, so
-  such a command could print it. Closing that takes a root-owned token and a
-  sudoers entry for `ship-push` alone.
+  still reads, and the host's pass session belongs to the same Unix user as
+  Codex, so such a command could read the session's files. It has no network,
+  so it cannot ask Proton Pass for the token itself. Closing that takes a
+  separate Unix user for the pass session and a sudoers entry for `ship-push`
+  alone.
 - The token is in the process environment inside the `linear-agent` container
   while the push runs, where the Linear agent also runs.
 - That the sandbox keeps those other commands off the docker socket (the
