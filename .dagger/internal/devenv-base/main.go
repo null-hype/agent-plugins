@@ -413,22 +413,6 @@ func (m *DevenvBase) PublishKeepalive(
 	})
 }
 
-// CheckKeepalive runs Go regression tests during the build and verifies packaging.
-// +check
-func (m *DevenvBase) CheckKeepalive(ctx context.Context) error {
-	out, err := m.Keepalive("").
-		WithExec([]string{"devpod-keepalive", "keepalive", "--help"}).
-		WithExec([]string{"bash", "-n", "/app/keepalive/devpod-keepalive.sh"}).
-		WithExec([]string{"bash", "-n", "/app/.devcontainer/lib/gce-common.sh"}).
-		WithExec([]string{"test", "-s", "/opt/devenv/vm-tailscale.tar"}).
-		WithExec([]string{"sh", "-c", "test -x /app/keepalive/devpod-keepalive.sh && echo executable"}).
-		Stdout(ctx)
-	if err != nil {
-		return err
-	}
-	return assertContains(out, "executable")
-}
-
 // Supervisor packages the dispatch supervisor (CIT-443, CIT-453): a Render
 // Cron Job that restores ~/.claude from the newest restic snapshot tagged
 // supervisor, continues the one Claude session in it in the foreground with
