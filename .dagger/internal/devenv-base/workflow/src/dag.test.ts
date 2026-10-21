@@ -74,3 +74,12 @@ test("the same state gives the same plan", () => {
   assert.deepEqual(plan(issues), plan(issues));
   assert.deepEqual(plan(issues).order.map((i) => i.id), ["CIT-2", "CIT-1"]);
 });
+
+test("the plan records when every open issue last changed, pruned ones included", () => {
+  const p = plan(
+    [issue("CIT-1", { stage: "triage", updatedAt: "t1" }), issue("CIT-2", { updatedAt: "t2", parent: "CIT-439" }), issue("CIT-439")],
+    ["CIT-439"],
+  );
+  assert.deepEqual(p.pruned, ["CIT-1"]);
+  assert.deepEqual(p.seen, { "CIT-1": "t1", "CIT-2": "t2" });
+});
