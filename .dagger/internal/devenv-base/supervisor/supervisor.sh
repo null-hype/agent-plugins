@@ -429,10 +429,13 @@ jq 'del(.seen)' "$CAL_DIR/plan.json" > "$CAL_DIR/plan-for-prompt.json"
 prompt_file="$repo/${WORKFLOW_PATH%/workflow}/supervisor/prompt.md"
 [ -f "$prompt_file" ] || prompt_file="$DIR/prompt.md"
 # The session cannot read GitHub, so the recent pull requests go in the
-# prompt: what merged is the evidence a `done` or a `review` rests on.
-gh pr list --repo "$CALIBRATION_REPO" --state all --limit 40 \
+# prompt: what merged is the evidence a `done` or a `review` rests on. Only
+# issue branches' PRs and open ones: the changeset and plumbing PRs pushed
+# #240 out of the newest 40, and planning never saw it merge.
+gh pr list --repo "$CALIBRATION_REPO" --state all --limit 200 \
   --json number,title,state,isDraft,mergedAt,headRefName > "$CAL_DIR/pulls.raw" 2> /dev/null || true
-jq -c '[.[] | select(.headRefName != "'"$CALIBRATION_BRANCH"'")]' "$CAL_DIR/pulls.raw" > "$CAL_DIR/pulls.json" 2> /dev/null ||
+jq -c '[.[] | select(.headRefName != "'"$CALIBRATION_BRANCH"'")
+  | select((.headRefName | startswith("cit-")) or .state == "OPEN")][:40]' "$CAL_DIR/pulls.raw" > "$CAL_DIR/pulls.json" 2> /dev/null ||
   echo '[]' > "$CAL_DIR/pulls.json"
 prompt=$(sed -e "s|{{NOW}}|$now|g" "$prompt_file" |
   awk -v plan="$CAL_DIR/plan-for-prompt.json" -v pulls="$CAL_DIR/pulls.json" \
