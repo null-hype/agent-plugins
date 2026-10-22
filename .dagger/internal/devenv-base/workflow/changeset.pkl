@@ -1,8 +1,28 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@010fc649dd714ef1f46512001f30f16e911ee002. Merging it is applying it; render with
+// main@74d629a231aa069eed30afce8ab65faa56bd23dd. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-462"] = "2026-10-22T06:01:40.767Z"
+  ["CIT-465"] = "2026-10-22T06:19:25.843Z"
+  ["CIT-497"] = "2026-10-22T06:01:43.998Z"
 }
 
+releases {
+  new {
+    name = "duo-editor"
+    description = "The Duo editor: the claim on the left page and question cards on the right, for iPhone Duo testers."
+  }
+}
+clusters {
+  new {
+    key = "CIT-497"
+    title = "Duo editor: left page, question cards and native export"
+    description = "The left page is built, CIT-465 (cards in Pkl) is finished and awaiting its second ship, and the review findings CIT-462 and CIT-463 are fixed as follow-ups. The agent's choices on CIT-465 stand."
+    serves = "release:duo-editor"
+    issues { "CIT-465" }
+  }
+}
+delegate { new { issue = "CIT-462"; agent = "Claude" } }
+ship { new { issue = "CIT-465"; env = "amazed-bluebird" } }
