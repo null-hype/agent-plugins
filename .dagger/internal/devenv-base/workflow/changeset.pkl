@@ -1,35 +1,76 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@2595b7e839eea4d253baaeab4e74180a4ad93f70. Merging it is applying it; render with
+// main@606de550f7ad938fa7e29b0a81a27d661e4aca29. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
-  ["CIT-446"] = "2026-10-22T03:23:35.645Z"
-  ["CIT-452"] = "2026-10-21T21:53:14.351Z"
-  ["CIT-462"] = "2026-10-22T03:23:35.645Z"
-  ["CIT-463"] = "2026-10-22T03:23:35.645Z"
-  ["CIT-465"] = "2026-10-22T03:23:12.249Z"
-  ["CIT-484"] = "2026-10-22T03:23:35.645Z"
-  ["CIT-495"] = "2026-10-22T03:23:35.514Z"
+  ["CIT-131"] = "2026-10-21T22:08:13.113Z"
+  ["CIT-134"] = "2026-10-21T22:08:14.229Z"
+  ["CIT-135"] = "2026-10-21T22:08:15.592Z"
+  ["CIT-136"] = "2026-10-21T22:08:16.726Z"
+  ["CIT-137"] = "2026-10-21T22:08:17.771Z"
+  ["CIT-138"] = "2026-10-21T22:08:18.864Z"
+  ["CIT-234"] = "2026-10-21T22:08:05.695Z"
+  ["CIT-249"] = "2026-10-21T22:08:06.944Z"
+  ["CIT-263"] = "2026-10-21T22:08:08.000Z"
+  ["CIT-283"] = "2026-10-21T22:08:04.225Z"
+  ["CIT-290"] = "2026-10-21T22:08:09.564Z"
+  ["CIT-379"] = "2026-10-21T21:57:47.899Z"
+  ["CIT-380"] = "2026-10-21T22:07:59.004Z"
+  ["CIT-381"] = "2026-10-21T22:08:00.798Z"
+  ["CIT-383"] = "2026-10-21T22:08:02.008Z"
+  ["CIT-387"] = "2026-10-21T22:08:03.094Z"
+  ["CIT-393"] = "2026-10-21T22:08:10.896Z"
+  ["CIT-394"] = "2026-10-21T22:08:12.011Z"
+  ["CIT-446"] = "2026-10-22T04:03:56.289Z"
+  ["CIT-462"] = "2026-10-22T04:03:54.760Z"
+  ["CIT-463"] = "2026-10-22T04:03:54.760Z"
+  ["CIT-465"] = "2026-10-22T04:03:45.402Z"
+  ["CIT-484"] = "2026-10-22T04:03:54.760Z"
+  ["CIT-491"] = "2026-10-22T03:23:15.391Z"
+  ["CIT-495"] = "2026-10-22T04:03:54.760Z"
+  ["CIT-497"] = "2026-10-22T04:03:54.760Z"
+  ["CIT-498"] = "2026-10-22T04:04:03.166Z"
+  ["CIT-499"] = "2026-10-22T04:04:13.169Z"
 }
 
 releases {
   new {
     name = "duo-editor"
-    description = "The iPhone Duo editor: one claim, one refutation, on TestFlight."
+    description = "The iPhone Duo editor: one claim and one refutation, with the left page, question cards and a native export, shipped on TestFlight."
   }
 }
 clusters {
   new {
-    key = "new:duo-editor-build"
+    key = "CIT-497"
     title = "Duo editor: left page, question cards and native export"
-    description = "Open implementation issues under CIT-439: the Monaco left page, Pkl question cards, stale preview fix and standalone page export."
-    hat = "infra"
-    model = "sonnet"
-    effort = "high"
+    description = "The Duo editor's left page, Pkl-defined question cards and standalone export for the native client, all for the duo-editor Release."
     serves = "release:duo-editor"
-    issues { "CIT-446"; "CIT-465"; "CIT-463"; "CIT-462"; "CIT-484"; "CIT-495" }
+    issues { "CIT-495"; "CIT-446"; "CIT-465"; "CIT-463"; "CIT-462"; "CIT-484" }
   }
 }
-decline { new { issue = "CIT-452"; reason = "blocks no Release" } }
-delegate { new { issue = "new:duo-editor-build"; agent = "Claude" } }
+decline {
+  new { issue = "CIT-491"; reason = "blocks no Release" }
+  new { issue = "CIT-131"; reason = "blocks no Release" }
+  new { issue = "CIT-134"; reason = "blocks no Release" }
+  new { issue = "CIT-135"; reason = "blocks no Release" }
+  new { issue = "CIT-136"; reason = "blocks no Release" }
+  new { issue = "CIT-137"; reason = "blocks no Release" }
+  new { issue = "CIT-138"; reason = "blocks no Release" }
+  new { issue = "CIT-394"; reason = "blocks no Release" }
+  new { issue = "CIT-393"; reason = "blocks no Release" }
+  new { issue = "CIT-290"; reason = "blocks no Release" }
+  new { issue = "CIT-263"; reason = "blocks no Release" }
+  new { issue = "CIT-249"; reason = "blocks no Release" }
+  new { issue = "CIT-234"; reason = "blocks no Release" }
+  new { issue = "CIT-283"; reason = "blocks no Release" }
+  new { issue = "CIT-387"; reason = "blocks no Release" }
+  new { issue = "CIT-383"; reason = "blocks no Release" }
+  new { issue = "CIT-381"; reason = "blocks no Release" }
+  new { issue = "CIT-380"; reason = "blocks no Release" }
+  new { issue = "CIT-379"; reason = "blocks no Release" }
+}
+escalate {
+  new { issue = "CIT-499"; question = "Merge or replace draft PR #240 (CIT-446), and answer its open product questions. Also decide whether CIT-462 and CIT-463 stay in the duo-editor Release." }
+  new { issue = "CIT-498"; question = "Authorize one re-ship of CIT-465 from env amazed-bluebird now that the push credential is repaired? Note that the toolbox host is currently TERMINATED." }
+}
