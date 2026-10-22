@@ -62,7 +62,8 @@ merged commit and starts `supervisor-workflow/apply` on it for real
 (`supervisor/apply-changeset.sh start`). It does not wait for the apply,
 which may first spend 15 minutes waking the host. The task run's id is kept
 in `~/.claude/supervisor-apply`, so the next run checks it
-(`apply-changeset.sh status`) and starts a failed apply again on main.
+(`apply-changeset.sh status`) and starts a failed apply, or main when there
+is no record, again. Apply is idempotent.
 Applying makes no model calls, and nothing on GitHub is involved.
 
 Never disable, suspend or delete the cron or the Render Workflow without the

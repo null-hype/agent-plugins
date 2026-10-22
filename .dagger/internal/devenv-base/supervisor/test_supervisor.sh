@@ -104,6 +104,9 @@ case "$1" in
     mkdir -p "$target/.claude/projects/$project" "$target/.claude/backups"
     echo '{}' > "$target/.claude/projects/$project/6f51ed1a-8bcc-4450-9cd8-37a26fce897e.jsonl"
     echo '{"account":"stub"}' > "$target/.claude/backups/.claude.json.backup.1"
+    # The last apply's task run, as the previous run kept it: one that went
+    # through, unless RESTIC_STUB_APPLY names another, or `none`.
+    [ "${RESTIC_STUB_APPLY:-trn-good}" = none ] || echo "${RESTIC_STUB_APPLY:-trn-good}" > "$target/.claude/supervisor-apply"
     ;;
   backup) [ "${RESTIC_STUB_BACKUP:-ok}" = ok ] || exit 1 ;;
 esac
@@ -238,7 +241,8 @@ STUB
 # APPLY_STUB_START asks; status fails for a run named in APPLY_STUB_FAILED.
 cat > "$BIN/apply-changeset" <<'STUB'
 #!/usr/bin/env bash
-echo "apply-$1" >> "$CALLS"
+# Only a start is a step of the run; status is logged with the rest.
+[ "$1" != start ] || echo "apply-start" >> "$CALLS"
 echo "apply-changeset $* RENDER_API_KEY=${RENDER_API_KEY:-}" >> "$APPLY_LOG"
 case "$1" in
   start) [ "${APPLY_STUB_START:-ok}" = ok ] || exit 1; echo "trn-$2" ;;
@@ -381,15 +385,17 @@ fresh() {
 # --- an hourly run -----------------------------------------------------------
 
 fresh
-CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
+RESTIC_STUB_APPLY=none CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
   fail "an hourly run should exit 0, got: $(cat "$WORK/out")"
 grep -qx 'SUPERVISOR_PLAN: merged pr=https://github.com/null-hype/agent-plugins/pull/999' "$WORK/out" ||
   fail "an hourly run should merge its changeset PR, got: $(cat "$WORK/out")"
 
-[ "$(calls)" = "restic snapshots restic restore gh render node plan gh claude node apply gh gh gh gh gh gh apply-start restic backup" ] ||
-  fail "expected restore, plan, continue, dry run, PR, merge, apply on Render, then backup; got: $(calls)"
+[ "$(calls)" = "restic snapshots restic restore apply-start gh render node plan gh claude node apply gh gh gh gh gh gh apply-start restic backup" ] ||
+  fail "expected restore, apply main (no apply on record), plan, continue, dry run, PR, merge, apply on Render, then backup; got: $(calls)"
 # Merging is applying: the run starts apply on Render on the merged commit,
 # with the Render key from Pass, and keeps the task run with the session.
+grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
+  fail "a run with no apply on record should apply main first, got: $(cat "$APPLY_LOG")"
 grep -qx 'apply-changeset start 0123456789abcdef0123456789abcdef01234567 RENDER_API_KEY=resolved-RENDER_API_KEY' "$APPLY_LOG" ||
   fail "the run should start apply on the merged commit, got: $(cat "$APPLY_LOG")"
 grep -qx 'SUPERVISOR_APPLY: started run=trn-0123456789abcdef0123456789abcdef01234567' "$WORK/out" ||
@@ -400,22 +406,22 @@ grep -qx 'SUPERVISOR_APPLY: started run=trn-0123456789abcdef0123456789abcdef0123
 # The next run reads how that apply went: one that failed is started again
 # on main as it is now, before planning; one that went through is left be.
 fresh
-mkdir -p "$HOME/.claude" && echo trn-bad > "$HOME/.claude/supervisor-apply"
-APPLY_STUB_FAILED=trn-bad CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
+RESTIC_STUB_APPLY=trn-bad APPLY_STUB_FAILED=trn-bad CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
   fail "a run after a failed apply should exit 0, got: $(cat "$WORK/out")"
 grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
   fail "a failed apply should be started again on main, got: $(cat "$APPLY_LOG")"
-case "$(calls)" in "restic snapshots restic restore apply-status apply-start gh "*) ;; *)
+grep -qx 'apply-changeset status trn-bad RENDER_API_KEY=resolved-RENDER_API_KEY' "$APPLY_LOG" ||
+  fail "the run should read how the last apply went, got: $(cat "$APPLY_LOG")"
+case "$(calls)" in "restic snapshots restic restore apply-start gh "*) ;; *)
   fail "a failed apply should be started again before planning, got: $(calls)" ;; esac
 fresh
-mkdir -p "$HOME/.claude" && echo trn-good > "$HOME/.claude/supervisor-apply"
 APPLY_STUB_FAILED=trn-bad CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
   fail "a run after a good apply should exit 0, got: $(cat "$WORK/out")"
 [ "$(grep -c start "$APPLY_LOG")" = 1 ] ||
   fail "an apply that went through should not be started again, got: $(cat "$APPLY_LOG")"
 # An apply that could not start is remembered, and the run fails loudly.
 fresh
-APPLY_STUB_START=fail CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 &&
+RESTIC_STUB_APPLY=none APPLY_STUB_START=fail CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 &&
   fail "a run whose apply could not start should fail"
 [ "$(cat "$HOME/.claude/supervisor-apply")" = failed ] ||
   fail "an apply that could not start should be remembered for the next run"

@@ -327,8 +327,9 @@ base_sha=$(git -C "$repo" rev-parse HEAD)
 
 # Apply runs on Render: after a merge, this run starts the deployed
 # Workflow's `apply` task on the merged commit (7) and keeps its task run with
-# the session. Nothing on GitHub is involved. An apply that failed, or never
-# started, is started again here on what main is now: apply is idempotent.
+# the session. Nothing on GitHub is involved. An apply that failed, never
+# started, or has no record is started again here on what main is now: apply
+# is idempotent.
 APPLY_STATE=$HOME/.claude/supervisor-apply
 apply_changeset() { "${APPLY_CHANGESET:-$DIR/apply-changeset.sh}" "$@"; }
 start_apply() { # $1: the commit to apply
@@ -343,10 +344,10 @@ start_apply() { # $1: the commit to apply
     return 1
   fi
 }
-if [ "$CALIBRATION_BASE" = main ] && [ -s "$APPLY_STATE" ]; then
-  last=$(cat "$APPLY_STATE")
-  if [ "$last" = failed ] || ! apply_changeset status "$last"; then
-    echo "supervisor: the last apply ($last) failed; applying $base_sha again"
+if [ "$MODE" = tick ] && [ "$CALIBRATION_BASE" = main ]; then
+  last=$(cat "$APPLY_STATE" 2> /dev/null || echo none)
+  if [ "$last" = none ] || [ "$last" = failed ] || ! apply_changeset status "$last"; then
+    echo "supervisor: the last apply ($last) did not go through; applying $base_sha again"
     start_apply "$base_sha" || true
   fi
 fi
