@@ -51,7 +51,7 @@ const state = await frame.evaluate(() => ({
 	readOnly: window.monaco.editor.getEditors()[0].getOption(window.monaco.editor.EditorOption.readOnly),
 }));
 console.log(JSON.stringify({ ...state, pageErrors: errors }));
-console.log('overlay', JSON.stringify(await frame.evaluate(() => [...document.querySelectorAll('.monaco-editor-overlaymessage, .monaco-editor .message')].map(e => [e.className, e.textContent, getComputedStyle(e).display, e.getBoundingClientRect().height]))));await page.screenshot({ path: out });
+await frame.evaluate(() => window.monaco.editor.getEditors()[0].trigger('capture', 'leaveEditorMessage', null)); await page.waitForTimeout(1500); console.log('overlay', JSON.stringify(await frame.evaluate(() => [...document.querySelectorAll('.monaco-editor-overlaymessage, .monaco-editor .message')].map(e => [e.className, e.textContent, getComputedStyle(e).display, e.getBoundingClientRect().height]))));await page.screenshot({ path: out });
 console.log(`wrote ${out}`);
 await browser.close();
 server.close();
