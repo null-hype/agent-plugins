@@ -1,49 +1,28 @@
 {
   "seen": {
-    "CIT-497": "2026-10-22T06:01:43.998Z",
     "CIT-500": "2026-10-22T21:44:31.388Z",
-    "CIT-516": "2026-10-22T21:34:33.902Z",
-    "CIT-517": "2026-10-22T21:34:38.397Z",
-    "CIT-518": "2026-10-22T21:38:54.305Z"
+    "CIT-507": "2026-10-22T20:38:53.039Z",
+    "CIT-516": "2026-10-22T22:07:54.896Z"
   },
   "releases": [
     {
-      "name": "duo-editor",
-      "description": "The Duo editor on iPhone Duo: the claim on the left page and question cards on the right, built on Xcode Cloud and shipped to TestFlight testers.",
-      "pipeline": "supervisor"
-    },
-    {
-      "name": "supervisor-workflow",
-      "description": "The supervisor loop itself, including planning that reads Initiative Zero and answers it in each changeset.",
+      "name": "duo-content",
+      "description": "The tutorial and write-ups that explain Duo, sitting beside the Duo editor.",
       "pipeline": "supervisor"
     }
   ],
   "clusters": [
     {
-      "key": "CIT-497",
-      "title": "Duo editor: left page, question cards and native export",
-      "description": "The left page, question cards and standalone export, plus fixes to the evidence capture that proves the left page (CIT-516, CIT-517).",
+      "key": "new:duo-tutorial",
+      "title": "Duo tutorial follow-ups",
+      "description": "Review follow-ups to the Duo tutorial lessons (CIT-422), so a first-time reader can follow the claim and refutation journey.",
       "hat": "infra",
       "model": "sonnet",
       "effort": "medium",
-      "serves": "release:duo-editor",
+      "serves": "release:duo-content",
       "blockedBy": [],
       "issues": [
-        "CIT-516",
-        "CIT-517"
-      ]
-    },
-    {
-      "key": "new:initiative-planning",
-      "title": "Initiative-focused planning",
-      "description": "The planner reads Initiative Zero's description and updates before writing a changeset, records what it adopted, deferred or disagreed with, and keeps unresolved feedback across runs.",
-      "hat": "infra",
-      "model": "sonnet",
-      "effort": "medium",
-      "serves": "release:supervisor-workflow",
-      "blockedBy": [],
-      "issues": [
-        "CIT-518"
+        "CIT-507"
       ]
     }
   ],
