@@ -60,6 +60,11 @@ function fakeLinear(
       store.get(id)!.stage = "canceled";
       touch(id);
     },
+    async complete(id) {
+      writes.push(`complete ${id}`);
+      store.get(id)!.stage = "completed";
+      touch(id);
+    },
     async markDuplicate(id, of) {
       writes.push(`duplicate ${id} ${of}`);
       store.get(id)!.stage = "canceled";
@@ -427,4 +432,21 @@ test("a review wakes the host, reviews the pull request, notes it, and never rev
   const again = await apply(cs, client, { dryRun: false, toolbox: host });
   assert.deepEqual(host.calls, ["wake", "review 240"]);
   assert.equal(again.applied.some((o) => o.op === "review"), false);
+});
+
+test("done completes an issue once, with its evidence", async () => {
+  const { client, store, writes } = world();
+  const cs = { ...changeset(), delegate: [], done: [{ issue: "CIT-465", evidence: "PR #240 merged" }] };
+
+  const dry = await apply(cs, client, { dryRun: true, toolbox: idleHost });
+  assert.deepEqual(dry.applied.filter((o) => o.op === "done"), [{ op: "done", target: "CIT-465", detail: "PR #240 merged" }]);
+  assert.equal(writes.length, 0);
+
+  await apply(cs, client, { dryRun: false, toolbox: idleHost });
+  assert.equal(store.get("CIT-465")!.stage, "completed");
+  assert.ok(writes.includes("complete CIT-465"));
+  assert.ok(writes.some((w) => w.startsWith("comment CIT-465 ") && w.includes("PR #240 merged")));
+
+  const again = await apply(cs, client, { dryRun: false, toolbox: idleHost });
+  assert.equal(again.applied.some((o) => o.op === "done"), false);
 });

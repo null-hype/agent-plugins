@@ -86,7 +86,7 @@ because a continuous pipeline's Releases are born completed.
   `blockedBy` edges; the *releases* the clusters serve, which apply creates,
   with their pipeline, when no open one has the name, so planning proposes a
   Release for a theme rather than declining it for want of a sink; and
-  *decline*, *duplicate*, *escalate*, *delegate*, *ship* and *review* ops.
+  *decline*, *done*, *duplicate*, *escalate*, *delegate*, *ship* and *review* ops.
   Every action is an op: nothing asks for work or a tool call with an
   @mention. Delegating fires the agent's session; ship and review call the
   toolbox's `agent_ship` and `codex_review`, after waking the host.

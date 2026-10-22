@@ -58,6 +58,7 @@ export interface LinearClient {
   setParent(issue: string, parent: string): Promise<void>;
   addBlocks(blocker: string, blocked: string): Promise<void>;
   cancel(issue: string): Promise<void>;
+  complete(issue: string): Promise<void>;
   markDuplicate(issue: string, of: string): Promise<void>;
   addLabel(issue: string, label: string): Promise<void>;
   // Labels and the users or agents work is delegated to, by name. A dry run
@@ -76,7 +77,7 @@ export interface LinearClient {
 }
 
 export interface Op {
-  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate" | "ship" | "review";
+  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "done" | "duplicate" | "escalate" | "delegate" | "ship" | "review";
   target: string;
   detail: string;
 }
@@ -250,6 +251,16 @@ export async function apply(
   }
 
   // 4. What was not clustered.
+  for (const d of cs.done ?? []) {
+    await run(
+      { op: "done", target: d.issue, detail: d.evidence },
+      (i) => i.stage === "completed",
+      async () => {
+        await linear.complete(d.issue);
+        await linear.comment(d.issue, `Done, by planning: ${d.evidence}`);
+      },
+    );
+  }
   for (const d of cs.decline) {
     await run(
       { op: "decline", target: d.issue, detail: d.reason },
