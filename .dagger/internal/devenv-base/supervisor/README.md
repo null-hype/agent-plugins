@@ -16,6 +16,8 @@ Render cron `supervisor` ──▶ supervisor.sh
   │ 2. git clone main
   │    apply-changeset.sh start <main>      (what merged last time, unless applied)
   │      └─ Render API ──▶ supervisor-workflow/apply ──▶ Linear, host
+  │    gh pr create for each shipped cit-… branch; gh pr merge for each
+  │      one whose Codex review is REVIEW_MINUTES (30) old, on green
   │    npm ci && npm run build in workflow/
   │    apply-changeset.sh wait <run>        (up to 10 minutes)
   │    render workflows dev -- npm start    (local task server, :8120)
