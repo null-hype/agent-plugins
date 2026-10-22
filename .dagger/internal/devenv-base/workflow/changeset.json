@@ -1,12 +1,25 @@
 {
-  "seen": {},
+  "seen": {
+    "CIT-462": "2026-10-22T08:17:49.303Z",
+    "CIT-465": "2026-10-22T08:16:05.090Z"
+  },
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [],
-  "ship": [],
+  "delegate": [
+    {
+      "issue": "CIT-465",
+      "agent": "Claude"
+    }
+  ],
+  "ship": [
+    {
+      "issue": "CIT-462",
+      "env": "thankful-worm"
+    }
+  ],
   "review": []
 }
