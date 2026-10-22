@@ -1,0 +1,38 @@
+/// CIT-465: the demo cards, checked against the recorded runs they come from and
+/// baselined as `Cards.test.pkl-expected.pcf`, so any change to a card or an
+/// option shows up as a reviewable diff.
+///
+///   pkl test Cards.test.pkl
+amends "pkl:test"
+
+import "pkl:json"
+import "Cards.pkl"
+
+local observations = "../../../evidence/cit-294-review-history-v1/files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/observations/"
+local function observation(name: String): Dynamic = new json.Parser {}.parse(read("\(observations)\(name).json").text) as Dynamic
+
+local cards = Cards.cards.toList()
+local refuted = cards.filter((c) -> c.counterexample != null)
+
+facts {
+  ["One card per recorded run, in the order the page lists them"] {
+    cards.map((c) -> c.id) == List("mat-blocked", "mat-unblocked", "png-blocked", "png-unblocked")
+  }
+  ["Only the run whose upload was not resized is refuted, and its counterexample is that run's error"] {
+    refuted.length == 1
+    refuted[0].id == "mat-blocked"
+    refuted[0].counterexample == observation("mat-blocked").variant_error
+    cards.every((c) -> (c.counterexample == null) == observation(c.id).variant_succeeded)
+  }
+  ["Every card offers the same two options, at the claim line"] {
+    cards.every((c) -> c.line == Cards.claimLine)
+    cards.every((c) -> c.options.toList().map((o) -> o.id) == List("unless-blocked", "png-only"))
+    cards.every((c) -> c.options == Cards.options)
+  }
+}
+
+examples {
+  ["The demo cards"] {
+    Cards.cards
+  }
+}
