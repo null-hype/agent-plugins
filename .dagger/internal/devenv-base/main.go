@@ -512,7 +512,7 @@ curl -fsS -X POST "https://api.render.com/v1/services/$SERVICE/deploys" \
 		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
 		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to deploy the new supervisor image").
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
-		WithExec([]string{"bash", "-c", passLogin + " && pass-cli run --env-file deploy.env -- ./deploy.sh"}).
+		WithExec([]string{"bash", "-c", passLogin + " && pass-cli run --env-file deploy.env -- bash deploy.sh"}).
 		Stdout(ctx)
 }
 
