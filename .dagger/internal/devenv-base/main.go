@@ -890,8 +890,9 @@ func (m *DevenvBase) TriggerRenderCron(
 // CalibrateSupervisor runs one live supervisor calibration (CIT-472) in the
 // packaged image: it clones `base`, runs the workflow on `render workflows
 // dev`, has planning write a changeset against live Linear (read-only), dry-
-// runs apply, and opens or updates the calibration PR into `base`. It never
-// writes to Linear and never deploys. Every secret but the Proton Pass token
+// runs apply, and opens or updates the calibration PR into `base`. With
+// `merge` it then merges that PR on green, which applies it; without, it
+// never writes to Linear and never deploys. Every secret but the Proton Pass token
 // comes from calibrate.env at run time. The whole log comes back either way,
 // so a failed calibration shows why in the CI run.
 func (m *DevenvBase) CalibrateSupervisor(
@@ -901,10 +902,19 @@ func (m *DevenvBase) CalibrateSupervisor(
 	// +optional
 	// +default="main"
 	base string,
+	// Merge the plan's PR once its checks are green, as the hourly tick
+	// does, which applies it.
+	// +optional
+	merge bool,
 ) (string, error) {
+	mergeEnv := "0"
+	if merge {
+		mergeEnv = "1"
+	}
 	run := m.Supervisor("linux/amd64").
 		WithEnvVariable("SUPERVISOR_MODE", "calibrate").
 		WithEnvVariable("CALIBRATION_BASE", base).
+		WithEnvVariable("CALIBRATION_MERGE", mergeEnv).
 		// Never served from cache: each call is a fresh read of Linear.
 		WithEnvVariable("CALIBRATION_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).

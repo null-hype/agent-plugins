@@ -234,6 +234,8 @@ case "$1 $2" in
     done
     [ "$2" = edit ] || echo "https://github.com/null-hype/agent-plugins/pull/999" | tee "$GH_OPEN_PR"
     ;;
+  "pr view") echo "0123456789abcdef0123456789abcdef01234567" ;;
+  "pr checks") exit "${GH_CHECKS_EXIT:-0}" ;;
 esac
 STUB
 
@@ -617,8 +619,13 @@ reset
 rm -f "$GH_OPEN_PR"
 CLAUDE_STUB_MODE=plan calibrate > "$WORK/cal" 2>&1 ||
   fail "a green calibration should exit 0, got: $(cat "$WORK/cal")"
-tail -1 "$WORK/cal" | grep -qx 'SUPERVISOR_CHANGESET: ops=5 clusters=1' ||
-  fail "a calibration should end with its changeset summary, got: $(tail -1 "$WORK/cal")"
+grep -qx 'SUPERVISOR_CHANGESET: ops=5 clusters=1' "$WORK/cal" ||
+  fail "a calibration should print its changeset summary, got: $(cat "$WORK/cal")"
+tail -1 "$WORK/cal" | grep -qx 'SUPERVISOR_PLAN: proposed pr=https://github.com/null-hype/agent-plugins/pull/999' ||
+  fail "a calibration off the tick should end proposing its PR, got: $(tail -1 "$WORK/cal")"
+if grep -q 'pr merge' "$GH_LOG"; then
+  fail "a calibration off the tick must not merge its PR"
+fi
 [ "$(calls)" = "render node plan claude node apply gh gh" ] ||
   fail "a calibration should start the dev server, plan, run planning, dry-run apply, then open the PR, and never touch restic; got: $(calls)"
 
@@ -739,6 +746,46 @@ fi
 grep -qx 'gh pr edit https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --body-file .*' "$GH_LOG" &&
   grep -qx '| delegate | new:review-findings | to tidelands-agent |' "$GH_PR_BODY" ||
   fail "the open PR's body should be rewritten from this run's dry run, got: $(cat "$GH_LOG")"
+
+# On the hourly tick the plan merges itself once its checks are green, and
+# only the head those checks ran on.
+reset
+CALIBRATION_MERGE=1 CALIBRATION_CHECKS_SETTLE=0 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calmerge" 2>&1 ||
+  fail "a tick calibration with green checks should exit 0, got: $(cat "$WORK/calmerge")"
+grep -qx 'gh pr checks https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --watch --interval 15' "$GH_LOG" ||
+  fail "a tick calibration should wait on its PR's checks, got: $(cat "$GH_LOG")"
+grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
+  fail "a tick calibration should squash-merge the head its checks ran on, got: $(cat "$GH_LOG")"
+tail -1 "$WORK/calmerge" | grep -qx 'SUPERVISOR_PLAN: merged pr=https://github.com/null-hype/agent-plugins/pull/999' ||
+  fail "a merged plan should say so last, got: $(tail -1 "$WORK/calmerge")"
+
+# Red checks: no merge, and a failed calibration, so the tick reports it.
+reset
+if GH_CHECKS_EXIT=1 CALIBRATION_MERGE=1 CALIBRATION_CHECKS_SETTLE=0 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calred" 2>&1; then
+  fail "a tick calibration whose checks failed should fail"
+fi
+grep -q "checks are not green; not merging" "$WORK/calred" ||
+  fail "red checks should be reported, got: $(cat "$WORK/calred")"
+if grep -q 'pr merge' "$GH_LOG"; then
+  fail "a PR with red checks must not be merged"
+fi
+
+# A plan the base already carries proposes nothing, so a merged plan is not
+# proposed and merged again on every tick.
+git -C "$REMOTE" show "supervisor/calibration:$WF/changeset.json" > "$seed/$WF/changeset.json"
+git -C "$seed" add . && git -C "$seed" commit --quiet -m "the plan, merged"
+git -C "$seed" push --quiet "$REMOTE" main
+before=$(branch_sha)
+reset
+CALIBRATION_MERGE=1 CALIBRATION_CHECKS_SETTLE=0 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calsame" 2>&1 ||
+  fail "a calibration whose plan matches the base should exit 0, got: $(cat "$WORK/calsame")"
+grep -q 'the plan matches main; nothing to propose' "$WORK/calsame" &&
+  tail -1 "$WORK/calsame" | grep -qx 'SUPERVISOR_PLAN: unchanged' ||
+  fail "a plan the base carries should say so, got: $(cat "$WORK/calsame")"
+[ "$(branch_sha)" = "$before" ] && [ ! -s "$GH_LOG" ] ||
+  fail "a plan the base carries should push nothing and touch no PR, got: $(cat "$GH_LOG")"
+git -C "$seed" reset --quiet --hard "$BASE_SHA"
+git -C "$seed" push --quiet --force "$REMOTE" main
 
 # A changeset that does not type-check never reaches the dry run or a PR.
 git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
