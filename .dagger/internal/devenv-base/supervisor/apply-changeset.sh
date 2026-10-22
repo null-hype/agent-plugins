@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Merging is applying (CIT-472), from the supervisor's own run on Render:
+# Merging is applying (CIT-472). The supervisor's hourly run, on Render,
+# applies the changeset that merged since the last one:
 #
 #   apply-changeset.sh start COMMIT   waits for Render to deploy COMMIT as a
 #       version of the supervisor Workflow, starts its `apply` task with
@@ -9,6 +10,8 @@
 #   apply-changeset.sh status RUN     prints that run's status, what it
 #       applied and what it skipped. Exits 1 if it failed or is gone, so the
 #       next run can start it again; 0 while it runs or once it completed.
+#   apply-changeset.sh wait RUN       status, once the run has ended or
+#       RUN_WAIT polls (3s apart, 10 minutes by default) have passed.
 #
 # Needs RENDER_API_KEY. WORKFLOW_ID and APPLY_TASK default to the
 # supervisor's.
@@ -18,6 +21,14 @@ WORKFLOW_ID=${WORKFLOW_ID:-wfl-dbche33rjlhs73bgkrr0}
 APPLY_TASK=${APPLY_TASK:-supervisor-workflow/apply}
 TEAM=${TEAM:-CIT}
 api() { curl -sS --fail-with-body -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" "$@"; }
+status() { # $1: the task run
+  local body
+  body=$(api "https://api.render.com/v1/task-runs/$1") || { echo "apply-changeset: no task run $1" >&2; return 1; }
+  jq -r '"status: \(.status)", (.attempts[-1].error // "" | select(. != "") | "error: \(.)"),
+    (.results[0].applied[]? | "applied \(.op) \(.target): \(.detail)"),
+    (.results[0].skipped[]? | "skipped \(.op) \(.target): \(.why)")' <<< "$body"
+  case $(jq -r .status <<< "$body") in pending | running | completed) ;; *) return 1 ;; esac
+}
 
 case "${1:-}" in
   start)
@@ -38,13 +49,13 @@ case "${1:-}" in
     jq -n --arg t "$APPLY_TASK" --arg team "$TEAM" '{task: $t, input: [false, $team]}' |
       api -X POST https://api.render.com/v1/task-runs --data @- | jq -er .id
     ;;
-  status)
-    run=${2:?usage: apply-changeset.sh status RUN}
-    body=$(api "https://api.render.com/v1/task-runs/$run") || { echo "apply-changeset: no task run $run" >&2; exit 1; }
-    jq -r '"status: \(.status)", (.attempts[-1].error // "" | select(. != "") | "error: \(.)"),
-      (.results[0].applied[]? | "applied \(.op) \(.target): \(.detail)"),
-      (.results[0].skipped[]? | "skipped \(.op) \(.target): \(.why)")' <<< "$body"
-    case $(jq -r .status <<< "$body") in pending | running | completed) ;; *) exit 1 ;; esac
+  wait)
+    run=${2:?usage: apply-changeset.sh wait RUN}
+    for _ in $(seq 1 "${RUN_WAIT:-200}"); do
+      case $(api "https://api.render.com/v1/task-runs/$run" | jq -r .status) in pending | running) sleep 3 ;; *) break ;; esac
+    done
+    status "$run"
     ;;
-  *) echo "usage: apply-changeset.sh start COMMIT | status RUN" >&2; exit 2 ;;
+  status) status "${2:?usage: apply-changeset.sh status RUN}" ;;
+  *) echo "usage: apply-changeset.sh start COMMIT | status RUN | wait RUN" >&2; exit 2 ;;
 esac

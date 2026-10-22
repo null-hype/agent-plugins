@@ -2,12 +2,14 @@
 # The supervisor: one Claude session that lives across hourly runs (CIT-443,
 # CIT-472). It looks at everything, and its whole output is a changeset: what
 # Linear should look like next. This script checks that changeset and makes
-# it a pull request that merges itself once its checks are green, then starts
-# the deployed workflow's apply on Render. Merging is applying.
+# it a pull request that merges itself once its checks are green. The next
+# run applies it with the deployed workflow on Render. Merging is applying.
 #
 #   1. restore  ~/.claude from the newest restic snapshot tagged `supervisor`,
 #               so the session remembers earlier runs;
-#   2. clone the repo at CALIBRATION_BASE, build the workflow there, start
+#   2. clone the repo at CALIBRATION_BASE, start `apply` on Render on the
+#      changeset that merged last time (apply-changeset.sh), build the
+#      workflow, wait for the apply, start
 #      `render workflows dev` and run the read-only `plan` task on it;
 #   3. continue the session (`claude --continue`, from /workspaces/agent-plugins)
 #      with prompt.md and the plan. It reads Linear and the toolbox, writes
@@ -17,10 +19,8 @@
 #      does not render goes back to the session once, with the error;
 #   5. dry-run the `apply` task on the dev server against that tree: the test;
 #   6. commit changeset.pkl and changeset.json on CALIBRATION_BRANCH, open (or
-#      update) one PR, and merge it once its checks are green;
-#   7. start the deployed Workflow's `apply` task on the merged commit, on
-#      Render (apply-changeset.sh); the next run starts it again if it failed;
-#   8. back up ~/.claude, whether or not any of that worked, so the next run
+#      update) one PR, and turn on auto-merge;
+#   7. back up ~/.claude, whether or not any of that worked, so the next run
 #      remembers a failure rather than starting from before it.
 #
 # `claude --continue`, not `--resume <id>`: there is one session, so there is
@@ -201,7 +201,7 @@ cleanup() {
     kill "$dev_pid" 2> /dev/null || true
     wait "$dev_pid" 2> /dev/null || true
   fi
-  # 8. Back up, whatever happened. From $HOME with a relative path, so the
+  # 7. Back up, whatever happened. From $HOME with a relative path, so the
   # snapshot holds /.claude/... and restores with the --target and --exclude
   # below; `restic backup ~/.claude` would store /root/.claude/... and restore
   # one level too deep, with the excludes matching nothing.
@@ -296,8 +296,8 @@ fi
 
 # 2-6: the changeset. Nothing here deploys or writes to Linear: the dev
 # server only simulates Render and apply only ever runs dry. A changeset
-# reaches Linear only through the merge, and the apply on Render this run
-# starts once it has merged (7).
+# reaches Linear only through the merge, and the apply on Render the next
+# run starts.
 CALIBRATION_REPO=${CALIBRATION_REPO:-null-hype/agent-plugins}
 CALIBRATION_REMOTE=${CALIBRATION_REMOTE:-https://github.com/$CALIBRATION_REPO.git}
 CALIBRATION_BASE=${CALIBRATION_BASE:-main}
@@ -325,30 +325,29 @@ git -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
 git -C "$repo" config credential.helper '!gh auth git-credential'
 base_sha=$(git -C "$repo" rev-parse HEAD)
 
-# Apply runs on Render: after a merge, this run starts the deployed
-# Workflow's `apply` task on the merged commit (7) and keeps its task run with
-# the session. Nothing on GitHub is involved. An apply that failed, never
-# started, or has no record is started again here on what main is now: apply
-# is idempotent.
+# Apply what merged last time. The changeset on main is the previous run's
+# plan, auto-merged once its checks passed; Render deployed it long since.
+# This run starts the deployed Workflow's `apply` task on it, unless it
+# already applied, and waits for it just before planning (below), so the plan
+# is made on Linear as the last one left it. Nothing on GitHub is involved.
+# The applied changeset's hash and task run are kept with the session; one
+# whose apply failed is started again. Apply is idempotent.
 APPLY_STATE=$HOME/.claude/supervisor-apply
 apply_changeset() { "${APPLY_CHANGESET:-$DIR/apply-changeset.sh}" "$@"; }
-start_apply() { # $1: the commit to apply
-  local run
+apply_run=""
+if [ "$MODE" = tick ] && [ "$CALIBRATION_BASE" = main ] && [ -f "$repo/$WORKFLOW_PATH/changeset.json" ]; then
+  want=$(sha256sum < "$repo/$WORKFLOW_PATH/changeset.json" | cut -c1-16)
+  had="" run=""
+  [ ! -s "$APPLY_STATE" ] || read -r had run < "$APPLY_STATE"
   mkdir -p "${APPLY_STATE%/*}"
-  if run=$(apply_changeset start "$1"); then
-    echo "$run" > "$APPLY_STATE"
-    echo "SUPERVISOR_APPLY: started run=$run"
+  if [ "$had" = "$want" ] && apply_changeset status "$run" > /dev/null; then
+    echo "supervisor: main's changeset is already applied (run $run)"
+  elif apply_run=$(apply_changeset start "$base_sha"); then
+    echo "$want $apply_run" > "$APPLY_STATE"
+    echo "SUPERVISOR_APPLY: started run=$apply_run"
   else
-    echo failed > "$APPLY_STATE"
-    echo "supervisor: could not start the apply of $1; the next run starts it again" >&2
-    return 1
-  fi
-}
-if [ "$MODE" = tick ] && [ "$CALIBRATION_BASE" = main ]; then
-  last=$(cat "$APPLY_STATE" 2> /dev/null || echo none)
-  if [ "$last" = none ] || [ "$last" = failed ] || ! apply_changeset status "$last"; then
-    echo "supervisor: the last apply ($last) did not go through; applying $base_sha again"
-    start_apply "$base_sha" || true
+    echo "failed" > "$APPLY_STATE"
+    echo "supervisor: could not start the apply of $base_sha; the next run starts it again" >&2
   fi
 fi
 
@@ -402,6 +401,12 @@ done
   echo "supervisor: the local task server never came up on $RENDER_LOCAL_DEV_URL" >&2
   exit 1
 }
+
+if [ -n "$apply_run" ]; then
+  echo "supervisor: waiting for apply run $apply_run before planning"
+  apply_changeset wait "$apply_run" ||
+    echo "supervisor: apply run $apply_run did not go through; the next run starts it again" >&2
+fi
 
 echo "supervisor: running the plan task on the local task server"
 # Deliberately unquoted: each delivery is its own argument.
@@ -578,24 +583,11 @@ if [ "${CALIBRATION_MERGE:-$merge_default}" != 1 ]; then
   exit 0
 fi
 
-# Merge on green, and only the head whose checks passed. Checks register a
-# little after the push.
+# Merge on green: auto-merge, only for the head pushed here. Nothing waits
+# for the checks; the next run applies whatever merged.
 head=$(gh pr view "$pr" --repo "$CALIBRATION_REPO" --json headRefOid --jq .headRefOid) ||
   { echo "supervisor: could not read the changeset PR's head" >&2; exit 1; }
-sleep "${CALIBRATION_CHECKS_SETTLE:-30}"
-if ! timeout "${CALIBRATION_CHECKS_WAIT:-20m}" \
-  gh pr checks "$pr" --repo "$CALIBRATION_REPO" --watch --interval 15 > "$CAL_DIR/checks.log" 2>&1; then
-  cat "$CAL_DIR/checks.log" >&2
-  echo "supervisor: the changeset PR's checks are not green; not merging $pr" >&2
-  exit 1
-fi
-gh pr merge "$pr" --repo "$CALIBRATION_REPO" --squash --match-head-commit "$head" ||
-  { echo "supervisor: could not merge the changeset PR $pr" >&2; exit 1; }
-echo "SUPERVISOR_PLAN: merged pr=$pr"
-
-# 7. Merging is applying: start apply on Render, on the merged commit.
-[ "$CALIBRATION_BASE" = main ] || exit 0
-merged=$(gh pr view "$pr" --repo "$CALIBRATION_REPO" --json mergeCommit --jq .mergeCommit.oid) ||
-  { echo failed > "$APPLY_STATE"; echo "supervisor: could not read the merge commit of $pr; the next run applies main" >&2; exit 1; }
-start_apply "$merged" || exit 1
+gh pr merge "$pr" --repo "$CALIBRATION_REPO" --auto --squash --match-head-commit "$head" ||
+  { echo "supervisor: could not turn on auto-merge for the changeset PR $pr" >&2; exit 1; }
+echo "SUPERVISOR_PLAN: auto-merge pr=$pr"
 exit 0

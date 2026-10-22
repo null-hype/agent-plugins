@@ -17,10 +17,10 @@ adds headings to `AGENTS.md`.
 
 ## The supervisor
 
-The Render cron `supervisor` is the supervisor: every hour its Claude session
-writes a changeset, checks it on the workflow's dev server, and merges its PR
-on green, then starts the Render Workflow's `apply` on the merged commit; the
-next run starts a failed apply again
+The Render cron `supervisor` is the supervisor: every hour it applies what
+merged last time with the Render Workflow's `apply`, its Claude session writes
+the next changeset, and the run checks it on the workflow's dev server and
+opens its PR with auto-merge on
 (`.dagger/internal/devenv-base/supervisor/README.md`). Never disable,
 suspend, pause or delete the cron or the Render Workflow without the
 maintainer's explicit OK in that conversation, not even to stop a host or
