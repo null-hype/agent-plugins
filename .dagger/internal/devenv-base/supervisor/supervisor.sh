@@ -271,10 +271,14 @@ if [ "$MODE" = calibrate ]; then
   #   5. dry-run the `apply` task on the dev server against that very tree:
   #      the test. A changeset that would not apply as written fails here;
   #   6. if all of that is green, commit changeset.pkl and changeset.json on
-  #      CALIBRATION_BRANCH and open (or update) one PR into CALIBRATION_BASE.
+  #      CALIBRATION_BRANCH and open (or update) one PR into CALIBRATION_BASE;
+  #   7. on the hourly tick (CALIBRATION_MERGE=1), merge that PR once its
+  #      checks are green, which applies it (Richard, 2026-10-22: plan PRs
+  #      merge on green).
   #
   # Nothing here deploys or writes to Linear: the dev server only simulates
-  # Render, nothing calls Render's API, and apply only ever runs dry.
+  # Render, nothing calls Render's API, and apply only ever runs dry. A plan
+  # reaches Linear only through the merge, and the apply that follows it.
   CALIBRATION_REPO=${CALIBRATION_REPO:-null-hype/agent-plugins}
   CALIBRATION_REMOTE=${CALIBRATION_REMOTE:-https://github.com/$CALIBRATION_REPO.git}
   CALIBRATION_BASE=${CALIBRATION_BASE:-main}
@@ -404,6 +408,16 @@ if [ "$MODE" = calibrate ]; then
     { echo "supervisor: the changeset's dry run failed" >&2; exit 1; }
   printf '%s\n' "$dry" | jq . > "$CAL_DIR/dry-run.json"
 
+  # A plan the base already carries proposes nothing: no PR, nothing to
+  # merge. Otherwise every merge would leave the next tick a fresh base, and
+  # the same plan would be proposed and merged again each hour.
+  if git -C "$repo" show "HEAD:$WORKFLOW_PATH/changeset.json" 2> /dev/null | cmp -s - "$wf/changeset.json"; then
+    echo "supervisor: the plan matches $CALIBRATION_BASE; nothing to propose"
+    jq -r '"SUPERVISOR_CHANGESET: ops=\(.applied | length) clusters=\(.clusters | length)"' "$CAL_DIR/dry-run.json"
+    echo "SUPERVISOR_PLAN: unchanged"
+    exit 0
+  fi
+
   # Green: the changeset is the PR. An unchanged changeset on an unchanged
   # base is no change at all, and the PR is left alone.
   same_as_branch() { # $1: a path under the workflow
@@ -449,6 +463,26 @@ if [ "$MODE" = calibrate ]; then
   fi
   echo "supervisor: calibration PR $pr"
   jq -r '"SUPERVISOR_CHANGESET: ops=\(.applied | length) clusters=\(.clusters | length)"' "$CAL_DIR/dry-run.json"
+  if [ "${CALIBRATION_MERGE:-0}" != 1 ]; then
+    echo "SUPERVISOR_PLAN: proposed pr=$pr"
+    exit 0
+  fi
+
+  # Merge on green, and only the head whose checks passed. The merge is made
+  # with this token, not Actions', because only a person's token fires the
+  # apply workflow on main. Checks register a little after the push.
+  head=$(gh pr view "$pr" --repo "$CALIBRATION_REPO" --json headRefOid --jq .headRefOid) ||
+    { echo "supervisor: could not read the calibration PR's head" >&2; exit 1; }
+  sleep "${CALIBRATION_CHECKS_SETTLE:-30}"
+  if ! timeout "${CALIBRATION_CHECKS_WAIT:-20m}" \
+    gh pr checks "$pr" --repo "$CALIBRATION_REPO" --watch --interval 15 > "$CAL_DIR/checks.log" 2>&1; then
+    cat "$CAL_DIR/checks.log" >&2
+    echo "supervisor: the calibration PR's checks are not green; not merging $pr" >&2
+    exit 1
+  fi
+  gh pr merge "$pr" --repo "$CALIBRATION_REPO" --squash --match-head-commit "$head" ||
+    { echo "supervisor: could not merge the calibration PR $pr" >&2; exit 1; }
+  echo "SUPERVISOR_PLAN: merged pr=$pr"
   exit 0
 fi
 
