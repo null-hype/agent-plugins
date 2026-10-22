@@ -8,7 +8,8 @@
 #      `render workflows dev`, continues the session with `claude --continue`
 #      from /workspaces/agent-plugins, renders its changeset through the real
 #      pkl/Changeset.pkl, dry-runs apply on the dev server, opens the PR and
-#      merges it once its checks are green -- then backs the session up. No
+#      sets it to merge itself once its checks are green -- then backs the
+#      session up. It first applies what merged last time, on Render. No
 #      session id and no zone is read anywhere.
 #   3. The backup happens after a failing or timed-out claude too, so the next
 #      run remembers the failure; and a missing snapshot, or one without a
@@ -104,9 +105,11 @@ case "$1" in
     mkdir -p "$target/.claude/projects/$project" "$target/.claude/backups"
     echo '{}' > "$target/.claude/projects/$project/6f51ed1a-8bcc-4450-9cd8-37a26fce897e.jsonl"
     echo '{"account":"stub"}' > "$target/.claude/backups/.claude.json.backup.1"
-    # The last apply's task run, as the previous run kept it: one that went
-    # through, unless RESTIC_STUB_APPLY names another, or `none`.
-    [ "${RESTIC_STUB_APPLY:-trn-good}" = none ] || echo "${RESTIC_STUB_APPLY:-trn-good}" > "$target/.claude/supervisor-apply"
+    # The last apply, as the previous run kept it: main's changeset, applied
+    # by a run that went through, unless RESTIC_STUB_APPLY says otherwise,
+    # or is `none`.
+    state=${RESTIC_STUB_APPLY:-$SEED_HASH trn-good}
+    [ "$state" = none ] || echo "$state" > "$target/.claude/supervisor-apply"
     ;;
   backup) [ "${RESTIC_STUB_BACKUP:-ok}" = ok ] || exit 1 ;;
 esac
@@ -233,7 +236,6 @@ case "$1 $2" in
     esac
     ;;
   "pr view") echo "0123456789abcdef0123456789abcdef01234567" ;;
-  "pr checks") exit "${GH_CHECKS_EXIT:-0}" ;;
 esac
 STUB
 
@@ -268,8 +270,6 @@ mkdir -p "$TMPDIR"
 # Nothing a zone-per-service supervisor needed is set: the tick must not miss
 # it. The defaults are what the first run asserts, wherever the test runs.
 unset SUPERVISOR_ZONE SUPERVISOR_SESSION_ID SUPERVISOR_TZ SUPERVISOR_EFFORT SUPERVISOR_MODEL
-# Checks register at once in the stub; don't wait for them.
-export CALIBRATION_CHECKS_SETTLE=0
 export CALLS=$WORK/calls
 export APPLY_LOG=$WORK/apply.log
 export RESTIC_LOG=$WORK/restic.log
@@ -365,6 +365,10 @@ WF=.dagger/internal/devenv-base/workflow
 git init --quiet --initial-branch=main "$seed"
 mkdir -p "$seed/$WF/pkl"
 echo '{}' > "$seed/$WF/package.json"
+# The changeset the previous run's PR merged.
+echo '{"merged":"last hour"}' > "$seed/$WF/changeset.json"
+SEED_HASH=$(sha256sum < "$seed/$WF/changeset.json" | cut -c1-16)
+export SEED_HASH
 cp "$SCHEMA" "$seed/$WF/pkl/Changeset.pkl"
 git -C "$seed" add . && git -C "$seed" commit --quiet -m seed
 git -C "$seed" push --quiet "$REMOTE" main
@@ -387,49 +391,48 @@ fresh() {
 fresh
 RESTIC_STUB_APPLY=none CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
   fail "an hourly run should exit 0, got: $(cat "$WORK/out")"
-grep -qx 'SUPERVISOR_PLAN: merged pr=https://github.com/null-hype/agent-plugins/pull/999' "$WORK/out" ||
-  fail "an hourly run should merge its changeset PR, got: $(cat "$WORK/out")"
+grep -qx 'SUPERVISOR_PLAN: auto-merge pr=https://github.com/null-hype/agent-plugins/pull/999' "$WORK/out" ||
+  fail "an hourly run should set its changeset PR to merge itself, got: $(cat "$WORK/out")"
 
-[ "$(calls)" = "restic snapshots restic restore apply-start gh render node plan gh claude node apply gh gh gh gh gh gh apply-start restic backup" ] ||
-  fail "expected restore, apply main (no apply on record), plan, continue, dry run, PR, merge, apply on Render, then backup; got: $(calls)"
-# Merging is applying: the run starts apply on Render on the merged commit,
-# with the Render key from Pass, and keeps the task run with the session.
+[ "$(calls)" = "restic snapshots restic restore apply-start gh render node plan gh claude node apply gh gh gh gh restic backup" ] ||
+  fail "expected restore, apply what merged, plan, continue, dry run, PR, auto-merge, then backup; got: $(calls)"
+grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --auto --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
+  fail "an hourly run should auto-merge the head it pushed, got: $(cat "$GH_LOG")"
+grep -q 'pr checks' "$GH_LOG" && fail "an hourly run should not wait on its PR's checks"
+# Merging is applying: the next run applies what merged, on main, with the
+# Render key from Pass, keeps it with the session, and waits for it before
+# planning.
 grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
-  fail "a run with no apply on record should apply main first, got: $(cat "$APPLY_LOG")"
-grep -qx 'apply-changeset start 0123456789abcdef0123456789abcdef01234567 RENDER_API_KEY=resolved-RENDER_API_KEY' "$APPLY_LOG" ||
-  fail "the run should start apply on the merged commit, got: $(cat "$APPLY_LOG")"
-grep -qx 'SUPERVISOR_APPLY: started run=trn-0123456789abcdef0123456789abcdef01234567' "$WORK/out" ||
+  fail "a run should apply main's changeset first, got: $(cat "$APPLY_LOG")"
+grep -qx "apply-changeset wait trn-$BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
+  fail "a run should wait for its apply before planning, got: $(cat "$APPLY_LOG")"
+grep -qx "SUPERVISOR_APPLY: started run=trn-$BASE_SHA" "$WORK/out" ||
   fail "the run should report the apply it started, got: $(cat "$WORK/out")"
-[ "$(cat "$HOME/.claude/supervisor-apply")" = trn-0123456789abcdef0123456789abcdef01234567 ] ||
-  fail "the apply's task run should be kept with the session"
+[ "$(cat "$HOME/.claude/supervisor-apply")" = "$SEED_HASH trn-$BASE_SHA" ] ||
+  fail "the applied changeset and its task run should be kept with the session, got: $(cat "$HOME/.claude/supervisor-apply")"
 
-# The next run reads how that apply went: one that failed is started again
-# on main as it is now, before planning; one that went through is left be.
+# A changeset already applied is not applied again; one whose apply failed is.
 fresh
-RESTIC_STUB_APPLY=trn-bad APPLY_STUB_FAILED=trn-bad CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
-  fail "a run after a failed apply should exit 0, got: $(cat "$WORK/out")"
-grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
-  fail "a failed apply should be started again on main, got: $(cat "$APPLY_LOG")"
-grep -qx 'apply-changeset status trn-bad RENDER_API_KEY=resolved-RENDER_API_KEY' "$APPLY_LOG" ||
-  fail "the run should read how the last apply went, got: $(cat "$APPLY_LOG")"
-case "$(calls)" in "restic snapshots restic restore apply-start gh "*) ;; *)
-  fail "a failed apply should be started again before planning, got: $(calls)" ;; esac
-fresh
-APPLY_STUB_FAILED=trn-bad CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
+CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
   fail "a run after a good apply should exit 0, got: $(cat "$WORK/out")"
-[ "$(grep -c start "$APPLY_LOG")" = 1 ] ||
-  fail "an apply that went through should not be started again, got: $(cat "$APPLY_LOG")"
+grep -q start "$APPLY_LOG" && fail "an applied changeset should not be applied again, got: $(cat "$APPLY_LOG")"
+fresh
+RESTIC_STUB_APPLY="$SEED_HASH trn-bad" APPLY_STUB_FAILED=trn-bad CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
+  fail "a run after a failed apply should exit 0, got: $(cat "$WORK/out")"
+grep -qx 'apply-changeset status trn-bad RENDER_API_KEY=resolved-RENDER_API_KEY' "$APPLY_LOG" &&
+  grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
+  fail "a failed apply should be started again, got: $(cat "$APPLY_LOG")"
 # An apply that could not start is remembered, and the run fails loudly.
 fresh
-RESTIC_STUB_APPLY=none APPLY_STUB_START=fail CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 &&
-  fail "a run whose apply could not start should fail"
+RESTIC_STUB_APPLY=none APPLY_STUB_START=fail CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
+  fail "a run whose apply could not start should still plan, got: $(cat "$WORK/out")"
 [ "$(cat "$HOME/.claude/supervisor-apply")" = failed ] ||
   fail "an apply that could not start should be remembered for the next run"
 fresh
 CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
   fail "an hourly run should exit 0, got: $(cat "$WORK/out")"
-grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
-  fail "an hourly run should squash-merge the head its checks ran on, got: $(cat "$GH_LOG")"
+grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --auto --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
+  fail "an hourly run should auto-merge the head it pushed, got: $(cat "$GH_LOG")"
 
 # The restore: the newest snapshot under the one tag, without the daemon's
 # runtime state.
@@ -834,30 +837,16 @@ grep -qx 'gh pr edit https://github.com/null-hype/agent-plugins/pull/999 --repo 
   grep -qx '| delegate | new:review-findings | to tidelands-agent |' "$GH_PR_BODY" ||
   fail "the open PR's body should be rewritten from this run's dry run, got: $(cat "$GH_LOG")"
 
-# On the hourly tick the plan merges itself once its checks are green, and
-# only the head those checks ran on.
+# A calibration asked to merge sets auto-merge on the head it pushed, and
+# applies nothing: that is the next hourly run's.
 reset
-CALIBRATION_MERGE=1 CALIBRATION_CHECKS_SETTLE=0 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calmerge" 2>&1 ||
-  fail "a tick calibration with green checks should exit 0, got: $(cat "$WORK/calmerge")"
-grep -qx 'gh pr checks https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --watch --interval 15' "$GH_LOG" ||
-  fail "a tick calibration should wait on its PR's checks, got: $(cat "$GH_LOG")"
-grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
-  fail "a tick calibration should squash-merge the head its checks ran on, got: $(cat "$GH_LOG")"
-tail -2 "$WORK/calmerge" | head -1 | grep -qx 'SUPERVISOR_PLAN: merged pr=https://github.com/null-hype/agent-plugins/pull/999' ||
-  fail "a merged plan should say so, then start its apply, got: $(tail -2 "$WORK/calmerge")"
-tail -1 "$WORK/calmerge" | grep -q '^SUPERVISOR_APPLY: started run=' ||
-  fail "a merged plan should start its apply last, got: $(tail -1 "$WORK/calmerge")"
-
-# Red checks: no merge, and a failed calibration, so the tick reports it.
-reset
-if GH_CHECKS_EXIT=1 CALIBRATION_MERGE=1 CALIBRATION_CHECKS_SETTLE=0 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calred" 2>&1; then
-  fail "a tick calibration whose checks failed should fail"
-fi
-grep -q "checks are not green; not merging" "$WORK/calred" ||
-  fail "red checks should be reported, got: $(cat "$WORK/calred")"
-if grep -q 'pr merge' "$GH_LOG"; then
-  fail "a PR with red checks must not be merged"
-fi
+CALIBRATION_MERGE=1 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calmerge" 2>&1 ||
+  fail "a merging calibration should exit 0, got: $(cat "$WORK/calmerge")"
+grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --auto --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
+  fail "a merging calibration should auto-merge the head it pushed, got: $(cat "$GH_LOG")"
+tail -1 "$WORK/calmerge" | grep -qx 'SUPERVISOR_PLAN: auto-merge pr=https://github.com/null-hype/agent-plugins/pull/999' ||
+  fail "a merging calibration should say so last, got: $(tail -1 "$WORK/calmerge")"
+[ ! -s "$APPLY_LOG" ] || fail "a calibration should apply nothing, got: $(cat "$APPLY_LOG")"
 
 # A plan the base already carries proposes nothing, so a merged plan is not
 # proposed and merged again on every tick.
@@ -866,7 +855,7 @@ git -C "$seed" add . && git -C "$seed" commit --quiet -m "the plan, merged"
 git -C "$seed" push --quiet "$REMOTE" main
 before=$(branch_sha)
 reset
-CALIBRATION_MERGE=1 CALIBRATION_CHECKS_SETTLE=0 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calsame" 2>&1 ||
+CALIBRATION_MERGE=1 CLAUDE_STUB_MODE=plan calibrate > "$WORK/calsame" 2>&1 ||
   fail "a calibration whose plan matches the base should exit 0, got: $(cat "$WORK/calsame")"
 grep -q 'the plan matches main; nothing to propose' "$WORK/calsame" &&
   tail -1 "$WORK/calsame" | grep -qx 'SUPERVISOR_PLAN: unchanged' ||

@@ -5,14 +5,19 @@ continues the one supervisor Claude session, so it remembers why the last run
 failed. The session looks at everything, with the Duo editor first, and its
 whole output is a **changeset**: what Linear should look like next. The run
 checks that changeset on the workflow's dev server and opens it as a pull
-request, which merges itself once its checks are green. The run then starts
-the deployed workflow's apply on Render. Merging is applying.
+request with auto-merge on, so it merges itself once its checks are green.
+The next run applies it with the deployed workflow on Render, before it plans.
+Merging is applying.
 
 ```
 Render cron `supervisor` ──▶ supervisor.sh
   │ pass-cli: supervisor.env (tokens, restic, the GitHub token)
   │ 1. restic restore                       (newest snapshot, tag supervisor)
-  │ 2. git clone main; npm ci && npm run build in workflow/
+  │ 2. git clone main
+  │    apply-changeset.sh start <main>      (what merged last time, unless applied)
+  │      └─ Render API ──▶ supervisor-workflow/apply ──▶ Linear, host
+  │    npm ci && npm run build in workflow/
+  │    apply-changeset.sh wait <run>        (up to 10 minutes)
   │    render workflows dev -- npm start    (local task server, :8120)
   │    node dist/calibrate.js plan          (the open issues, back from the Releases)
   │ 3. cd /workspaces/agent-plugins
@@ -24,12 +29,9 @@ Render cron `supervisor` ──▶ supervisor.sh
   │    (pkl/Changeset.pkl refuses a bad one; the session gets one more go)
   │ 5. node dist/calibrate.js apply         (apply, dry, on the PR's own tree)
   │ 6. push supervisor/calibration, open or update the PR,
-  │    wait for its checks, merge on green
-  │ 7. apply-changeset.sh start <merged commit>
-  │      └─ Render API ──▶ supervisor-workflow/apply ──▶ Linear, host
-  │ 8. restic backup                        (whatever happened above)
+  │    gh pr merge --auto                   (nothing waits on the checks)
+  │ 7. restic backup                        (whatever happened above)
   ▼
-next run: apply-changeset.sh status <run>; a failed apply is started again
 ```
 
 It is what `color resume` does on a codespace start, on Render's schedule.
@@ -56,15 +58,16 @@ The deployed side: the Render Workflow service `supervisor-workflow`
 (wfl-dbche33rjlhs73bgkrr0, created through the API because `render.yaml`
 cannot declare Workflows) builds `workflow/` with `render-build.sh` and
 starts it with `render-start.sh`. Its only secret is the Proton Pass token;
-the Linear key comes from Pass through `workflow/workflow.env`. Once the
-run's changeset PR merges, the same run waits for Render's version of the
-merged commit and starts `supervisor-workflow/apply` on it for real
-(`supervisor/apply-changeset.sh start`). It does not wait for the apply,
-which may first spend 15 minutes waking the host. The task run's id is kept
-in `~/.claude/supervisor-apply`, so the next run checks it
-(`apply-changeset.sh status`) and starts a failed apply, or main when there
-is no record, again. Apply is idempotent.
-Applying makes no model calls, and nothing on GitHub is involved.
+the Linear key comes from Pass through `workflow/workflow.env`. Each hourly
+run first applies the changeset on main, which is what the previous run's PR
+merged: it starts `supervisor-workflow/apply` on Render for real
+(`supervisor/apply-changeset.sh start`) and waits for it, up to 10 minutes,
+just before the plan task, so planning sees Linear as the last plan left it.
+The changeset's hash and task run are kept in `~/.claude/supervisor-apply`:
+a changeset already applied is not applied again, and one whose apply failed
+is. Apply is idempotent. Applying makes no model calls, and nothing on GitHub
+is involved. A plan waits up to an hour to be applied, so an issue edited in
+that hour is skipped as changed, and the next plan takes it up again.
 
 Never disable, suspend or delete the cron or the Render Workflow without the
 maintainer's explicit OK.
@@ -80,7 +83,7 @@ both without a model.
 
 `SUPERVISOR_MODE=calibrate` runs the same pipeline as a one-off: a fresh
 session with no restic and no Remote Control, on a cheap model, whose PR is
-only proposed (`CALIBRATION_MERGE=1` merges it on green). It resolves
+only proposed (`CALIBRATION_MERGE=1` turns on auto-merge). It resolves
 `calibrate.env` instead of `supervisor.env`.
 
 Linear has two release pipelines. `supervisor` holds the Releases planning
@@ -123,7 +126,7 @@ because a continuous pipeline's Releases are born completed.
 | `CALIBRATION_BRANCH` | `supervisor/calibration`, or `supervisor/calibration-<base>` off main | calibration's own branch |
 | `SUPERVISOR_MODEL`, `SUPERVISOR_EFFORT` | `sonnet`, `medium` | the hourly run |
 | `CALIBRATION_MODEL`, `CALIBRATION_EFFORT` | `haiku`, `low` | a one-off calibration |
-| `CALIBRATION_MERGE` | `1` hourly, `0` for a calibration | merge the PR once its checks are green |
+| `CALIBRATION_MERGE` | `1` hourly, `0` for a calibration | turn on the PR's auto-merge, so it merges once its checks are green |
 | `CALIBRATION_TEAM`, `CALIBRATION_DELIVERIES` | `CIT`, `CIT-439` | the plan task's inputs |
 | `CALIBRATION_TASK_PREFIX` | empty | if the local server wants `<workflow>/<task>` slugs |
 | `CALIBRATION_CLAUDE_TIMEOUT` | `20m` | |
@@ -189,7 +192,7 @@ session as the last run left it.
 A run ends with one of:
 
 ```
-SUPERVISOR_PLAN: merged pr=<url>      (the hourly run: merged on green, so it applies)
+SUPERVISOR_PLAN: auto-merge pr=<url>  (the hourly run: merges on green; the next run applies it)
 SUPERVISOR_PLAN: proposed pr=<url>    (a calibration: left for a person)
 SUPERVISOR_PLAN: unchanged            (main already carries this changeset)
 ```
@@ -210,7 +213,7 @@ identical to a run where there was nothing to do, so silence is never success.
 | `supervisor.env` | `TOOLBOX_TOKEN` | `pass://infra/render.com/TOOLBOX_TOKEN`, a copy of the toolbox Render service's `TOOLBOX_TOKEN`. The maintainer creates this item; the supervisor refuses to run until it exists |
 | `supervisor.env` | `GCP_SERVICE_ACCOUNT_KEY`, `GOOGLE_PROJECT_ID`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` | the restic repo `color resume` restores from, `pass://infra/restic/…` |
 | `supervisor.env` | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`: pushes the changeset branch, opens the PR and merges it |
-| `supervisor.env` | `RENDER_API_KEY` | `pass://infra/render.com/RENDER_API_KEY`: starts the merged changeset's apply on the Render Workflow, and reads how the last one went |
+| `supervisor.env` | `RENDER_API_KEY` | `pass://infra/render.com/RENDER_API_KEY`: applies the changeset that merged, on the Render Workflow, and reads how it went |
 
 `SUPERVISOR_TIMEOUT` (default 50m) bounds the whole run. It stays **below the
 hour**: Render's single-run guarantee is per service, so a tick still running
