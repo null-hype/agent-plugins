@@ -1,26 +1,12 @@
 {
-  "seen": {
-    "CIT-462": "2026-10-22T12:16:40.459Z",
-    "CIT-465": "2026-10-22T08:16:05.090Z"
-  },
+  "seen": {},
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [
-    {
-      "issue": "CIT-465",
-      "agent": "Claude",
-      "ask": "The ship of amazed-bluebird failed because the environment conflicts with main in tutorial-app/src/stories/duo/cards.ts (add/add). Bring the amazed-bluebird environment up to date with main, keep the Pkl-generated cards, resolve the conflict, and say on this issue that it is done."
-    }
-  ],
+  "delegate": [],
   "ship": [],
-  "review": [
-    {
-      "issue": "CIT-462",
-      "pr": 304
-    }
-  ]
+  "review": []
 }
