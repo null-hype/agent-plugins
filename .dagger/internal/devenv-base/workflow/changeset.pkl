@@ -1,12 +1,8 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@2c639f504917418f7968e41d1225399dd5085658. Merging it is applying it; render with
+// main@b9d10894352dde3ed9863c2250acf795bda80acb. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
-  ["CIT-484"] = "2026-10-22T06:01:40.750Z"
-  ["CIT-495"] = "2026-10-22T06:01:40.675Z"
 }
 
-done { new { issue = "CIT-484"; evidence = "PR #304 (standalone export), PR #315 (Pkl cards) and PR #321 (stale-preview fix) are merged, and CIT-462, CIT-465 and CIT-463 are Done" } }
-delegate { new { issue = "CIT-495"; agent = "Claude"; ask = "The left page and its fixes are merged: PR 240, 304, 315 and 321. The one thing CIT-495 still needs is a screenshot of the Duo left-page story. In a container-use environment, build Storybook and use Playwright to capture the DuoLeftPage story with the claim, the card markers and an option preview showing. Attach the image to this issue if you can, or save it as a file in the environment, and reply here naming the environment so it can be shipped." } }
