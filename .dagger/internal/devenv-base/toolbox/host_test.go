@@ -215,7 +215,8 @@ if [ -z "${PROTON_PASS_AGENT_REASON:-}" ]; then
 	exit 1
 fi
 case $1 in
-info) [ -z "${FAKE_PASS_DOWN:-}" ] ;;
+info) [ -z "${FAKE_PASS_DOWN:-}" ] || [ -e "$HOME/pass.session" ] ;;
+login) [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ] || touch "$HOME/pass.session" ;;
 run)
 	shift
 	while [ "$1" != -- ]; do [ "$1" = --env-file ] && f=$2; shift; done
@@ -379,6 +380,18 @@ esac
 	time.Sleep(300 * time.Millisecond)
 	if _, err := os.Stat(filepath.Join(home, ".toolbox", "jobs", "ship.exit")); err == nil {
 		t.Error("a ship job started without a pass session")
+	}
+
+	// A recreated host has no session: with the token the toolbox sends, the
+	// ship logs in and goes ahead (the 08:07 apply failed here).
+	cmd = exec.Command("bash", "-s", "--", "ship", "linear-agent", "quiet-fox", "cit-3-fix")
+	cmd.Env = append(append([]string{}, env...), "FAKE_PASS_DOWN=1", "PROTON_PASS_PERSONAL_ACCESS_TOKEN=pat")
+	cmd.Stdin = strings.NewReader(hostScript)
+	if out, _ := cmd.CombinedOutput(); strings.Contains(string(out), "no Proton Pass session") {
+		t.Fatalf("ship on a host with no session but the token did not log in:\n%s", out)
+	}
+	if b, _ := os.ReadFile(filepath.Join(home, "pass.calls")); !strings.Contains(string(b), "login [provider=fs]") {
+		t.Fatalf("ship did not log pass-cli in:\n%s", b)
 	}
 	if _, err := os.Stat(filepath.Join(home, "codex.args")); err == nil {
 		t.Error("Codex ran without a pass session")

@@ -445,7 +445,7 @@ func (t *toolbox) addTools(s *mcp.Server) {
 		if in.Branch == "main" {
 			return nil, nil, fmt.Errorf("branch must be the issue's own branch, not main")
 		}
-		b, err := t.host.Run(ctx, nil, "ship", agentWorkspace, in.Env, in.Branch)
+		b, err := t.host.Run(ctx, map[string]string{"PROTON_PASS_PERSONAL_ACCESS_TOKEN": t.passToken}, "ship", agentWorkspace, in.Env, in.Branch)
 		if err != nil {
 			return nil, nil, err
 		}

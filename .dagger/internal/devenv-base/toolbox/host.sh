@@ -411,6 +411,12 @@ ship)
   # The reason covers this check and the job's check on GitHub after the push.
   export PROTON_PASS_KEY_PROVIDER=fs
   export PROTON_PASS_AGENT_REASON=$SHIP_PASS_REASON
+  # A host that was recreated has no session: log in with the token the
+  # toolbox sends, as review does.
+  if ! pass-cli info >/dev/null 2>&1 && [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+    pass-cli logout --force >/dev/null 2>&1 || true
+    pass-cli login >/dev/null 2>&1 || true
+  fi
   pass-cli info >/dev/null 2>&1 || { echo "no Proton Pass session on this host, so the push token cannot be resolved: log pass-cli in once on the host (PROTON_PASS_KEY_PROVIDER=fs pass-cli login)" >&2; exit 2; }
   install -d -m 700 "$HOME/.toolbox/ship"
   # The plaintext copy an earlier version of this action read.
