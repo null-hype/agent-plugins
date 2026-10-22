@@ -236,7 +236,8 @@ case "$1 $2" in
   "api repos/null-hype/agent-plugins/commits?"*) git -C "$CALIBRATION_REMOTE" rev-parse main ;;
   "api repos/null-hype/agent-plugins/branches") printf '%s\n' main supervisor/calibration ${GH_STUB_BRANCHES:-} ;;
   # How many of a head's checks are not green: 2 for the head "red".
-  "api repos/null-hype/agent-plugins/commits/"*/check-runs*) case "$2" in */red/*) echo 2 ;; *) echo 0 ;; esac ;;
+  # "none" for the head "nochecks", which has no passing check run.
+  "api repos/null-hype/agent-plugins/commits/"*/check-runs*) case "$2" in */red/*) echo 2 ;; */nochecks/*) echo none ;; *) echo 0 ;; esac ;;
   "api repos/null-hype/agent-plugins/compare/"*) echo "${GH_STUB_AHEAD:-1} $(date -u +%FT%TZ) Duo left page: the claim in read-only Monaco" ;;
   "pr list")
     case "$*" in
@@ -244,7 +245,7 @@ case "$1 $2" in
       # The supervisor's open shipped PRs, GH_STUB_SHIPPED_PRS: "number head"
       # lines, as the --jq filter prints them.
       *"--state open --limit 100"*) [ -z "${GH_STUB_SHIPPED_PRS:-}" ] || printf '%s\n' "$GH_STUB_SHIPPED_PRS" ;;
-      *"--limit 200"*) echo '[{"number":298,"title":"toolbox: plumbing","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T08:14:00Z","headRefName":"claude/plumbing"},{"number":240,"title":"Duo left page","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T06:26:00Z","headRefName":"cit-446-duo"},{"number":999,"title":"Supervisor changeset","state":"OPEN","isDraft":false,"mergedAt":null,"headRefName":"supervisor/calibration"}]' ;;
+      *"--limit 200"*) echo '[{"number":298,"title":"toolbox: plumbing","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T08:14:00Z","headRefName":"claude/plumbing"},{"number":240,"title":"Duo left page","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T06:26:00Z","headRefName":"cit-446-duo","isCrossRepository":false},{"number":666,"title":"cit-446 fix, opened by the supervisor","state":"OPEN","isDraft":false,"mergedAt":null,"headRefName":"cit-446-fork","isCrossRepository":true},{"number":999,"title":"Supervisor changeset","state":"OPEN","isDraft":false,"mergedAt":null,"headRefName":"supervisor/calibration"}]' ;;
       *) [ ! -s "$GH_OPEN_PR" ] || cat "$GH_OPEN_PR" ;;
     esac
     ;;
@@ -538,6 +539,9 @@ fi
 if grep -q '"headRefName":"claude/plumbing"' "$CLAUDE_ARGV"; then
   fail "the prompt should leave merged PRs of non-issue branches out: they crowd out the issue PRs"
 fi
+if grep -q '"headRefName":"cit-446-fork"' "$CLAUDE_ARGV"; then
+  fail "the prompt should leave fork PRs out: planning would make them review candidates"
+fi
 grep -qE 'Now, UTC: \*\*[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$CLAUDE_ARGV" ||
   fail "the prompt should carry the current UTC time"
 if grep -q '{{' "$CLAUDE_ARGV"; then
@@ -729,20 +733,24 @@ grep -q 'opened https://github.com/null-hype/agent-plugins/pull/240 for the ship
 if grep -q -- '--head cit-465-pkl-cards --title' "$GH_LOG"; then
   fail "a shipped branch that has a PR should not get a second"
 fi
+# Only this repository's own PRs, opened by its owner, are candidates: a
+# fork's branch name and body are its author's to choose.
+grep -q -- '--state open --limit 100 --json number,headRefName,headRefOid,body,isCrossRepository,author --jq .*isCrossRepository | not) and .author.login == "null-hype"' "$GH_LOG" ||
+  fail "the shipped-PR merge should select only same-repository PRs by the owner, got: $(grep 'state open --limit 100' "$GH_LOG")"
 # A shipped PR merges on green only once Codex has reviewed it: not before
 # its review, nor while the review is still filing, nor with red checks.
 fresh
-GH_STUB_SHIPPED_PRS=$'240 green\n241 red\n242 green\n243 green' CURL_STUB_REVIEWED="240 241" CURL_STUB_REVIEWING=243 \
+GH_STUB_SHIPPED_PRS=$'240 green\n241 red\n242 green\n243 green\n244 nochecks' CURL_STUB_REVIEWED="240 241 244" CURL_STUB_REVIEWING=243 \
   CLAUDE_STUB_MODE=plan tick > "$WORK/merged" 2>&1 ||
   fail "a run with shipped PRs should pass, got: $(cat "$WORK/merged")"
 grep -qx 'gh pr merge 240 --repo null-hype/agent-plugins --squash --match-head-commit green' "$GH_LOG" &&
   grep -q 'merged the reviewed PR #240' "$WORK/merged" ||
   fail "a reviewed, green shipped PR should merge, got: $(cat "$GH_LOG")"
-if grep -qE 'gh pr merge 24[123]' "$GH_LOG"; then
+if grep -qE 'gh pr merge 24[1234]' "$GH_LOG"; then
   fail "a shipped PR with red checks, no review or a review under way should not merge, got: $(grep "pr merge" "$GH_LOG"; cat "$WORK/merged")"
 fi
 grep -q '#241 waits on 2 check' "$WORK/merged" && grep -q '#242 waits for its Codex review' "$WORK/merged" &&
-  grep -q '#243 is still in its Codex review' "$WORK/merged" ||
+  grep -q '#243 is still in its Codex review' "$WORK/merged" && grep -q '#244 has no passing check yet' "$WORK/merged" ||
   fail "the run should say why each shipped PR waits, got: $(cat "$WORK/merged")"
 fresh
 GH_STUB_BRANCHES=cit-446-duo-left-page GH_STUB_AHEAD=0 CLAUDE_STUB_MODE=plan tick > /dev/null 2>&1 ||

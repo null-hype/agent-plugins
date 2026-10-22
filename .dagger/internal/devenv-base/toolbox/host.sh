@@ -380,7 +380,14 @@ review)
   # A head that was already reviewed successfully is not reviewed again: a
   # second review would file every finding twice. A new commit on the PR is a
   # new head and is reviewed.
-  head=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls/$pr" | jq -er .head.sha)
+  pull=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls/$pr")
+  # A fork's PR is a stranger's code, and its AGENTS.md would be Codex's
+  # instructions, with network and the host's Pass session. Never review one.
+  if [ "$(jq -r '.head.repo.full_name // empty' <<< "$pull")" != null-hype/agent-plugins ]; then
+    echo "PR #$pr is not from a branch of null-hype/agent-plugins; codex_review only reviews the repository's own branches" >&2
+    exit 1
+  fi
+  head=$(jq -er .head.sha <<< "$pull")
   if [ "$(cat "$JOBS/$id.exit" 2>/dev/null)" = 0 ] && [ "$(cat "$JOBS/$id.sha" 2>/dev/null)" = "$head" ]; then
     jq -n --argjson pr "$pr" --arg head "$head" \
       '{pr: $pr, job_running: false, duplicate: true, head: $head, detail: "this head was already reviewed; codex_review_status has the findings"}'
