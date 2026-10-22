@@ -1,0 +1,175 @@
+/* Ransom+ (design evolution, Stitch gen 2): blocks the reviewer picked from
+   the Blueprint and Telemetry prototypes, redrawn in Ransom Note ink and paper.
+   Layers on prose.css; every rule is scoped to .markdown-content. Prompts and
+   lineage: docs/storyboards/design-evolution/. */
+
+.markdown-content {
+  --rp-rule: 1px solid var(--rn-ink);
+  --rp-fail: #bb152c;
+  --rp-dump-bg: #141313;
+  --rp-dump-ink: #e5e2da;
+  --rp-dump-dim: #8a877f;
+}
+
+/* Note: a dashed hairline box with a mono reference tag on its top edge. */
+.markdown-content .rp-note {
+  position: relative;
+  margin-block: 32px;
+  padding: 22px 20px 16px;
+  border: 1.5px dashed var(--rn-ink);
+  background: var(--rn-cream);
+  color: #1c1c17;
+}
+
+.markdown-content .rp-note-tag {
+  position: absolute;
+  top: -11px;
+  left: 14px;
+  padding: 3px 8px;
+  border: 1.5px solid var(--rn-ink);
+  background: var(--rn-cream);
+  font: 700 11px/1 var(--label-font);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.markdown-content .rp-note p {
+  margin: 0;
+}
+
+/* Inline UI words as small key caps. */
+.markdown-content kbd {
+  padding: 1px 6px;
+  border: 1.5px solid var(--rn-ink);
+  background: #fff;
+  color: var(--rn-ink);
+  box-shadow: 2px 2px 0 var(--rn-ink);
+  font: 700 0.8em/1.4 var(--label-font);
+}
+
+/* Evaluation dump: a code block with a header strip and a verdict line. */
+.markdown-content .rp-dump {
+  margin-block: 28px;
+  border: 2px solid var(--rn-ink);
+  background: var(--rp-dump-bg);
+  color: var(--rp-dump-ink);
+  box-shadow: 5px 5px 0 var(--rn-ink);
+  font: 400 14px/1.7 var(--label-font);
+}
+
+.markdown-content .rp-dump-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid #3a3836;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.markdown-content .rp-dump-state {
+  color: var(--rn-flag);
+  font-weight: 700;
+}
+
+.markdown-content .rp-dump-body {
+  padding: 12px 14px;
+  white-space: pre;
+}
+
+.markdown-content .rp-dump-dim {
+  color: var(--rp-dump-dim);
+}
+
+.markdown-content .rp-dump-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-left: 4px solid var(--rn-flag);
+  background: #2a1b1b;
+  color: var(--rn-flag);
+  font-weight: 700;
+}
+
+.markdown-content .rp-chip {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--rn-flag);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+/* Data grid: 1px rules, the question column in mono and link-coloured. */
+.markdown-content table.rp-grid {
+  border: 2px solid var(--rn-ink);
+  background: #fff;
+  box-shadow: 5px 5px 0 var(--rn-ink);
+}
+
+.markdown-content table.rp-grid th {
+  background: var(--rn-ink);
+  color: var(--rn-cream);
+  font: 700 11px/1 var(--label-font);
+  letter-spacing: 0.12em;
+  padding-block: 12px;
+}
+
+.markdown-content table.rp-grid td {
+  border-top: var(--rp-rule);
+  color: #1c1c17;
+}
+
+.markdown-content table.rp-grid td:first-child {
+  border-right: var(--rp-rule);
+  font: 400 13px/1.5 var(--label-font);
+  color: var(--rp-fail);
+}
+
+/* Title block: a drawing-sheet stamp of the lesson's real metadata. */
+.markdown-content .rp-title-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(100%, 380px);
+  margin: 48px 0 0 auto;
+  border: 2px solid var(--rn-ink);
+  background: #fff;
+  color: var(--rn-ink);
+  font: 400 10px/1.3 var(--label-font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.markdown-content .rp-title-block > div {
+  padding: 7px 10px;
+  border-top: var(--rp-rule);
+}
+
+.markdown-content .rp-title-block > div:nth-child(odd) {
+  border-left: var(--rp-rule);
+}
+
+.markdown-content .rp-title-block .rp-tb-head {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 0;
+  background: var(--rn-ink);
+  color: var(--rn-cream);
+  font-weight: 700;
+}
+
+.markdown-content .rp-title-block small {
+  display: block;
+  color: #65655e;
+  font-size: 9px;
+}
+
+.markdown-content .rp-stamp {
+  padding: 2px 6px;
+  border: 1.5px solid var(--rn-ink);
+  background: var(--rn-holo);
+  color: var(--rn-ink);
+  transform: rotate(-3deg);
+}
