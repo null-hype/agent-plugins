@@ -2,23 +2,30 @@ import Foundation
 import XCTest
 @testable import DuoCore
 
+// The card content is provisional (see Cards.pkl), so these tests compare the decoded cards with
+// the raw file rather than restating what is in it.
 final class CardTests: XCTestCase {
     private let cardsURL = repoFile("tutorial-app/src/stories/duo/cards.json")
 
-    func testLoadsTheCommittedCards() throws {
-        let cards = try Card.loadAll(contentsOf: cardsURL)
-        XCTAssertEqual(cards.map(\.id), ["mat-blocked", "mat-unblocked", "png-blocked", "png-unblocked"])
-        XCTAssertTrue(cards.allSatisfy { $0.line == 2 })
-        XCTAssertTrue(cards.allSatisfy { $0.options.map(\.id) == ["unless-blocked", "png-only"] })
-        XCTAssertEqual(cards[0].options[0].from, "always resized")
-        XCTAssertEqual(cards[0].options[0].to, "resized unless the loader is blocked")
+    private func rawCards() throws -> [[String: Any]] {
+        let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: cardsURL))
+        return try XCTUnwrap(raw as? [[String: Any]])
     }
 
-    func testOnlyTheCardWithACounterexampleIsRefuted() throws {
+    func testDecodedCardsKeepEveryFieldOfTheCommittedFile() throws {
+        let raw = try rawCards()
+        XCTAssertFalse(raw.isEmpty)
         let cards = try Card.loadAll(contentsOf: cardsURL)
-        XCTAssertEqual(cards.filter(\.isRefuted).map(\.id), ["mat-blocked"])
-        XCTAssertEqual(cards[0].counterexample, "matload: operation is blocked")
-        XCTAssertNil(cards[1].counterexample)
+        let reencoded = try JSONSerialization.jsonObject(with: JSONEncoder().encode(cards))
+        XCTAssertTrue((reencoded as? NSArray)?.isEqual(raw as NSArray) ?? false)
+    }
+
+    func testACardIsRefutedExactlyWhenTheFileGivesItACounterexample() throws {
+        let raw = try rawCards()
+        let cards = try Card.loadAll(contentsOf: cardsURL)
+        XCTAssertEqual(cards.filter(\.isRefuted).map(\.id), raw.filter { $0["counterexample"] != nil }.map { $0["id"] as? String })
+        XCTAssertTrue(cards.contains(where: \.isRefuted))
+        XCTAssertTrue(cards.contains(where: { !$0.isRefuted }))
     }
 
     func testMissingRequiredFieldFails() {
