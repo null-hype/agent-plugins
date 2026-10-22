@@ -480,6 +480,37 @@ func (m *DevenvBase) PublishSupervisor(
 	})
 }
 
+// DeploySupervisor deploys an image (by digest) to the Render cron
+// `supervisor`. Setting a cron's image alone does not deploy it: the old image
+// keeps running until a deploy is made (2026-10-22). The Render API key comes
+// from Proton Pass.
+func (m *DevenvBase) DeploySupervisor(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+	// ghcr.io/null-hype/devenv-supervisor@sha256:<digest>
+	image string,
+	// +default="crn-dbc1s9ss728c73dn3tl0"
+	service string,
+) (string, error) {
+	script := `set -euo pipefail
+case "$IMAGE" in ghcr.io/null-hype/devenv-supervisor@sha256:*) ;; *) echo "not a supervisor image digest: $IMAGE" >&2; exit 1 ;; esac
+curl -fsS -X POST "https://api.render.com/v1/services/$SERVICE/deploys" \
+  -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" \
+  -d "{\"imageUrl\":\"$IMAGE\"}" | jq -r '"deploy \(.id) \(.status) \(.image.ref)"'
+`
+	return withPassCli(m.Base("")).
+		WithNewFile("/app/deploy.env", "RENDER_API_KEY=pass://infra/render.com/RENDER_API_KEY\n").
+		WithNewFile("/app/deploy.sh", script, dagger.ContainerWithNewFileOpts{Permissions: 0o755}).
+		WithWorkdir("/app").
+		WithEnvVariable("IMAGE", image).
+		WithEnvVariable("SERVICE", service).
+		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
+		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to deploy the new supervisor image").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", "-c", passLogin + " && pass-cli run --env-file deploy.env -- ./deploy.sh"}).
+		Stdout(ctx)
+}
+
 // CheckSupervisor runs the supervisor's stub tests against the packaged
 // image. They assert that render.yaml describes the one hourly service; that
 // a run restores the newest snapshot tagged supervisor, continues the session
