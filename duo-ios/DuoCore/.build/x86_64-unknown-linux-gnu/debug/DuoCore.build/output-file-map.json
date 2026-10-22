@@ -1,0 +1,23 @@
+{
+  "": {
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/master.swiftdeps"
+  },
+  "/workdir/duo-ios/DuoCore/Sources/DuoCore/Card.swift": {
+    "dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/Card.d",
+    "object": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/Card.swift.o",
+    "swiftmodule": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/Card~partial.swiftmodule",
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/Card.swiftdeps"
+  },
+  "/workdir/duo-ios/DuoCore/Sources/DuoCore/EvidenceLog.swift": {
+    "dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/EvidenceLog.d",
+    "object": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/EvidenceLog.swift.o",
+    "swiftmodule": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/EvidenceLog~partial.swiftmodule",
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/EvidenceLog.swiftdeps"
+  },
+  "/workdir/duo-ios/DuoCore/Sources/DuoCore/JSONValue.swift": {
+    "dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/JSONValue.d",
+    "object": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/JSONValue.swift.o",
+    "swiftmodule": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/JSONValue~partial.swiftmodule",
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/JSONValue.swiftdeps"
+  }
+}

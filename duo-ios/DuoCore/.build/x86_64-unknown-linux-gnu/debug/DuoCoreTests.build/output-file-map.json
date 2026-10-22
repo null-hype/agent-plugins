@@ -1,0 +1,23 @@
+{
+  "": {
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/master.swiftdeps"
+  },
+  "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/CardTests.swift": {
+    "dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests.d",
+    "object": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests.swift.o",
+    "swiftmodule": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests~partial.swiftmodule",
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests.swiftdeps"
+  },
+  "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/EvidenceLogTests.swift": {
+    "dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests.d",
+    "object": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests.swift.o",
+    "swiftmodule": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests~partial.swiftmodule",
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests.swiftdeps"
+  },
+  "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/RepoFile.swift": {
+    "dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile.d",
+    "object": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile.swift.o",
+    "swiftmodule": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile~partial.swiftmodule",
+    "swift-dependencies": "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile.swiftdeps"
+  }
+}
