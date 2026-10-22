@@ -26,7 +26,7 @@ export interface ReadyCluster {
 // out the feature work it exists to deliver. One host, one agent.
 export const INFRA_PER_TICK = 1;
 
-// What the feature work serves (planning.md names the same): the Duo
+// What the feature work serves (supervisor/prompt.md names the same): the Duo
 // editor's Release and its delivery issue. Building a feature needs the
 // infra hat, which delegates it to the agent and ships it, so an infra
 // cluster that serves one of these is feature work, not plumbing.

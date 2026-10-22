@@ -41,9 +41,11 @@ class Cluster {
   key: NewKey|Identifier
   title: String(!isBlank)
   description: String = ""
-  hat: Hat
-  model: Model
-  effort: Effort
+  /// How execute works the cluster, while it still runs one. The supervisor
+  /// need not say: building something is `infra` on sonnet.
+  hat: Hat = "infra"
+  model: Model = "sonnet"
+  effort: Effort = "medium"
   /// What the cluster delivers into: `release:<name>`, a Release in
   /// `releases` that the cluster parent is added to; or a delivery issue
   /// like CIT-439, which becomes its parent.

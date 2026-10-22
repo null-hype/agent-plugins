@@ -3,39 +3,35 @@
 # no credentials, no model: this checks what a tick is supposed to guarantee.
 #
 #   1. There is one hourly service, `supervisor`, on `13 * * * *`.
-#   2. The session is restored from the newest snapshot tagged `supervisor`,
-#      continued with `claude --continue` from /workspaces/agent-plugins, then
-#      backed up -- in that order. No session id and no zone is read anywhere.
+#   2. An hourly run restores the session from the newest snapshot tagged
+#      `supervisor`, builds the workflow from a clone, runs the plan task on
+#      `render workflows dev`, continues the session with `claude --continue`
+#      from /workspaces/agent-plugins, renders its changeset through the real
+#      pkl/Changeset.pkl, dry-runs apply on the dev server, opens the PR and
+#      merges it once its checks are green -- then backs the session up. No
+#      session id and no zone is read anywhere.
 #   3. The backup happens after a failing or timed-out claude too, so the next
-#      tick remembers the failure; and a missing snapshot, or one without a
+#      run remembers the failure; and a missing snapshot, or one without a
 #      session in the working directory, fails the run before claude starts.
-#   4. A run that reaches a decision passes, with the heartbeat as the last
-#      word -- including the tick where no dispatch issue is open. One that
-#      produces prose but no decision fails, as does one missing a hat's pass
-#      line or one where claude itself exits nonzero -- silence must not look
-#      like success.
-#   5. The prompt has the session wear planning, infra and open source in
-#      that order, hand off through Linear issues in Triage, and carries no
-#      midnight, timezone or zone framing.
-#   6. The run cannot move infrastructure: the read tools and Linear are
-#      allowed, every toolbox tool that can move infrastructure is disallowed
-#      by name, and the bearer tokens reach claude through a 0600 file rather
-#      than through argv.
+#   4. A run without a changeset fails, as does one where claude itself
+#      exits nonzero -- silence must not look like success.
+#   5. The prompt puts the Duo editor first, ends with the changeset, and
+#      carries no midnight, timezone or zone framing.
+#   6. The run cannot change anything itself: the toolbox's read tools and
+#      Linear's read tools are allowed, every tool that writes, starts, stops
+#      or ships is disallowed by name, and the bearer tokens reach claude
+#      through a 0600 file rather than through argv.
 #   7. Every secret, the toolbox token included, is resolved by `pass-cli run`
 #      from pass:// references; the Render service holds only the pass token.
 #      With no pass session, or no pass token, nothing runs. No secret is on
 #      an argv or left in a file once the run ends.
-#   8. A calibration (SUPERVISOR_MODE=calibrate, CIT-472) is the planning
-#      hat: it builds the workflow from a clone, runs the plan task on
-#      `render workflows dev`, then runs planning fresh and read-only (it can
-#      read Linear but every Linear write is denied, and it never touches
-#      restic). Its changeset renders through the real pkl/Changeset.pkl with
-#      `seen` filled in by the run, and apply is dry-run on the dev server
-#      against that tree. A green calibration pushes changeset.pkl and
-#      changeset.json to its own branch and opens one PR, and calls nothing
-#      that deploys; an unchanged changeset pushes nothing. A changeset that
-#      does not render, a missing changeset, a failed dry run, a missing
-#      plan or dev server: each opens no PR.
+#   8. A one-off calibration (SUPERVISOR_MODE=calibrate) is the same pipeline
+#      with a fresh, cheap session and no restic, and only proposes its PR.
+#      A green one pushes changeset.pkl and changeset.json to its own branch
+#      and opens one PR, and calls nothing that deploys; an unchanged
+#      changeset pushes nothing. A changeset that does not render, a missing
+#      changeset, a failed dry run, a missing plan or dev server: each opens
+#      no PR.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -109,7 +105,7 @@ case "$1" in
     echo '{}' > "$target/.claude/projects/$project/6f51ed1a-8bcc-4450-9cd8-37a26fce897e.jsonl"
     echo '{"account":"stub"}' > "$target/.claude/backups/.claude.json.backup.1"
     ;;
-  backup) ;;
+  backup) [ "${RESTIC_STUB_BACKUP:-ok}" = ok ] || exit 1 ;;
 esac
 STUB
 
@@ -130,26 +126,7 @@ if [ -n "$cfg" ]; then
   stat -c %a "$cfg" > "$CLAUDE_MCP_MODE"
 fi
 case "${CLAUDE_STUB_MODE:-ok}" in
-  ok)
-    echo "SUPERVISOR_PASS: hat=planning handoffs=CIT-500 why=accepted one finding"
-    echo "SUPERVISOR_PASS: hat=infra handoffs=none why=nothing accepted to ship"
-    echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
-    echo "The host is stopped and nothing is due."
-    echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=nothing due"
-    ;;
-  nodispatch)
-    echo "No open issue is titled Dispatch: anything."
-    for hat in planning infra open-source; do
-      echo "SUPERVISOR_PASS: hat=$hat handoffs=none why=no dispatch issue"
-    done
-    echo "SUPERVISOR_HEARTBEAT: host=unknown work=unknown decision=nothing why=no dispatch issue"
-    ;;
   prose) echo "I had a look around and it all seems fine." ;;
-  skipped)
-    echo "SUPERVISOR_PASS: hat=planning handoffs=none why=triage empty"
-    echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
-    echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=nothing due"
-    ;;
   plan | badpkl | badpkl-once)
     hat=infra
     # badpkl-once: only the first planning run writes a bad changeset.
@@ -259,7 +236,9 @@ export TMPDIR=$WORK/tmp
 mkdir -p "$TMPDIR"
 # Nothing a zone-per-service supervisor needed is set: the tick must not miss
 # it. The defaults are what the first run asserts, wherever the test runs.
-unset SUPERVISOR_ZONE SUPERVISOR_SESSION_ID SUPERVISOR_TZ SUPERVISOR_EFFORT
+unset SUPERVISOR_ZONE SUPERVISOR_SESSION_ID SUPERVISOR_TZ SUPERVISOR_EFFORT SUPERVISOR_MODEL
+# Checks register at once in the stub; don't wait for them.
+export CALIBRATION_CHECKS_SETTLE=0
 export CALLS=$WORK/calls
 export RESTIC_LOG=$WORK/restic.log
 export PASS_ENVFILE_LOG=$WORK/pass-env.log
@@ -335,16 +314,53 @@ if grep -q 'zone=' "$DIR/prompt.md"; then
   fail "the heartbeat format should not carry zone="
 fi
 
-# --- a run that reaches a decision -------------------------------------------
+# --- the repo a run clones and pushes to ------------------------------------
 
-reset
-CLAUDE_STUB_MODE=ok bash "$DIR/supervisor.sh" > "$WORK/out" ||
-  fail "a run that reached a decision should exit 0"
-tail -1 "$WORK/out" | grep -q '^SUPERVISOR_HEARTBEAT: host=.*decision=nothing' ||
-  fail "the heartbeat should be the last line of the run"
+# The changeset is rendered by the real pkl against the real schema.
+command -v pkl > /dev/null || fail "pkl must be on PATH: the run renders the changeset with it"
+SCHEMA=$DIR/../workflow/pkl/Changeset.pkl
+[ -f "$SCHEMA" ] || fail "the changeset schema should be at $SCHEMA"
 
-[ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
-  fail "expected restore, then continue, then backup; got: $(calls)"
+# A bare repo whose main carries the workflow and its schema, so git itself is
+# real and the pushed branch can be read back.
+export GIT_AUTHOR_NAME=stub GIT_AUTHOR_EMAIL=stub@example.com
+export GIT_COMMITTER_NAME=stub GIT_COMMITTER_EMAIL=stub@example.com
+REMOTE=$WORK/remote.git
+git init --quiet --bare --initial-branch=main "$REMOTE"
+seed=$WORK/seed
+WF=.dagger/internal/devenv-base/workflow
+git init --quiet --initial-branch=main "$seed"
+mkdir -p "$seed/$WF/pkl"
+echo '{}' > "$seed/$WF/package.json"
+cp "$SCHEMA" "$seed/$WF/pkl/Changeset.pkl"
+git -C "$seed" add . && git -C "$seed" commit --quiet -m seed
+git -C "$seed" push --quiet "$REMOTE" main
+BASE_SHA=$(git -C "$seed" rev-parse HEAD)
+export CALIBRATION_REMOTE=$REMOTE
+
+tick() { bash "$DIR/supervisor.sh" "$@"; }
+calibrate() { SUPERVISOR_MODE=calibrate bash "$DIR/supervisor.sh" "$@"; }
+branch_sha() { git -C "$REMOTE" rev-parse --verify --quiet refs/heads/supervisor/calibration || true; }
+no_pr() { [ -z "$(branch_sha)" ] && ! grep -q 'pr create' "$GH_LOG"; }
+# Each run below starts with no changeset branch and no open PR.
+fresh() {
+  git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration 2> /dev/null || true
+  rm -f "$GH_OPEN_PR"
+  reset
+}
+
+# --- an hourly run -----------------------------------------------------------
+
+fresh
+CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
+  fail "an hourly run should exit 0, got: $(cat "$WORK/out")"
+grep -qx 'SUPERVISOR_PLAN: merged pr=https://github.com/null-hype/agent-plugins/pull/999' "$WORK/out" ||
+  fail "an hourly run should merge its changeset PR, got: $(cat "$WORK/out")"
+
+[ "$(calls)" = "restic snapshots restic restore render node plan claude node apply gh gh gh gh gh restic backup" ] ||
+  fail "expected restore, plan, continue, dry run, PR, merge, then backup; got: $(calls)"
+grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
+  fail "an hourly run should squash-merge the head its checks ran on, got: $(cat "$GH_LOG")"
 
 # The restore: the newest snapshot under the one tag, without the daemon's
 # runtime state.
@@ -366,8 +382,8 @@ fi
   fail "claude should run from /workspaces/agent-plugins, got: $(cat "$CLAUDE_PWD")"
 grep -qx -- '--remote-control' "$CLAUDE_ARGV" ||
   fail "--remote-control should be passed"
-[ "$(section --effort)" = low ] ||
-  fail "--effort low should be passed when SUPERVISOR_EFFORT is unset, got: $(section --effort)"
+[ "$(section --model)" = sonnet ] && [ "$(section --effort)" = medium ] ||
+  fail "an hourly run should use sonnet at medium effort by default, got: $(section --model) $(section --effort)"
 grep -qx -- '-p' "$CLAUDE_ARGV" ||
   fail "the continue should run in the foreground with -p"
 if grep -qx -- '--bg' "$CLAUDE_ARGV"; then
@@ -386,31 +402,24 @@ fi
 
 # --- the prompt --------------------------------------------------------------
 
-grep -q 'Dispatch: <hat>' "$CLAUDE_ARGV" ||
-  fail "the prompt should say which issues to work: those titled Dispatch: <hat>"
-grep -q 'in this order: planning, infra, open source' "$CLAUDE_ARGV" ||
-  fail "the prompt should run the planning, infra and open source passes in that order"
-grep -q 'SUPERVISOR_PASS: hat=<planning|infra|open-source> handoffs=' "$CLAUDE_ARGV" ||
-  fail "the prompt should give the pass line format"
-grep -q 'new issue in Triage' "$CLAUDE_ARGV" ||
-  fail "the prompt should make a handoff a new issue in Triage"
-grep -q 'State.*Evidence.*Next step.*Open questions.*Resume' "$CLAUDE_ARGV" ||
-  fail "the prompt should give the handoff's sections in order"
-grep -q 'only planning may' "$CLAUDE_ARGV" ||
-  fail "the prompt should leave moving issues out of Triage to planning alone"
-grep -q "description says" "$CLAUDE_ARGV" ||
-  fail "the prompt should tell the session to do what each description says"
-grep -q 'decision=nothing why=no dispatch issue' "$CLAUDE_ARGV" ||
-  fail "the prompt should give the heartbeat for a tick with no dispatch issue"
+grep -q 'You are the supervisor of the agent-plugins project' "$CLAUDE_ARGV" ||
+  fail "the prompt should be prompt.md"
+grep -q 'Duo editor' "$CLAUDE_ARGV" && grep -q 'Duo comes first' "$CLAUDE_ARGV" ||
+  fail "the prompt should put the Duo editor first"
+grep -q 'SUPERVISOR_CHANGESET:' "$CLAUDE_ARGV" ||
+  fail "the prompt should end with the changeset format"
+grep -q '"pruned": \[' "$CLAUDE_ARGV" ||
+  fail "the prompt should carry the frozen plan"
+if grep -q '"seen"' "$CLAUDE_ARGV"; then
+  fail "the prompt should leave out the plan's seen: the run fills it in"
+fi
 grep -qE 'Now, UTC: \*\*[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$CLAUDE_ARGV" ||
   fail "the prompt should carry the current UTC time"
-grep -q 'SUPERVISOR_HEARTBEAT: host=' "$CLAUDE_ARGV" ||
-  fail "the prompt should end with the heartbeat format"
 if grep -q '{{' "$CLAUDE_ARGV"; then
   fail "every prompt placeholder should have been substituted"
 fi
-if grep -qiE 'midnight|timezone|zone' "$CLAUDE_ARGV"; then
-  fail "the prompt should carry no midnight, timezone or zone framing"
+if grep -qiE 'midnight|timezone|zone|\bhats?\b' "$CLAUDE_ARGV"; then
+  fail "the prompt should carry no midnight, timezone, zone or hat framing"
 fi
 
 # --- the tools ---------------------------------------------------------------
@@ -423,24 +432,26 @@ grep -q 'resolved-LINEAR_API_KEY' "$CLAUDE_MCP" ||
   fail "Linear should be an explicit MCP server: --strict-mcp-config leaves no connector to rely on"
 [ "$(cat "$CLAUDE_MCP_MODE")" = 600 ] ||
   fail "the MCP config holds bearer tokens and should be mode 0600, got $(cat "$CLAUDE_MCP_MODE")"
-for secret in resolved-TOOLBOX_TOKEN resolved-LINEAR_API_KEY resolved-CLAUDE_CODE_OAUTH_TOKEN resolved-RESTIC_PASSWORD; do
+for secret in resolved-TOOLBOX_TOKEN resolved-LINEAR_API_KEY resolved-CLAUDE_CODE_OAUTH_TOKEN resolved-RESTIC_PASSWORD resolved-GITHUB_TOKEN; do
   if grep -q "$secret" "$CLAUDE_ARGV"; then
     fail "$secret must never appear in claude's argv"
   fi
-  if grep -q "$secret" "$PASS_ARGV_LOG" "$RESTIC_LOG"; then
-    fail "$secret must never appear in the argv of pass-cli or restic"
+  if grep -q "$secret" "$PASS_ARGV_LOG" "$RESTIC_LOG" "$GH_LOG" "$RENDER_LOG" "$NODE_LOG" "$NPM_LOG"; then
+    fail "$secret must never appear on an argv"
   fi
   if grep -rq "$secret" "$HOME" "$TMPDIR"; then
     fail "$secret must not be left in a file once the run has ended"
   fi
 done
 [ -z "$(ls -A "$TMPDIR")" ] ||
-  fail "the 0600 MCP and key files should be removed on exit, left: $(ls "$TMPDIR")"
+  fail "the 0600 MCP and key files and the clone should be removed on exit, left: $(ls "$TMPDIR")"
 
-# The toolbox token is resolved by pass-cli run from supervisor.env, and the
-# Render service is not asked to carry it.
+# Every secret is resolved by pass-cli run from supervisor.env, and the
+# Render service is not asked to carry any of them.
 grep -qx 'TOOLBOX_TOKEN=pass://infra/render.com/TOOLBOX_TOKEN' "$PASS_ENVFILE_LOG" ||
   fail "the env file handed to pass-cli run should reference the toolbox token in Proton Pass"
+grep -qx 'GITHUB_TOKEN=pass://infra/github.com/GITHUB_TOKEN' "$PASS_ENVFILE_LOG" ||
+  fail "supervisor.env should reference the GitHub token in Proton Pass: the run opens and merges a PR"
 grep -q -- "pass-cli run --env-file $DIR/supervisor.env -- " "$PASS_ARGV_LOG" ||
   fail "the secrets should be resolved with pass-cli run --env-file supervisor.env"
 if grep -v '^ *#' "$DIR/supervisor.env" | grep -E '^[A-Z_]+=' | grep -v '=pass://' ; then
@@ -452,12 +463,21 @@ fi
 grep -qx -- '--strict-mcp-config' "$CLAUDE_ARGV" ||
   fail "--strict-mcp-config should be passed, so no other MCP server joins in"
 
-for tool in mcp__toolbox__host_status mcp__toolbox__workspace_list mcp__toolbox__workspace_status mcp__linear; do
+# Read-only: Linear's read tools, never the Linear server as a whole, and
+# every tool that writes, starts, stops or ships denied by name.
+if section --allowedTools | grep -qx mcp__linear; then
+  fail "the run must not allow the Linear server as a whole"
+fi
+for tool in mcp__toolbox__host_status mcp__toolbox__workspace_list mcp__toolbox__workspace_status \
+  mcp__toolbox__agent_ship_status mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments; do
   section --allowedTools | grep -qx "$tool" || fail "$tool should be allowed"
 done
-
-for tool in mcp__toolbox__host_start mcp__toolbox__host_stop mcp__toolbox__agent_start \
-  mcp__toolbox__workspace_delete mcp__toolbox__codespace_rebuild Bash Write Edit; do
+if section --allowedTools | grep -E '^mcp__linear__(save|create|delete|update|merge|submit|resolve|share|unshare|mark)_'; then
+  fail "the run must not allow a Linear tool that writes"
+fi
+for tool in mcp__toolbox__host_start mcp__toolbox__host_stop mcp__toolbox__host_wake mcp__toolbox__agent_start \
+  mcp__toolbox__agent_ship mcp__toolbox__workspace_delete mcp__toolbox__codespace_rebuild \
+  mcp__linear__save_issue mcp__linear__save_comment mcp__linear__create_issue_label Bash Write Edit; do
   if section --allowedTools | grep -qx "$tool"; then
     fail "$tool must not be in the allowed list"
   fi
@@ -467,9 +487,9 @@ done
 
 # --- settings the old per-zone services carried are ignored ------------------
 
-reset
+fresh
 SUPERVISOR_ZONE=infrastructure SUPERVISOR_TZ=Asia/Hong_Kong SUPERVISOR_SESSION_ID=bogus-session \
-  CLAUDE_STUB_MODE=ok bash "$DIR/supervisor.sh" > /dev/null ||
+  CLAUDE_STUB_MODE=plan tick > /dev/null 2>&1 ||
   fail "a run with leftover zone settings should still pass"
 if grep -q 'bogus-session' "$CLAUDE_ARGV" || grep -q 'infrastructure' "$RESTIC_LOG"; then
   fail "a leftover zone or session id must not reach claude or restic"
@@ -477,33 +497,20 @@ fi
 grep -q -- 'backup .claude --tag supervisor (cwd=' "$RESTIC_LOG" ||
   fail "a leftover zone must not change the restic tag"
 
-# SUPERVISOR_EFFORT overrides the default, and is passed explicitly all the
-# same.
-reset
-SUPERVISOR_EFFORT=high CLAUDE_STUB_MODE=ok bash "$DIR/supervisor.sh" > /dev/null ||
-  fail "a run with SUPERVISOR_EFFORT set should pass"
-[ "$(section --effort)" = high ] ||
-  fail "SUPERVISOR_EFFORT should be passed through, got: $(section --effort)"
-
-# --- no dispatch issue is open -----------------------------------------------
-
-# The model says so in the heartbeat and the tick passes: it is a decision,
-# not a broken instrument. The transcript is still backed up.
-reset
-CLAUDE_STUB_MODE=nodispatch bash "$DIR/supervisor.sh" > "$WORK/nodispatch" ||
-  fail "a tick with no open dispatch issue should exit 0"
-tail -1 "$WORK/nodispatch" | grep -qx 'SUPERVISOR_HEARTBEAT: host=unknown work=unknown decision=nothing why=no dispatch issue' ||
-  fail "a tick with no open dispatch issue should end with its heartbeat, got: $(tail -1 "$WORK/nodispatch")"
-[ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
-  fail "a tick with no dispatch issue should still be restored and backed up; got: $(calls)"
+# SUPERVISOR_MODEL and SUPERVISOR_EFFORT override the defaults.
+fresh
+SUPERVISOR_MODEL=opus SUPERVISOR_EFFORT=high CLAUDE_STUB_MODE=plan tick > /dev/null 2>&1 ||
+  fail "a run with SUPERVISOR_MODEL and SUPERVISOR_EFFORT set should pass"
+[ "$(section --model)" = opus ] && [ "$(section --effort)" = high ] ||
+  fail "SUPERVISOR_MODEL and SUPERVISOR_EFFORT should be passed through, got: $(section --model) $(section --effort)"
 
 # --- there is no Proton Pass session -----------------------------------------
 
 # Every secret, the toolbox token among them, comes through pass-cli, so with
 # no session and a login that fails nothing may run: not the restore, not
 # claude, not a backup.
-reset
-if PASS_STUB_SESSION=none bash "$DIR/supervisor.sh" > "$WORK/nopass" 2>&1; then
+fresh
+if PASS_STUB_SESSION=none tick > "$WORK/nopass" 2>&1; then
   fail "a run with no Proton Pass session should fail"
 fi
 grep -q 'could not log in to Proton Pass' "$WORK/nopass" ||
@@ -515,7 +522,7 @@ if grep -q -- 'pass-cli run' "$PASS_ARGV_LOG"; then
 fi
 
 # Without the pass token the service cannot log in at all.
-reset
+fresh
 if env -u PROTON_PASS_PERSONAL_ACCESS_TOKEN bash "$DIR/supervisor.sh" > "$WORK/notoken" 2>&1; then
   fail "a run without PROTON_PASS_PERSONAL_ACCESS_TOKEN should fail"
 fi
@@ -528,8 +535,8 @@ grep -q 'PROTON_PASS_PERSONAL_ACCESS_TOKEN must be set' "$WORK/notoken" ||
 
 # No snapshot carries the tag: fail loudly, and do not continue a session
 # that is not there (or back up an empty ~/.claude over the real one).
-reset
-if RESTIC_STUB_SNAPSHOTS=miss bash "$DIR/supervisor.sh" > "$WORK/nosnap" 2>&1; then
+fresh
+if RESTIC_STUB_SNAPSHOTS=miss tick > "$WORK/nosnap" 2>&1; then
   fail "a missing snapshot should fail the run"
 fi
 grep -q 'no snapshot tagged supervisor' "$WORK/nosnap" ||
@@ -539,8 +546,8 @@ grep -q 'no snapshot tagged supervisor' "$WORK/nosnap" ||
 
 # A snapshot with no session for /workspaces/agent-plugins would have
 # --continue start a fresh, amnesiac one: refuse before claude runs.
-reset
-if RESTIC_STUB_RESTORE=elsewhere bash "$DIR/supervisor.sh" > "$WORK/nosession" 2>&1; then
+fresh
+if RESTIC_STUB_RESTORE=elsewhere tick > "$WORK/nosession" 2>&1; then
   fail "a snapshot without a session for the working directory should fail the run"
 fi
 grep -q 'did not produce a session for /workspaces/agent-plugins' "$WORK/nosession" ||
@@ -550,77 +557,53 @@ grep -q 'did not produce a session for /workspaces/agent-plugins' "$WORK/nosessi
 
 # --- claude fails ------------------------------------------------------------
 
-reset
-if CLAUDE_STUB_MODE=fail bash "$DIR/supervisor.sh" > "$WORK/broken" 2>&1; then
+fresh
+if CLAUDE_STUB_MODE=fail tick > "$WORK/broken" 2>&1; then
   fail "a run where claude exited nonzero should fail"
 fi
-grep -q 'claude exited 3' "$WORK/broken" ||
-  fail "a failed claude run should report its exit status"
-[ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
-  fail "the backup should run after a failing claude; got: $(calls)"
+grep -q 'claude exited 3 -- this tick has no changeset' "$WORK/broken" ||
+  fail "a failed claude run should report its exit status, got: $(cat "$WORK/broken")"
+[ "$(calls)" = "restic snapshots restic restore render node plan claude restic backup" ] && no_pr ||
+  fail "a failing claude should open no PR, and still be backed up; got: $(calls)"
 
-reset
-if CLAUDE_STUB_MODE=hang SUPERVISOR_CLAUDE_TIMEOUT=1s bash "$DIR/supervisor.sh" > "$WORK/hung" 2>&1; then
+fresh
+if CLAUDE_STUB_MODE=hang SUPERVISOR_CLAUDE_TIMEOUT=1s tick > "$WORK/hung" 2>&1; then
   fail "a claude that outlives its wall-clock timeout should fail the run"
 fi
 grep -q 'claude timed out after 1s' "$WORK/hung" ||
   fail "a timed-out claude should say so"
-[ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
+[ "$(calls)" = "restic snapshots restic restore render node plan claude restic backup" ] ||
   fail "the backup should run after a timed-out claude; got: $(calls)"
 
-reset
-if CLAUDE_STUB_MODE=prose bash "$DIR/supervisor.sh" > "$WORK/prose" 2>&1; then
-  fail "a run that produced no heartbeat should fail"
+fresh
+if CLAUDE_STUB_MODE=prose tick > "$WORK/prose" 2>&1; then
+  fail "a run that produced no changeset should fail"
 fi
-grep -q 'no SUPERVISOR_HEARTBEAT line' "$WORK/prose" ||
-  fail "a missing heartbeat should say so"
-[ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
-  fail "the transcript of a run without a heartbeat should still be backed up; got: $(calls)"
+grep -q 'no SUPERVISOR_CHANGESET line followed by a pkl block' "$WORK/prose" ||
+  fail "a missing changeset should say so"
+[ "$(calls)" = "restic snapshots restic restore render node plan claude restic backup" ] && no_pr ||
+  fail "a run without a changeset should open no PR, and still be backed up; got: $(calls)"
 
-# A heartbeat is not enough: a hat that never reported its pass handed
-# nothing on, and the next pass has nothing to read.
-reset
-if CLAUDE_STUB_MODE=skipped bash "$DIR/supervisor.sh" > "$WORK/skipped" 2>&1; then
-  fail "a run missing a hat's pass line should fail"
+# A changeset that does not render goes back to the same session once.
+fresh
+CLAUDE_STUB_MODE=badpkl-once tick > "$WORK/tickfixed" 2>&1 ||
+  fail "a changeset fixed on the second ask should pass, got: $(cat "$WORK/tickfixed")"
+grep -q 'Your last changeset did not render' "$CLAUDE_ARGV" && grep -qx -- '--continue' "$CLAUDE_ARGV" ||
+  fail "the second ask should continue the session, with the render error"
+
+# A failed backup fails a run that otherwise worked: the next run would
+# continue from an older transcript.
+fresh
+if RESTIC_STUB_BACKUP=fail CLAUDE_STUB_MODE=plan tick > "$WORK/nobackup" 2>&1; then
+  fail "a run whose backup failed should fail"
 fi
-grep -q 'expected SUPERVISOR_PASS lines for planning, infra and open-source in that order, got: planning open-source' "$WORK/skipped" ||
-  fail "a missing pass line should name the hats it saw, got: $(cat "$WORK/skipped")"
-[ "$(calls)" = "restic snapshots restic restore claude restic backup" ] ||
-  fail "the transcript of a run missing a pass should still be backed up; got: $(calls)"
+grep -q 'restic backup exited 1' "$WORK/nobackup" ||
+  fail "a failed backup should say so, got: $(cat "$WORK/nobackup")"
 
-# --- calibration (CIT-472) ---------------------------------------------------
-
-# The changeset is rendered by the real pkl against the real schema.
-command -v pkl > /dev/null || fail "pkl must be on PATH: calibration renders the changeset with it"
-SCHEMA=$DIR/../workflow/pkl/Changeset.pkl
-[ -f "$SCHEMA" ] || fail "the changeset schema should be at $SCHEMA"
-
-# The repo a calibration clones and pushes to: a bare repo whose main carries
-# the workflow and its schema, so git itself is real and the pushed branch
-# can be read back.
-export GIT_AUTHOR_NAME=stub GIT_AUTHOR_EMAIL=stub@example.com
-export GIT_COMMITTER_NAME=stub GIT_COMMITTER_EMAIL=stub@example.com
-REMOTE=$WORK/remote.git
-git init --quiet --bare --initial-branch=main "$REMOTE"
-seed=$WORK/seed
-WF=.dagger/internal/devenv-base/workflow
-git init --quiet --initial-branch=main "$seed"
-mkdir -p "$seed/$WF/pkl"
-echo '{}' > "$seed/$WF/package.json"
-cp "$SCHEMA" "$seed/$WF/pkl/Changeset.pkl"
-git -C "$seed" add . && git -C "$seed" commit --quiet -m seed
-git -C "$seed" push --quiet "$REMOTE" main
-BASE_SHA=$(git -C "$seed" rev-parse HEAD)
-
-calibrate() {
-  SUPERVISOR_MODE=calibrate CALIBRATION_REMOTE=$REMOTE bash "$DIR/supervisor.sh" "$@"
-}
-branch_sha() { git -C "$REMOTE" rev-parse --verify --quiet refs/heads/supervisor/calibration || true; }
-no_pr() { [ -z "$(branch_sha)" ] && ! grep -q 'pr create' "$GH_LOG"; }
+# --- calibration -------------------------------------------------------------
 
 # A green calibration.
-reset
-rm -f "$GH_OPEN_PR"
+fresh
 CLAUDE_STUB_MODE=plan calibrate > "$WORK/cal" 2>&1 ||
   fail "a green calibration should exit 0, got: $(cat "$WORK/cal")"
 grep -qx 'SUPERVISOR_CHANGESET: ops=5 clusters=1' "$WORK/cal" ||
@@ -670,15 +653,12 @@ for flag in --continue --remote-control --resume; do
 done
 [ "$(section --model)" = haiku ] && [ "$(section --effort)" = low ] ||
   fail "a calibration should run a small model at low effort, got: $(section --model) $(section --effort)"
-grep -q "You are the supervisor's \*\*planning hat\*\*" "$CLAUDE_ARGV" ||
-  fail "the prompt should be planning.md"
+grep -q 'You are the supervisor of the agent-plugins project' "$CLAUDE_ARGV" ||
+  fail "a calibration should use the same prompt.md"
 grep -q '"pruned": \[' "$CLAUDE_ARGV" ||
   fail "the prompt should carry the frozen plan"
 if grep -q '"seen"' "$CLAUDE_ARGV"; then
   fail "the prompt should leave out the plan's seen: the run fills it in"
-fi
-if grep -q 'in this order: planning, infra, open source' "$CLAUDE_ARGV"; then
-  fail "calibration is planning alone, not the tick's three passes"
 fi
 if grep -q '{{' "$CLAUDE_ARGV"; then
   fail "every calibration prompt placeholder should have been substituted"
@@ -719,11 +699,11 @@ rm -rf "$check" && git clone --quiet --branch supervisor/calibration "$REMOTE" "
   fail "the committed changeset.json should be the rendering of the committed changeset.pkl"
 cmp -s "$DRY_RUN_SAW" "$WORK/changeset.json" ||
   fail "apply should have been dry-run against the changeset that was committed"
-grep -qx 'gh pr create --repo null-hype/agent-plugins --base main --head supervisor/calibration --title Supervisor calibration: planning'"'"'s changeset --body-file .*' "$GH_LOG" ||
+grep -qx 'gh pr create --repo null-hype/agent-plugins --base main --head supervisor/calibration --title Supervisor changeset --body-file .*' "$GH_LOG" ||
   fail "a green calibration should open a PR from supervisor/calibration into main, got: $(cat "$GH_LOG")"
 grep -q 'Merging this applies it' "$GH_PR_BODY" && grep -qx '| delegate | new:review-findings | to tidelands-agent |' "$GH_PR_BODY" ||
   fail "the PR body should say merging applies it and list the dry run's ops, got: $(cat "$GH_PR_BODY")"
-grep -q 'calibration PR https://github.com/null-hype/agent-plugins/pull/999' "$WORK/cal" ||
+grep -q 'changeset PR https://github.com/null-hype/agent-plugins/pull/999' "$WORK/cal" ||
   fail "the run should name its PR"
 
 # No token on any argv, and nothing left behind.
@@ -802,7 +782,7 @@ grep -q 'the changeset does not render through pkl/Changeset.pkl' "$WORK/calbad"
   fail "a changeset that does not render should say so, got: $(cat "$WORK/calbad")"
 [ "$(calls)" = "render node plan claude claude" ] && no_pr ||
   fail "a changeset that does not render, twice, should not be dry-run, pushed or opened; got: $(calls)"
-grep -q 'planning again, with the render error' "$WORK/calbad" ||
+grep -q 'asking again, with the render error' "$WORK/calbad" ||
   fail "a changeset that does not render should go back to planning once, got: $(cat "$WORK/calbad")"
 
 # Planning gets one more go with the render error, and a fixed changeset
@@ -840,7 +820,7 @@ reset
 if CLAUDE_STUB_MODE=fail calibrate > "$WORK/calfail" 2>&1; then
   fail "a calibration where claude exited nonzero should fail"
 fi
-grep -q 'claude exited 3 -- this calibrate has no decision' "$WORK/calfail" ||
+grep -q 'claude exited 3 -- this calibrate has no changeset' "$WORK/calfail" ||
   fail "a failed claude should be reported, got: $(cat "$WORK/calfail")"
 no_pr || fail "a calibration where claude failed should push nothing and open no PR"
 
