@@ -28,7 +28,34 @@ final class EvidenceLogTests: XCTestCase {
         let log = "{\"a\":1}\r\n\n  \n{\"a\":2}"
         let records = try EvidenceLog.records(from: Data(log.utf8))
         XCTAssertEqual(records.map(\.lineNumber), [1, 4])
-        XCTAssertEqual(records.map { $0.value["a"] }, [.number(1), .number(2)])
+        XCTAssertEqual(records.map { $0.value["a"] }, [.integer(1), .integer(2)])
+    }
+
+    func testIntegersAbove2Pow53StayDistinctAndRoundTrip() throws {
+        let log = "{\"timestamp_ns\":9007199254740992}\n{\"timestamp_ns\":9007199254740993}\n{\"id\":-9223372036854775808}\n{\"id\":18446744073709551615}\n"
+        let records = try EvidenceLog.records(from: Data(log.utf8))
+        XCTAssertEqual(records[0].value["timestamp_ns"], .integer(9007199254740992))
+        XCTAssertEqual(records[1].value["timestamp_ns"], .integer(9007199254740993))
+        XCTAssertNotEqual(records[0].value, records[1].value)
+        XCTAssertEqual(records[2].value["id"], .integer(Int64.min))
+        XCTAssertEqual(records[3].value["id"], .unsignedInteger(UInt64.max))
+        let encoded = try JSONEncoder().encode(records[1].value)
+        XCTAssertEqual(String(decoding: encoded, as: UTF8.self), "{\"timestamp_ns\":9007199254740993}")
+    }
+
+    func testFractionsStayDoubles() throws {
+        let records = try EvidenceLog.records(from: Data("{\"a\":1.5}\n{\"a\":1e3}\n".utf8))
+        XCTAssertEqual(records[0].value["a"], .number(1.5))
+        XCTAssertEqual(records[1].value["a"]?.isNumeric, true)
+    }
+
+    func testIntegersBeyondSixtyFourBitsFailTheRunWithTheirLine() {
+        for literal in ["18446744073709551616", "123456789012345678901234567890", "9007199254740993.0"] {
+            let log = "{\"a\":1}\n{\"a\":\(literal)}\n"
+            XCTAssertThrowsError(try EvidenceLog.records(from: Data(log.utf8)), literal) { error in
+                XCTAssertEqual((error as? EvidenceLogError)?.lineNumber, 2, literal)
+            }
+        }
     }
 
     func testEmptyLogHasNoRecords() throws {
