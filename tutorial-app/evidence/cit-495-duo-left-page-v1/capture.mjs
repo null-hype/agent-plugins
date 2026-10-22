@@ -7,6 +7,9 @@ import { chromium } from '@playwright/test';
 
 const root = process.argv[2] ?? '/tmp/sb-out';
 const out = process.argv[3] ?? new URL('./duo-left-page-story.png', import.meta.url).pathname;
+const cards = JSON.parse(await readFile(new URL('../../src/stories/duo/cards.json', import.meta.url), 'utf8'));
+const card = cards.find((c) => c.counterexample);
+const option = card.options[0];
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 
 const server = createServer(async (req, res) => {
@@ -33,13 +36,22 @@ await frame.waitForFunction(() => window.showCards && window.monaco?.editor.getE
 // let the story's own play() run to the end before driving the page by hand
 await page.waitForTimeout(8000);
 
-const result = await frame.evaluate(() => {
-	const cards = [...document.querySelectorAll('script')].length; // placeholder to keep evaluate synchronous
-	return { cards };
-});
-void result;
+await frame.evaluate(({ cards, card, option }) => {
+	window.clearPreview();
+	window.showCards(cards);
+	window.previewOption(card.id, option.id);
+}, { cards, card, option });
+await frame.waitForSelector('.squiggly-error');
+await frame.waitForSelector('.squiggly-info');
+await frame.waitForSelector('.duo-preview-removed');
 
-await frame.evaluate(async () => {
-	const { default: cards } = await import(location.origin + '/__never__').catch(() => ({ default: null }));
-	void cards;
-});
+const state = await frame.evaluate(() => ({
+	markers: window.monaco.editor.getModelMarkers({ owner: 'duo-cards' }).length,
+	previewRemoved: document.querySelectorAll('.duo-preview-removed').length,
+	readOnly: window.monaco.editor.getEditors()[0].getOption(window.monaco.editor.EditorOption.readOnly),
+}));
+console.log(JSON.stringify({ ...state, pageErrors: errors }));
+await page.screenshot({ path: out });
+console.log(`wrote ${out}`);
+await browser.close();
+server.close();
