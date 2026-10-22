@@ -2,13 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 import leftPage from './duo/left-page.html?raw';
 import { type Card, cards, claimText, CLAIM_LINE } from './duo/cards';
+import { leftPageDocument } from './duo/leftPage';
 
 // The left page of the iPhone Duo editor: the demo claim, read-only in Monaco.
 // The page is a standalone document so the SwiftUI app can load the same file
 // in a WKWebView and drive it with evaluateJavaScript; these play() tests call
 // that same window API.
 
-const srcDoc = leftPage.replace('<!--claim-->', `<script id="claim" type="application/json">${JSON.stringify(claimText)}</script>`);
+const srcDoc = leftPageDocument(leftPage, claimText);
 
 type Monaco = {
 	MarkerSeverity: { Error: number; Info: number };

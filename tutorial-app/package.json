@@ -14,6 +14,7 @@
     "prebuild": "npm run replay:generate",
     "pretest": "npm run replay:generate",
     "replay:export": "bash scripts/export-replay.sh",
+    "duo:export": "node --import tsx scripts/export-duo-left-page.ts",
     "image-claims": "node --import tsx scripts/image-claims.ts",
     "image-claims:render": "node --import tsx scripts/render-image-claims.ts",
     "image-claims:check": "vitest run src/lib/imageClaims.spec.ts && node --import tsx scripts/render-image-claims.ts --check"
