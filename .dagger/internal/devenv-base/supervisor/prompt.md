@@ -34,6 +34,12 @@ The frozen plan below was built from the open issues, working back from the open
 {{PLAN}}
 ```
 
+The repository's 40 most recent pull requests (the changeset PRs left out), as GitHub reports them now. A merged one is evidence for `done`; an open one with no review yet is a candidate for `review`.
+
+```json
+{{PULLS}}
+```
+
 ## The output
 
 Say in a few sentences what you found, especially anything stuck or more expensive than it should be. Name the evidence you are missing rather than guess at it. Then end your reply with this line, then one fenced `pkl` block holding the changeset's body, and nothing after the block:
