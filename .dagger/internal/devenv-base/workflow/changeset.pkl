@@ -1,8 +1,41 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@28ed9c5951ea9824535e101de9da0e309ae29623. Merging it is applying it; render with
+// main@7d88a7d0f80057eb610323887f4aea432aebfdfe. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-497"] = "2026-10-22T06:01:43.998Z"
+  ["CIT-500"] = "2026-10-22T21:44:31.388Z"
+  ["CIT-516"] = "2026-10-22T21:34:33.902Z"
+  ["CIT-517"] = "2026-10-22T21:34:38.397Z"
+  ["CIT-518"] = "2026-10-22T21:38:54.305Z"
 }
 
+releases {
+  new {
+    name = "duo-editor"
+    description = "The Duo editor on iPhone Duo: the claim on the left page and question cards on the right, built on Xcode Cloud and shipped to TestFlight testers."
+  }
+  new {
+    name = "supervisor-workflow"
+    description = "The supervisor loop itself, including planning that reads Initiative Zero and answers it in each changeset."
+  }
+}
+clusters {
+  new {
+    key = "CIT-497"
+    title = "Duo editor: left page, question cards and native export"
+    description = "The left page, question cards and standalone export, plus fixes to the evidence capture that proves the left page (CIT-516, CIT-517)."
+    serves = "release:duo-editor"
+    issues { "CIT-516"; "CIT-517" }
+  }
+  new {
+    key = "new:initiative-planning"
+    title = "Initiative-focused planning"
+    description = "The planner reads Initiative Zero's description and updates before writing a changeset, records what it adopted, deferred or disagreed with, and keeps unresolved feedback across runs."
+    serves = "release:supervisor-workflow"
+    issues { "CIT-518" }
+  }
+}
+delegate { new { issue = "CIT-516"; agent = "Claude"; ask = "Fix the capture script tutorial-app/evidence/cit-495-duo-left-page-v1/capture.mjs for both review findings, CIT-516 and CIT-517, in one container-use environment. CIT-516: dismiss the 'Cannot edit in read-only editor' notification before the screenshot so it does not cover the claim. CIT-517: make the capture exit non-zero when the page reports a runtime error, since pageErrors is collected but never checked. Regenerate the screenshot, run the duo-left-page spec, and reply here naming the environment so it can be shipped." } }
+review { new { issue = "CIT-500"; pr = 334 } }
