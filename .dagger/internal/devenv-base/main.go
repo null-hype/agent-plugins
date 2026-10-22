@@ -939,10 +939,11 @@ func (m *DevenvBase) CalibrateSupervisor(
 	return out, nil
 }
 
-// passLogin logs pass-cli in, trying three times: one timed-out login must not
+// passLogin logs pass-cli in, trying three times and waiting longer each time:
+// Proton's login sometimes times out several times in a row, and that must not
 // cost a tick or leave a merged plan unapplied (2026-10-22).
 const passLogin = "for try in 1 2 3; do timeout 2m pass-cli login > /dev/null && break; " +
-	"[ $try = 3 ] && exit 1; echo \"pass-cli login failed ($try of 3); trying again\" >&2; sleep 15; done"
+	"[ $try = 3 ] && exit 1; echo \"pass-cli login failed ($try of 3); trying again\" >&2; sleep $((try * 60)); done"
 
 // RunSupervisorWorkflow is the supervisor Workflow's hourly tick (CIT-472):
 // it runs the deployed `run` task for real, which executes each ready

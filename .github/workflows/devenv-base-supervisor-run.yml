@@ -31,6 +31,10 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   tick:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
@@ -54,8 +58,24 @@ jobs:
           args: calibrate-supervisor --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN --base=main --merge
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
+      # A merged plan whose apply failed (a Proton login timeout, say) is
+      # applied again here; execute then runs from that apply's completion.
+      - name: Apply again
+        id: reapply
+        if: "${{ github.event_name != 'workflow_run' && !contains(steps.plan.outputs.output, 'SUPERVISOR_PLAN: merged') }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          read -r id conclusion < <(gh run list --repo "$GITHUB_REPOSITORY" --workflow devenv-base-apply-changeset.yml \
+            --branch main --event push --limit 1 --json databaseId,conclusion --jq '.[0] | "\(.databaseId) \(.conclusion)"')
+          if [ "$conclusion" = failure ]; then
+            gh run rerun "$id" --repo "$GITHUB_REPOSITORY" --failed
+            echo "rerun=$id" >> "$GITHUB_OUTPUT"
+            echo "### Applying the last plan again (run $id)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Execute
-        if: "${{ !contains(steps.plan.outputs.output, 'SUPERVISOR_PLAN: merged') }}"
+        if: "${{ !contains(steps.plan.outputs.output, 'SUPERVISOR_PLAN: merged') && !steps.reapply.outputs.rerun }}"
         uses: dagger/dagger-for-github@v8.4.1
         env:
           PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
