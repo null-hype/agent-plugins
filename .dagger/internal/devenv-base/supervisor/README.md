@@ -59,15 +59,14 @@ changes `workflow/changeset.json` runs `devenv-base-apply-changeset`, which
 waits for Render's version of that commit and runs `supervisor-workflow/apply`
 for real (`supervisor/apply-changeset.sh`). Applying makes no model calls.
 
-Never disable, suspend or delete the cron, the GitHub tick below, or the
+Never disable, suspend or delete the cron, the GitHub job below, or the
 Render Workflow without the maintainer's explicit OK.
 
-**While the cron takes over.** `devenv-base-supervisor-run` (GitHub, at :23)
-still plans the same way (a fresh calibration with `--merge`) and then runs
-the workflow's `run` task, which works each ready cluster in its own Claude
-session (`workflow/execute.md`). It stays until the cron's first unattended
-run has produced a merged, applied changeset; then its model steps go, and
-the workflow only applies.
+`devenv-base-supervisor-run` (GitHub, at :23) is the safety net: when the
+last apply on main failed, it runs that apply again. It calls no model. The
+workflow's per-cluster `execute` sessions are gone: the session's changeset
+delegates implementation to the agent and ships finished work, and apply does
+both without a model.
 
 `SUPERVISOR_MODE=calibrate` runs the same pipeline as a one-off: a fresh
 session with no restic and no Remote Control, on a cheap model, whose PR is

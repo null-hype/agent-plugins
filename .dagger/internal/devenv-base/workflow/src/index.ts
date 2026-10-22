@@ -10,24 +10,15 @@
 //   workflow converges Linear to main. Calibration runs it with dryRun, its
 //   test; it writes only when called with dryRun false.
 //
-// After apply, the work itself:
-//
-// - `run` takes every ready cluster of the committed changeset and runs
-//   `execute` for each, on its own compute;
-// - `execute` runs one cluster as a fresh Claude Code session, worn by the
-//   hat planning gave it, on its model and effort, with that hat's tools;
-// - `host` and `ship` reach the toolbox directly, without a model.
-//
-// `run` and `execute` are dry by default and return the prompt they would
-// run.
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The supervisor's judgment is the Claude session in the Render cron, which
+// writes the changeset. This workflow makes no model calls: apply does what
+// the changeset says, and wakes the host and ships through the toolbox when
+// it says to. `host` and `ship` reach the toolbox directly, for a person.
+import { readFile } from "node:fs/promises";
 import { task, type TaskContext } from "@renderinc/sdk/workflows";
-import { apply as applyChangeset, marker, type ApplyResult } from "./apply.ts";
+import { apply as applyChangeset, type ApplyResult } from "./apply.ts";
 import type { Changeset } from "./changeset.ts";
 import { plan as buildPlan, type Plan } from "./dag.ts";
-import { checkPass, claudeArgs, prompt, readyClusters, runClaude, type ExecuteResult, type ReadyCluster } from "./execute.ts";
 import { linearClient, openIssues, triageHints } from "./linear.ts";
 import { toolboxClient, type ToolResult } from "./toolbox.ts";
 
@@ -87,79 +78,6 @@ const applyToolbox = () => ({
 // Files next to package.json; dist/ is one level down.
 const readChangeset = async (file = "changeset.json") =>
   JSON.parse(await readFile(new URL(`../${file}`, import.meta.url), "utf8")) as Changeset;
-
-// The committed changeset's clusters that are ready in Linear now. A new
-// cluster is found by the marker apply wrote into it; one apply has not
-// created yet is not ready.
-async function ready(team: string): Promise<ReadyCluster[]> {
-  const cs = await readChangeset();
-  const linear = linearClient(linearKey(), team);
-  const resolved: Record<string, string> = {};
-  for (const c of cs.clusters) {
-    const found = c.key.startsWith("new:") ? (await linear.findByMarker(marker(c.key)))?.identifier : c.key;
-    if (found) resolved[c.key] = found;
-  }
-  return readyClusters(buildPlan(await openIssues(linearKey(), team), ["CIT-439"]), cs, resolved);
-}
-
-// One ready cluster, worn by its hat, on its model and effort. A dry run
-// returns the prompt it would run instead of running it. No retries: a
-// session that failed halfway has already moved issues, so a person looks
-// at it before it runs again.
-const execute = task(
-  { name: "execute", timeoutSeconds: 3600, retry: { maxRetries: 0, waitDurationMs: 0, backoffScaling: 1 } },
-  async function execute(_ctx: TaskContext, cluster: string, dryRun: boolean = true, team: string = "CIT"): Promise<ExecuteResult> {
-    const c = (await ready(team)).find((r) => r.key === cluster || r.issue === cluster);
-    if (!c) throw new Error(`cluster ${cluster} is not a ready cluster of the committed changeset`);
-    const template = await readFile(new URL("../execute.md", import.meta.url), "utf8");
-    const text = prompt(template, c, new Date().toISOString());
-    const base = { cluster: c.issue, hat: c.hat, model: c.model, effort: c.effort, dryRun };
-    if (dryRun) return { ...base, pass: "", tail: text };
-
-    // The bearer tokens reach claude through this file, never its argv.
-    const dir = await mkdtemp(join(tmpdir(), "execute-"));
-    const mcpFile = join(dir, "mcp.json");
-    try {
-      await writeFile(
-        mcpFile,
-        JSON.stringify({
-          mcpServers: {
-            toolbox: { type: "http", url: process.env.TOOLBOX_URL ?? "https://toolbox-spike.onrender.com/mcp", headers: { Authorization: `Bearer ${env("TOOLBOX_TOKEN")}` } },
-            linear: { type: "http", url: "https://mcp.linear.app/mcp", headers: { Authorization: `Bearer ${linearKey()}` } },
-          },
-        }),
-      );
-      await chmod(mcpFile, 0o600);
-      env("CLAUDE_CODE_OAUTH_TOKEN");
-      const out = await runClaude(claudeArgs(c, text, mcpFile), 55 * 60 * 1000);
-      return { ...base, pass: checkPass(c, out), tail: out.slice(-4000) };
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  },
-);
-
-// Every ready cluster at once, each as its own `execute` run on its own
-// compute. Dry by default: a dry run shows what would run, and runs nothing.
-task(
-  { name: "run", timeoutSeconds: 3900, retry: { maxRetries: 0, waitDurationMs: 0, backoffScaling: 1 } },
-  async function run(ctx: TaskContext, dryRun: boolean = true, team: string = "CIT", only: string[] = []) {
-    // `only` narrows the run to the named clusters, by key or issue: how a
-    // first real run is kept to one cluster, and work another thread owns is
-    // kept out.
-    const clusters = (await ready(team)).filter((c) => !only.length || only.includes(c.key) || only.includes(c.issue));
-    const results = await Promise.allSettled(clusters.map((c) => ctx.run(execute, c.key, dryRun, team)));
-    // A named cluster that is not ready is said, not silently dropped: the
-    // first real run of CIT-434 did nothing because its parent was closed.
-    const missing = only.filter((o) => !clusters.some((c) => c.key === o || c.issue === o));
-    return [
-      ...results.map((r, i) =>
-        r.status === "fulfilled" ? r.value : { cluster: clusters[i]!.issue, hat: clusters[i]!.hat, error: String(r.reason) },
-      ),
-      ...missing.map((o) => ({ cluster: o, error: `${o} is not a ready cluster of the committed changeset` })),
-    ];
-  },
-);
 
 // The host and ship, for a task or a person, without a model. Only the
 // toolbox tools in toolbox.ts's TASK_TOOLS can be reached this way.
