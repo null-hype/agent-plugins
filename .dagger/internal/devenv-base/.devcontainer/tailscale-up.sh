@@ -45,8 +45,11 @@ if $SUDO tailscale --socket="$SOCK" status > /dev/null 2>&1; then
 else
   TS_ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/tailscale.env"
   export SOCK TS_HOSTNAME SUDO
+  # `up` must name every non-default setting the node already holds, or it
+  # refuses. A restarted container keeps its state, where the `set` below
+  # left accept-dns off, so that flag is named here too (CIT-488).
   pass-cli run --env-file "$TS_ENV_FILE" -- \
-    sh -c 'exec $SUDO tailscale --socket="$SOCK" up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME" --accept-routes --ssh'
+    sh -c 'exec $SUDO tailscale --socket="$SOCK" up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME" --accept-routes --ssh --accept-dns=false'
   echo "tailscale: joined tailnet as $TS_HOSTNAME"
 fi
 # MagicDNS would point resolv.conf at 100.100.100.100, and then public names
