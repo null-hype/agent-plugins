@@ -429,7 +429,10 @@ func TestHostReview(t *testing.T) {
 	for name, script := range map[string]string{
 		"pass-cli": "exit 0",
 		"curl": `echo "$*" >> "$HOME/curl.calls"
-echo '{"base": {"ref": "agent/x"}, "head": {"sha": "abc123"}}'`,
+case "$*" in
+  */pulls/8) echo '{"base": {"ref": "main"}, "head": {"sha": "f0f0", "repo": {"full_name": "stranger/agent-plugins"}}}' ;;
+  *) echo '{"base": {"ref": "agent/x"}, "head": {"sha": "abc123", "repo": {"full_name": "null-hype/agent-plugins"}}}' ;;
+esac`,
 		"codex": `cat > "$HOME/prompt"
 while [ "$1" != -o ]; do shift; done
 echo "no findings" > "$2"`,
@@ -481,5 +484,16 @@ echo "no findings" > "$2"`,
 	time.Sleep(300 * time.Millisecond)
 	if _, err := os.Stat(filepath.Join(home, "prompt")); err == nil {
 		t.Fatal("Codex reviewed the same head twice")
+	}
+
+	// A fork's PR is refused before any job starts.
+	fork := exec.Command("bash", "-s", "--", "review", "8")
+	fork.Env = env
+	fork.Stdin = strings.NewReader(exports(map[string]string{"GITHUB_TOKEN": "s3cret"}) + hostScript)
+	if out, err := fork.CombinedOutput(); err == nil || !strings.Contains(string(out), "not from a branch of null-hype/agent-plugins") {
+		t.Fatalf("review of a fork's PR: %v\n%s", err, out)
+	}
+	if _, err := os.Stat(filepath.Join(jobs, "review-8.pid")); err == nil {
+		t.Fatal("a review job started for a fork's PR")
 	}
 }
