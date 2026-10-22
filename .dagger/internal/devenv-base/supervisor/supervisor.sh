@@ -509,7 +509,7 @@ if ! write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")"; then
   plan_once "$(printf '\n\n## Your last changeset did not render\n\nFix this and give your whole answer again, ending with the changeset:\n\n```\n%s\n```\n' "$(cat "$CAL_DIR/pkl.log")")"
   write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")" || exit 1
 fi
-touched=$(jq -c '[.clusters[] | .key, .issues[]] + [(.decline, .duplicate, .escalate, .delegate)[] | .issue]
+touched=$(jq -c '[.clusters[] | .key, .issues[]] + [(.decline, .done, .duplicate, .escalate, .delegate, .ship, .review) // [] | .[] | .issue]
   | map(select(startswith("new:") | not)) | unique' "$wf/changeset.json")
 write_changeset "$(jq -c --argjson t "$touched" '.seen | with_entries(select(.key as $k | $t | index($k)))' "$CAL_DIR/plan.json")" || exit 1
 
