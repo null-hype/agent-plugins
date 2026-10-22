@@ -220,6 +220,8 @@ case "$1 $2" in
   # The shipped branches: GH_STUB_BRANCHES, each ahead of main by
   # GH_STUB_AHEAD commits made just now, and with a PR already when it is
   # named in GH_STUB_HAS_PR.
+  # The newest commit on main that changed the workflow: main's head.
+  "api repos/null-hype/agent-plugins/commits?"*) git -C "$CALIBRATION_REMOTE" rev-parse main ;;
   "api repos/null-hype/agent-plugins/branches") printf '%s\n' main supervisor/calibration ${GH_STUB_BRANCHES:-} ;;
   "api repos/null-hype/agent-plugins/compare/"*) echo "${GH_STUB_AHEAD:-1} $(date -u +%FT%TZ) Duo left page: the claim in read-only Monaco" ;;
   "pr list")
@@ -399,7 +401,7 @@ RESTIC_STUB_APPLY=none CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
 grep -qx 'SUPERVISOR_PLAN: auto-merge pr=https://github.com/null-hype/agent-plugins/pull/999' "$WORK/out" ||
   fail "an hourly run should set its changeset PR to merge itself, got: $(cat "$WORK/out")"
 
-[ "$(calls)" = "restic snapshots restic restore apply-start gh render node plan gh claude node apply gh gh gh gh restic backup" ] ||
+[ "$(calls)" = "restic snapshots restic restore gh apply-start gh render node plan gh claude node apply gh gh gh gh restic backup" ] ||
   fail "expected restore, apply what merged, plan, continue, dry run, PR, auto-merge, then backup; got: $(calls)"
 grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --auto --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
   fail "an hourly run should auto-merge the head it pushed, got: $(cat "$GH_LOG")"
@@ -409,6 +411,8 @@ grep -q 'pr checks' "$GH_LOG" && fail "an hourly run should not wait on its PR's
 # planning.
 grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
   fail "a run should apply main's changeset first, got: $(cat "$APPLY_LOG")"
+grep -q "gh api repos/null-hype/agent-plugins/commits?sha=main&path=$WF&per_page=1" "$GH_LOG" ||
+  fail "apply should name the newest commit that changed the workflow, which Render built, got: $(cat "$GH_LOG")"
 grep -qx "apply-changeset wait trn-$BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
   fail "a run should wait for its apply before planning, got: $(cat "$APPLY_LOG")"
 grep -qx "SUPERVISOR_APPLY: started run=trn-$BASE_SHA" "$WORK/out" ||
