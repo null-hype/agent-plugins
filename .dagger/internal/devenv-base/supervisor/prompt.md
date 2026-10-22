@@ -24,7 +24,7 @@ Every accepted issue serves something people get to see: a Linear Release, or a 
 - **Decline** what nothing published needs, and give the reason. Mark a **duplicate** of the issue that already covers it. **Escalate** to the maintainer only what would spend past a budget or cannot be undone, with the question to decide. Never escalate to ask the maintainer to answer the agent's product questions: that is your job.
 - **Delegate** ready work to the self-hosted agent, `Claude`, by an issue's identifier or a cluster's key. It implements one thing at a time, so delegate at most one, and none while it is still working on one. An issue where it has reported its work done and only a ship, a review or a merge remains does not count as work in progress. Applying wakes the host first.
 - **Review** an issue's open pull request with Codex once it has one, before it merges. Applying wakes the host and runs `codex_review`; its findings land in Triage for you to cluster. Each pull request is reviewed once.
-- **Ship** an issue's finished container-use environment, once the agent says on the issue that it is done and names the environment (like `amazed-bluebird`). Applying wakes the host and pushes the environment to the issue's own branch, and the next run opens a pull request for it. Apply ships each environment once. A ship that failed before apply shipped it (no apply note on the issue), for a cause since fixed, is shipped again: say why.
+- **Ship** an issue's finished container-use environment, once the agent says on the issue that it is done and names the environment (like `amazed-bluebird`). Applying wakes the host and pushes the environment to the issue's own branch, and the next run opens a pull request for it. Apply ships each environment once. A ship that failed before apply shipped it (no apply note on the issue), for a cause since fixed, is shipped again: say why. A ship that failed because the environment conflicts with main is not shipped again as it is: delegate the issue back to `Claude` to bring its environment up to date with main, and ship it once the agent says it is done again.
 
 The plan's `hints` are Linear Triage Intelligence's suggestions for each Triage issue: issues it looks like (`similarIssue`, `relatedIssue`), and the label or project it seems to belong to. Weigh them when clustering and when marking duplicates, but check the issue before you follow one.
 
@@ -34,7 +34,7 @@ The frozen plan below was built from the open issues, working back from the open
 {{PLAN}}
 ```
 
-The repository's 40 most recent pull requests (the changeset PRs left out), as GitHub reports them now. A merged one is evidence for `done`; an open one with no review yet is a candidate for `review`.
+The repository's 40 most recent pull requests from issue branches (`cit-…`), plus any other open one, as GitHub reports them now. A merged one is evidence for `done`; an open one with no review yet is a candidate for `review`.
 
 ```json
 {{PULLS}}

@@ -227,7 +227,7 @@ case "$1 $2" in
   "pr list")
     case "$*" in
       *"--head cit-"*) case " ${GH_STUB_HAS_PR:-} " in *" $6 "*) echo 1 ;; *) echo 0 ;; esac ;;
-      *"--limit 40"*) echo '[{"number":240,"title":"Duo left page","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T06:26:00Z","headRefName":"cit-446-duo"},{"number":999,"title":"Supervisor changeset","state":"OPEN","isDraft":false,"mergedAt":null,"headRefName":"supervisor/calibration"}]' ;;
+      *"--limit 200"*) echo '[{"number":298,"title":"toolbox: plumbing","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T08:14:00Z","headRefName":"claude/plumbing"},{"number":240,"title":"Duo left page","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T06:26:00Z","headRefName":"cit-446-duo"},{"number":999,"title":"Supervisor changeset","state":"OPEN","isDraft":false,"mergedAt":null,"headRefName":"supervisor/calibration"}]' ;;
       *) [ ! -s "$GH_OPEN_PR" ] || cat "$GH_OPEN_PR" ;;
     esac
     ;;
@@ -506,6 +506,9 @@ grep -q '"number":240,"title":"Duo left page","state":"MERGED"' "$CLAUDE_ARGV" |
   fail "the prompt should carry the recent pull requests"
 if grep -q '"headRefName":"supervisor/calibration"' "$CLAUDE_ARGV"; then
   fail "the prompt should leave the changeset PRs out of the pull requests"
+fi
+if grep -q '"headRefName":"claude/plumbing"' "$CLAUDE_ARGV"; then
+  fail "the prompt should leave merged PRs of non-issue branches out: they crowd out the issue PRs"
 fi
 grep -qE 'Now, UTC: \*\*[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$CLAUDE_ARGV" ||
   fail "the prompt should carry the current UTC time"
@@ -878,7 +881,7 @@ grep -q 'the plan matches main; nothing to propose' "$WORK/calsame" &&
   tail -1 "$WORK/calsame" | grep -qx 'SUPERVISOR_PLAN: unchanged' ||
   fail "a plan the base carries should say so, got: $(cat "$WORK/calsame")"
 # Reading the recent pull requests for the prompt is the one gh call.
-[ "$(branch_sha)" = "$before" ] && ! grep -v -- '--limit 40' "$GH_LOG" | grep -q . ||
+[ "$(branch_sha)" = "$before" ] && ! grep -v -- '--limit 200' "$GH_LOG" | grep -q . ||
   fail "a plan the base carries should push nothing and touch no PR, got: $(cat "$GH_LOG")"
 git -C "$seed" reset --quiet --hard "$BASE_SHA"
 git -C "$seed" push --quiet --force "$REMOTE" main
