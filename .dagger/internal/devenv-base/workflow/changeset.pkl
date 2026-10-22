@@ -1,14 +1,14 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@701b43d55fdd39ab2e061cfd2dd57807a7c28712. Merging it is applying it; render with
+// main@9254fd0e305a3092af9dba37c4fb9726792187cf. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
-  ["CIT-498"] = "2026-10-22T04:04:03.166Z"
-  ["CIT-499"] = "2026-10-22T04:04:13.169Z"
+  ["CIT-446"] = "2026-10-22T06:02:30.448Z"
+  ["CIT-465"] = "2026-10-22T06:02:15.208Z"
 }
 
 escalate {
-  new { issue = "CIT-498"; question = "The first ship of CIT-465 (env amazed-bluebird) failed because the push credential was missing, and it is reported repaired. Do you authorize one more ship of that environment?" }
-  new { issue = "CIT-499"; question = "Do you merge PR #240 (CIT-446) or replace it, how do you answer its open product questions, and do you accept or reject the review findings CIT-462 and CIT-463?" }
+  new { issue = "CIT-446"; question = "Do you answer the agent's five product questions (claim wording, which run is the counterexample, option rewrites, overlapping marker spans, page contract) or say the current choices stand? Do you fix CIT-462 and CIT-463 on PR #240's branch or move them into CIT-484? Do you merge #240 or replace it with a PR that gets merged?" }
+  new { issue = "CIT-465"; question = "Do you authorize one more ship of env amazed-bluebird to branch cit-465-duo-question-cards-in-pkl-the-demo-claims-cards-and-options, after the first ship failed on the Pass credential that is now fixed? Should it be based on PR #240's branch or on main?" }
 }
