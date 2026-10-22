@@ -35,6 +35,10 @@ export interface LinearIssue {
   reviewed: number[];
   // The asks apply has handed it with, by askId, from each ask's note.
   asked?: string[];
+  // The thread of each agent's latest session on it, by the agent's name as
+  // Linear words the thread ("an agent session with claude"): a reply there
+  // is how an agent that already has the issue is asked again.
+  sessions?: Record<string, string>;
 }
 
 // The toolbox, for the ops that reach the host. apply never calls it in
@@ -69,7 +73,8 @@ export interface LinearClient {
   hasLabel(name: string): Promise<boolean>;
   createLabel(name: string): Promise<void>;
   hasUser(name: string): Promise<boolean>;
-  comment(issue: string, body: string): Promise<void>;
+  // With a thread, the comment is a reply in it.
+  comment(issue: string, body: string, thread?: string): Promise<void>;
   delegate(issue: string, agent: string): Promise<void>;
   // Clears the issue's delegate, so delegating it again starts a new agent
   // session.
@@ -330,9 +335,11 @@ export async function apply(
       result.applied.push(op);
       continue;
     }
-    // An ask hands the issue back, even to the agent that has it: an agent
-    // acts only on a new session, so it is posted and the issue delegated
-    // afresh. A ship that conflicts with main goes back this way.
+    // An ask hands the issue back, even to the agent that has it. An agent
+    // acts only on a session event: a reply in its session's thread prompts
+    // it there (re-delegating an issue it has starts nothing), and without a
+    // session the ask is posted and the issue delegated. A ship that
+    // conflicts with main goes back this way.
     if (d.ask) {
       const ask = d.ask;
       await run(
@@ -340,8 +347,10 @@ export async function apply(
         (i) => (i.asked ?? []).includes(askId(ask)),
         async () => {
           await host();
-          await linear.comment(target, `${ask}\n\n${askMarker(ask)}`);
           const now = await linear.issue(target);
+          const thread = now?.sessions?.[d.agent.toLowerCase()];
+          await linear.comment(target, `${ask}\n\n${askMarker(ask)}`, thread);
+          if (thread) return;
           if (now?.delegate === d.agent) await linear.undelegate(target);
           await linear.delegate(target, d.agent);
         },

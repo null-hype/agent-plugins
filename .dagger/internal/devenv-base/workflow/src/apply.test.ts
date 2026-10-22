@@ -86,8 +86,8 @@ function fakeLinear(
     async hasUser(name) {
       return users.has(name);
     },
-    async comment(id, body) {
-      writes.push(`comment ${id} ${body}`);
+    async comment(id, body, thread) {
+      writes.push(`comment ${id}${thread ? ` in ${thread}` : ""} ${body}`);
       for (const m of body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)) store.get(id)!.shipped.push(m[1]!);
       for (const m of body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)) store.get(id)!.reviewed.push(Number(m[1]));
       for (const m of body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)) {
@@ -448,6 +448,18 @@ test("an ask hands an issue back to the agent that has it: posted, delegated afr
   const again = await apply(cs, client, { dryRun: false, toolbox: host });
   assert.equal(again.applied.length, 0);
   assert.equal(writes.length, 3);
+});
+
+test("an ask to an agent with a session on the issue is a reply in that session's thread", async () => {
+  const host = recordingHost();
+  const { client, store, writes } = world();
+  store.get("CIT-465")!.delegate = "tidelands-agent";
+  store.get("CIT-465")!.sessions = { "tidelands-agent": "thread-1" };
+  const ask = "Rebase amazed-bluebird onto main.";
+  const cs = { ...changeset(), clusters: [], decline: [], duplicate: [], escalate: [], delegate: [{ issue: "CIT-465", agent: "tidelands-agent", ask }] };
+  await apply(cs, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(writes.map((w) => w.split("\n")[0]), [`comment CIT-465 in thread-1 ${ask}`]);
+  assert.deepEqual(host.calls, ["wake"]);
 });
 
 test("after an ask, the environment it hands back can be shipped again", async () => {

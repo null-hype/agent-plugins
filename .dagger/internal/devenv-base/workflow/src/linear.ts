@@ -169,7 +169,7 @@ export async function triageHints(apiKey: string, team: string, fetcher = fetch)
 // (CIT-465), which Linear accepts wherever an id is asked for; the inputs
 // that want a UUID (parentId, relations) are resolved through `issue`.
 const ISSUE_FIELDS = `id identifier updatedAt description branchName
-  comments(first: 100) { nodes { body createdAt } }
+  comments(first: 100) { nodes { id body createdAt } }
   state { type }
   parent { identifier }
   labels { nodes { name } }
@@ -183,7 +183,7 @@ interface IssueNode {
   updatedAt: string;
   description: string | null;
   branchName: string;
-  comments: { nodes: { body: string; createdAt?: string }[] };
+  comments: { nodes: { id?: string; body: string; createdAt?: string }[] };
   state: { type: string };
   parent: { identifier: string } | null;
   labels: { nodes: { name: string }[] };
@@ -212,6 +212,14 @@ const toLinearIssue = (n: IssueNode): LinearIssue => ({
   branch: n.branchName,
   shipped: sinceAsk(n).flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)].map((m) => m[1]!)),
   reviewed: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)].map((m) => Number(m[1]))),
+  sessions: Object.fromEntries(
+    [...n.comments.nodes]
+      .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))
+      .flatMap((c) => {
+        const m = c.body.match(/^This thread is for an agent session with (\S+?)\.?$/);
+        return m && c.id ? [[m[1]!.toLowerCase(), c.id] as const] : [];
+      }),
+  ),
   asked: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)].map((m) => m[1]!)),
 });
 
@@ -360,9 +368,9 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
     async hasUser(name) {
       return !!(await userId(name));
     },
-    async comment(issue, body) {
+    async comment(issue, body, thread) {
       await gql(`mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }`, {
-        input: { issueId: await uuid(issue), body },
+        input: { issueId: await uuid(issue), body, ...(thread ? { parentId: thread } : {}) },
       });
     },
     async delegate(issue, agent) {
