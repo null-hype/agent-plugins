@@ -90,7 +90,10 @@ function fakeLinear(
       writes.push(`comment ${id} ${body}`);
       for (const m of body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)) store.get(id)!.shipped.push(m[1]!);
       for (const m of body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)) store.get(id)!.reviewed.push(Number(m[1]));
-      for (const m of body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)) (store.get(id)!.asked ??= []).push(m[1]!);
+      for (const m of body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)) {
+        (store.get(id)!.asked ??= []).push(m[1]!);
+        store.get(id)!.shipped = [];
+      }
       touch(id);
     },
     async delegate(id, agent) {
@@ -445,6 +448,18 @@ test("an ask hands an issue back to the agent that has it: posted, delegated afr
   const again = await apply(cs, client, { dryRun: false, toolbox: host });
   assert.equal(again.applied.length, 0);
   assert.equal(writes.length, 3);
+});
+
+test("after an ask, the environment it hands back can be shipped again", async () => {
+  const host = recordingHost();
+  const { client, store } = world();
+  const ship = { ...changeset(), clusters: [], decline: [], duplicate: [], escalate: [], delegate: [], ship: [{ issue: "CIT-465", env: "amazed-bluebird" }] };
+  await apply(ship, client, { dryRun: false, toolbox: host });
+  const back = { ...ship, seen: { "CIT-465": store.get("CIT-465")!.updatedAt }, ship: [], delegate: [{ issue: "CIT-465", agent: "tidelands-agent", ask: "Rebase amazed-bluebird onto main." }] };
+  await apply(back, client, { dryRun: false, toolbox: host });
+  const again = await apply(ship, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(again.applied.map((o) => `${o.op} ${o.target}`), ["ship CIT-465"]);
+  assert.deepEqual(host.calls.filter((c) => c.startsWith("ship")), ["ship amazed-bluebird branch-cit-465", "ship amazed-bluebird branch-cit-465"]);
 });
 
 test("an ask must be for an existing issue, and not blank", () => {

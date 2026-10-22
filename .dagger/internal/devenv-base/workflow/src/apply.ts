@@ -29,7 +29,7 @@ export interface LinearIssue {
   // Its git branch, as Linear names it: where a ship pushes.
   branch: string;
   // The container-use environments apply has shipped for it, read back from
-  // the note each ship leaves.
+  // the note each ship leaves since the last ask handed it back.
   shipped: string[];
   // The pull requests apply has had reviewed for it, from each review's note.
   reviewed: number[];
