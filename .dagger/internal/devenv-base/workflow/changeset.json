@@ -1,60 +1,12 @@
 {
-  "seen": {
-    "CIT-439": "2026-10-22T20:16:03.440Z",
-    "CIT-495": "2026-10-22T19:40:29.046Z",
-    "CIT-500": "2026-10-22T19:58:31.827Z",
-    "CIT-501": "2026-10-22T19:58:50.711Z",
-    "CIT-502": "2026-10-22T19:58:40.105Z",
-    "CIT-503": "2026-10-22T19:58:55.272Z",
-    "CIT-504": "2026-10-22T19:58:58.866Z",
-    "CIT-505": "2026-10-22T19:59:11.082Z"
-  },
-  "releases": [
-    {
-      "name": "duo-editor",
-      "description": "The Duo editor on iPhone Duo: the claim on the left page and question cards on the right, built on Xcode Cloud and shipped to TestFlight testers.",
-      "pipeline": "supervisor"
-    }
-  ],
-  "clusters": [
-    {
-      "key": "CIT-439",
-      "title": "iPhone Duo editor: one claim, one refutation, on TestFlight",
-      "description": "The native slices of CIT-439: the iOS project, the build-time JSON bundle, the Xcode Cloud workflows, the supervisor reading their results, and the SwiftUI app. The Linux-capable pieces run through the agent first; the one-time Xcode Cloud setup needs the maintainer on a Mac.",
-      "hat": "infra",
-      "model": "sonnet",
-      "effort": "medium",
-      "serves": "release:duo-editor",
-      "blockedBy": [],
-      "issues": [
-        "CIT-500",
-        "CIT-501",
-        "CIT-503",
-        "CIT-504",
-        "CIT-505"
-      ]
-    }
-  ],
+  "seen": {},
+  "releases": [],
+  "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
-  "escalate": [
-    {
-      "issue": "CIT-502",
-      "question": "Apple only lets the first Xcode Cloud workflow be created in Xcode on a Mac, which takes about an hour on a borrowed Mac or an hourly rented cloud Mac (AWS Mac bills a 24-hour minimum). Do you do this setup yourself, or approve renting a cloud Mac for it?"
-    }
-  ],
-  "delegate": [
-    {
-      "issue": "CIT-500",
-      "agent": "Claude"
-    }
-  ],
-  "ship": [
-    {
-      "issue": "CIT-495",
-      "env": "fair-labrador"
-    }
-  ],
+  "escalate": [],
+  "delegate": [],
+  "ship": [],
   "review": []
 }
