@@ -1,19 +1,19 @@
 {
   "seen": {
-    "CIT-462": "2026-10-22T12:38:21.632Z"
+    "CIT-463": "2026-10-22T16:43:01.564Z"
   },
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
-  "escalate": [
+  "escalate": [],
+  "delegate": [],
+  "ship": [
     {
-      "issue": "CIT-462",
-      "question": "PR #304 (environment thankful-worm, the standalone Duo left-page export) has a clean Codex review and QA passed, with no findings. Native WKWebView was not tested. Do you merge it into main?"
+      "issue": "CIT-463",
+      "env": "apparent-snipe"
     }
   ],
-  "delegate": [],
-  "ship": [],
   "review": []
 }

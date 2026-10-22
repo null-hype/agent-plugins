@@ -1,10 +1,10 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@f905f80a4c8663040ef1143199bb75ef475740dd. Merging it is applying it; render with
+// main@147cad290eddf12a68432f3794151b4b78d59f6e. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
-  ["CIT-462"] = "2026-10-22T12:38:21.632Z"
+  ["CIT-463"] = "2026-10-22T16:43:01.564Z"
 }
 
-escalate { new { issue = "CIT-462"; question = "PR #304 (environment thankful-worm, the standalone Duo left-page export) has a clean Codex review and QA passed, with no findings. Native WKWebView was not tested. Do you merge it into main?" } }
+ship { new { issue = "CIT-463"; env = "apparent-snipe" } }
