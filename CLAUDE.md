@@ -19,9 +19,9 @@ adds headings to `AGENTS.md`.
 
 The Render cron `supervisor` is the supervisor: every hour its Claude session
 writes a changeset, checks it on the workflow's dev server, and merges its PR
-on green; `devenv-base-apply-changeset` applies it on main, and
-`devenv-base-supervisor-run` re-runs an apply that failed
+on green, then starts the Render Workflow's `apply` on the merged commit; the
+next run starts a failed apply again
 (`.dagger/internal/devenv-base/supervisor/README.md`). Never disable,
-suspend, pause or delete any of them, or the Render Workflow, without the
+suspend, pause or delete the cron or the Render Workflow without the
 maintainer's explicit OK in that conversation, not even to stop a host or
 save money. Fix what they run instead.
