@@ -169,7 +169,7 @@ export async function triageHints(apiKey: string, team: string, fetcher = fetch)
 // (CIT-465), which Linear accepts wherever an id is asked for; the inputs
 // that want a UUID (parentId, relations) are resolved through `issue`.
 const ISSUE_FIELDS = `id identifier updatedAt description branchName
-  comments(first: 100) { nodes { body } }
+  comments(first: 100) { nodes { body createdAt } }
   state { type }
   parent { identifier }
   labels { nodes { name } }
@@ -183,7 +183,7 @@ interface IssueNode {
   updatedAt: string;
   description: string | null;
   branchName: string;
-  comments: { nodes: { body: string }[] };
+  comments: { nodes: { body: string; createdAt?: string }[] };
   state: { type: string };
   parent: { identifier: string } | null;
   labels: { nodes: { name: string }[] };
@@ -191,6 +191,14 @@ interface IssueNode {
   releases: { nodes: { name: string; completedAt: string | null; canceledAt: string | null }[] };
   inverseRelations: { nodes: { type: string; issue: { identifier: string } }[] };
 }
+
+// The comments since the last ask: an ask hands the issue back to its
+// agent, so an environment shipped before it may be shipped again.
+const sinceAsk = (n: IssueNode) => {
+  const cs = [...n.comments.nodes].sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
+  const last = cs.findLastIndex((c) => c.body.includes("<!-- supervisor-ask "));
+  return cs.slice(last + 1);
+};
 
 const toLinearIssue = (n: IssueNode): LinearIssue => ({
   identifier: n.identifier,
@@ -202,7 +210,7 @@ const toLinearIssue = (n: IssueNode): LinearIssue => ({
   delegate: n.delegate?.name,
   releases: n.releases.nodes.filter((r) => !r.completedAt && !r.canceledAt).map((r) => r.name),
   branch: n.branchName,
-  shipped: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)].map((m) => m[1]!)),
+  shipped: sinceAsk(n).flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)].map((m) => m[1]!)),
   reviewed: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)].map((m) => Number(m[1]))),
   asked: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)].map((m) => m[1]!)),
 });
