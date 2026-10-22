@@ -50,7 +50,7 @@ final class EvidenceLogTests: XCTestCase {
     }
 
     func testIntegersBeyondSixtyFourBitsFailTheRunWithTheirLine() {
-        for literal in ["18446744073709551616", "123456789012345678901234567890", "9007199254740993.0"] {
+        for literal in ["18446744073709551616", "123456789012345678901234567890", "1e30"] {
             let log = "{\"a\":1}\n{\"a\":\(literal)}\n"
             XCTAssertThrowsError(try EvidenceLog.records(from: Data(log.utf8)), literal) { error in
                 XCTAssertEqual((error as? EvidenceLogError)?.lineNumber, 2, literal)
