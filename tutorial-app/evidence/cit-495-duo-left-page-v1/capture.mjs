@@ -60,3 +60,7 @@ await page.screenshot({ path: out });
 console.log(`wrote ${out}`);
 await browser.close();
 server.close();
+if (errors.length) {
+	console.error(`the page reported ${errors.length} runtime error(s):\n${errors.join('\n')}`);
+	process.exit(1);
+}
