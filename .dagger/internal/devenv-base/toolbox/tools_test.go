@@ -319,7 +319,7 @@ func TestCodexReviewPassesTheModelAndTokens(t *testing.T) {
 	}
 }
 
-func TestAgentShipSendsNoSecrets(t *testing.T) {
+func TestAgentShipSendsOnlyThePassToken(t *testing.T) {
 	tb, _, h := newTestToolbox("RUNNING")
 	args := map[string]any{"env": "trusty-burro", "branch": "cit-432-fix"}
 	if res := callTool(t, tb, "agent_ship", args); res.IsError {
@@ -329,8 +329,10 @@ func TestAgentShipSendsNoSecrets(t *testing.T) {
 	if got := strings.Join(c.args, " "); got != "ship linear-agent trusty-burro cit-432-fix" {
 		t.Fatalf("args %q", got)
 	}
-	if len(c.env) != 0 {
-		t.Fatalf("env %v, want none: the host resolves the push token through its own pass session", c.env)
+	// The push token is resolved on the host through its own pass session;
+	// the pass token only logs a recreated host in, as review does.
+	if len(c.env) != 1 || c.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "pass-token" {
+		t.Fatalf("env %v, want only the pass token", c.env)
 	}
 }
 
