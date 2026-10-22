@@ -133,7 +133,7 @@ if [ -n "$cfg" ]; then
 fi
 case "${CLAUDE_STUB_MODE:-ok}" in
   prose) echo "I had a look around and it all seems fine." ;;
-  plan | badpkl | badpkl-once)
+  plan | plan-ship | badpkl | badpkl-once)
     hat=infra
     # badpkl-once: only the first planning run writes a bad changeset.
     case "$CLAUDE_STUB_MODE" in
@@ -156,6 +156,11 @@ case "${CLAUDE_STUB_MODE:-ok}" in
     echo '}'
     echo 'decline { new { issue = "CIT-502"; reason = "nothing published depends on it" } }'
     echo 'delegate { new { issue = "new:review-findings"; agent = "tidelands-agent" } }'
+    # plan-ship: also ship an issue no cluster names.
+    if [ "$CLAUDE_STUB_MODE" = plan-ship ]; then
+      echo 'ship { new { issue = "CIT-777"; env = "amazed-bluebird" } }'
+
+    fi
     echo '```'
     ;;
   fail) echo "boom" >&2; exit 3 ;;
@@ -410,6 +415,14 @@ grep -qx "SUPERVISOR_APPLY: started run=trn-$BASE_SHA" "$WORK/out" ||
   fail "the run should report the apply it started, got: $(cat "$WORK/out")"
 [ "$(cat "$HOME/.claude/supervisor-apply")" = "$SEED_HASH trn-$BASE_SHA" ] ||
   fail "the applied changeset and its task run should be kept with the session, got: $(cat "$HOME/.claude/supervisor-apply")"
+
+# Ops on issues no cluster names (ship, done, review) keep their issues in
+# `seen`: the 07:13 run lost its ship to "was not seen by planning".
+fresh
+CLAUDE_STUB_MODE=plan-ship tick > "$WORK/out" 2>&1 ||
+  fail "a run that ships should exit 0, got: $(tail -15 "$WORK/out")"
+git -C "$REMOTE" show "supervisor/calibration:$WF/changeset.json" | jq -e '.seen["CIT-777"]' > /dev/null ||
+  fail "a shipped issue should stay in seen, got: $(git -C "$REMOTE" show "supervisor/calibration:$WF/changeset.json")"
 
 # A changeset already applied is not applied again; one whose apply failed is.
 fresh
