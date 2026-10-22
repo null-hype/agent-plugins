@@ -595,7 +595,10 @@ fi
 # for the checks; the next run applies whatever merged.
 head=$(gh pr view "$pr" --repo "$CALIBRATION_REPO" --json headRefOid --jq .headRefOid) ||
   { echo "supervisor: could not read the changeset PR's head" >&2; exit 1; }
+# GitHub refuses auto-merge on a PR whose checks have all passed already
+# ("clean status"): that one is merged now instead.
 gh pr merge "$pr" --repo "$CALIBRATION_REPO" --auto --squash --match-head-commit "$head" ||
+  gh pr merge "$pr" --repo "$CALIBRATION_REPO" --squash --match-head-commit "$head" ||
   { echo "supervisor: could not turn on auto-merge for the changeset PR $pr" >&2; exit 1; }
 echo "SUPERVISOR_PLAN: auto-merge pr=$pr"
 exit 0

@@ -243,6 +243,9 @@ case "$1 $2" in
     esac
     ;;
   "pr view") echo "0123456789abcdef0123456789abcdef01234567" ;;
+  # A PR whose checks have all passed: GitHub refuses auto-merge on it.
+  "pr merge") [[ -z "${GH_STUB_CLEAN:-}" || "$*" != *--auto* ]] ||
+    { echo "GraphQL: Pull request Pull request is in clean status (enablePullRequestAutoMerge)" >&2; exit 1; } ;;
 esac
 STUB
 
@@ -419,6 +422,14 @@ grep -qx "SUPERVISOR_APPLY: started run=trn-$BASE_SHA" "$WORK/out" ||
   fail "the run should report the apply it started, got: $(cat "$WORK/out")"
 [ "$(cat "$HOME/.claude/supervisor-apply")" = "$SEED_HASH trn-$BASE_SHA" ] ||
   fail "the applied changeset and its task run should be kept with the session, got: $(cat "$HOME/.claude/supervisor-apply")"
+
+# A changeset PR whose checks all passed already is merged directly:
+# GitHub refuses auto-merge on it (the 14:13 run failed that way).
+fresh
+GH_STUB_CLEAN=1 CLAUDE_STUB_MODE=plan tick > "$WORK/clean" 2>&1 ||
+  fail "a run whose changeset PR is already clean should pass, got: $(tail -5 "$WORK/clean")"
+grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
+  fail "a clean changeset PR should be merged directly, got: $(grep 'pr merge' "$GH_LOG")"
 
 # Ops on issues no cluster names (ship, done, review) keep their issues in
 # `seen`: the 07:13 run lost its ship to "was not seen by planning".
