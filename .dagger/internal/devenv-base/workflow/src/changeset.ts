@@ -69,6 +69,8 @@ export interface Changeset {
   // A finished container-use environment to ship to its issue's branch.
   // Optional: changesets written before it had none.
   ship?: { issue: string; env: string }[];
+  // A pull request for an issue to review with Codex. Optional, likewise.
+  review?: { issue: string; pr: number }[];
 }
 
 const NEW_KEY = /^new:[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -155,6 +157,10 @@ export function validate(cs: Changeset): string[] {
   }
   for (const s of cs.ship ?? []) {
     if (!(s.issue in cs.seen)) problems.push(`ship ${s.issue} was not seen by planning`);
+  }
+  for (const r of cs.review ?? []) {
+    if (!(r.issue in cs.seen)) problems.push(`review ${r.issue} was not seen by planning`);
+    if (!Number.isInteger(r.pr) || r.pr < 1) problems.push(`review ${r.issue}: ${r.pr} is not a pull request number`);
   }
   return problems;
 }

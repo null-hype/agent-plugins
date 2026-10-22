@@ -3,8 +3,8 @@
 // calls one tool at a time over MCP's streamable HTTP transport, the way
 // Claude Code does, so host start/stop and ship need no model.
 //
-// Only the tools named here can be called. Deleting a workspace, reviewing
-// and the codespace tools stay with people and the hats' own sessions.
+// Only the tools named here can be called. Deleting a workspace and the
+// codespace tools stay with people.
 export const TASK_TOOLS = [
   "host_status",
   // Starts the host and steps until it is ready (CIT-466, #241); the toolbox
@@ -16,6 +16,8 @@ export const TASK_TOOLS = [
   "workspace_status",
   "agent_ship",
   "agent_ship_status",
+  "codex_review",
+  "codex_review_status",
 ] as const;
 
 export type TaskTool = (typeof TASK_TOOLS)[number];
