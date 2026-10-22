@@ -15,11 +15,13 @@ If no syntax pattern can catch it, say so in your reply instead of writing a
 rule. If no principle fits, propose one in your reply; only the maintainer
 adds headings to `AGENTS.md`.
 
-## The supervisor tick
+## The supervisor
 
-`devenv-base-supervisor-run` is the supervisor: every hour it plans, applies
-and executes (`.dagger/internal/devenv-base/supervisor/README.md`). Never
-disable, suspend, pause or delete it, or the Render Workflow it calls,
-without the maintainer's explicit OK in that conversation, not even to stop
-a host or save money. Fix what it runs instead. The old `supervisor` Render
-cron is retired; don't revive it.
+The Render cron `supervisor` is the supervisor: every hour its Claude session
+writes a changeset, checks it on the workflow's dev server, and merges its PR
+on green; `devenv-base-apply-changeset` applies it on main, and
+`devenv-base-supervisor-run` re-runs an apply that failed
+(`.dagger/internal/devenv-base/supervisor/README.md`). Never disable,
+suspend, pause or delete any of them, or the Render Workflow, without the
+maintainer's explicit OK in that conversation, not even to stop a host or
+save money. Fix what they run instead.
