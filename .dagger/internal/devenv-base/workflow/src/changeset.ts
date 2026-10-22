@@ -66,6 +66,9 @@ export interface Changeset {
   escalate: { issue: string; question: string }[];
   // An issue (or a cluster, by key) handed to an agent, by its Linear name.
   delegate: { issue: string; agent: string }[];
+  // A finished container-use environment to ship to its issue's branch.
+  // Optional: changesets written before it had none.
+  ship?: { issue: string; env: string }[];
 }
 
 const NEW_KEY = /^new:[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -149,6 +152,9 @@ export function validate(cs: Changeset): string[] {
     if (!d.agent?.trim()) problems.push(`delegate ${d.issue} names no agent`);
     const closing = placed.get(d.issue);
     if (closing && !closing.startsWith("cluster")) problems.push(`delegate ${d.issue} is also in ${closing}`);
+  }
+  for (const s of cs.ship ?? []) {
+    if (!(s.issue in cs.seen)) problems.push(`ship ${s.issue} was not seen by planning`);
   }
   return problems;
 }

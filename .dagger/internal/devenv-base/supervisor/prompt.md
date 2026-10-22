@@ -20,7 +20,8 @@ Every accepted issue serves something people get to see: a Linear Release, or a 
 - **Duo comes first.** Every open issue in the `duo-editor` Release, or under CIT-439, that no cluster covers yet belongs in a cluster serving `release:duo-editor`, even when it is not in Triage. Infrastructure work is accepted only when it blocks a Duo issue: make it a `blockedBy` of the cluster it unblocks. Infrastructure that blocks nothing (hardening, autonomy proofs, review findings on the supervisor itself) is declined with the reason "blocks no Release".
 - **Keep the plan stable.** Successive runs should converge, not reshuffle. Put an issue in an existing open cluster or Release whenever one fits. Propose a new Release only when no open one fits a theme, and at most one per changeset. Name it after the container-use environment that will ship it.
 - **Decline** what nothing published needs, and give the reason. Mark a **duplicate** of the issue that already covers it. **Escalate** to the maintainer, with the question to decide, anything that is a product question, would spend past a budget, or is published outside Linear (merging a feature PR, shipping again after a failed ship). Never decide those yourself.
-- **Delegate** ready work to the self-hosted agent, `Claude`, by an issue's identifier or a cluster's key. It implements one thing at a time, so delegate at most one, and none while an issue is already delegated to it and not Done.
+- **Delegate** ready work to the self-hosted agent, `Claude`, by an issue's identifier or a cluster's key. It implements one thing at a time, so delegate at most one, and none while an issue is already delegated to it and not Done. Applying wakes the host first.
+- **Ship** an issue's finished container-use environment, once the agent says on the issue that it is done and names the environment (like `amazed-bluebird`). Applying wakes the host and pushes the environment to the issue's own branch, and the next run opens a pull request for it. Each environment ships once; a ship that failed is escalated, not shipped again.
 
 The plan's `hints` are Linear Triage Intelligence's suggestions for each Triage issue: issues it looks like (`similarIssue`, `relatedIssue`), and the label or project it seems to belong to. Weigh them when clustering and when marking duplicates, but check the issue before you follow one.
 
@@ -57,6 +58,7 @@ decline { new { issue = "CIT-502"; reason = "blocks no Release" } }
 duplicate { new { issue = "CIT-503"; of = "CIT-500" } }
 escalate { new { issue = "CIT-504"; question = "Should the export keep the editor's theme?" } }
 delegate { new { issue = "new:duo-export"; agent = "Claude" } }
+ship { new { issue = "CIT-446"; env = "musical-drum" } }
 ```
 ````
 

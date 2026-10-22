@@ -153,7 +153,7 @@ test("the client moves a parented Triage issue to the team's first unstarted sta
           ] } }] } }
         : q.includes("issue(id: $id) { id }")
           ? { issue: { id: `uuid-${req.variables.id}` } }
-          : { issue: { ...node(req.variables.id, { state: { type: "triage" } }), id: "x", updatedAt: "t", description: "", labels: { nodes: [] }, delegate: null } };
+          : { issue: { ...node(req.variables.id, { state: { type: "triage" } }), id: "x", updatedAt: "t", description: "", branchName: "cit-500", comments: { nodes: [] }, labels: { nodes: [] }, delegate: null } };
     return new Response(JSON.stringify({ data }), { status: 200 });
   }) as typeof fetch;
 

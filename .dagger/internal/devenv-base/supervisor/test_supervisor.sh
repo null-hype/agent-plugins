@@ -206,14 +206,27 @@ cat > "$BIN/gh" <<'STUB'
 echo "gh" >> "$CALLS"
 echo "gh $*" >> "$GH_LOG"
 case "$1 $2" in
-  "pr list") [ ! -s "$GH_OPEN_PR" ] || cat "$GH_OPEN_PR" ;;
+  # The shipped branches: GH_STUB_BRANCHES, each ahead of main by
+  # GH_STUB_AHEAD commits made just now, and with a PR already when it is
+  # named in GH_STUB_HAS_PR.
+  "api repos/null-hype/agent-plugins/branches") printf '%s\n' main supervisor/calibration ${GH_STUB_BRANCHES:-} ;;
+  "api repos/null-hype/agent-plugins/compare/"*) echo "${GH_STUB_AHEAD:-1} $(date -u +%FT%TZ) Duo left page: the claim in read-only Monaco" ;;
+  "pr list")
+    case "$*" in
+      *"--head cit-"*) case " ${GH_STUB_HAS_PR:-} " in *" $6 "*) echo 1 ;; *) echo 0 ;; esac ;;
+      *) [ ! -s "$GH_OPEN_PR" ] || cat "$GH_OPEN_PR" ;;
+    esac
+    ;;
   "pr create"|"pr edit")
     prev=""
     for a in "$@"; do
       [ "$prev" = "--body-file" ] && cp "$a" "$GH_PR_BODY"
       prev=$a
     done
-    [ "$2" = edit ] || echo "https://github.com/null-hype/agent-plugins/pull/999" | tee "$GH_OPEN_PR"
+    case "$*" in
+      *"--head cit-"*) echo "https://github.com/null-hype/agent-plugins/pull/240" ;;
+      *) [ "$2" = edit ] || echo "https://github.com/null-hype/agent-plugins/pull/999" | tee "$GH_OPEN_PR" ;;
+    esac
     ;;
   "pr view") echo "0123456789abcdef0123456789abcdef01234567" ;;
   "pr checks") exit "${GH_CHECKS_EXIT:-0}" ;;
@@ -357,7 +370,7 @@ CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
 grep -qx 'SUPERVISOR_PLAN: merged pr=https://github.com/null-hype/agent-plugins/pull/999' "$WORK/out" ||
   fail "an hourly run should merge its changeset PR, got: $(cat "$WORK/out")"
 
-[ "$(calls)" = "restic snapshots restic restore render node plan claude node apply gh gh gh gh gh restic backup" ] ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan claude node apply gh gh gh gh gh restic backup" ] ||
   fail "expected restore, plan, continue, dry run, PR, merge, then backup; got: $(calls)"
 grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
   fail "an hourly run should squash-merge the head its checks ran on, got: $(cat "$GH_LOG")"
@@ -563,7 +576,7 @@ if CLAUDE_STUB_MODE=fail tick > "$WORK/broken" 2>&1; then
 fi
 grep -q 'claude exited 3 -- this tick has no changeset' "$WORK/broken" ||
   fail "a failed claude run should report its exit status, got: $(cat "$WORK/broken")"
-[ "$(calls)" = "restic snapshots restic restore render node plan claude restic backup" ] && no_pr ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan claude restic backup" ] && no_pr ||
   fail "a failing claude should open no PR, and still be backed up; got: $(calls)"
 
 fresh
@@ -572,7 +585,7 @@ if CLAUDE_STUB_MODE=hang SUPERVISOR_CLAUDE_TIMEOUT=1s tick > "$WORK/hung" 2>&1; 
 fi
 grep -q 'claude timed out after 1s' "$WORK/hung" ||
   fail "a timed-out claude should say so"
-[ "$(calls)" = "restic snapshots restic restore render node plan claude restic backup" ] ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan claude restic backup" ] ||
   fail "the backup should run after a timed-out claude; got: $(calls)"
 
 fresh
@@ -581,7 +594,7 @@ if CLAUDE_STUB_MODE=prose tick > "$WORK/prose" 2>&1; then
 fi
 grep -q 'no SUPERVISOR_CHANGESET line followed by a pkl block' "$WORK/prose" ||
   fail "a missing changeset should say so"
-[ "$(calls)" = "restic snapshots restic restore render node plan claude restic backup" ] && no_pr ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan claude restic backup" ] && no_pr ||
   fail "a run without a changeset should open no PR, and still be backed up; got: $(calls)"
 
 # A changeset that does not render goes back to the same session once.
@@ -590,6 +603,35 @@ CLAUDE_STUB_MODE=badpkl-once tick > "$WORK/tickfixed" 2>&1 ||
   fail "a changeset fixed on the second ask should pass, got: $(cat "$WORK/tickfixed")"
 grep -q 'Your last changeset did not render' "$CLAUDE_ARGV" && grep -qx -- '--continue' "$CLAUDE_ARGV" ||
   fail "the second ask should continue the session, with the render error"
+
+# A shipped branch with no PR gets one; a branch that has one, or is not
+# ahead of main, does not.
+fresh
+GH_STUB_BRANCHES="cit-446-duo-left-page cit-465-pkl-cards" GH_STUB_HAS_PR=cit-465-pkl-cards \
+  CLAUDE_STUB_MODE=plan tick > "$WORK/shipped" 2>&1 ||
+  fail "a run with a shipped branch should pass, got: $(cat "$WORK/shipped")"
+grep -qx 'gh pr create --repo null-hype/agent-plugins --base main --head cit-446-duo-left-page --title CIT-446: Duo left page: the claim in read-only Monaco --body .*agent_ship.*' "$GH_LOG" ||
+  fail "a shipped branch without a PR should get one, titled from its issue, got: $(cat "$GH_LOG")"
+grep -q 'opened https://github.com/null-hype/agent-plugins/pull/240 for the shipped branch cit-446-duo-left-page' "$WORK/shipped" ||
+  fail "the run should name the PR it opened"
+if grep -q -- '--head cit-465-pkl-cards --title' "$GH_LOG"; then
+  fail "a shipped branch that has a PR should not get a second"
+fi
+fresh
+GH_STUB_BRANCHES=cit-446-duo-left-page GH_STUB_AHEAD=0 CLAUDE_STUB_MODE=plan tick > /dev/null 2>&1 ||
+  fail "a run with a branch main already has should pass"
+if grep -q -- '--head cit-' "$GH_LOG" | grep -q 'pr create'; then
+  fail "a branch with nothing main lacks should get no PR"
+fi
+grep -c 'pr create' "$GH_LOG" | grep -qx 1 ||
+  fail "only the changeset PR should be opened when no branch is ahead, got: $(cat "$GH_LOG")"
+# A calibration opens no PR but its own.
+fresh
+GH_STUB_BRANCHES=cit-446-duo-left-page CLAUDE_STUB_MODE=plan calibrate > /dev/null 2>&1 ||
+  fail "a calibration with a shipped branch around should pass"
+if grep -q -- '--head cit-' "$GH_LOG"; then
+  fail "a calibration should leave shipped branches alone"
+fi
 
 # A failed backup fails a run that otherwise worked: the next run would
 # continue from an older transcript.
