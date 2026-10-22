@@ -598,7 +598,8 @@ if section --allowedTools | grep -qx mcp__linear; then
   fail "the run must not allow the Linear server as a whole"
 fi
 for tool in mcp__toolbox__host_status mcp__toolbox__workspace_list mcp__toolbox__workspace_status \
-  mcp__toolbox__agent_ship_status mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments; do
+  mcp__toolbox__agent_ship_status mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments \
+  mcp__linear__list_initiatives mcp__linear__get_initiative mcp__linear__get_status_updates; do
   section --allowedTools | grep -qx "$tool" || fail "$tool should be allowed"
 done
 if section --allowedTools | grep -E '^mcp__linear__(save|create|delete|update|merge|submit|resolve|share|unshare|mark)_'; then
@@ -606,7 +607,8 @@ if section --allowedTools | grep -E '^mcp__linear__(save|create|delete|update|me
 fi
 for tool in mcp__toolbox__host_start mcp__toolbox__host_stop mcp__toolbox__host_wake mcp__toolbox__agent_start \
   mcp__toolbox__agent_ship mcp__toolbox__workspace_delete mcp__toolbox__codespace_rebuild \
-  mcp__linear__save_issue mcp__linear__save_comment mcp__linear__create_issue_label Bash Write Edit; do
+  mcp__linear__save_issue mcp__linear__save_comment mcp__linear__create_issue_label \
+  mcp__linear__save_initiative mcp__linear__save_status_update Bash Write Edit; do
   if section --allowedTools | grep -qx "$tool"; then
     fail "$tool must not be in the allowed list"
   fi
@@ -846,14 +848,16 @@ fi
 if section --allowedTools | grep -qx mcp__linear; then
   fail "a calibration must not allow the Linear server as a whole"
 fi
-for tool in mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments mcp__toolbox__host_status; do
+for tool in mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments mcp__toolbox__host_status \
+  mcp__linear__list_initiatives mcp__linear__get_initiative mcp__linear__get_status_updates; do
   section --allowedTools | grep -qx "$tool" || fail "$tool should be allowed in a calibration"
 done
 if section --allowedTools | grep -E '^mcp__linear__(save|create|delete|update|merge|submit|resolve|share|unshare|mark)_'; then
   fail "a calibration must not allow a Linear tool that writes"
 fi
 for tool in mcp__linear__save_issue mcp__linear__save_comment mcp__linear__delete_comment \
-  mcp__linear__create_issue_label mcp__toolbox__host_start Bash; do
+  mcp__linear__create_issue_label mcp__linear__save_initiative mcp__linear__save_status_update \
+  mcp__toolbox__host_start Bash; do
   section --disallowedTools | grep -qx "$tool" || fail "$tool should be disallowed by name in a calibration"
 done
 
