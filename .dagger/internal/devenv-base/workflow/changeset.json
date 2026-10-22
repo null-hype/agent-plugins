@@ -1,20 +1,12 @@
 {
-  "seen": {
-    "CIT-465": "2026-10-22T12:38:18.859Z"
-  },
+  "seen": {},
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [
-    {
-      "issue": "CIT-465",
-      "agent": "Claude",
-      "ask": "Your amazed-bluebird environment could not be pushed: it conflicts with main in tutorial-app/src/stories/duo/cards.ts, which both main and your environment add. Please rebase or merge main into the environment, keep the cards generated from Cards.pkl, fix the conflict, and reply here when the environment is ready to ship."
-    }
-  ],
+  "delegate": [],
   "ship": [],
   "review": []
 }

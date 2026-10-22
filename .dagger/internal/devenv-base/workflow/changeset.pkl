@@ -1,10 +1,8 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@fc571b0a2c015edcd7e17979e6f9c5fbca340629. Merging it is applying it; render with
+// main@7c51fe8c2052385d208b8113f3a147fb66314b37. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
-  ["CIT-465"] = "2026-10-22T12:38:18.859Z"
 }
 
-delegate { new { issue = "CIT-465"; agent = "Claude"; ask = "Your amazed-bluebird environment could not be pushed: it conflicts with main in tutorial-app/src/stories/duo/cards.ts, which both main and your environment add. Please rebase or merge main into the environment, keep the cards generated from Cards.pkl, fix the conflict, and reply here when the environment is ready to ship." } }
