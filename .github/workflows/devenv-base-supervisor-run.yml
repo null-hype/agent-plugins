@@ -1,24 +1,62 @@
 name: devenv-base-supervisor-run
 
-# The supervisor Workflow's hourly tick (CIT-472): runs the deployed `run`
-# task, which executes every ready cluster of the committed changeset with
-# its hat. A tick still running when the next is due delays that next one.
+# The supervisor's hourly tick (CIT-472): one whole loop, plan -> apply ->
+# execute, product first (#261).
+#
+#   1. plan:    calibration, the planning hat, against live Linear. A new
+#               plan becomes the calibration PR and is merged once its checks
+#               are green (Richard, 2026-10-22), which fires
+#               devenv-base-apply-changeset on main.
+#   2. execute: the deployed `run` task works every ready cluster with its
+#               hat. When this tick merged a new plan, execute waits for that
+#               apply instead, and runs from its completion below.
+#
+# A tick whose planning did not run or did not finish goes red, even when
+# execute ran, so a tick that only executes is never mistaken for a whole
+# one.
+#
+# This tick IS the supervisor. Never disable it, suspend it or delete it
+# without Richard's explicit OK (Richard, 2026-10-22). The old `supervisor`
+# Render cron (#238) is retired, not paused: don't revive it.
 on:
   schedule:
     - cron: "23 * * * *"
   workflow_dispatch:
+  # Execute right after a plan is applied.
+  workflow_run:
+    workflows: [devenv-base-apply-changeset]
+    types: [completed]
 
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
-  run:
+  tick:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      - uses: dagger/dagger-for-github@v8.4.1
+
+      # Planning. Not after an apply: that apply is the plan this tick (or
+      # the last one) made.
+      - name: Plan
+        id: plan
+        if: github.event_name != 'workflow_run'
+        continue-on-error: true
+        uses: dagger/dagger-for-github@v8.4.1
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        with:
+          verb: call
+          workdir: .dagger/internal/devenv-base
+          args: calibrate-supervisor --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN --base=main --merge
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+      - name: Execute
+        if: "${{ !contains(steps.plan.outputs.output, 'SUPERVISOR_PLAN: merged') }}"
+        uses: dagger/dagger-for-github@v8.4.1
         env:
           PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
         with:
@@ -26,3 +64,17 @@ jobs:
           workdir: .dagger/internal/devenv-base
           args: run-supervisor-workflow --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+      - name: Report the plan
+        if: always() && github.event_name != 'workflow_run'
+        env:
+          OUTCOME: ${{ steps.plan.outcome }}
+          OUTPUT: ${{ steps.plan.outputs.output }}
+        run: |
+          line=$(printf '%s\n' "$OUTPUT" | grep -E '^SUPERVISOR_PLAN: ' | tail -1 || true)
+          if [ "$OUTCOME" != success ] || [ -z "$line" ]; then
+            echo "::error title=Supervisor planning did not run::This tick executed without a fresh plan (planning: $OUTCOME). See the Plan step."
+            exit 1
+          fi
+          echo "$line"
+          echo "### $line" >> "$GITHUB_STEP_SUMMARY"

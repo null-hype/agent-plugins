@@ -94,9 +94,18 @@ hands leftovers back to Triage. `run` and `execute` are dry by default and
 return the prompt they would run, and `run` takes `only` to name clusters.
 `host` (status, wake, start, stop) and `ship` reach the toolbox without a
 model. The toolbox owns the host's lifecycle, so the workflow never
-re-implements idle stop. `devenv-base-supervisor-run` runs `run` for real
-every hour at :23 (`supervisor/run-workflow.sh`), and goes red when the run
-fails or any cluster errors.
+re-implements idle stop.
+
+**The hourly tick is the supervisor.** `devenv-base-supervisor-run` runs at
+:23 and does the whole loop, product first: it plans (calibration with
+`--merge`), and a new plan's PR is merged once its checks are green, which
+fires the apply on main. Execute (`supervisor/run-workflow.sh`, the `run`
+task) follows that apply, or runs straight away when the plan was
+unchanged. A plan that main already carries proposes nothing
+(`SUPERVISOR_PLAN: unchanged`). A tick goes red when planning didn't run or
+didn't finish, when the run fails, or when any cluster errors. Never
+disable or suspend it without the maintainer's explicit OK. The old
+`supervisor` Render cron (#238) is retired, not paused.
 
 Linear has two release pipelines. `supervisor` holds the Releases planning
 proposes. `agent-plugins` is the standing **test** pipeline. The apply smoke

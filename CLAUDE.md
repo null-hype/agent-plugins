@@ -14,3 +14,12 @@ one-off, also capture it as an ast-grep rule in `rules/`, in the same PR:
 If no syntax pattern can catch it, say so in your reply instead of writing a
 rule. If no principle fits, propose one in your reply; only the maintainer
 adds headings to `AGENTS.md`.
+
+## The supervisor tick
+
+`devenv-base-supervisor-run` is the supervisor: every hour it plans, applies
+and executes (`.dagger/internal/devenv-base/supervisor/README.md`). Never
+disable, suspend, pause or delete it, or the Render Workflow it calls,
+without the maintainer's explicit OK in that conversation, not even to stop
+a host or save money. Fix what it runs instead. The old `supervisor` Render
+cron is retired; don't revive it.
