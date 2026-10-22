@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { apply, marker, reviewMarker, shipMarker, type LinearClient, type LinearIssue } from "./apply.ts";
+import { apply, askMarker, marker, reviewMarker, shipMarker, type LinearClient, type LinearIssue } from "./apply.ts";
 import { validate, type Changeset } from "./changeset.ts";
 
 const T0 = "2026-10-21T00:00:00Z";
@@ -90,11 +90,17 @@ function fakeLinear(
       writes.push(`comment ${id} ${body}`);
       for (const m of body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)) store.get(id)!.shipped.push(m[1]!);
       for (const m of body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)) store.get(id)!.reviewed.push(Number(m[1]));
+      for (const m of body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)) (store.get(id)!.asked ??= []).push(m[1]!);
       touch(id);
     },
     async delegate(id, agent) {
       writes.push(`delegate ${id} ${agent}`);
       store.get(id)!.delegate = agent;
+      touch(id);
+    },
+    async undelegate(id) {
+      writes.push(`undelegate ${id}`);
+      store.get(id)!.delegate = undefined;
       touch(id);
     },
     async hasPipeline(name) {
@@ -414,6 +420,39 @@ test("a ship wakes the host, ships to the issue's branch, notes it, and never sh
   const again = await apply(cs, client, { dryRun: false, toolbox: host });
   assert.deepEqual(host.calls, ["wake", "ship amazed-bluebird branch-cit-465"]);
   assert.equal(again.applied.some((o) => o.op === "ship"), false);
+});
+
+test("an ask hands an issue back to the agent that has it: posted, delegated afresh, once", async () => {
+  const host = recordingHost();
+  const { client, store, writes } = world();
+  store.get("CIT-465")!.delegate = "tidelands-agent";
+  const ask = "The ship of amazed-bluebird conflicts with main in cards.ts: bring the environment up to date with main.";
+  const cs = { ...changeset(), clusters: [], decline: [], duplicate: [], escalate: [], delegate: [{ issue: "CIT-465", agent: "tidelands-agent", ask }] };
+
+  const dry = await apply(cs, client, { dryRun: true, toolbox: host });
+  assert.deepEqual(dry.applied.map((o) => `${o.op} ${o.target}`), ["delegate CIT-465"]);
+  assert.deepEqual(writes, []);
+
+  await apply(cs, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(host.calls, ["wake"]);
+  assert.deepEqual(
+    writes.map((w) => w.split("\n")[0]),
+    [`comment CIT-465 ${ask}`, "undelegate CIT-465", "delegate CIT-465 tidelands-agent"],
+  );
+  assert.ok(writes[0]!.includes(askMarker(ask)));
+  assert.equal(store.get("CIT-465")!.delegate, "tidelands-agent");
+
+  const again = await apply(cs, client, { dryRun: false, toolbox: host });
+  assert.equal(again.applied.length, 0);
+  assert.equal(writes.length, 3);
+});
+
+test("an ask must be for an existing issue, and not blank", () => {
+  const cs = changeset();
+  cs.delegate = [{ issue: "new:review-findings", agent: "tidelands-agent", ask: "do it" }];
+  assert.ok(validate(cs).some((p) => p.includes("has an ask")));
+  cs.delegate = [{ issue: "CIT-503", agent: "tidelands-agent", ask: " " }];
+  assert.ok(validate(cs).some((p) => p.includes("has an ask")));
 });
 
 test("a review wakes the host, reviews the pull request, notes it, and never reviews it twice", async () => {

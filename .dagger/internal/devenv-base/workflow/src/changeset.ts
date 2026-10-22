@@ -68,7 +68,9 @@ export interface Changeset {
   duplicate: { issue: string; of: string }[];
   escalate: { issue: string; question: string }[];
   // An issue (or a cluster, by key) handed to an agent, by its Linear name.
-  delegate: { issue: string; agent: string }[];
+  // With an ask, the issue is handed back to an agent that may have it
+  // already: apply posts the ask and delegates afresh.
+  delegate: { issue: string; agent: string; ask?: string }[];
   // A finished container-use environment to ship to its issue's branch.
   // Optional: changesets written before it had none.
   ship?: { issue: string; env: string }[];
@@ -159,6 +161,7 @@ export function validate(cs: Changeset): string[] {
       problems.push(`delegate ${d.issue} is neither a cluster nor an issue planning saw`);
     }
     if (!d.agent?.trim()) problems.push(`delegate ${d.issue} names no agent`);
+    if (d.ask != null && (!d.ask.trim() || d.issue.startsWith("new:"))) problems.push(`delegate ${d.issue} has an ask, but it is blank or the issue is a new cluster`);
     const closing = placed.get(d.issue);
     if (closing && !closing.startsWith("cluster")) problems.push(`delegate ${d.issue} is also in ${closing}`);
   }
