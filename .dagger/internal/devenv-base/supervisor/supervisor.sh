@@ -350,29 +350,32 @@ if [ "$MODE" = calibrate ]; then
   # calibration remembers nothing and is not talked to. It runs from its
   # scratch directory so no session is filed under the tick's directory.
   claude_timeout=${CALIBRATION_CLAUDE_TIMEOUT:-20m}
-  echo "supervisor: planning, read-only"
-  claude_rc=0
-  # shellcheck disable=SC2086
-  out=$(cd "$CAL_DIR" && timeout --signal=TERM --kill-after=30s "$claude_timeout" \
-    claude -p "$prompt" \
-      --model "${CALIBRATION_MODEL:-haiku}" \
-      --effort "${CALIBRATION_EFFORT:-low}" \
-      --mcp-config "$MCP_FILE" --strict-mcp-config \
-      --allowedTools $ALLOWED_TOOLS \
-      --disallowedTools $DISALLOWED_TOOLS) || claude_rc=$?
-  printf '%s\n' "$out"
-  check_claude
+  # One planning run: sets $out and $body, the changeset's pkl body. $1 is
+  # added to the prompt.
+  plan_once() {
+    claude_rc=0
+    # shellcheck disable=SC2086
+    out=$(cd "$CAL_DIR" && timeout --signal=TERM --kill-after=30s "$claude_timeout" \
+      claude -p "$prompt$1" \
+        --model "${CALIBRATION_MODEL:-haiku}" \
+        --effort "${CALIBRATION_EFFORT:-low}" \
+        --mcp-config "$MCP_FILE" --strict-mcp-config \
+        --allowedTools $ALLOWED_TOOLS \
+        --disallowedTools $DISALLOWED_TOOLS) || claude_rc=$?
+    printf '%s\n' "$out"
+    check_claude
 
-  # The changeset's body is the fenced pkl block after the marker line, and
-  # nothing else the model said.
-  body=$(printf '%s\n' "$out" | awk '
-    /^SUPERVISOR_CHANGESET:/ { marked = 1; inblock = 0; body = ""; next }
-    marked && !inblock && /^```pkl[[:space:]]*$/ { inblock = 1; next }
-    inblock && /^```[[:space:]]*$/ { done = 1; inblock = 0; marked = 0; next }
-    inblock { body = body $0 "\n" }
-    END { if (done) printf "%s", body; else exit 1 }') || {
-    echo "supervisor: no SUPERVISOR_CHANGESET line followed by a pkl block" >&2
-    exit 1
+    # The changeset's body is the fenced pkl block after the marker line, and
+    # nothing else the model said.
+    body=$(printf '%s\n' "$out" | awk '
+      /^SUPERVISOR_CHANGESET:/ { marked = 1; inblock = 0; body = ""; next }
+      marked && !inblock && /^```pkl[[:space:]]*$/ { inblock = 1; next }
+      inblock && /^```[[:space:]]*$/ { done = 1; inblock = 0; marked = 0; next }
+      inblock { body = body $0 "\n" }
+      END { if (done) printf "%s", body; else exit 1 }') || {
+      echo "supervisor: no SUPERVISOR_CHANGESET line followed by a pkl block" >&2
+      exit 1
+    }
   }
 
   # Render it twice: first with every open issue as `seen`, which checks the
@@ -393,13 +396,22 @@ if [ "$MODE" = calibrate ]; then
     (cd "$wf" && pkl eval -f json -o changeset.json changeset.pkl) 2> "$CAL_DIR/pkl.log" || {
       cat "$CAL_DIR/pkl.log" >&2
       echo "supervisor: the changeset does not render through pkl/Changeset.pkl" >&2
-      exit 1
+      return 1
     }
   }
-  write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")"
+
+  echo "supervisor: planning, read-only"
+  plan_once ""
+  # A changeset that does not render goes back to planning once, with the
+  # error, rather than costing the tick its plan.
+  if ! write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")"; then
+    echo "supervisor: planning again, with the render error"
+    plan_once "$(printf '\n\n## Your last changeset did not render\n\nFix this and give your whole answer again, ending with the changeset:\n\n```\n%s\n```\n' "$(cat "$CAL_DIR/pkl.log")")"
+    write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")" || exit 1
+  fi
   touched=$(jq -c '[.clusters[] | .key, .issues[]] + [(.decline, .duplicate, .escalate, .delegate)[] | .issue]
     | map(select(startswith("new:") | not)) | unique' "$wf/changeset.json")
-  write_changeset "$(jq -c --argjson t "$touched" '.seen | with_entries(select(.key as $k | $t | index($k)))' "$CAL_DIR/plan.json")"
+  write_changeset "$(jq -c --argjson t "$touched" '.seen | with_entries(select(.key as $k | $t | index($k)))' "$CAL_DIR/plan.json")" || exit 1
 
   # The test: apply, dry, on the dev server, against the tree the PR will
   # carry. It reads changeset.json afresh on every call.

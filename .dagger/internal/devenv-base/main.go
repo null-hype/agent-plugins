@@ -907,14 +907,18 @@ func (m *DevenvBase) CalibrateSupervisor(
 	// +optional
 	merge bool,
 ) (string, error) {
-	mergeEnv := "0"
+	// The tick's plan is merged without a person reading it first, so it is
+	// planned on a stronger model than an on-demand calibration.
+	mergeEnv, model, effort := "0", "haiku", "low"
 	if merge {
-		mergeEnv = "1"
+		mergeEnv, model, effort = "1", "sonnet", "medium"
 	}
 	run := m.Supervisor("linux/amd64").
 		WithEnvVariable("SUPERVISOR_MODE", "calibrate").
 		WithEnvVariable("CALIBRATION_BASE", base).
 		WithEnvVariable("CALIBRATION_MERGE", mergeEnv).
+		WithEnvVariable("CALIBRATION_MODEL", model).
+		WithEnvVariable("CALIBRATION_EFFORT", effort).
 		// Never served from cache: each call is a fresh read of Linear.
 		WithEnvVariable("CALIBRATION_RUN", time.Now().UTC().Format(time.RFC3339Nano)).
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
