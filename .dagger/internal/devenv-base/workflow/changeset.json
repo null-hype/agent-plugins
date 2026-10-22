@@ -1,7 +1,5 @@
 {
-  "seen": {
-    "CIT-465": "2026-10-22T06:40:07.626Z"
-  },
+  "seen": {},
   "releases": [],
   "clusters": [],
   "decline": [],
@@ -9,11 +7,6 @@
   "duplicate": [],
   "escalate": [],
   "delegate": [],
-  "ship": [
-    {
-      "issue": "CIT-465",
-      "env": "amazed-bluebird"
-    }
-  ],
+  "ship": [],
   "review": []
 }
