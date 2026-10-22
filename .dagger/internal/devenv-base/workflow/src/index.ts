@@ -20,7 +20,7 @@ import { apply as applyChangeset, type ApplyResult } from "./apply.ts";
 import type { Changeset } from "./changeset.ts";
 import { plan as buildPlan, type Plan } from "./dag.ts";
 import { linearClient, openIssues, triageHints } from "./linear.ts";
-import { toolboxClient, type ToolResult } from "./toolbox.ts";
+import { toolboxClient, wakeHost, type ToolResult } from "./toolbox.ts";
 
 const env = (name: string) => {
   const v = process.env[name];
@@ -58,17 +58,11 @@ task(
   },
 );
 
-// What apply reaches the host with. host_wake moves the host one step per
-// call, so it is called until the Linear agent's webhook answers.
+// What apply reaches the host with.
 const applyToolbox = () => ({
   async wake() {
-    const deadline = Date.now() + 15 * 60_000;
-    for (;;) {
-      const r = await toolbox().call("host_wake");
-      if ((r.structured as { ready?: boolean } | undefined)?.ready) return;
-      if (Date.now() > deadline) throw new Error(`the host was not ready after 15 minutes: ${r.text}`);
-      await new Promise((done) => setTimeout(done, 20_000));
-    }
+    const tb = toolbox();
+    await wakeHost((tool, args) => tb.call(tool, args));
   },
   async ship(env: string, branch: string) {
     await toolbox().call("agent_ship", { env, branch });
