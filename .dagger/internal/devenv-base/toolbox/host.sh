@@ -112,8 +112,10 @@ run_review() {
   # get findings for the code it sits on.
   base=$(api "https://api.github.com/repos/null-hype/agent-plugins/pulls/$pr" | jq -er .base.ref)
   # Codex never sees the Linear key: its curl runs under `pass-cli run`,
-  # which resolves this reference. Same login as tailscale-up.sh.
+  # which resolves this reference. Same login as tailscale-up.sh. pass-cli
+  # refuses an agent session that gives no reason; Codex's shell inherits it.
   export PROTON_PASS_KEY_PROVIDER=fs
+  export PROTON_PASS_AGENT_REASON="codex_review: file the review's findings in Linear"
   if ! pass-cli info >/dev/null 2>&1; then
     pass-cli logout --force >/dev/null 2>&1 || true
     pass-cli login
@@ -188,6 +190,8 @@ PROMPT
 # only said it pushed is not a success. The result is $out:
 # {env, branch, sha, status}.
 SHIP_CREDENTIAL_HELPER=/workspaces/.ship-git-credential
+# pass-cli refuses an agent session that does not say why it reads a secret.
+SHIP_PASS_REASON="agent_ship: push the retained implementation branch"
 
 # Runs the script in the workspace as `bash -s -- args`. The script travels
 # in the command, not on stdin, which devpod ssh does not promise to forward.
@@ -255,8 +259,10 @@ run_ship() {
   push="cd $wt && git -c credential.helper= -c credential.helper=$SHIP_CREDENTIAL_HELPER push origin HEAD:refs/heads/$branch"
   mkdir -p "$dir/bin"
   printf '#!/bin/bash\nexec devpod ssh %s --command %s\n' "$ws" "'$merge'" > "$dir/bin/ship-merge"
-  printf '#!/bin/bash\nexport PROTON_PASS_KEY_PROVIDER=fs\nexec pass-cli run --env-file %s -- devpod ssh %s --send-env SHIP_PUSH_PAT --command %s\n' \
-    "$dir/ship.env" "$ws" "'$push'" > "$dir/bin/ship-push"
+  # Codex's shell passes on only the variables listed below, so ship-push
+  # sets the reason pass-cli requires of an agent session itself.
+  printf '#!/bin/bash\nexport PROTON_PASS_KEY_PROVIDER=fs\nexport PROTON_PASS_AGENT_REASON="%s"\nexec pass-cli run --env-file %s -- devpod ssh %s --send-env SHIP_PUSH_PAT --command %s\n' \
+    "$SHIP_PASS_REASON" "$dir/ship.env" "$ws" "'$push'" > "$dir/bin/ship-push"
   chmod 755 "$dir/bin/ship-merge" "$dir/bin/ship-push"
   cat > "$dir/codex/rules/default.rules" <<RULES
 prefix_rule(
@@ -402,7 +408,9 @@ ship)
   [[ $env =~ ^[a-z]+-[a-z]+$ ]] || { echo "$env is not a container-use environment id" >&2; exit 2; }
   [[ $branch =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]{0,99}$ && $branch != main ]] || { echo "$branch is not an issue branch" >&2; exit 2; }
   # The push token is resolved from Proton Pass by the host's own session.
+  # The reason covers this check and the job's check on GitHub after the push.
   export PROTON_PASS_KEY_PROVIDER=fs
+  export PROTON_PASS_AGENT_REASON=$SHIP_PASS_REASON
   pass-cli info >/dev/null 2>&1 || { echo "no Proton Pass session on this host, so the push token cannot be resolved: log pass-cli in once on the host (PROTON_PASS_KEY_PROVIDER=fs pass-cli login)" >&2; exit 2; }
   install -d -m 700 "$HOME/.toolbox/ship"
   # The plaintext copy an earlier version of this action read.
@@ -411,7 +419,7 @@ ship)
   # One ship at a time: they share Codex's home, and its rules.
   refuse_if_busy "$id"
   rm -f "$JOBS/$id.exit" "$JOBS/$id.json" "$HOME/.toolbox/ship/last-message.md"
-  setsid nohup bash -c "$(declare -p SHIP_CREDENTIAL_HELPER SHIP_PREPARE SHIP_VERIFY; declare -f ship_in_workspace run_ship)"'
+  setsid nohup bash -c "$(declare -p SHIP_CREDENTIAL_HELPER SHIP_PASS_REASON SHIP_PREPARE SHIP_VERIFY; declare -f ship_in_workspace run_ship)"'
     (run_ship "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$ws" "$env" "$branch" "$JOBS/$id.json" \
     > "$JOBS/$id.log" 2>&1 < /dev/null &
   echo $! > "$JOBS/$id.pid"
