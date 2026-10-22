@@ -82,6 +82,10 @@
 
       window.showCards = (next) => {
         cards = next;
+        if (previewed) {
+          const card = next.find((c) => c.id === previewed.cardId);
+          if (!card || !card.options.some((o) => o.id === previewed.optionId)) previewed = null;
+        }
         update();
       };
       window.previewOption = (cardId, optionId) => {
