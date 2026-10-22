@@ -340,14 +340,19 @@ if [ "$MODE" = tick ] && [ "$CALIBRATION_BASE" = main ] && [ -f "$repo/$WORKFLOW
   had="" run=""
   [ ! -s "$APPLY_STATE" ] || read -r had run < "$APPLY_STATE"
   mkdir -p "${APPLY_STATE%/*}"
+  # Render builds a Workflow version only for a commit that changes the
+  # workflow, and names it after that commit: apply on the newest such
+  # commit on main, not on main's head.
+  wf_commit=""
   if [ "$had" = "$want" ] && apply_changeset status "$run" > /dev/null; then
     echo "supervisor: main's changeset is already applied (run $run)"
-  elif apply_run=$(apply_changeset start "$base_sha"); then
+  elif wf_commit=$(gh api "repos/$CALIBRATION_REPO/commits?sha=$CALIBRATION_BASE&path=$WORKFLOW_PATH&per_page=1" --jq '.[0].sha // empty') &&
+    apply_run=$(apply_changeset start "${wf_commit:-$base_sha}"); then
     echo "$want $apply_run" > "$APPLY_STATE"
     echo "SUPERVISOR_APPLY: started run=$apply_run"
   else
     echo "failed" > "$APPLY_STATE"
-    echo "supervisor: could not start the apply of $base_sha; the next run starts it again" >&2
+    echo "supervisor: could not start the apply of ${wf_commit:-$base_sha}; the next run starts it again" >&2
   fi
 fi
 
