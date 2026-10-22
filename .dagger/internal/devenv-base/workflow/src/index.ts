@@ -73,6 +73,9 @@ const applyToolbox = () => ({
   async ship(env: string, branch: string) {
     await toolbox().call("agent_ship", { env, branch });
   },
+  async review(pr: number) {
+    await toolbox().call("codex_review", { pr });
+  },
 });
 
 // Files next to package.json; dist/ is one level down.

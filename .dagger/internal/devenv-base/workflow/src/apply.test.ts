@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { apply, marker, shipMarker, type LinearClient, type LinearIssue } from "./apply.ts";
+import { apply, marker, reviewMarker, shipMarker, type LinearClient, type LinearIssue } from "./apply.ts";
 import { validate, type Changeset } from "./changeset.ts";
 
 const T0 = "2026-10-21T00:00:00Z";
@@ -9,7 +9,7 @@ const T0 = "2026-10-21T00:00:00Z";
 // making none, and every write bumps updatedAt, the way Linear does.
 // A host that is always ready and ships nothing: for the tests that are not
 // about the host.
-const idleHost = { wake: async () => {}, ship: async () => {} };
+const idleHost = { wake: async () => {}, ship: async () => {}, review: async () => {} };
 
 function fakeLinear(
   issues: Partial<LinearIssue>[],
@@ -21,7 +21,7 @@ function fakeLinear(
   const users = new Set(existing.users ?? ["tidelands-agent"]);
   const store = new Map<string, LinearIssue & { description: string }>();
   for (const i of issues) {
-    store.set(i.identifier!, { updatedAt: T0, stage: "triage", labels: [], blockedBy: [], releases: [], description: "", branch: `branch-${i.identifier!.toLowerCase()}`, shipped: [], ...i } as LinearIssue & { description: string });
+    store.set(i.identifier!, { updatedAt: T0, stage: "triage", labels: [], blockedBy: [], releases: [], description: "", branch: `branch-${i.identifier!.toLowerCase()}`, shipped: [], reviewed: [], ...i } as LinearIssue & { description: string });
   }
   const writes: string[] = [];
   let next = 900;
@@ -40,7 +40,7 @@ function fakeLinear(
     async createIssue({ title, description, parent }) {
       const identifier = `CIT-${next++}`;
       writes.push(`create ${identifier} ${title} under ${parent}`);
-      const i = { identifier, updatedAt: T0, stage: "unstarted", parent, labels: [], blockedBy: [], releases: [], description, branch: `branch-${identifier.toLowerCase()}`, shipped: [] as string[] };
+      const i = { identifier, updatedAt: T0, stage: "unstarted", parent, labels: [], blockedBy: [], releases: [], description, branch: `branch-${identifier.toLowerCase()}`, shipped: [] as string[], reviewed: [] as number[] };
       store.set(identifier, i);
       return structuredClone(i);
     },
@@ -84,6 +84,7 @@ function fakeLinear(
     async comment(id, body) {
       writes.push(`comment ${id} ${body}`);
       for (const m of body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)) store.get(id)!.shipped.push(m[1]!);
+      for (const m of body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)) store.get(id)!.reviewed.push(Number(m[1]));
       touch(id);
     },
     async delegate(id, agent) {
@@ -376,7 +377,7 @@ test("a write that fails halfway is not repeated on the rerun", async () => {
 // A host that records what was asked of it.
 const recordingHost = () => {
   const calls: string[] = [];
-  return { calls, wake: async () => void calls.push("wake"), ship: async (env: string, branch: string) => void calls.push(`ship ${env} ${branch}`) };
+  return { calls, wake: async () => void calls.push("wake"), ship: async (env: string, branch: string) => void calls.push(`ship ${env} ${branch}`), review: async (pr: number) => void calls.push(`review ${pr}`) };
 };
 
 test("the host is woken once, before the first delegation, and never in a dry run", async () => {
@@ -408,4 +409,22 @@ test("a ship wakes the host, ships to the issue's branch, notes it, and never sh
   const again = await apply(cs, client, { dryRun: false, toolbox: host });
   assert.deepEqual(host.calls, ["wake", "ship amazed-bluebird branch-cit-465"]);
   assert.equal(again.applied.some((o) => o.op === "ship"), false);
+});
+
+test("a review wakes the host, reviews the pull request, notes it, and never reviews it twice", async () => {
+  const host = recordingHost();
+  const { client, writes } = world();
+  const cs = { ...changeset(), delegate: [], review: [{ issue: "CIT-465", pr: 240 }] };
+
+  const dry = await apply(cs, client, { dryRun: true, toolbox: host });
+  assert.deepEqual(dry.applied.filter((o) => o.op === "review"), [{ op: "review", target: "CIT-465", detail: "PR #240 (codex_review)" }]);
+  assert.deepEqual(host.calls, []);
+
+  await apply(cs, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(host.calls, ["wake", "review 240"]);
+  assert.ok(writes.some((w) => w.startsWith("comment CIT-465 ") && w.includes(reviewMarker(240))));
+
+  const again = await apply(cs, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(host.calls, ["wake", "review 240"]);
+  assert.equal(again.applied.some((o) => o.op === "review"), false);
 });
