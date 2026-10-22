@@ -14,6 +14,8 @@ export const TASK_TOOLS = [
   "host_stop",
   "workspace_list",
   "workspace_status",
+  // Retries the Linear agent once when host_wake reports its start failed.
+  "agent_start",
   "agent_ship",
   "agent_ship_status",
   "codex_review",
@@ -89,4 +91,31 @@ export function toolboxClient(token: string, url = TOOLBOX_URL, fetcher = fetch)
       return { text, ...(r.result?.structuredContent !== undefined ? { structured: r.result.structuredContent } : {}) };
     },
   };
+}
+
+// host_wake moves the host one step per call, so it is called until the
+// Linear agent's webhook answers. When the agent's start job failed, host_wake
+// says so and stops there: retry it once with agent_start, and if it fails
+// again, fail with its log so the cause is in the apply's error.
+export async function wakeHost(
+  call: (tool: TaskTool, args?: Record<string, unknown>) => Promise<ToolResult>,
+  { timeout = 15 * 60_000, pause = 20_000 } = {},
+): Promise<void> {
+  const deadline = Date.now() + timeout;
+  let retried = false;
+  for (;;) {
+    const r = await call("host_wake");
+    const phase = (r.structured as { ready?: boolean; phase?: string } | undefined) ?? {};
+    if (phase.ready) return;
+    if (phase.phase === "agent-failed") {
+      if (retried) {
+        const log = await call("workspace_status", { name: "linear-agent" }).then((s) => s.text, (e: Error) => e.message);
+        throw new Error(`the Linear agent failed to start twice: ${r.text}\n${log}`);
+      }
+      retried = true;
+      await call("agent_start");
+    }
+    if (Date.now() > deadline) throw new Error(`the host was not ready after ${timeout / 60_000} minutes: ${r.text}`);
+    await new Promise((done) => setTimeout(done, pause));
+  }
 }

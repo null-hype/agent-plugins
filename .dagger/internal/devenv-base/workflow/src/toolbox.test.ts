@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toolboxClient } from "./toolbox.ts";
+import { toolboxClient, wakeHost, type ToolResult } from "./toolbox.ts";
 
 function fakeToolbox(answer: (method: string, params: Record<string, unknown>) => unknown, sent: { method: string; session: string | null; auth: string | null }[] = []) {
   return (async (_url: string, init: RequestInit) => {
@@ -46,4 +46,26 @@ test("a tool error is a failed call, not a result", async () => {
 test("a task cannot reach a tool outside its list", async () => {
   const client = toolboxClient("tok", "https://toolbox/mcp", fakeToolbox(() => ({ result: {} })));
   await assert.rejects(client.call("workspace_delete" as never), /may not call toolbox tool workspace_delete/);
+});
+
+const scripted = (phases: Record<string, unknown>[]) => {
+  const calls: string[] = [];
+  const call = async (tool: string, args: Record<string, unknown> = {}): Promise<ToolResult> => {
+    calls.push(Object.keys(args).length ? `${tool} ${JSON.stringify(args)}` : tool);
+    if (tool === "host_wake") return { text: JSON.stringify(phases[0]), structured: phases.length > 1 ? phases.shift() : phases[0] };
+    return { text: tool === "workspace_status" ? "exit 1: pass login timed out" : "ok" };
+  };
+  return { calls, call };
+};
+
+test("wakeHost retries a failed agent start once, then waits for ready", async () => {
+  const tb = scripted([{ phase: "booting" }, { phase: "agent-failed" }, { phase: "agent-starting" }, { phase: "ready", ready: true }]);
+  await wakeHost(tb.call, { pause: 0 });
+  assert.deepEqual(tb.calls, ["host_wake", "host_wake", "agent_start", "host_wake", "host_wake"]);
+});
+
+test("wakeHost fails with the agent's log when its start fails twice", async () => {
+  const tb = scripted([{ phase: "agent-failed" }, { phase: "agent-starting" }, { phase: "agent-failed" }]);
+  await assert.rejects(wakeHost(tb.call, { pause: 0 }), /failed to start twice[\s\S]*pass login timed out/);
+  assert.deepEqual(tb.calls, ["host_wake", "agent_start", "host_wake", "host_wake", 'workspace_status {"name":"linear-agent"}']);
 });
