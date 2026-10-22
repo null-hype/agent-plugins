@@ -1,25 +1,12 @@
 {
-  "seen": {
-    "CIT-463": "2026-10-22T06:01:40.731Z",
-    "CIT-465": "2026-10-22T14:50:16.788Z"
-  },
+  "seen": {},
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [
-    {
-      "issue": "CIT-463",
-      "agent": "Claude"
-    }
-  ],
-  "ship": [
-    {
-      "issue": "CIT-465",
-      "env": "crucial-fish"
-    }
-  ],
+  "delegate": [],
+  "ship": [],
   "review": []
 }
