@@ -384,8 +384,12 @@ printf '%s\n' "$plan" | jq . > "$CAL_DIR/plan.json"
 
 # The prompt, with the frozen plan in place of {{PLAN}}. `seen` is left
 # out: the run fills it in, and it is long.
+# The prompt is main's, so a merged prompt change takes effect on the next
+# run without a new image; the image's copy is the fallback.
 jq 'del(.seen)' "$CAL_DIR/plan.json" > "$CAL_DIR/plan-for-prompt.json"
-prompt=$(sed -e "s|{{NOW}}|$now|g" "$DIR/prompt.md" |
+prompt_file="$repo/${WORKFLOW_PATH%/workflow}/supervisor/prompt.md"
+[ -f "$prompt_file" ] || prompt_file="$DIR/prompt.md"
+prompt=$(sed -e "s|{{NOW}}|$now|g" "$prompt_file" |
   awk -v plan="$CAL_DIR/plan-for-prompt.json" \
     '$0 == "{{PLAN}}" { while ((getline l < plan) > 0) print l; next } { print }')
 
