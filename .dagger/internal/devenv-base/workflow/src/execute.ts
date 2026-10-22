@@ -22,14 +22,23 @@ export interface ReadyCluster {
   issues: string[];
 }
 
+// At most this many infra clusters run per tick, so plumbing cannot crowd
+// out the feature work it exists to deliver.
+export const INFRA_PER_TICK = 1;
+
 // The clusters whose parent issue the plan says is ready: accepted, and
 // blocked by nothing open. `resolved` maps a cluster key to its issue, as
-// apply returned it or as its marker finds it.
+// apply returned it or as its marker finds it. Open-source clusters come
+// first. An infra cluster runs only when it blocks something in the plan,
+// and at most INFRA_PER_TICK of them do.
 export function readyClusters(plan: Plan, cs: Changeset, resolved: Record<string, string>): ReadyCluster[] {
   const ready = new Set(plan.order.filter((p) => p.status === "ready").map((p) => p.id));
-  return cs.clusters
+  const blocking = new Set(plan.order.flatMap((p) => p.blockedBy));
+  const all = cs.clusters
     .filter((c) => resolved[c.key] && ready.has(resolved[c.key]!))
     .map((c) => ({ key: c.key, issue: resolved[c.key]!, title: c.title, hat: c.hat, model: c.model, effort: c.effort, issues: c.issues }));
+  const infra = all.filter((c) => c.hat === "infra" && blocking.has(c.issue)).slice(0, INFRA_PER_TICK);
+  return [...all.filter((c) => c.hat === "open-source"), ...infra];
 }
 
 const READ_TOOLBOX = ["mcp__toolbox__ping", "mcp__toolbox__host_status", "mcp__toolbox__workspace_list", "mcp__toolbox__workspace_status", "mcp__toolbox__agent_ship_status", "mcp__toolbox__codex_review_status"];
