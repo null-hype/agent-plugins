@@ -9,12 +9,12 @@
   "duplicate": [],
   "escalate": [
     {
-      "issue": "CIT-499",
-      "question": "Has PR #240 (CIT-446) merged? If not, should you merge it or replace it? Also: do you answer the agent's five CIT-446 product questions or let the current choices stand, and are CIT-462/463 fixed on #240's branch or moved into CIT-484?"
+      "issue": "CIT-498",
+      "question": "The first ship of CIT-465 (env amazed-bluebird) failed because the push credential was missing, and it is reported repaired. Do you authorize one more ship of that environment?"
     },
     {
-      "issue": "CIT-498",
-      "question": "Do you authorize ONE re-ship of env amazed-bluebird (CIT-465) to its issue branch, now the push credential is repaired? The earlier ship failed before any push. Should its base be PR #240's branch or main?"
+      "issue": "CIT-499",
+      "question": "Do you merge PR #240 (CIT-446) or replace it, how do you answer its open product questions, and do you accept or reject the review findings CIT-462 and CIT-463?"
     }
   ],
   "delegate": [],
