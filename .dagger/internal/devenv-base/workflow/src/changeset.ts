@@ -62,6 +62,9 @@ export interface Changeset {
   releases: Release[];
   clusters: Cluster[];
   decline: { issue: string; reason: string }[];
+  // An issue whose done-when is met, with the evidence. Optional: changesets
+  // written before it had none.
+  done?: { issue: string; evidence: string }[];
   duplicate: { issue: string; of: string }[];
   escalate: { issue: string; question: string }[];
   // An issue (or a cluster, by key) handed to an agent, by its Linear name.
@@ -134,6 +137,10 @@ export function validate(cs: Changeset): string[] {
   for (const d of cs.decline) {
     place(d.issue, "decline");
     if (!d.reason?.trim()) problems.push(`decline ${d.issue} has no reason`);
+  }
+  for (const d of cs.done ?? []) {
+    place(d.issue, "done");
+    if (!d.evidence?.trim()) problems.push(`done ${d.issue} has no evidence`);
   }
   for (const d of cs.duplicate) {
     place(d.issue, "duplicate");

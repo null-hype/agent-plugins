@@ -325,6 +325,9 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
     async cancel(issue) {
       await update(issue, { stateId: await stateOf("canceled") });
     },
+    async complete(issue) {
+      await update(issue, { stateId: await stateOf("completed") });
+    },
     async markDuplicate(issue, of) {
       await relate(issue, of, "duplicate");
       await update(issue, { stateId: await stateOf("canceled") });
