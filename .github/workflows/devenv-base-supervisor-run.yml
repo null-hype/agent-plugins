@@ -1,0 +1,28 @@
+name: devenv-base-supervisor-run
+
+# The supervisor Workflow's hourly tick (CIT-472): runs the deployed `run`
+# task, which executes every ready cluster of the committed changeset with
+# its hat. A tick still running when the next is due delays that next one.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dagger/dagger-for-github@v8.4.1
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        with:
+          verb: call
+          workdir: .dagger/internal/devenv-base
+          args: run-supervisor-workflow --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}

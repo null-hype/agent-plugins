@@ -925,6 +925,39 @@ func (m *DevenvBase) CalibrateSupervisor(
 	return out, nil
 }
 
+// RunSupervisorWorkflow is the supervisor Workflow's hourly tick (CIT-472):
+// it runs the deployed `run` task for real, which executes each ready
+// cluster with its hat (supervisor/run-workflow.sh). The Render API key
+// comes from Proton Pass; the Workflow's own secret is the same token.
+func (m *DevenvBase) RunSupervisorWorkflow(
+	ctx context.Context,
+	protonPassToken *dagger.Secret,
+) (string, error) {
+	run := m.Supervisor("linux/amd64").
+		WithFile("/app/run-workflow.sh", dag.CurrentModule().Source().File("supervisor/run-workflow.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755}).
+		WithNewFile("/app/run.env", "RENDER_API_KEY=pass://infra/render.com/RENDER_API_KEY\n").
+		WithWorkdir("/app").
+		// Never served from cache: each call is a new tick.
+		WithEnvVariable("SUPERVISOR_TICK", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to run the hourly workflow tick").
+		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
+		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && pass-cli run --env-file run.env -- ./run-workflow.sh 2>&1"},
+			dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
+	out, err := run.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	code, err := run.ExitCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("run exited %d:\n%s", code, out)
+	}
+	return out, nil
+}
+
 // ApplySupervisorChangeset is "merging is applying" (CIT-472): after a merge
 // to main changes workflow/changeset.json, it waits for Render to deploy that
 // commit as a new version of the supervisor Workflow, then runs the deployed

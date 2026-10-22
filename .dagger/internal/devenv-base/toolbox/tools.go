@@ -82,17 +82,19 @@ type hostStatusOut struct {
 	Ready   bool     `json:"ready"`
 	Tailnet *tailnet `json:"tailnet,omitempty"`
 	// Lifecycle is the host's idle clock and lease (host-lifecycle.sh), or
-	// null on a host set up before it.
-	Lifecycle json.RawMessage `json:"lifecycle,omitempty"`
-	Detail    string          `json:"detail,omitempty"`
+	// absent on a host set up before it. A map, not json.RawMessage: the
+	// output schema is inferred from the type, and a RawMessage's is "null
+	// or an array of bytes", which rejects the object (CIT-487).
+	Lifecycle map[string]any `json:"lifecycle,omitempty"`
+	Detail    string         `json:"detail,omitempty"`
 }
 
 // activityOut is the host's work in progress: every toolbox job, not only
 // those named after a workspace, and the Linear agent working an issue.
 type activityOut struct {
-	Jobs         []string        `json:"jobs"`
-	AgentRunning bool            `json:"agent_running"`
-	Lifecycle    json.RawMessage `json:"lifecycle,omitempty"`
+	Jobs         []string       `json:"jobs"`
+	AgentRunning bool           `json:"agent_running"`
+	Lifecycle    map[string]any `json:"lifecycle,omitempty"`
 }
 
 func (a activityOut) busy() string {
@@ -158,7 +160,7 @@ func (t *toolbox) hostStatus(ctx context.Context) (hostStatusOut, error) {
 	}
 	var ping struct {
 		Tailnet   *tailnet
-		Lifecycle json.RawMessage
+		Lifecycle map[string]any
 	}
 	if err := json.Unmarshal(b, &ping); err != nil {
 		return out, fmt.Errorf("host ping: %w", err)

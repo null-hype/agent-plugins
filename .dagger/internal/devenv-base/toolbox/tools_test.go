@@ -68,7 +68,8 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 	case "agent-live":
 		return json.Marshal(map[string]any{"live": f.agentLive, "detail": "LIVE_WEBHOOK_CHECK: FAIL"})
 	case "ping":
-		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true}}`), nil
+		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true},
+			"lifecycle": {"idle_limit": 900, "idle_for": 30, "lease_until": 1761000000}}`), nil
 	case "up", "stop", "delete", "review", "review-status", "ship", "ship-status":
 		return []byte(`{}`), nil
 	}
@@ -299,7 +300,10 @@ func TestHostStatusJoinsTheTailnet(t *testing.T) {
 	if len(h.calls) != 1 || h.calls[0].env["TS_AUTHKEY"] != "ts-key" || len(h.calls[0].env) != 1 {
 		t.Fatalf("ping env %v, want only TS_AUTHKEY", h.calls)
 	}
-	if got := resultText(res); !strings.Contains(got, `"ready":true`) || !strings.Contains(got, `"name":"toolbox-host.tail.ts.net"`) {
+	// The lifecycle is an object; an output schema that wants anything else
+	// fails the whole call (CIT-487).
+	if got := resultText(res); !strings.Contains(got, `"ready":true`) || !strings.Contains(got, `"name":"toolbox-host.tail.ts.net"`) ||
+		!strings.Contains(got, `"idle_limit":900`) {
 		t.Fatalf("host_status = %s", got)
 	}
 }

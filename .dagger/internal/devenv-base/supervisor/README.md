@@ -91,7 +91,9 @@ hands leftovers back to Triage. `run` and `execute` are dry by default and
 return the prompt they would run, and `run` takes `only` to name clusters.
 `host` (status, wake, start, stop) and `ship` reach the toolbox without a
 model. The toolbox owns the host's lifecycle, so the workflow never
-re-implements idle stop. Nothing schedules `run` yet.
+re-implements idle stop. `devenv-base-supervisor-run` runs `run` for real
+every hour at :23 (`supervisor/run-workflow.sh`), and goes red when the run
+fails or any cluster errors.
 
 Linear has two release pipelines. `supervisor` holds the Releases planning
 proposes. `agent-plugins` is the standing **test** pipeline. The apply smoke
