@@ -193,7 +193,8 @@ env > "$HOME/codex.env"
 cp "$CODEX_HOME/rules/default.rules" "$HOME/codex.rules"
 prompt=$(cat)
 while [ "$1" != -o ]; do shift; done
-[ -n "${FAKE_CODEX_IDLE:-}" ] || sed -nE 's/^[12]\. ([^ ]+).*/\1/p' <<< "$prompt" | while read -r cmd; do "$cmd" || exit 1; done
+# Its shell gets only the variables include_only lists, as the real one does.
+[ -n "${FAKE_CODEX_IDLE:-}" ] || sed -nE 's/^[12]\. ([^ ]+).*/\1/p' <<< "$prompt" | while read -r cmd; do env -i PATH="$PATH" HOME="$HOME" "$cmd" || exit 1; done
 echo done > "$2"
 `), 0o755)
 
@@ -204,9 +205,15 @@ echo done > "$2"
 
 	// The fake pass-cli has a session unless FAKE_PASS_DOWN is set, and
 	// resolves every pass:// reference in an env file to s3cret, as the real
-	// one resolves the push token. It logs its arguments and key provider.
+	// one resolves the push token. It logs its arguments and key provider,
+	// and refuses to run without a reason, as the real one does in an agent
+	// session.
 	os.WriteFile(filepath.Join(bin, "pass-cli"), []byte(`#!/bin/bash
 echo "$* [provider=${PROTON_PASS_KEY_PROVIDER:-}]" >> "$HOME/pass.calls"
+if [ -z "${PROTON_PASS_AGENT_REASON:-}" ]; then
+	echo "Error: Agent sessions must set the PROTON_PASS_AGENT_REASON environment variable before running commands." >&2
+	exit 1
+fi
 case $1 in
 info) [ -z "${FAKE_PASS_DOWN:-}" ] ;;
 run)
@@ -283,7 +290,7 @@ esac
 	}
 	for script, want := range map[string]string{
 		"ship-merge": "exec devpod ssh linear-agent --command 'cd /workspaces/ship-trusty-burro && container-use merge trusty-burro'\n",
-		"ship-push":  "export PROTON_PASS_KEY_PROVIDER=fs\nexec pass-cli run --env-file " + filepath.Join(home, ".toolbox", "ship", "ship.env") + " -- devpod ssh linear-agent --send-env SHIP_PUSH_PAT --command 'cd /workspaces/ship-trusty-burro && git -c credential.helper= -c credential.helper=/workspaces/.ship-git-credential push origin HEAD:refs/heads/cit-1-fix'\n",
+		"ship-push":  "export PROTON_PASS_KEY_PROVIDER=fs\nexport PROTON_PASS_AGENT_REASON=\"agent_ship: push the retained implementation branch\"\nexec pass-cli run --env-file " + filepath.Join(home, ".toolbox", "ship", "ship.env") + " -- devpod ssh linear-agent --send-env SHIP_PUSH_PAT --command 'cd /workspaces/ship-trusty-burro && git -c credential.helper= -c credential.helper=/workspaces/.ship-git-credential push origin HEAD:refs/heads/cit-1-fix'\n",
 	} {
 		if b, _ := os.ReadFile(filepath.Join(bin2, script)); string(b) != "#!/bin/bash\n"+want {
 			t.Errorf("%s is %q", script, b)
