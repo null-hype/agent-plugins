@@ -23,7 +23,7 @@ final class CardTests: XCTestCase {
     func testACardIsRefutedExactlyWhenTheFileGivesItACounterexample() throws {
         let raw = try rawCards()
         let cards = try Card.loadAll(contentsOf: cardsURL)
-        XCTAssertEqual(cards.filter(\.isRefuted).map(\.id), raw.filter { $0["counterexample"] != nil }.map { $0["id"] as? String })
+        XCTAssertEqual(cards.filter(\.isRefuted).map(\.id), raw.filter { $0["counterexample"] != nil }.compactMap { $0["id"] as? String })
         XCTAssertTrue(cards.contains(where: \.isRefuted))
         XCTAssertTrue(cards.contains(where: { !$0.isRefuted }))
     }
