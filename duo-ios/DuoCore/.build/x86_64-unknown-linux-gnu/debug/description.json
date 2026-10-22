@@ -1,0 +1,755 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.xctest",
+      "packagePath" : "/workdir/duo-ios/DuoCore",
+      "productName" : "DuoCorePackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+    "DuoCorePackageDiscoveredTests"
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.DuoCore-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/bin/swiftc",
+      "fileList" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/sources",
+      "importPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Sources/DuoCore/Card.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Sources/DuoCore/EvidenceLog.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Sources/DuoCore/JSONValue.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/swift-version--3D365BC893B237E6.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "DuoCore",
+      "moduleOutputPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCore.swiftmodule",
+      "objects" : [
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/Card.swift.o",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/EvidenceLog.swift.o",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/JSONValue.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "duocore",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/Card.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/EvidenceLog.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/JSONValue.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCore.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/workdir/duo-ios/DuoCore/Sources/DuoCore/Card.swift",
+        "/workdir/duo-ios/DuoCore/Sources/DuoCore/EvidenceLog.swift",
+        "/workdir/duo-ios/DuoCore/Sources/DuoCore/JSONValue.swift"
+      ],
+      "tempsPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.DuoCorePackageDiscoveredTests-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/bin/swiftc",
+      "fileList" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/sources",
+      "importPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/DuoCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/all-discovered-tests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/swift-version--3D365BC893B237E6.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCoreTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "DuoCorePackageDiscoveredTests",
+      "moduleOutputPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCorePackageDiscoveredTests.swiftmodule",
+      "objects" : [
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/DuoCoreTests.swift.o",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/all-discovered-tests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "duocore",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/DuoCoreTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/all-discovered-tests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCorePackageDiscoveredTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/DuoCoreTests.swift",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/all-discovered-tests.swift"
+      ],
+      "tempsPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.DuoCorePackageTests-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/bin/swiftc",
+      "fileList" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/sources",
+      "importPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/swift-version--3D365BC893B237E6.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCoreTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCorePackageDiscoveredTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "DuoCorePackageTests",
+      "moduleOutputPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCorePackageTests.swiftmodule",
+      "objects" : [
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "duocore",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCorePackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.DuoCoreTests-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/bin/swiftc",
+      "fileList" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/sources",
+      "importPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/CardTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/EvidenceLogTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/RepoFile.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/swift-version--3D365BC893B237E6.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "DuoCoreTests",
+      "moduleOutputPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCoreTests.swiftmodule",
+      "objects" : [
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests.swift.o",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests.swift.o",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "duocore",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCoreTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/CardTests.swift",
+        "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/EvidenceLogTests.swift",
+        "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/RepoFile.swift"
+      ],
+      "tempsPath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "DuoCore" : [
+      "/opt/swift/bin/swiftc",
+      "-module-name",
+      "DuoCore",
+      "-package-name",
+      "duocore",
+      "-incremental",
+      "-c",
+      "/workdir/duo-ios/DuoCore/Sources/DuoCore/Card.swift",
+      "/workdir/duo-ios/DuoCore/Sources/DuoCore/EvidenceLog.swift",
+      "/workdir/duo-ios/DuoCore/Sources/DuoCore/JSONValue.swift",
+      "-I",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "duocore",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/bin/swiftc"
+    ],
+    "DuoCorePackageDiscoveredTests" : [
+      "/opt/swift/bin/swiftc",
+      "-module-name",
+      "DuoCorePackageDiscoveredTests",
+      "-package-name",
+      "duocore",
+      "-incremental",
+      "-c",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/DuoCoreTests.swift",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/all-discovered-tests.swift",
+      "-I",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "duocore",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/bin/swiftc"
+    ],
+    "DuoCorePackageTests" : [
+      "/opt/swift/bin/swiftc",
+      "-module-name",
+      "DuoCorePackageTests",
+      "-package-name",
+      "duocore",
+      "-incremental",
+      "-c",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.derived/runner.swift",
+      "-I",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "duocore",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/bin/swiftc"
+    ],
+    "DuoCoreTests" : [
+      "/opt/swift/bin/swiftc",
+      "-module-name",
+      "DuoCoreTests",
+      "-package-name",
+      "duocore",
+      "-incremental",
+      "-c",
+      "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/CardTests.swift",
+      "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/EvidenceLogTests.swift",
+      "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/RepoFile.swift",
+      "-I",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "duocore",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "DuoCore" : [
+
+    ],
+    "DuoCorePackageDiscoveredTests" : [
+      "DuoCoreTests",
+      "DuoCore"
+    ],
+    "DuoCorePackageTests" : [
+      "DuoCorePackageDiscoveredTests",
+      "DuoCoreTests",
+      "DuoCore"
+    ],
+    "DuoCoreTests" : [
+      "DuoCore"
+    ]
+  },
+  "testDiscoveryCommands" : {
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/all-discovered-tests.swift" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile.swift.o"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/DuoCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/all-discovered-tests.swift"
+        }
+      ]
+    }
+  },
+  "testEntryPointCommands" : {
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.derived/runner.swift" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/Modules/DuoCorePackageDiscoveredTests.swiftmodule"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "enableAllTraits" : false
+  },
+  "writeCommands" : {
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Sources/DuoCore/Card.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Sources/DuoCore/EvidenceLog.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Sources/DuoCore/JSONValue.swift"
+        }
+      ],
+      "outputFilePath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/sources"
+    },
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/DuoCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.derived/all-discovered-tests.swift"
+        }
+      ],
+      "outputFilePath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/sources"
+    },
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/sources"
+    },
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/Card.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/DuoCore.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/EvidenceLog.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCore.build/JSONValue.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/DuoCorePackageDiscoveredTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/DuoCoreTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageDiscoveredTests.build/all-discovered-tests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/DuoCorePackageTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/CardTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/DuoCoreTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/EvidenceLogTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/RepoFile.swift.o"
+        }
+      ],
+      "outputFilePath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCorePackageTests.product/Objects.LinkFileList"
+    },
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/CardTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/EvidenceLogTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/workdir/duo-ios/DuoCore/Tests/DuoCoreTests/RepoFile.swift"
+        }
+      ],
+      "outputFilePath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/DuoCoreTests.build/sources"
+    },
+    "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/swift-version--3D365BC893B237E6.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/opt/swift/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/workdir/duo-ios/DuoCore/.build/x86_64-unknown-linux-gnu/debug/swift-version--3D365BC893B237E6.txt"
+    }
+  }
+}
