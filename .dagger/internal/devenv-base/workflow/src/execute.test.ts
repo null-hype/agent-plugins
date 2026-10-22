@@ -44,8 +44,23 @@ test("only clusters whose issue the plan says is ready run, with planning's hat,
   const got = readyClusters(plan, cs, { "new:a": "CIT-900", "CIT-434": "CIT-434", "new:b": "CIT-901" });
   assert.deepEqual(
     got.map((c) => `${c.key} ${c.issue} ${c.hat} ${c.model} ${c.effort}`),
-    ["new:a CIT-900 infra sonnet high", "CIT-434 CIT-434 open-source haiku low"],
+    ["CIT-434 CIT-434 open-source haiku low", "new:a CIT-900 infra sonnet high"],
   );
+});
+
+test("infra runs only when it blocks feature work, one cluster per tick", () => {
+  const p: Plan = {
+    ...plan,
+    order: [
+      { id: "CIT-910", title: "", status: "ready", blockedBy: [], serves: [] },
+      { id: "CIT-911", title: "", status: "ready", blockedBy: [], serves: [] },
+      { id: "CIT-912", title: "", status: "ready", blockedBy: [], serves: [] },
+      { id: "CIT-920", title: "", status: "waiting", blockedBy: ["CIT-911", "CIT-912"], serves: [] },
+    ],
+  };
+  const c: Changeset = { ...cs, clusters: [cluster("new:plumbing"), cluster("new:unblock-1"), cluster("new:unblock-2")] };
+  const got = readyClusters(p, c, { "new:plumbing": "CIT-910", "new:unblock-1": "CIT-911", "new:unblock-2": "CIT-912" });
+  assert.deepEqual(got.map((r) => r.key), ["new:unblock-1"]);
 });
 
 const infra: ReadyCluster = { key: "new:a", issue: "CIT-900", title: "Host safety", hat: "infra", model: "sonnet", effort: "high", issues: ["CIT-500", "CIT-501"] };

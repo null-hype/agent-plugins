@@ -14,6 +14,8 @@ The hats feed each other through Linear, never through this transcript. Treat th
 
 Every accepted issue serves something people get to see: a Linear **Release**, or until one exists, a delivery issue like CIT-439 that names what ships and where. An issue nothing published depends on is declined, with the reason in a comment.
 
+**Feature work comes first.** The `duo-editor` Release (CIT-439) is what ships now. Infra is accepted only when it blocks an issue in a Release. Planning records that as a blocks relation. Infra that blocks nothing goes to Backlog. Infra works at most one cluster per tick. Before infra files an `infra → infra` handoff, it comments on the open one for the same issue instead of filing a second.
+
 A Release is named after the container-use environment that ships it: the one `agent_ship` merges and pushes (for example `amazed-bluebird`). Later issues accepted into that Release build on that environment's branch. Until the environment exists, planning holds accepted issues against the delivery issue.
 
 ## Handoffs
