@@ -85,3 +85,32 @@ jobs:
           verb: call
           workdir: .dagger/internal/devenv-base
           args: ${{ matrix.target }} --tag=sha-${{ github.sha }} --github-user=${{ github.actor }} --github-token=env:GITHUB_TOKEN
+
+  # The Render cron runs the supervisor image by digest, and setting a cron's
+  # image does not deploy it, so a new supervisor image is deployed here, or
+  # the cron keeps running the old one (2026-10-22).
+  deploy-supervisor:
+    needs: [changes, publish]
+    # always(): another image's publish failing must not hold this one back;
+    # the digest lookup fails if the supervisor image itself did not publish.
+    if: always() && contains(needs.changes.outputs.targets, 'publish-supervisor')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: digest
+        run: |
+          token=$(curl -fsS "https://ghcr.io/token?scope=repository:null-hype/devenv-supervisor:pull" | jq -r .token)
+          digest=$(curl -fsSI -H "Authorization: Bearer $token" \
+            -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json" \
+            "https://ghcr.io/v2/null-hype/devenv-supervisor/manifests/sha-${{ github.sha }}" |
+            tr -d '\r' | awk 'tolower($1) == "docker-content-digest:" { print $2 }')
+          [ -n "$digest" ] || { echo "no digest for sha-${{ github.sha }}" >&2; exit 1; }
+          echo "image=ghcr.io/null-hype/devenv-supervisor@$digest" >> "$GITHUB_OUTPUT"
+      - uses: dagger/dagger-for-github@v8.4.1
+        env:
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+        with:
+          verb: call
+          workdir: .dagger/internal/devenv-base
+          args: deploy-supervisor --proton-pass-token=env:PROTON_PASS_PERSONAL_ACCESS_TOKEN --image=${{ steps.digest.outputs.image }}
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}

@@ -62,6 +62,11 @@ for real (`supervisor/apply-changeset.sh`). Applying makes no model calls.
 Never disable, suspend or delete the cron, the GitHub job below, or the
 Render Workflow without the maintainer's explicit OK.
 
+A merge that changes the supervisor image publishes it and deploys it to the
+cron by digest (`devenv-base-publish`, `deploy-supervisor`): setting the
+cron's image alone does not deploy it. The prompt is read from main's
+checkout each run, so a prompt change needs no new image.
+
 `devenv-base-supervisor-run` (GitHub, at :23) is the safety net: when the
 last apply on main failed, it runs that apply again. It calls no model. The
 workflow's per-cluster `execute` sessions are gone: the session's changeset
