@@ -387,9 +387,13 @@ if [ "$MODE" = tick ]; then
   hfile=$(mktemp)
   printf 'Authorization: %s\n' "$LINEAR_API_KEY" > "$hfile"
   cutoff=$(date -u -d "-${REVIEW_MINUTES:-30} minutes" +%FT%TZ)
+  # The branch name and body are anyone's to choose on a public repository,
+  # so only a PR whose head is a branch of this repository, opened by its
+  # owner's token (as the loop above opens them), is the supervisor's.
   gh pr list --repo "$CALIBRATION_REPO" --base "$CALIBRATION_BASE" --state open --limit 100 \
-    --json number,headRefName,headRefOid,body \
-    --jq '.[] | select((.headRefName | startswith("cit-")) and (.body | contains("opened by the supervisor"))) | "\(.number) \(.headRefOid)"' |
+    --json number,headRefName,headRefOid,body,isCrossRepository,author \
+    --jq '.[] | select((.isCrossRepository | not) and .author.login == "'"${CALIBRATION_REPO%%/*}"'"
+      and (.headRefName | startswith("cit-")) and (.body | contains("opened by the supervisor"))) | "\(.number) \(.headRefOid)"' |
     while read -r pr head; do
       reviewed=$(jq -n --arg m "<!-- supervisor-review $pr -->" \
         '{query: "query($m: String!) { comments(filter: {body: {contains: $m}}, first: 1) { nodes { createdAt } } }", variables: {m: $m}}' |
@@ -398,9 +402,13 @@ if [ "$MODE" = tick ]; then
         { echo "supervisor: WARNING could not read whether #$pr was reviewed" >&2; continue; }
       [ -n "$reviewed" ] || { echo "supervisor: #$pr waits for its Codex review before it merges"; continue; }
       [[ "$reviewed" < "$cutoff" ]] || { echo "supervisor: #$pr is still in its Codex review"; continue; }
+      # No check runs at all is not green: a fork's workflows waiting for
+      # approval, or none triggered, would otherwise merge unchecked.
       pending=$(gh api "repos/$CALIBRATION_REPO/commits/$head/check-runs?per_page=100" \
-        --jq '[.check_runs[] | select(.status != "completed" or ((.conclusion | IN("success", "skipped", "neutral")) | not))] | length') ||
+        --jq 'if (.check_runs | map(select(.conclusion == "success")) | length) == 0 then "none"
+          else [.check_runs[] | select(.status != "completed" or ((.conclusion | IN("success", "skipped", "neutral")) | not))] | length end') ||
         { echo "supervisor: WARNING could not read the checks of #$pr" >&2; continue; }
+      [ "$pending" != none ] || { echo "supervisor: #$pr has no passing check yet, so it does not merge"; continue; }
       [ "$pending" = 0 ] || { echo "supervisor: #$pr waits on $pending check(s) before it merges"; continue; }
       if gh pr merge "$pr" --repo "$CALIBRATION_REPO" --squash --match-head-commit "$head" > /dev/null; then
         echo "supervisor: merged the reviewed PR #$pr"
@@ -461,9 +469,11 @@ prompt_file="$repo/${WORKFLOW_PATH%/workflow}/supervisor/prompt.md"
 # prompt: what merged is the evidence a `done` or a `review` rests on. Only
 # issue branches' PRs and open ones: the changeset and plumbing PRs pushed
 # #240 out of the newest 40, and planning never saw it merge.
+# A PR from a fork is left out: its title and branch are a stranger's words,
+# and a review would run Codex on its code with the host's Pass session.
 gh pr list --repo "$CALIBRATION_REPO" --state all --limit 200 \
-  --json number,title,state,isDraft,mergedAt,headRefName > "$CAL_DIR/pulls.raw" 2> /dev/null || true
-jq -c '[.[] | select(.headRefName != "'"$CALIBRATION_BRANCH"'")
+  --json number,title,state,isDraft,mergedAt,headRefName,isCrossRepository > "$CAL_DIR/pulls.raw" 2> /dev/null || true
+jq -c '[.[] | select(.headRefName != "'"$CALIBRATION_BRANCH"'" and (.isCrossRepository | not))
   | select((.headRefName | startswith("cit-")) or .state == "OPEN")][:40]' "$CAL_DIR/pulls.raw" > "$CAL_DIR/pulls.json" 2> /dev/null ||
   echo '[]' > "$CAL_DIR/pulls.json"
 prompt=$(sed -e "s|{{NOW}}|$now|g" "$prompt_file" |
