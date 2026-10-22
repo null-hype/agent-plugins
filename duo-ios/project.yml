@@ -1,0 +1,50 @@
+# Source of Duo.xcodeproj. Regenerate with ./generate.sh (XcodeGen 2.46.0, which
+# also runs on Linux) and commit the result: Xcode Cloud needs the checked-in project.
+name: Duo
+options:
+  bundleIdPrefix: dev.tidelands
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  DuoCore:
+    path: DuoCore
+targets:
+  Duo:
+    type: application
+    platform: iOS
+    sources:
+      - Duo
+    dependencies:
+      - package: DuoCore
+    info:
+      path: Duo/Info.plist
+      properties:
+        CFBundleDisplayName: Duo
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.tidelands.duo
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  Duo:
+    build:
+      targets:
+        Duo: all
+    run:
+      config: Debug
+    archive:
+      config: Release
