@@ -60,6 +60,13 @@ class Decline {
   reason: String(!isBlank)
 }
 
+/// Mark an issue Done because its done-when is met, with the evidence (a
+/// merged PR, a passing check). apply completes it and comments the evidence.
+class Done {
+  issue: Identifier
+  evidence: String(!isBlank)
+}
+
 class Duplicate {
   issue: Identifier
   of: Identifier(this != issue)
@@ -101,6 +108,7 @@ seen: Mapping<Identifier, String>
 releases: Listing<Release> = new {}
 clusters: Listing<Cluster> = new {}
 decline: Listing<Decline> = new {}
+done: Listing<Done> = new {}
 duplicate: Listing<Duplicate> = new {}
 escalate: Listing<Escalate> = new {}
 delegate: Listing<Delegate> = new {}
@@ -118,6 +126,7 @@ local delegated: List<String> = delegate.toList().map((d) -> d.issue)
 local placements: List<Pair<String, String>> =
   clusters.toList().flatMap((c) -> c.issues.toList().map((i) -> Pair(i, "cluster \(c.key)")))
   + decline.toList().map((d) -> Pair(d.issue, "decline"))
+  + done.toList().map((d) -> Pair(d.issue, "done"))
   + duplicate.toList().map((d) -> Pair(d.issue, "duplicate"))
   + escalate.toList().map((e) -> Pair(e.issue, "escalate"))
 
