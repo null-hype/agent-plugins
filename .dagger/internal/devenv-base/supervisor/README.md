@@ -86,9 +86,10 @@ because a continuous pipeline's Releases are born completed.
   `blockedBy` edges; the *releases* the clusters serve, which apply creates,
   with their pipeline, when no open one has the name, so planning proposes a
   Release for a theme rather than declining it for want of a sink; and
-  *decline*, *duplicate*, *escalate* and *delegate*
-  ops. Delegating to the self-hosted agent replaces asking for work with an
-  @mention. Toolbox ops are the next kind to add.
+  *decline*, *duplicate*, *escalate*, *delegate*, *ship* and *review* ops.
+  Every action is an op: nothing asks for work or a tool call with an
+  @mention. Delegating fires the agent's session; ship and review call the
+  toolbox's `agent_ship` and `codex_review`, after waking the host.
 - **`apply` is idempotent.** Each op first checks whether Linear already
   says what the changeset says. A cluster created earlier is found again by
   a marker in its description. So any trigger after a deploy converges
@@ -156,9 +157,8 @@ full-scope login was not established.
 
 **Open point, not settled here:** `LINEAR_API_KEY` is
 `pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY`, the
-reference `toolbox/host.sh` already uses for `codex_review`. Whether that key belongs to a
-person or to the app decides whether a `@linear …` mention a tick posts is
-acted on. Delegation by a changeset's `delegate` op sidesteps the question.
+reference `toolbox/host.sh` already uses for `codex_review`. Ticks no longer post `@linear …` mentions:
+delegation, ships and reviews are changeset ops that apply carries out.
 
 ## Restoring and backing up
 

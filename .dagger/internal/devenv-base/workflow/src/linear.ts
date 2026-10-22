@@ -203,6 +203,7 @@ const toLinearIssue = (n: IssueNode): LinearIssue => ({
   releases: n.releases.nodes.filter((r) => !r.completedAt && !r.canceledAt).map((r) => r.name),
   branch: n.branchName,
   shipped: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)].map((m) => m[1]!)),
+  reviewed: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)].map((m) => Number(m[1]))),
 });
 
 export function linearClient(apiKey: string, team: string, fetcher = fetch): LinearClient {

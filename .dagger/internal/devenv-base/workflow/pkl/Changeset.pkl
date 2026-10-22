@@ -87,6 +87,14 @@ class Ship {
   env: String(matches(Regex(#"[a-z]+-[a-z]+"#)))
 }
 
+/// Review an issue's pull request with Codex: apply wakes the host and runs
+/// the toolbox's codex_review, whose findings land in Triage. Once per pull
+/// request: apply notes it on the issue.
+class Review {
+  issue: Identifier
+  pr: Int(isPositive)
+}
+
 /// updatedAt of every existing issue the changeset touches, as planning saw
 /// it. apply leaves an issue alone if it has changed since.
 seen: Mapping<Identifier, String>
@@ -97,6 +105,7 @@ duplicate: Listing<Duplicate> = new {}
 escalate: Listing<Escalate> = new {}
 delegate: Listing<Delegate> = new {}
 ship: Listing<Ship> = new {}
+review: Listing<Review> = new {}
 
 local releaseNames: List<String> = releases.toList().map((r) -> r.name)
 local served: List<String> = clusters.toList()
@@ -146,6 +155,7 @@ hidden problems: List<String> =
       .filter((d) -> placedIn(d.issue).any((w) -> !w.startsWith("cluster")))
       .map((d) -> "delegate \(d.issue) is also in \(placedIn(d.issue).find((w) -> !w.startsWith("cluster")))")
   + ship.toList().filter((s) -> !seen.containsKey(s.issue)).map((s) -> "ship \(s.issue) was not seen by planning")
+  + review.toList().filter((r) -> !seen.containsKey(r.issue)).map((r) -> "review \(r.issue) was not seen by planning")
 
 output {
   value =

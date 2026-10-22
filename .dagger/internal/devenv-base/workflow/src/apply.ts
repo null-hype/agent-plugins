@@ -30,14 +30,17 @@ export interface LinearIssue {
   // The container-use environments apply has shipped for it, read back from
   // the note each ship leaves.
   shipped: string[];
+  // The pull requests apply has had reviewed for it, from each review's note.
+  reviewed: number[];
 }
 
-// The toolbox, for the two ops that reach the host. apply never calls it in
+// The toolbox, for the ops that reach the host. apply never calls it in
 // a dry run.
 export interface Toolbox {
   // Brings the host up and returns once the Linear agent can take work.
   wake(): Promise<void>;
   ship(env: string, branch: string): Promise<void>;
+  review(pr: number): Promise<void>;
 }
 
 // The reads and writes apply needs. linear.ts implements it over GraphQL;
@@ -73,7 +76,7 @@ export interface LinearClient {
 }
 
 export interface Op {
-  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate" | "ship";
+  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate" | "ship" | "review";
   target: string;
   detail: string;
 }
@@ -95,6 +98,8 @@ export const ESCALATE_LABEL = "needs-maintainer";
 export const marker = (key: string) => `<!-- supervisor-changeset ${key.replaceAll(":", "/")} -->`;
 // The note a ship leaves on its issue, which is how a rerun knows it shipped.
 export const shipMarker = (env: string) => `<!-- supervisor-ship ${env} -->`;
+// The note a review leaves on its issue, the same way.
+export const reviewMarker = (pr: number) => `<!-- supervisor-review ${pr} -->`;
 
 const CLOSED = ["completed", "canceled"];
 
@@ -281,7 +286,7 @@ export async function apply(
   let awake = false;
   const host = async () => {
     if (awake) return;
-    if (!toolbox) throw new Error("this apply has no toolbox, and a delegation or a ship needs the host");
+    if (!toolbox) throw new Error("this apply has no toolbox, and a delegation, a ship or a review needs the host");
     await toolbox.wake();
     awake = true;
   };
@@ -333,6 +338,24 @@ export async function apply(
       await host();
       await toolbox!.ship(s.env, issue.branch);
       await linear.comment(s.issue, `Shipping \`${s.env}\` to \`${issue.branch}\` (agent_ship). ${shipMarker(s.env)}`);
+    }
+    result.applied.push(op);
+  }
+
+  // 7. Review pull requests with Codex, each once, noted the same way. Its
+  // findings land in Triage for the next run.
+  for (const r of cs.review ?? []) {
+    const issue = await get(r.issue);
+    const op: Op = { op: "review", target: r.issue, detail: `PR #${r.pr} (codex_review)` };
+    if (!issue) {
+      result.skipped.push({ ...op, why: `${r.issue} does not exist` });
+      continue;
+    }
+    if (issue.reviewed.includes(r.pr)) continue;
+    if (!dryRun) {
+      await host();
+      await toolbox!.review(r.pr);
+      await linear.comment(r.issue, `Reviewing PR #${r.pr} with Codex (codex_review). ${reviewMarker(r.pr)}`);
     }
     result.applied.push(op);
   }
