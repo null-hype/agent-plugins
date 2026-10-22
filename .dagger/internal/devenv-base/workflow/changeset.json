@@ -1,7 +1,5 @@
 {
-  "seen": {
-    "CIT-463": "2026-10-22T16:43:01.564Z"
-  },
+  "seen": {},
   "releases": [],
   "clusters": [],
   "decline": [],
@@ -9,11 +7,6 @@
   "duplicate": [],
   "escalate": [],
   "delegate": [],
-  "ship": [
-    {
-      "issue": "CIT-463",
-      "env": "apparent-snipe"
-    }
-  ],
+  "ship": [],
   "review": []
 }
