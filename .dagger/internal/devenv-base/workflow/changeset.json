@@ -18,11 +18,11 @@
   "clusters": [
     {
       "key": "new:duo-editor-build",
-      "title": "Duo editor: left page, question cards and standalone export",
-      "description": "The open duo-editor issues no cluster covers: the Pkl question cards, the Storybook left page, the QA fix, and the standalone page export for the native client.",
+      "title": "Duo editor: left page, question cards and native export",
+      "description": "Open implementation issues under CIT-439: the Monaco left page, Pkl question cards, stale preview fix and standalone page export.",
       "hat": "infra",
       "model": "sonnet",
-      "effort": "medium",
+      "effort": "high",
       "serves": "release:duo-editor",
       "blockedBy": [],
       "issues": [
@@ -30,8 +30,8 @@
         "CIT-465",
         "CIT-463",
         "CIT-462",
-        "CIT-495",
-        "CIT-484"
+        "CIT-484",
+        "CIT-495"
       ]
     }
   ],
