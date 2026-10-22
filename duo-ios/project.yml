@@ -1,5 +1,6 @@
-# Source of Duo.xcodeproj. Regenerate with ./generate.sh (XcodeGen 2.46.0, which
-# also runs on Linux) and commit the result: Xcode Cloud needs the checked-in project.
+# Source of Duo.xcodeproj. Regenerate with `xcodegen generate` in this directory
+# (XcodeGen 2.46.0) and commit the result: Xcode Cloud needs the checked-in project.
+# On Linux, set USER, and run the binary by its real path (through a symlink it segfaults).
 name: Duo
 options:
   bundleIdPrefix: dev.tidelands
