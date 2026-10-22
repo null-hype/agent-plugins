@@ -441,6 +441,11 @@ func (m *DevenvBase) Supervisor(
 			dagger.ContainerWithFileOpts{Permissions: 0o755},
 		).
 		WithFile(
+			"/app/supervisor/apply-changeset.sh",
+			dag.CurrentModule().Source().File("supervisor/apply-changeset.sh"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755},
+		).
+		WithFile(
 			"/app/supervisor/prompt.md",
 			dag.CurrentModule().Source().File("supervisor/prompt.md"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
@@ -970,41 +975,6 @@ func (m *DevenvBase) CalibrateSupervisor(
 // cost a tick or leave a merged plan unapplied (2026-10-22).
 const passLogin = "for try in 1 2 3; do timeout 2m pass-cli login > /dev/null && break; " +
 	"[ $try = 3 ] && exit 1; echo \"pass-cli login failed ($try of 3); trying again\" >&2; sleep $((try * 60)); done"
-
-// ApplySupervisorChangeset is "merging is applying" (CIT-472): after a merge
-// to main changes workflow/changeset.json, it waits for Render to deploy that
-// commit as a new version of the supervisor Workflow, then runs the deployed
-// `apply` task for real (supervisor/apply-changeset.sh). The Render API key
-// comes from Proton Pass; the Workflow's own secret is the same token.
-func (m *DevenvBase) ApplySupervisorChangeset(
-	ctx context.Context,
-	protonPassToken *dagger.Secret,
-	// The merged commit, whose version Render deploys.
-	commit string,
-) (string, error) {
-	run := m.Supervisor("linux/amd64").
-		WithFile("/app/apply-changeset.sh", dag.CurrentModule().Source().File("supervisor/apply-changeset.sh"),
-			dagger.ContainerWithFileOpts{Permissions: 0o755}).
-		WithNewFile("/app/apply.env", "RENDER_API_KEY=pass://infra/render.com/RENDER_API_KEY\n").
-		WithWorkdir("/app").
-		WithEnvVariable("COMMIT", commit).
-		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to run the merged changeset's apply").
-		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
-		WithExec([]string{"bash", "-c", passLogin + " && pass-cli run --env-file apply.env -- ./apply-changeset.sh 2>&1"},
-			dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
-	out, err := run.Stdout(ctx)
-	if err != nil {
-		return "", err
-	}
-	code, err := run.ExitCode(ctx)
-	if err != nil {
-		return "", err
-	}
-	if code != 0 {
-		return "", fmt.Errorf("apply exited %d:\n%s", code, out)
-	}
-	return out, nil
-}
 
 // ApplySmoke is the supervisor workflow's real apply (CIT-472), through the
 // workflow's own `apply` task on `render workflows dev`, the way the deployed
