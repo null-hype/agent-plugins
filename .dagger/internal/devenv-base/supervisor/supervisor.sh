@@ -374,12 +374,41 @@ if [ "$MODE" = tick ]; then
     id=$(printf '%s' "$b" | sed -E 's/^cit-([0-9]+)-.*/CIT-\1/')
     if url=$(gh pr create --repo "$CALIBRATION_REPO" --base "$CALIBRATION_BASE" --head "$b" \
       --title "$id: $subject" \
-      --body "Shipped by \`agent_ship\` for $id, and opened by the supervisor so it gets reviewed. Nothing merges it on its own."); then
+      --body "Shipped by \`agent_ship\` for $id, and opened by the supervisor so it gets reviewed. Once Codex has reviewed it, the supervisor merges it on green: findings land in Triage as follow-ups."); then
       echo "supervisor: opened $url for the shipped branch $b"
     else
       echo "supervisor: WARNING could not open a PR for the shipped branch $b" >&2
     fi
   done
+  # A shipped PR merges on green once Codex has reviewed it: apply notes each
+  # review it starts on the issue, and a review gets REVIEW_MINUTES to file
+  # its findings in Triage, where they become follow-ups rather than holding
+  # the PR. A PR with no review yet waits for one.
+  hfile=$(mktemp)
+  printf 'Authorization: %s\n' "$LINEAR_API_KEY" > "$hfile"
+  cutoff=$(date -u -d "-${REVIEW_MINUTES:-30} minutes" +%FT%TZ)
+  gh pr list --repo "$CALIBRATION_REPO" --base "$CALIBRATION_BASE" --state open --limit 100 \
+    --json number,headRefName,headRefOid,body \
+    --jq '.[] | select((.headRefName | startswith("cit-")) and (.body | contains("opened by the supervisor"))) | "\(.number) \(.headRefOid)"' |
+    while read -r pr head; do
+      reviewed=$(jq -n --arg m "<!-- supervisor-review $pr -->" \
+        '{query: "query($m: String!) { comments(filter: {body: {contains: $m}}, first: 1) { nodes { createdAt } } }", variables: {m: $m}}' |
+        curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H @"$hfile" --data @- |
+        jq -r '.data.comments.nodes[0].createdAt // empty') ||
+        { echo "supervisor: WARNING could not read whether #$pr was reviewed" >&2; continue; }
+      [ -n "$reviewed" ] || { echo "supervisor: #$pr waits for its Codex review before it merges"; continue; }
+      [[ "$reviewed" < "$cutoff" ]] || { echo "supervisor: #$pr is still in its Codex review"; continue; }
+      pending=$(gh api "repos/$CALIBRATION_REPO/commits/$head/check-runs?per_page=100" \
+        --jq '[.check_runs[] | select(.status != "completed" or ((.conclusion | IN("success", "skipped", "neutral")) | not))] | length') ||
+        { echo "supervisor: WARNING could not read the checks of #$pr" >&2; continue; }
+      [ "$pending" = 0 ] || { echo "supervisor: #$pr waits on $pending check(s) before it merges"; continue; }
+      if gh pr merge "$pr" --repo "$CALIBRATION_REPO" --squash --match-head-commit "$head" > /dev/null; then
+        echo "supervisor: merged the reviewed PR #$pr"
+      else
+        echo "supervisor: WARNING could not merge the reviewed PR #$pr" >&2
+      fi
+    done
+  rm -f "$hfile"
 fi
 wf=$repo/$WORKFLOW_PATH
 [ -d "$wf" ] ||
