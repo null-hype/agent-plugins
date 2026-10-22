@@ -1,12 +1,26 @@
 {
-  "seen": {},
+  "seen": {
+    "CIT-463": "2026-10-22T15:27:55.009Z",
+    "CIT-465": "2026-10-22T16:16:51.365Z"
+  },
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [],
+  "delegate": [
+    {
+      "issue": "CIT-463",
+      "agent": "Claude",
+      "ask": "Your diagnosis and proposed fix for the stale preview in tutorial-app/src/stories/duo/left-page.html are right, so go ahead. Write the edit and the new DuoLeftPage.stories.tsx play() step inside a container-use environment, using the environment tools, not the host Edit or Bash tools that were denied. Re-read left-page.html before editing, since the earlier match failed on tab indentation. Run the story and the duo-left-page spec in the environment, then reply here naming the environment when it is ready to ship."
+    }
+  ],
   "ship": [],
-  "review": []
+  "review": [
+    {
+      "issue": "CIT-465",
+      "pr": 315
+    }
+  ]
 }
