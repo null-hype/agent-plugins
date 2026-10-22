@@ -1,59 +1,8 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@1be03fa18985a1dc42c1607e5044247bac8ae79a. Merging it is applying it; render with
+// main@28ed9c5951ea9824535e101de9da0e309ae29623. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
-  ["CIT-1"] = "2026-09-04T23:08:31.534Z"
-  ["CIT-2"] = "2026-09-04T23:08:31.483Z"
-  ["CIT-3"] = "2026-09-04T23:08:31.447Z"
-  ["CIT-4"] = "2026-09-04T23:08:31.507Z"
-  ["CIT-439"] = "2026-10-22T20:16:03.440Z"
-  ["CIT-495"] = "2026-10-22T21:16:59.491Z"
-  ["CIT-500"] = "2026-10-22T21:02:21.719Z"
-  ["CIT-501"] = "2026-10-22T20:21:49.768Z"
-  ["CIT-506"] = "2026-10-22T20:16:02.997Z"
-  ["CIT-508"] = "2026-10-22T20:43:55.332Z"
-  ["CIT-509"] = "2026-10-22T20:43:59.708Z"
-  ["CIT-510"] = "2026-10-22T20:44:04.871Z"
-  ["CIT-511"] = "2026-10-22T20:44:10.343Z"
-  ["CIT-512"] = "2026-10-22T20:44:16.979Z"
-  ["CIT-513"] = "2026-10-22T20:44:25.308Z"
-  ["CIT-514"] = "2026-10-22T20:44:26.946Z"
 }
 
-releases {
-  new {
-    name = "duo-editor"
-    description = "The Duo editor on iPhone Duo: the claim on the left page and question cards on the right, built on Xcode Cloud and shipped to TestFlight testers."
-  }
-  new {
-    name = "security-hardening"
-    description = "The maintainer's security fixes from the 2026-10-22 review: toolbox tokens, secrets, tailnet fencing, Codex reach and a recurring red-team check."
-  }
-}
-clusters {
-  new {
-    key = "new:security-hardening"
-    title = "Security hardening from the 2026-10-22 review"
-    description = "The maintainer's own security fixes for the toolbox, Pass tokens, the shared GitHub token, codex_review, the tailnet and a recurring red-team check. They are accepted as a group and wait behind Duo editor work."
-    serves = "release:security-hardening"
-    issues { "CIT-508"; "CIT-509"; "CIT-510"; "CIT-511"; "CIT-512"; "CIT-513"; "CIT-514" }
-  }
-  new {
-    key = "CIT-439"
-    title = "iPhone Duo editor: one claim, one refutation, on TestFlight"
-    description = "The native slices of CIT-439: the iOS project, the build-time JSON bundle, the Xcode Cloud workflows, the supervisor reading their results, and the SwiftUI app. The Linux-capable pieces run through the agent first; the one-time Xcode Cloud setup needs the maintainer on a Mac."
-    serves = "release:duo-editor"
-    issues { "CIT-506" }
-  }
-}
-decline {
-  new { issue = "CIT-1"; reason = "Linear's own welcome sample issue, not work for the project" }
-  new { issue = "CIT-2"; reason = "Linear's own sample issue, not work for the project" }
-  new { issue = "CIT-3"; reason = "Linear's own sample issue, not work for the project" }
-  new { issue = "CIT-4"; reason = "Linear's own sample issue, not work for the project" }
-}
-delegate { new { issue = "CIT-501"; agent = "Claude" } }
-ship { new { issue = "CIT-500"; env = "improved-javelin" } }
-review { new { issue = "CIT-495"; pr = 331 } }
