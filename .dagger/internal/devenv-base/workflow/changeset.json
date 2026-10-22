@@ -1,42 +1,29 @@
 {
   "seen": {
-    "CIT-439": "2026-10-22T21:38:34.649Z",
+    "CIT-501": "2026-10-22T21:43:06.333Z",
     "CIT-516": "2026-10-22T22:33:24.091Z",
-    "CIT-521": "2026-10-22T22:20:47.777Z",
-    "CIT-522": "2026-10-22T22:20:52.996Z"
+    "CIT-521": "2026-10-22T23:16:08.391Z"
   },
-  "releases": [
-    {
-      "name": "duo-editor",
-      "description": "The Duo editor on iPhone Duo: the claim on the left page and question cards on the right, built on Xcode Cloud and shipped to TestFlight testers.",
-      "pipeline": "supervisor"
-    }
-  ],
-  "clusters": [
-    {
-      "key": "CIT-439",
-      "title": "iPhone Duo editor: one claim, one refutation, on TestFlight",
-      "description": "The native slices of CIT-439: the iOS project, the build-time JSON bundle, the Xcode Cloud workflows, the supervisor reading their results, and the SwiftUI app. The Linux-capable pieces run through the agent first; the one-time Xcode Cloud setup needs the maintainer on a Mac. Review findings on the iOS project (CIT-521, CIT-522) are fixed as follow-ups.",
-      "hat": "infra",
-      "model": "sonnet",
-      "effort": "medium",
-      "serves": "release:duo-editor",
-      "blockedBy": [],
-      "issues": [
-        "CIT-521",
-        "CIT-522"
-      ]
-    }
-  ],
+  "releases": [],
+  "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [],
+  "delegate": [
+    {
+      "issue": "CIT-521",
+      "agent": "Claude"
+    }
+  ],
   "ship": [
     {
       "issue": "CIT-516",
       "env": "accepted-lion"
+    },
+    {
+      "issue": "CIT-501",
+      "env": "factual-squirrel"
     }
   ],
   "review": []
