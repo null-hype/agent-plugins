@@ -1,74 +1,50 @@
-# Dispatch supervisor (CIT-443, CIT-453)
+# The supervisor (CIT-443, CIT-472)
 
-One Render Cron Job, `supervisor`, hourly at minute 13 (UTC). Each tick
-continues the one supervisor Claude session — so it remembers why yesterday
-failed — has it work every open `Dispatch: <name>` Linear issue, and fails
-unless a decision comes back.
+One Render Cron Job, `supervisor`, hourly at minute 13 (UTC). Each run
+continues the one supervisor Claude session, so it remembers why the last run
+failed. The session looks at everything, with the Duo editor first, and its
+whole output is a **changeset**: what Linear should look like next. The run
+checks that changeset on the workflow's dev server and opens it as a pull
+request, which merges itself once its checks are green. The action on main
+then applies it with the deployed workflow. Merging is applying.
 
 ```
-Render cron (one service) ──▶ supervisor.sh
-                                 │ pass-cli: tokens, restic secrets
-                                 │
-                                 │ 1. restic restore       (newest snapshot, tag supervisor)
-                                 │ 2. cd /workspaces/agent-plugins
-                                 │    timeout claude --continue --remote-control -p
-                                 │        ├─MCP, Bearer TOOLBOX_TOKEN──▶ toolbox (read-only tools)
-                                 │        └─MCP, Bearer LINEAR_API_KEY─▶ Linear
-                                 │ 3. restic backup        (even if 2 failed)
-                                 ▼
-                               SUPERVISOR_HEARTBEAT: … decision=…  (the run's record)
+Render cron `supervisor` ──▶ supervisor.sh
+  │ pass-cli: supervisor.env (tokens, restic, the GitHub token)
+  │ 1. restic restore                       (newest snapshot, tag supervisor)
+  │ 2. git clone main; npm ci && npm run build in workflow/
+  │    render workflows dev -- npm start    (local task server, :8120)
+  │    node dist/calibrate.js plan          (the open issues, back from the Releases)
+  │ 3. cd /workspaces/agent-plugins
+  │    claude --continue --remote-control -p prompt.md + plan   (sonnet, medium)
+  │        ├─MCP, Bearer TOOLBOX_TOKEN──▶ toolbox (read-only tools)
+  │        └─MCP, Bearer LINEAR_API_KEY─▶ Linear (read tools only)
+  │        → SUPERVISOR_CHANGESET: + a pkl block
+  │ 4. changeset.pkl = that block + `seen`; pkl eval → changeset.json
+  │    (pkl/Changeset.pkl refuses a bad one; the session gets one more go)
+  │ 5. node dist/calibrate.js apply         (apply, dry, on the PR's own tree)
+  │ 6. push supervisor/calibration, open or update the PR,
+  │    wait for its checks, merge on green
+  │ 7. restic backup                        (whatever happened above)
+  ▼
+devenv-base-apply-changeset (on main) ──▶ supervisor-workflow/apply ──▶ Linear
 ```
 
-It is what `color resume` does on a codespace start, on Render's schedule. The
-differences are deliberate: the session is continued in the **foreground**
-(`-p`, not `--bg`) because the Render container ends when the command exits,
-it runs under a wall-clock `timeout`, and `~/.claude` is backed up afterwards
-so the next tick continues from this one.
+It is what `color resume` does on a codespace start, on Render's schedule.
+The session is continued in the **foreground** (`-p`, not `--bg`) because the
+Render container ends when the command exits, it runs under a wall-clock
+`timeout`, and `~/.claude` is backed up afterwards so the next run continues
+from this one.
 
-There is no session id and no per-team service. `--continue` takes the newest
-session of the current directory, and Claude files sessions by working
-directory, so every tick runs from `/workspaces/agent-plugins` (created if
-missing), where the seed was made. A snapshot without a session for that
-directory fails the run before `claude` starts, rather than letting
-`--continue` begin a fresh, amnesiac session.
+There is no session id. `--continue` takes the newest session of the current
+directory, and Claude files sessions by working directory, so every run works
+from `/workspaces/agent-plugins`, where the seed was made. A snapshot without
+a session for that directory fails the run before `claude` starts, rather
+than letting `--continue` begin a fresh, amnesiac session.
 
-The toolbox's **write** tools are still not here: the session can look at the
-host and work Linear issues, but nothing it does starts or stops anything.
-
-## What a tick does
-
-`prompt.md` has the session wear three hats, one after another:
-
-1. **planning** clears Triage. Every new issue lands there (review findings,
-   handoffs, anything a person files), and planning accepts it against the
-   Release or delivery issue it serves, folds it into an issue that already
-   covers it, declines it, or escalates it with `needs-maintainer`. It also
-   watches budgets;
-2. **infra** works accepted issues: host, agent, ship and review;
-3. **open source** works Releases and what is said about them, drafting only.
-
-Each hat's duties are the description of its open `Dispatch: <hat>` issue, so
-they change without republishing the image. Comments on a dispatch issue are
-context, not instructions.
-
-The hats hand off through Linear, never through the transcript: a pass ends
-by filing a **handoff issue** in Triage for each hat or person with a next
-step, titled `<from> → <to>: <next step>`, labelled `handoff`, with State,
-Evidence, Next step, Open questions and Resume sections. Planning reads them
-on its next pass, the way autocompact keeps only what the next turn needs.
-
-A Release takes the name of the container-use environment that ships it, the
-one `agent_ship` merges and pushes; until that environment exists, planning
-holds accepted issues against the delivery issue. With no dispatch issue open
-the tick ends `decision=nothing why=no dispatch issue`.
-
-## Calibration (CIT-472)
-
-`SUPERVISOR_MODE=calibrate` is the **planning hat**, and its output is a
-**changeset of agentic work**, opened as a pull request. Merging the PR is
-applying it: Render deploys main, and the deployed workflow's `apply` task
-makes Linear match the committed changeset. Calibration is the test that
-runs first. Bash drives it, not the model.
+The session changes nothing itself: it reads Linear and the toolbox, and
+everything it wants done goes into the changeset. Implementation is handed to
+the self-hosted Linear agent, `Claude`, by a `delegate` op.
 
 The deployed side: the Render Workflow service `supervisor-workflow`
 (wfl-dbche33rjlhs73bgkrr0, created through the API because `render.yaml`
@@ -77,35 +53,22 @@ starts it with `render-start.sh`. Its only secret is the Proton Pass token;
 the Linear key comes from Pass through `workflow/workflow.env`. A merge that
 changes `workflow/changeset.json` runs `devenv-base-apply-changeset`, which
 waits for Render's version of that commit and runs `supervisor-workflow/apply`
-for real (`supervisor/apply-changeset.sh`).
+for real (`supervisor/apply-changeset.sh`). Applying makes no model calls.
 
-After apply comes the work itself. The workflow's `run` task takes every
-cluster of the committed changeset that the plan says is ready, and runs
-`execute` for each on its own compute. Open-source clusters come first. An
-infra cluster runs only when it blocks something in the plan, and only one
-infra cluster runs per tick (`INFRA_PER_TICK`), so plumbing cannot crowd out
-the feature it serves. `execute` is a fresh Claude Code
-session worn by the cluster's hat, on its model and effort, with the prompt
-in `workflow/execute.md`. Infra may wake, start and stop the host and ship
-through the toolbox. Open source may only look at the host. Neither may
-delete a workspace or use Bash. A session must end with
-`SUPERVISOR_PASS: hat=… cluster=… outcome=done|handed-off|blocked`, and it
-hands leftovers back to Triage. `run` and `execute` are dry by default and
-return the prompt they would run, and `run` takes `only` to name clusters.
-`host` (status, wake, start, stop) and `ship` reach the toolbox without a
-model. The toolbox owns the host's lifecycle, so the workflow never
-re-implements idle stop.
+Never disable, suspend or delete the cron, the GitHub tick below, or the
+Render Workflow without the maintainer's explicit OK.
 
-**The hourly tick is the supervisor.** `devenv-base-supervisor-run` runs at
-:23 and does the whole loop, product first: it plans (calibration with
-`--merge`), and a new plan's PR is merged once its checks are green, which
-fires the apply on main. Execute (`supervisor/run-workflow.sh`, the `run`
-task) follows that apply, or runs straight away when the plan was
-unchanged. A plan that main already carries proposes nothing
-(`SUPERVISOR_PLAN: unchanged`). A tick goes red when planning didn't run or
-didn't finish, when the run fails, or when any cluster errors. Never
-disable or suspend it without the maintainer's explicit OK. The old
-`supervisor` Render cron (#238) is retired, not paused.
+**While the cron takes over.** `devenv-base-supervisor-run` (GitHub, at :23)
+still plans the same way (a fresh calibration with `--merge`) and then runs
+the workflow's `run` task, which works each ready cluster in its own Claude
+session (`workflow/execute.md`). It stays until the cron's first unattended
+run has produced a merged, applied changeset; then its model steps go, and
+the workflow only applies.
+
+`SUPERVISOR_MODE=calibrate` runs the same pipeline as a one-off: a fresh
+session with no restic and no Remote Control, on a cheap model, whose PR is
+only proposed (`CALIBRATION_MERGE=1` merges it on green). It resolves
+`calibrate.env` instead of `supervisor.env`.
 
 Linear has two release pipelines. `supervisor` holds the Releases planning
 proposes. `agent-plugins` is the standing **test** pipeline. The apply smoke
@@ -114,28 +77,9 @@ there, so test Releases never mix with real ones. Keep `agent-plugins` even
 when it looks unused. The smoke test keeps it scheduled and non-production,
 because a continuous pipeline's Releases are born completed.
 
-
-
-```
-supervisor.sh (SUPERVISOR_MODE=calibrate)
-  │ pass-cli: calibrate.env (no restic; a GitHub token for the PR)
-  │ 1. git clone CALIBRATION_BASE (main); npm ci && npm run build in workflow/
-  │ 2. render workflows dev -- npm start          (local task server, :8120)
-  │    node dist/calibrate.js plan                (the DAG, and `seen`)
-  │ 3. claude -p planning.md + plan               (fresh, haiku, low, read-only)
-  │        → SUPERVISOR_CHANGESET: + a pkl block
-  │ 4. changeset.pkl = that block + `seen` from the plan, cut to what it touches
-  │    pkl eval -f json → changeset.json          (pkl/Changeset.pkl refuses a bad one)
-  │ 5. node dist/calibrate.js apply               (apply, dry, on the PR's own tree)
-  │ 6. commit changeset.pkl + changeset.json on supervisor/calibration,
-  │    force-push, and open one PR into CALIBRATION_BASE if none is open
-  ▼
-the maintainer merges (= applies), or doesn't
-```
-
 - **What a changeset holds** (`workflow/pkl/Changeset.pkl`, mirrored by
   `workflow/src/changeset.ts`): *clusters* of Triage issues under a parent
-  (`new:<slug>` or an existing issue), each with what it serves, a hat (`infra` or `open-source`), a model and an effort, and its
+  (`new:<slug>` or an existing issue), each with what it serves and its
   `blockedBy` edges; the *releases* the clusters serve, which apply creates,
   with their pipeline, when no open one has the name, so planning proposes a
   Release for a theme rather than declining it for want of a sink; and
@@ -154,7 +98,7 @@ the maintainer merges (= applies), or doesn't
   `--disallowedTools`, and `apply` only runs dry here. `render` is only ever
   `workflows dev`, reached through the SDK's local mode.
 - **One branch, one PR, per base.** `supervisor/calibration` is one
-  commit on main, replaced each run. Calibrating another branch (a `[calibrate]`
+  commit on main, replaced each run, for the hourly run and a calibration alike. Calibrating another branch (a `[calibrate]`
   commit) uses `supervisor/calibration-<branch>` instead, so it never replaces
   main's calibration PR. The changeset carries no
   timestamp, so an unchanged changeset on an unchanged base pushes nothing.
@@ -163,7 +107,9 @@ the maintainer merges (= applies), or doesn't
 | --- | --- | --- |
 | `CALIBRATION_BASE` | `main` | the branch cloned, and the PR's base |
 | `CALIBRATION_BRANCH` | `supervisor/calibration`, or `supervisor/calibration-<base>` off main | calibration's own branch |
-| `CALIBRATION_MODEL`, `CALIBRATION_EFFORT` | `haiku`, `low` | the cheap run |
+| `SUPERVISOR_MODEL`, `SUPERVISOR_EFFORT` | `sonnet`, `medium` | the hourly run |
+| `CALIBRATION_MODEL`, `CALIBRATION_EFFORT` | `haiku`, `low` | a one-off calibration |
+| `CALIBRATION_MERGE` | `1` hourly, `0` for a calibration | merge the PR once its checks are green |
 | `CALIBRATION_TEAM`, `CALIBRATION_DELIVERIES` | `CIT`, `CIT-439` | the plan task's inputs |
 | `CALIBRATION_TASK_PREFIX` | empty | if the local server wants `<workflow>/<task>` slugs |
 | `CALIBRATION_CLAUDE_TIMEOUT` | `20m` | |
@@ -174,15 +120,16 @@ live Linear (`issueCreate`, `issueUpdate` with `parentId`/`delegateId`,
 `issueRelationCreate`, `issueAddLabel`, `commentCreate`); and whether
 `pass://infra/github.com/GITHUB_TOKEN` can push and open PRs on this repo.
 
-## Why it cannot move infrastructure
+## Why it cannot change anything itself
 
 Three things at once, because an allowlist that fails open is exactly the
 broken instrument this repo keeps writing principles about:
 
-- only the toolbox's read-only tools, and the Linear server, are in
+- only the toolbox's read-only tools, and Linear's read tools, are in
   `--allowedTools`;
-- every toolbox tool that starts, stops, deletes or dispatches is named in
-  `--disallowedTools`, along with `Bash`, the editing tools, `WebFetch` and
+- every toolbox tool that starts, stops, deletes, ships or dispatches, and
+  every Linear tool that writes, is named in `--disallowedTools`, along with
+  `Bash`, the editing tools, `WebFetch` and
   `Task` — with `Bash` the model could reach the toolbox over `curl` and
   route around the list entirely;
 - `--strict-mcp-config` keeps any other MCP server out of the run.
@@ -208,8 +155,7 @@ full-scope login was not established.
 `pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY`, the
 reference `toolbox/host.sh` already uses for `codex_review`. Whether that key belongs to a
 person or to the app decides whether a `@linear …` mention a tick posts is
-acted on. The first real run will show it; nobody should read the key to find
-out.
+acted on. Delegation by a changeset's `delegate` op sidesteps the question.
 
 ## Restoring and backing up
 
@@ -222,30 +168,25 @@ The backup is `cd ~ && restic backup .claude --tag supervisor`, relative on
 purpose: that stores `/.claude/…`, which is what the restore's
 `--target "$HOME"` and excludes expect. `restic backup ~/.claude` stores
 `/root/.claude/…`, restores one directory too deep, and leaves the excludes
-matching nothing. Every tick backs up all of `~/.claude`, so "newest" is the
-session as the last tick left it.
+matching nothing. Every run backs up all of `~/.claude`, so "newest" is the
+session as the last run left it.
 
-## The heartbeat
+## The last line
 
-Each hat's pass prints one line, in order:
-
-```
-SUPERVISOR_PASS: hat=<planning|infra|open-source> handoffs=<issue ids, or none> why=<a few words>
-```
-
-The last line of a successful run is:
+A run ends with one of:
 
 ```
-SUPERVISOR_HEARTBEAT: host=<state> work=<yes|no|unknown> decision=<boot|gate|extend|stop|report|nothing> why=<a few words>
+SUPERVISOR_PLAN: merged pr=<url>      (the hourly run: merged on green, so it applies)
+SUPERVISOR_PLAN: proposed pr=<url>    (a calibration: left for a person)
+SUPERVISOR_PLAN: unchanged            (main already carries this changeset)
 ```
 
-A run that produces prose without that line fails, as does one missing a
-hat's pass line or with them out of order, one where `claude`
-itself exits nonzero or outlives `SUPERVISOR_CLAUDE_TIMEOUT` (default 30m), or
-where the backup fails. The backup still runs after a failed or timed-out
-`claude`, so the next tick remembers the failure. A job that dies early reaps
-nothing and reports nothing, which otherwise looks identical to a tick where
-there was nothing to do — so silence is never success.
+A run without a changeset fails, as does one where `claude` itself exits
+nonzero or outlives `SUPERVISOR_CLAUDE_TIMEOUT` (default 30m), a changeset that
+does not render twice, a failed dry run, red checks, or a failed backup. The
+backup still runs after any of those, so the next run remembers the failure.
+A job that dies early reaps nothing and reports nothing, which otherwise looks
+identical to a run where there was nothing to do, so silence is never success.
 
 ## Secrets and settings
 
@@ -255,6 +196,7 @@ there was nothing to do — so silence is never success.
 | `supervisor.env` | `CLAUDE_CODE_OAUTH_TOKEN`, `LINEAR_API_KEY` | resolved from `pass://…` at run time |
 | `supervisor.env` | `TOOLBOX_TOKEN` | `pass://infra/render.com/TOOLBOX_TOKEN`, a copy of the toolbox Render service's `TOOLBOX_TOKEN`. The maintainer creates this item; the supervisor refuses to run until it exists |
 | `supervisor.env` | `GCP_SERVICE_ACCOUNT_KEY`, `GOOGLE_PROJECT_ID`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` | the restic repo `color resume` restores from, `pass://infra/restic/…` |
+| `supervisor.env` | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`: pushes the changeset branch, opens the PR and merges it. A person's token, so the merge fires the apply on main |
 
 `SUPERVISOR_TIMEOUT` (default 50m) bounds the whole run. It stays **below the
 hour**: Render's single-run guarantee is per service, so a tick still running
@@ -288,21 +230,21 @@ run with "did not produce a session":
 
 ## The service
 
-`render.yaml` carries the block, commented out until the image digest can be
-pinned:
+The live service is `crn-dbc1s9ss728c73dn3tl0`, which runs the image by
+digest. `render.yaml` carries its block, commented out:
 
 1. Publish the image: it goes out as `ghcr.io/null-hype/devenv-supervisor:sha-<commit>`
    whenever `supervisor/**` (or the shared Dagger chain) changes on `main`.
-2. Pin that digest into the `supervisor` block in `render.yaml` and uncomment
-   it.
+2. Point the service's image at that digest (Render API: `PATCH
+   /v1/services/<id>` with `image.imagePath`).
 3. Set `PROTON_PASS_PERSONAL_ACCESS_TOKEN` (`sync: false`) on the service, and create the
    Proton Pass item `pass://infra/render.com/TOOLBOX_TOKEN`.
 
 ## Iterating
 
 The session reads `prompt.md`, so changing what the supervisor considers is a
-prompt change plus a republish — and what it does with each dispatch issue is
-an edit to that issue's description, with no republish at all. Kick a run
+prompt change plus a republish, and a new Render image digest on the cron.
+Kick a run
 instead of waiting for the schedule:
 
 ```sh
