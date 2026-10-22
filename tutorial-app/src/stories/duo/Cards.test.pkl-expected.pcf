@@ -1,0 +1,86 @@
+examples {
+  ["The demo cards"] {
+    new {
+      new {
+        id = "mat-blocked"
+        line = 2
+        title = "mat upload, untrusted loaders blocked"
+        counterexample = "matload: operation is blocked"
+        options {
+          new {
+            id = "unless-blocked"
+            label = "Unless the loader is blocked"
+            from = "always resized"
+            to = "resized unless the loader is blocked"
+          }
+          new {
+            id = "png-only"
+            label = "Only PNG uploads"
+            from = "Uploads"
+            to = "PNG uploads"
+          }
+        }
+      }
+      new {
+        id = "mat-unblocked"
+        line = 2
+        title = "mat upload, untrusted loaders not blocked"
+        counterexample = null
+        options {
+          new {
+            id = "unless-blocked"
+            label = "Unless the loader is blocked"
+            from = "always resized"
+            to = "resized unless the loader is blocked"
+          }
+          new {
+            id = "png-only"
+            label = "Only PNG uploads"
+            from = "Uploads"
+            to = "PNG uploads"
+          }
+        }
+      }
+      new {
+        id = "png-blocked"
+        line = 2
+        title = "png upload, untrusted loaders blocked"
+        counterexample = null
+        options {
+          new {
+            id = "unless-blocked"
+            label = "Unless the loader is blocked"
+            from = "always resized"
+            to = "resized unless the loader is blocked"
+          }
+          new {
+            id = "png-only"
+            label = "Only PNG uploads"
+            from = "Uploads"
+            to = "PNG uploads"
+          }
+        }
+      }
+      new {
+        id = "png-unblocked"
+        line = 2
+        title = "png upload, untrusted loaders not blocked"
+        counterexample = null
+        options {
+          new {
+            id = "unless-blocked"
+            label = "Unless the loader is blocked"
+            from = "always resized"
+            to = "resized unless the loader is blocked"
+          }
+          new {
+            id = "png-only"
+            label = "Only PNG uploads"
+            from = "Uploads"
+            to = "PNG uploads"
+          }
+        }
+      }
+    }
+  }
+}
