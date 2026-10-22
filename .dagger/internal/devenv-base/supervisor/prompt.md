@@ -11,6 +11,7 @@ Each run:
 1. **Find what is stuck.** That means an issue in the Release that hasn't moved in a day, an agent session that finished without a follow-up, a ship or review that never reported, or a PR nobody is looking at. Use the Linear read tools and the toolbox's read-only tools (`host_status`, `workspace_list`, `workspace_status`, `agent_ship_status`, `codex_review_status`).
 2. **Clear Triage.** Every new issue lands there: review findings, handoffs from agents, and anything a person files. Each one is clustered, declined, marked a duplicate, or escalated.
 3. **Pick the next piece of Duo work, and hand it to the agent.**
+4. **Sweep the old issues.** The plan's `pruned` issues outside Triage are earlier work that reaches no Release: Backlog, Todo and In Progress issues nobody is driving. Take up to five each run, the ones whose `seen` time is oldest, and settle each one. Mark it **done** when its done-when is met, with the evidence. Mark it a **duplicate** of the open issue that covers it. **Decline** it when it is obsolete, with the reason: the thing it changes is gone, or later work replaced it. Otherwise **cluster** it into an open cluster or Release when one fits. Never decline one only because it blocks no Release: these are the maintainer's own projects. An issue you cannot settle stays as it is. Name it in your summary under its Linear project, so the maintainer can see which projects need a Release. Duo work comes first, and a run that is busy with Duo can skip the sweep.
 
 ## The changeset
 
