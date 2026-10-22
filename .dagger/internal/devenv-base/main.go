@@ -939,6 +939,12 @@ func (m *DevenvBase) CalibrateSupervisor(
 	return out, nil
 }
 
+// passLogin logs pass-cli in, trying three times and waiting longer each time:
+// Proton's login sometimes times out several times in a row, and that must not
+// cost a tick or leave a merged plan unapplied (2026-10-22).
+const passLogin = "for try in 1 2 3; do timeout 2m pass-cli login > /dev/null && break; " +
+	"[ $try = 3 ] && exit 1; echo \"pass-cli login failed ($try of 3); trying again\" >&2; sleep $((try * 60)); done"
+
 // RunSupervisorWorkflow is the supervisor Workflow's hourly tick (CIT-472):
 // it runs the deployed `run` task for real, which executes each ready
 // cluster with its hat (supervisor/run-workflow.sh). The Render API key
@@ -956,7 +962,7 @@ func (m *DevenvBase) RunSupervisorWorkflow(
 		WithEnvVariable("SUPERVISOR_TICK", time.Now().UTC().Format(time.RFC3339Nano)).
 		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to run the hourly workflow tick").
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
-		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && pass-cli run --env-file run.env -- ./run-workflow.sh 2>&1"},
+		WithExec([]string{"bash", "-c", passLogin + " && pass-cli run --env-file run.env -- ./run-workflow.sh 2>&1"},
 			dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
 	out, err := run.Stdout(ctx)
 	if err != nil {
@@ -991,7 +997,7 @@ func (m *DevenvBase) ApplySupervisorChangeset(
 		WithEnvVariable("COMMIT", commit).
 		WithEnvVariable("PROTON_PASS_AGENT_REASON", "supervisor: read the Render API key to run the merged changeset's apply").
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
-		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && pass-cli run --env-file apply.env -- ./apply-changeset.sh 2>&1"},
+		WithExec([]string{"bash", "-c", passLogin + " && pass-cli run --env-file apply.env -- ./apply-changeset.sh 2>&1"},
 			dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
 	out, err := run.Stdout(ctx)
 	if err != nil {
@@ -1042,7 +1048,7 @@ node dist/smoke.js examples/apply-smoke.json || { cat /tmp/dev.log; exit 1; }
 		WithSecretVariable("PROTON_PASS_PERSONAL_ACCESS_TOKEN", protonPassToken).
 		WithNewFile("/app/workflow/smoke.env", "LINEAR_API_KEY=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY\n").
 		WithNewFile("/app/workflow/smoke.sh", script).
-		WithExec([]string{"bash", "-c", "timeout 2m pass-cli login > /dev/null && " +
+		WithExec([]string{"bash", "-c", passLogin + " && " +
 			"pass-cli run --env-file smoke.env -- bash smoke.sh 2>&1"}, dagger.ContainerWithExecOpts{
 			Expect: dagger.ReturnTypeAny,
 		})
