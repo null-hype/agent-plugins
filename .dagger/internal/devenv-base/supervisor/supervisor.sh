@@ -322,6 +322,32 @@ git -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
   { echo "supervisor: could not clone $CALIBRATION_BASE" >&2; exit 1; }
 git -C "$repo" config credential.helper '!gh auth git-credential'
 base_sha=$(git -C "$repo" rev-parse HEAD)
+
+# A shipped branch gets a pull request. agent_ship stops at a pushed branch,
+# so without this its work waits for a person to notice (#240 sat for two
+# days). Every recent `cit-<n>-…` branch with commits main lacks and no PR,
+# open or closed, gets one, titled from its issue and last commit. The hourly
+# run only: a calibration opens nothing but its own PR. A failure here is
+# loud but leaves the changeset to go on.
+if [ "$MODE" = tick ]; then
+  since=$(date -u -d "-${SHIPPED_PR_DAYS:-14} days" +%FT%TZ)
+  branches=$(gh api "repos/$CALIBRATION_REPO/branches" --paginate --jq '.[].name' | grep -E '^cit-[0-9]+-' || true)
+  for b in $branches; do
+    [ "$(gh pr list --repo "$CALIBRATION_REPO" --head "$b" --state all --json number --jq length)" = 0 ] || continue
+    read -r ahead when subject < <(gh api "repos/$CALIBRATION_REPO/compare/$CALIBRATION_BASE...$b" \
+      --jq '"\(.ahead_by) \(.commits[-1].commit.committer.date // "none") \(.commits[-1].commit.message // "" | split("\n")[0])"') ||
+      { echo "supervisor: WARNING could not compare $b with $CALIBRATION_BASE" >&2; continue; }
+    [ "$ahead" -gt 0 ] && [[ "$when" > "$since" ]] || continue
+    id=$(printf '%s' "$b" | sed -E 's/^cit-([0-9]+)-.*/CIT-\1/')
+    if url=$(gh pr create --repo "$CALIBRATION_REPO" --base "$CALIBRATION_BASE" --head "$b" \
+      --title "$id: $subject" \
+      --body "Shipped by \`agent_ship\` for $id, and opened by the supervisor so it gets reviewed. Nothing merges it on its own."); then
+      echo "supervisor: opened $url for the shipped branch $b"
+    else
+      echo "supervisor: WARNING could not open a PR for the shipped branch $b" >&2
+    fi
+  done
+fi
 wf=$repo/$WORKFLOW_PATH
 [ -d "$wf" ] ||
   { echo "supervisor: $CALIBRATION_BASE has no $WORKFLOW_PATH to calibrate" >&2; exit 1; }

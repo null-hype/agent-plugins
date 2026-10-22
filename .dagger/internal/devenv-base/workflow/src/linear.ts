@@ -168,7 +168,8 @@ export async function triageHints(apiKey: string, team: string, fetcher = fetch)
 // apply's reads and writes over GraphQL. Issues are named by identifier
 // (CIT-465), which Linear accepts wherever an id is asked for; the inputs
 // that want a UUID (parentId, relations) are resolved through `issue`.
-const ISSUE_FIELDS = `id identifier updatedAt description
+const ISSUE_FIELDS = `id identifier updatedAt description branchName
+  comments(first: 100) { nodes { body } }
   state { type }
   parent { identifier }
   labels { nodes { name } }
@@ -181,6 +182,8 @@ interface IssueNode {
   identifier: string;
   updatedAt: string;
   description: string | null;
+  branchName: string;
+  comments: { nodes: { body: string }[] };
   state: { type: string };
   parent: { identifier: string } | null;
   labels: { nodes: { name: string }[] };
@@ -198,6 +201,8 @@ const toLinearIssue = (n: IssueNode): LinearIssue => ({
   blockedBy: n.inverseRelations.nodes.filter((r) => r.type === "blocks").map((r) => r.issue.identifier),
   delegate: n.delegate?.name,
   releases: n.releases.nodes.filter((r) => !r.completedAt && !r.canceledAt).map((r) => r.name),
+  branch: n.branchName,
+  shipped: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)].map((m) => m[1]!)),
 });
 
 export function linearClient(apiKey: string, team: string, fetcher = fetch): LinearClient {

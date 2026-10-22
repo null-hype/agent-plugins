@@ -1,12 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { apply, marker, type LinearClient, type LinearIssue } from "./apply.ts";
+import { apply, marker, shipMarker, type LinearClient, type LinearIssue } from "./apply.ts";
 import { validate, type Changeset } from "./changeset.ts";
 
 const T0 = "2026-10-21T00:00:00Z";
 
 // Linear in memory. Every write is logged, so a dry run can be checked for
 // making none, and every write bumps updatedAt, the way Linear does.
+// A host that is always ready and ships nothing: for the tests that are not
+// about the host.
+const idleHost = { wake: async () => {}, ship: async () => {} };
+
 function fakeLinear(
   issues: Partial<LinearIssue>[],
   existing: { pipelines?: string[]; releases?: string[]; labels?: string[]; users?: string[] } = {},
@@ -17,7 +21,7 @@ function fakeLinear(
   const users = new Set(existing.users ?? ["tidelands-agent"]);
   const store = new Map<string, LinearIssue & { description: string }>();
   for (const i of issues) {
-    store.set(i.identifier!, { updatedAt: T0, stage: "triage", labels: [], blockedBy: [], releases: [], description: "", ...i } as LinearIssue & { description: string });
+    store.set(i.identifier!, { updatedAt: T0, stage: "triage", labels: [], blockedBy: [], releases: [], description: "", branch: `branch-${i.identifier!.toLowerCase()}`, shipped: [], ...i } as LinearIssue & { description: string });
   }
   const writes: string[] = [];
   let next = 900;
@@ -36,7 +40,7 @@ function fakeLinear(
     async createIssue({ title, description, parent }) {
       const identifier = `CIT-${next++}`;
       writes.push(`create ${identifier} ${title} under ${parent}`);
-      const i = { identifier, updatedAt: T0, stage: "unstarted", parent, labels: [], blockedBy: [], releases: [], description };
+      const i = { identifier, updatedAt: T0, stage: "unstarted", parent, labels: [], blockedBy: [], releases: [], description, branch: `branch-${identifier.toLowerCase()}`, shipped: [] as string[] };
       store.set(identifier, i);
       return structuredClone(i);
     },
@@ -79,6 +83,7 @@ function fakeLinear(
     },
     async comment(id, body) {
       writes.push(`comment ${id} ${body}`);
+      for (const m of body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)) store.get(id)!.shipped.push(m[1]!);
       touch(id);
     },
     async delegate(id, agent) {
@@ -172,7 +177,7 @@ test("a dry run reads Linear, decides every op, and writes nothing", async () =>
 
 test("apply makes Linear match the changeset, and a second apply changes nothing", async () => {
   const { client, store, writes } = world();
-  const first = await apply(changeset(), client, { dryRun: false });
+  const first = await apply(changeset(), client, { dryRun: false, toolbox: idleHost });
   const parent = first.clusters["new:review-findings"];
   assert.equal(parent, "CIT-900");
   assert.equal(store.get(parent)!.parent, "CIT-439");
@@ -191,7 +196,7 @@ test("apply makes Linear match the changeset, and a second apply changes nothing
   // The issues it touched have moved on since planning; that is its own
   // doing, and every op is already satisfied, so nothing is skipped either.
   const count = writes.length;
-  const second = await apply(changeset(), client, { dryRun: false });
+  const second = await apply(changeset(), client, { dryRun: false, toolbox: idleHost });
   assert.equal(writes.length, count, `a second apply wrote: ${writes.slice(count).join("; ")}`);
   assert.deepEqual(second.applied, []);
   assert.deepEqual(second.skipped, []);
@@ -206,7 +211,7 @@ test("a marker survives Linear's emoji shortcodes: it has no colons", () => {
 test("an issue changed since planning is left alone, and the rest is applied", async () => {
   const { client, store, writes } = world();
   store.get("CIT-501")!.updatedAt = "2026-10-21T05:00:00Z";
-  const r = await apply(changeset(), client, { dryRun: false });
+  const r = await apply(changeset(), client, { dryRun: false, toolbox: idleHost });
   assert.deepEqual(r.skipped.map((o) => `${o.op} ${o.target}: ${o.why}`), ["parent CIT-501: CIT-501 changed since planning"]);
   assert.equal(store.get("CIT-501")!.stage, "triage");
   assert.ok(writes.includes("parent CIT-500 CIT-900"));
@@ -224,7 +229,7 @@ test("an existing issue can be the cluster's parent", async () => {
   const cs = changeset();
   cs.clusters[0] = { ...cs.clusters[0], key: "CIT-465", blockedBy: [] };
   cs.delegate = [{ issue: "CIT-465", agent: "tidelands-agent" }];
-  const r = await apply(cs, client, { dryRun: false });
+  const r = await apply(cs, client, { dryRun: false, toolbox: idleHost });
   assert.equal(r.clusters["CIT-465"], "CIT-465");
   assert.equal(store.get("CIT-500")!.parent, "CIT-465");
   assert.ok(!r.applied.some((o) => o.op === "create"));
@@ -254,7 +259,7 @@ test("a cluster can serve a Release the changeset creates, pipeline and all", as
     ],
   );
 
-  const first = await apply(withRelease(), client, { dryRun: false });
+  const first = await apply(withRelease(), client, { dryRun: false, toolbox: idleHost });
   assert.deepEqual(first.skipped, []);
   const parent = first.clusters["new:review-findings"];
   assert.equal(store.get(parent)!.parent, undefined, "a cluster serving a Release has no parent issue");
@@ -262,7 +267,7 @@ test("a cluster can serve a Release the changeset creates, pipeline and all", as
   assert.equal(store.get("CIT-500")!.parent, parent);
 
   const count = writes.length;
-  const second = await apply(withRelease(), client, { dryRun: false });
+  const second = await apply(withRelease(), client, { dryRun: false, toolbox: idleHost });
   assert.equal(writes.length, count, `a second apply wrote: ${writes.slice(count).join("; ")}`);
   assert.deepEqual(second.applied, []);
 });
@@ -282,7 +287,7 @@ test("a Release that already exists is used, and an existing cluster parent is a
   const cs = withRelease();
   cs.clusters[0] = { ...cs.clusters[0], key: "CIT-465", blockedBy: [] };
   cs.delegate = [];
-  const r = await apply(cs, client, { dryRun: false });
+  const r = await apply(cs, client, { dryRun: false, toolbox: idleHost });
   assert.ok(!r.applied.some((o) => o.op === "pipeline" || o.op === "release"));
   assert.deepEqual(r.applied[0], { op: "attach", target: "CIT-465", detail: "in release supervisor-workflow (infra, sonnet, high)" });
   assert.deepEqual(store.get("CIT-465")!.releases, ["supervisor-workflow"]);
@@ -293,7 +298,7 @@ test("an invalid changeset is refused before anything is read or written", async
   const { client, writes } = world();
   const cs = changeset();
   cs.decline.push({ issue: "CIT-500", reason: "again" });
-  await assert.rejects(apply(cs, client, { dryRun: false }), /CIT-500 is in both cluster new:review-findings and decline/);
+  await assert.rejects(apply(cs, client, { dryRun: false, toolbox: idleHost }), /CIT-500 is in both cluster new:review-findings and decline/);
   assert.deepEqual(writes, []);
 });
 
@@ -362,8 +367,45 @@ test("a write that fails halfway is not repeated on the rerun", async () => {
       return client.comment(id, body);
     },
   };
-  await assert.rejects(apply(changeset(), flaky, { dryRun: false }), /Linear is down/);
-  await apply(changeset(), flaky, { dryRun: false });
+  await assert.rejects(apply(changeset(), flaky, { dryRun: false, toolbox: idleHost }), /Linear is down/);
+  await apply(changeset(), flaky, { dryRun: false, toolbox: idleHost });
   assert.deepEqual(writes.filter((w) => w.startsWith("cancel CIT-502")), ["cancel CIT-502"]);
   assert.deepEqual(writes.filter((w) => w.startsWith("comment CIT-502")), [], "the rerun sees CIT-502 canceled and leaves it");
+});
+
+// A host that records what was asked of it.
+const recordingHost = () => {
+  const calls: string[] = [];
+  return { calls, wake: async () => void calls.push("wake"), ship: async (env: string, branch: string) => void calls.push(`ship ${env} ${branch}`) };
+};
+
+test("the host is woken once, before the first delegation, and never in a dry run", async () => {
+  const host = recordingHost();
+  const { client, writes } = world();
+  await apply(changeset(), client, { dryRun: true, toolbox: host });
+  assert.deepEqual(host.calls, []);
+  await apply(changeset(), client, { dryRun: false, toolbox: host });
+  assert.deepEqual(host.calls, ["wake"]);
+  assert.ok(writes.some((w) => w.startsWith("delegate ")));
+  // Nothing left to delegate: no reason to wake the host.
+  await apply(changeset(), client, { dryRun: false, toolbox: host });
+  assert.deepEqual(host.calls, ["wake"]);
+});
+
+test("a ship wakes the host, ships to the issue's branch, notes it, and never ships twice", async () => {
+  const host = recordingHost();
+  const { client, writes } = world();
+  const cs = { ...changeset(), delegate: [], ship: [{ issue: "CIT-465", env: "amazed-bluebird" }] };
+
+  const dry = await apply(cs, client, { dryRun: true, toolbox: host });
+  assert.deepEqual(dry.applied.filter((o) => o.op === "ship"), [{ op: "ship", target: "CIT-465", detail: "amazed-bluebird to branch-cit-465" }]);
+  assert.deepEqual(host.calls, []);
+
+  await apply(cs, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(host.calls, ["wake", "ship amazed-bluebird branch-cit-465"]);
+  assert.ok(writes.some((w) => w.startsWith("comment CIT-465 ") && w.includes(shipMarker("amazed-bluebird"))));
+
+  const again = await apply(cs, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(host.calls, ["wake", "ship amazed-bluebird branch-cit-465"]);
+  assert.equal(again.applied.some((o) => o.op === "ship"), false);
 });

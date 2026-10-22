@@ -78,6 +78,15 @@ class Delegate {
   agent: String(!isBlank)
 }
 
+/// Ship an issue's finished container-use environment: apply wakes the host
+/// and runs the toolbox's agent_ship, which merges the environment and pushes
+/// it to the issue's own branch. Once per environment: apply notes it on the
+/// issue and never ships it twice.
+class Ship {
+  issue: Identifier
+  env: String(matches(Regex(#"[a-z]+-[a-z]+"#)))
+}
+
 /// updatedAt of every existing issue the changeset touches, as planning saw
 /// it. apply leaves an issue alone if it has changed since.
 seen: Mapping<Identifier, String>
@@ -87,6 +96,7 @@ decline: Listing<Decline> = new {}
 duplicate: Listing<Duplicate> = new {}
 escalate: Listing<Escalate> = new {}
 delegate: Listing<Delegate> = new {}
+ship: Listing<Ship> = new {}
 
 local releaseNames: List<String> = releases.toList().map((r) -> r.name)
 local served: List<String> = clusters.toList()
@@ -135,6 +145,7 @@ hidden problems: List<String> =
   + delegate.toList()
       .filter((d) -> placedIn(d.issue).any((w) -> !w.startsWith("cluster")))
       .map((d) -> "delegate \(d.issue) is also in \(placedIn(d.issue).find((w) -> !w.startsWith("cluster")))")
+  + ship.toList().filter((s) -> !seen.containsKey(s.issue)).map((s) -> "ship \(s.issue) was not seen by planning")
 
 output {
   value =

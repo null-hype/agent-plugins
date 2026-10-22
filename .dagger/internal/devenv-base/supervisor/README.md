@@ -44,7 +44,11 @@ than letting `--continue` begin a fresh, amnesiac session.
 
 The session changes nothing itself: it reads Linear and the toolbox, and
 everything it wants done goes into the changeset. Implementation is handed to
-the self-hosted Linear agent, `Claude`, by a `delegate` op.
+the self-hosted Linear agent, `Claude`, by a `delegate` op, and its finished
+container-use environment is shipped by a `ship` op. Applying either wakes the
+host first, through the toolbox, with no model. The hourly run opens a PR for
+every recent `cit-<n>-…` branch that has commits main lacks and no PR, so
+shipped work is reviewed rather than left on a branch.
 
 The deployed side: the Render Workflow service `supervisor-workflow`
 (wfl-dbche33rjlhs73bgkrr0, created through the API because `render.yaml`

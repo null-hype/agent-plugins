@@ -63,9 +63,26 @@ task(
     if (!/^[a-z0-9][a-z0-9._/-]*\.json$/.test(changeset) || changeset.includes("..")) {
       throw new Error(`changeset must be a .json file inside the workflow, got ${changeset}`);
     }
-    return applyChangeset(await readChangeset(changeset), linearClient(linearKey(), team), { dryRun });
+    return applyChangeset(await readChangeset(changeset), linearClient(linearKey(), team), { dryRun, toolbox: applyToolbox() });
   },
 );
+
+// What apply reaches the host with. host_wake moves the host one step per
+// call, so it is called until the Linear agent's webhook answers.
+const applyToolbox = () => ({
+  async wake() {
+    const deadline = Date.now() + 15 * 60_000;
+    for (;;) {
+      const r = await toolbox().call("host_wake");
+      if ((r.structured as { ready?: boolean } | undefined)?.ready) return;
+      if (Date.now() > deadline) throw new Error(`the host was not ready after 15 minutes: ${r.text}`);
+      await new Promise((done) => setTimeout(done, 20_000));
+    }
+  },
+  async ship(env: string, branch: string) {
+    await toolbox().call("agent_ship", { env, branch });
+  },
+});
 
 // Files next to package.json; dist/ is one level down.
 const readChangeset = async (file = "changeset.json") =>

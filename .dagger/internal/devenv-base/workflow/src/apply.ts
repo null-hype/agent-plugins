@@ -25,6 +25,19 @@ export interface LinearIssue {
   delegate?: string;
   // The open Releases it is in, by name.
   releases: string[];
+  // Its git branch, as Linear names it: where a ship pushes.
+  branch: string;
+  // The container-use environments apply has shipped for it, read back from
+  // the note each ship leaves.
+  shipped: string[];
+}
+
+// The toolbox, for the two ops that reach the host. apply never calls it in
+// a dry run.
+export interface Toolbox {
+  // Brings the host up and returns once the Linear agent can take work.
+  wake(): Promise<void>;
+  ship(env: string, branch: string): Promise<void>;
 }
 
 // The reads and writes apply needs. linear.ts implements it over GraphQL;
@@ -60,7 +73,7 @@ export interface LinearClient {
 }
 
 export interface Op {
-  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate";
+  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "duplicate" | "escalate" | "delegate" | "ship";
   target: string;
   detail: string;
 }
@@ -80,10 +93,16 @@ export const ESCALATE_LABEL = "needs-maintainer";
 // No colons: Linear turns ":new:" in a description into the 🆕 emoji, so a
 // marker written as "changeset:new:slug" is never found again.
 export const marker = (key: string) => `<!-- supervisor-changeset ${key.replaceAll(":", "/")} -->`;
+// The note a ship leaves on its issue, which is how a rerun knows it shipped.
+export const shipMarker = (env: string) => `<!-- supervisor-ship ${env} -->`;
 
 const CLOSED = ["completed", "canceled"];
 
-export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { dryRun: boolean }): Promise<ApplyResult> {
+export async function apply(
+  cs: Changeset,
+  linear: LinearClient,
+  { dryRun, toolbox }: { dryRun: boolean; toolbox?: Toolbox },
+): Promise<ApplyResult> {
   const problems = validate(cs);
   if (problems.length) throw new Error(`the changeset is invalid:\n- ${problems.join("\n- ")}`);
 
@@ -256,6 +275,17 @@ export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { d
     );
   }
 
+  // The host is woken once, before the first write that needs it: the agent
+  // acts on a delegation only while its webhook answers, and a ship runs on
+  // the host.
+  let awake = false;
+  const host = async () => {
+    if (awake) return;
+    if (!toolbox) throw new Error("this apply has no toolbox, and a delegation or a ship needs the host");
+    await toolbox.wake();
+    awake = true;
+  };
+
   // 5. Hand ready work to an agent, last, so it lands on the structure above.
   // Delegating fires the AgentSessionEvent the agent acts on.
   const agents = new Map<string, boolean>();
@@ -277,7 +307,34 @@ export async function apply(cs: Changeset, linear: LinearClient, { dryRun }: { d
     }
     // Reads are cached for the run, so an issue parented above is still
     // judged against what planning saw, not against apply's own write.
-    await run(op, (i) => i.delegate === d.agent, () => linear.delegate(target, d.agent), target);
+    await run(
+      op,
+      (i) => i.delegate === d.agent,
+      async () => {
+        await host();
+        await linear.delegate(target, d.agent);
+      },
+      target,
+    );
+  }
+
+  // 6. Ship finished environments, each once. The ship's own note is the
+  // record, so it is not a drift check: an issue the agent touched while it
+  // worked is still shipped.
+  for (const s of cs.ship ?? []) {
+    const issue = await get(s.issue);
+    const op: Op = { op: "ship", target: s.issue, detail: `${s.env} to ${issue?.branch ?? "its branch"}` };
+    if (!issue) {
+      result.skipped.push({ ...op, why: `${s.issue} does not exist` });
+      continue;
+    }
+    if (issue.shipped.includes(s.env)) continue;
+    if (!dryRun) {
+      await host();
+      await toolbox!.ship(s.env, issue.branch);
+      await linear.comment(s.issue, `Shipping \`${s.env}\` to \`${issue.branch}\` (agent_ship). ${shipMarker(s.env)}`);
+    }
+    result.applied.push(op);
   }
   return result;
 }
