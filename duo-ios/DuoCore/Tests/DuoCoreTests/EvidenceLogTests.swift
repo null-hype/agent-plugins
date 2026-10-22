@@ -12,7 +12,7 @@ final class EvidenceLogTests: XCTestCase {
         XCTAssertEqual(records.first?.value["path"]?.stringValue, "/app/Gemfile")
         XCTAssertEqual(records.last?.lineNumber, 3153)
         XCTAssertEqual(records.last?.value["message_type"]?.stringValue, "statistics")
-        XCTAssertEqual(records.last?.value["added"]?["files"], .number(2631))
+        XCTAssertEqual(records.last?.value["added"]?["files"], .integer(2631))
     }
 
     func testKeepsNullsAndNestingInDiagnostics() throws {
