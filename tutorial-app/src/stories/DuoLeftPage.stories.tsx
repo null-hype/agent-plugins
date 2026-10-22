@@ -8,7 +8,7 @@ import { type Card, cards, claimText, CLAIM_LINE } from './duo/cards';
 // in a WKWebView and drive it with evaluateJavaScript; these play() tests call
 // that same window API.
 
-const srcDoc = leftPage.replace('<!--claim-->', `<script id="claim" type="application/json">${JSON.stringify(claimText)}</script>`);
+const srcDoc = leftPageDocument(leftPage, claimText);
 
 type Monaco = {
 	MarkerSeverity: { Error: number; Info: number };
