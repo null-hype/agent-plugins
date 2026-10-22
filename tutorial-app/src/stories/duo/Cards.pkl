@@ -1,0 +1,67 @@
+/// CIT-465: the demo claim's question cards for the Duo left page, defined once.
+/// `pkl eval Cards.pkl` renders the array the page's `showCards` takes; the
+/// result is committed as `cards.json`, which `cards.ts` imports and
+/// `cards.spec.ts` checks against a fresh evaluation.
+///
+///   pkl eval Cards.pkl > cards.json
+///   pkl test Cards.test.pkl
+///
+/// One card per run recorded in CIT-294 (the observations at cc23e89, the last
+/// commit of #120). A run where the upload was not resized is a counterexample
+/// to the claim, so its card carries that run's error and is refuted; the rest
+/// stay open.
+///
+/// PROVISIONAL: the claim line, the options' labels and rewrites, and which run
+/// is the counterexample have no settled source. They wait on CIT-446's open
+/// questions 1-3 and are not answered here.
+module Cards
+
+import "pkl:json"
+
+class Option {
+  id: String
+  label: String
+  from: String
+  to: String
+}
+
+class Card {
+  id: String
+  line: Int
+  title: String
+  /// Present only when the recorded run refutes the claim.
+  counterexample: String?
+  options: Listing<Option>
+}
+
+local observations = "../../../evidence/cit-294-review-history-v1/files/cc23e89297855dd07b1ee477ced455ab46a94738/docs/investigations/CIT-265/cit-294/observations/"
+
+local function observation(name: String): Dynamic = new json.Parser {}.parse(read("\(observations)\(name).json").text) as Dynamic
+
+/// The line of the claim sentence in the page's text.
+claimLine: Int = 2
+
+options: Listing<Option> = new {
+  new { id = "unless-blocked"; label = "Unless the loader is blocked"; from = "always resized"; to = "resized unless the loader is blocked" }
+  new { id = "png-only"; label = "Only PNG uploads"; from = "Uploads"; to = "PNG uploads" }
+}
+
+local function card(name: String): Card = let (run = observation(name)) new {
+  id = name
+  line = claimLine
+  title = "\(run.arm) upload, untrusted loaders \(if (run.block_untrusted_env != null) "blocked" else "not blocked")"
+  counterexample = if (run.variant_succeeded) null else run.variant_error
+  options = module.options
+}
+
+cards: Listing<Card> = new {
+  card("mat-blocked")
+  card("mat-unblocked")
+  card("png-blocked")
+  card("png-unblocked")
+}
+
+output {
+  renderer = new JsonRenderer { omitNullProperties = true }
+  value = cards
+}
