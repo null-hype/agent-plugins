@@ -450,11 +450,6 @@ func (m *DevenvBase) Supervisor(
 			dag.CurrentModule().Source().File("supervisor/supervisor.env"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
 		).
-		WithFile(
-			"/app/supervisor/planning.md",
-			dag.CurrentModule().Source().File("supervisor/planning.md"),
-			dagger.ContainerWithFileOpts{Permissions: 0o644},
-		).
 		// The stub tests render a changeset through the real schema.
 		WithFile(
 			"/app/workflow/pkl/Changeset.pkl",
