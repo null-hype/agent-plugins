@@ -8,6 +8,9 @@ digest.txt
 .playwright-cli/
 .playwright-mcp/
 .claude/
+# Rendered agent templates carry their features whole, skills included
+# (scripts/render-agent-template.py).
+!/.devcontainer/*/*/.claude/
 __pycache__/
 docs/launch/triage-proposals.json
 test-results/budget-authority/.last-run.json

@@ -64,7 +64,10 @@
     "cit-271-free-agent-hint0": {
         "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
         "features": {
-            "pass-cli": {}
+            "pass-cli": {},
+            "cit-271-free-agent": {
+                "hintLevel": "0"
+            }
         },
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
@@ -75,7 +78,10 @@
     "cit-271-free-agent-hint1": {
         "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
         "features": {
-            "pass-cli": {}
+            "pass-cli": {},
+            "cit-271-free-agent": {
+                "hintLevel": "1"
+            }
         },
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
@@ -86,7 +92,10 @@
     "cit-271-free-agent-hint2": {
         "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
         "features": {
-            "pass-cli": {}
+            "pass-cli": {},
+            "cit-271-free-agent": {
+                "hintLevel": "2"
+            }
         },
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
@@ -97,7 +106,10 @@
     "cit-271-free-agent-hint3": {
         "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
         "features": {
-            "pass-cli": {}
+            "pass-cli": {},
+            "cit-271-free-agent": {
+                "hintLevel": "3"
+            }
         },
         "containerEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}",
@@ -113,6 +125,37 @@
         },
         "features": {
             "cve-2026-66066": {}
+        }
+    },
+    "agent-task-codex-review": {
+        "build": {
+            "dockerfile": "Dockerfile"
+        },
+        "features": {
+            "pass-cli": {},
+            "codex-session": {},
+            "agent-task": {
+                "workspace": "/work/repo",
+                "prompt": "count-lines.sh prints a line count per file. Make it also print the total across all files, as a last line '<n> total'. Commit the change."
+            }
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
+    },
+    "agent-task-linear": {
+        "image": "ghcr.io/null-hype/devenv-linear-agent:sha-f68af4dfdc97bdcf97806f6c4bedc472ff565fac",
+        "features": {
+            "ghcr.io/devcontainers/features/github-cli:1": {},
+            "ghcr.io/devcontainers/features/sshd:1": {},
+            "pass-cli": {},
+            "codex-session": {},
+            "agent-task": {
+                "linear": true
+            }
+        },
+        "containerEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     }
 }
