@@ -33,7 +33,9 @@ echo "apply-changeset: version $short is ready"
 run=$(jq -n --arg t "$APPLY_TASK" --arg team "$TEAM" '{task: $t, input: [false, $team]}' |
   api -X POST https://api.render.com/v1/task-runs --data @- | jq -r .id)
 echo "apply-changeset: task run $run"
-for _ in $(seq 1 "${RUN_WAIT:-200}"); do
+# Up to 30 minutes: an apply that delegates or ships first wakes the host,
+# which alone may take 15.
+for _ in $(seq 1 "${RUN_WAIT:-600}"); do
   body=$(api "https://api.render.com/v1/task-runs/$run")
   case $(jq -r .status <<< "$body") in pending | running) sleep 3 ;; *) break ;; esac
 done
