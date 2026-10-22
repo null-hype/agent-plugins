@@ -83,6 +83,10 @@ class Escalate {
 class Delegate {
   issue: NewKey|Identifier
   agent: String(!isBlank)
+  /// What the agent is asked to do this time, for an existing issue: apply
+  /// posts it on the issue and delegates afresh, so an agent that already
+  /// has the issue starts a new session on it. Once per ask.
+  ask: String(!isBlank)?
 }
 
 /// Ship an issue's finished container-use environment: apply wakes the host
