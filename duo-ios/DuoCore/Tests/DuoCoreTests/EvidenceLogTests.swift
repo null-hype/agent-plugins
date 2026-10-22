@@ -44,9 +44,9 @@ final class EvidenceLogTests: XCTestCase {
     }
 
     func testFractionsStayDoubles() throws {
-        let records = try EvidenceLog.records(from: Data("{\"a\":1.5}\n{\"a\":1e3}\n".utf8))
+        let records = try EvidenceLog.records(from: Data("{\"a\":1.5}\n{\"a\":-0.25}\n".utf8))
         XCTAssertEqual(records[0].value["a"], .number(1.5))
-        XCTAssertEqual(records[1].value["a"]?.isNumeric, true)
+        XCTAssertEqual(records[1].value["a"], .number(-0.25))
     }
 
     func testIntegersBeyondSixtyFourBitsFailTheRunWithTheirLine() {
