@@ -214,6 +214,7 @@ case "$1 $2" in
   "pr list")
     case "$*" in
       *"--head cit-"*) case " ${GH_STUB_HAS_PR:-} " in *" $6 "*) echo 1 ;; *) echo 0 ;; esac ;;
+      *"--limit 40"*) echo '[{"number":240,"title":"Duo left page","state":"MERGED","isDraft":false,"mergedAt":"2026-10-22T06:26:00Z","headRefName":"cit-446-duo"},{"number":999,"title":"Supervisor changeset","state":"OPEN","isDraft":false,"mergedAt":null,"headRefName":"supervisor/calibration"}]' ;;
       *) [ ! -s "$GH_OPEN_PR" ] || cat "$GH_OPEN_PR" ;;
     esac
     ;;
@@ -370,7 +371,7 @@ CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
 grep -qx 'SUPERVISOR_PLAN: merged pr=https://github.com/null-hype/agent-plugins/pull/999' "$WORK/out" ||
   fail "an hourly run should merge its changeset PR, got: $(cat "$WORK/out")"
 
-[ "$(calls)" = "restic snapshots restic restore gh render node plan claude node apply gh gh gh gh gh restic backup" ] ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan gh claude node apply gh gh gh gh gh restic backup" ] ||
   fail "expected restore, plan, continue, dry run, PR, merge, then backup; got: $(calls)"
 grep -qx 'gh pr merge https://github.com/null-hype/agent-plugins/pull/999 --repo null-hype/agent-plugins --squash --match-head-commit 0123456789abcdef0123456789abcdef01234567' "$GH_LOG" ||
   fail "an hourly run should squash-merge the head its checks ran on, got: $(cat "$GH_LOG")"
@@ -425,6 +426,11 @@ grep -q '"pruned": \[' "$CLAUDE_ARGV" ||
   fail "the prompt should carry the frozen plan"
 if grep -q '"seen"' "$CLAUDE_ARGV"; then
   fail "the prompt should leave out the plan's seen: the run fills it in"
+fi
+grep -q '"number":240,"title":"Duo left page","state":"MERGED"' "$CLAUDE_ARGV" ||
+  fail "the prompt should carry the recent pull requests"
+if grep -q '"headRefName":"supervisor/calibration"' "$CLAUDE_ARGV"; then
+  fail "the prompt should leave the changeset PRs out of the pull requests"
 fi
 grep -qE 'Now, UTC: \*\*[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$CLAUDE_ARGV" ||
   fail "the prompt should carry the current UTC time"
@@ -576,7 +582,7 @@ if CLAUDE_STUB_MODE=fail tick > "$WORK/broken" 2>&1; then
 fi
 grep -q 'claude exited 3 -- this tick has no changeset' "$WORK/broken" ||
   fail "a failed claude run should report its exit status, got: $(cat "$WORK/broken")"
-[ "$(calls)" = "restic snapshots restic restore gh render node plan claude restic backup" ] && no_pr ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan gh claude restic backup" ] && no_pr ||
   fail "a failing claude should open no PR, and still be backed up; got: $(calls)"
 
 fresh
@@ -585,7 +591,7 @@ if CLAUDE_STUB_MODE=hang SUPERVISOR_CLAUDE_TIMEOUT=1s tick > "$WORK/hung" 2>&1; 
 fi
 grep -q 'claude timed out after 1s' "$WORK/hung" ||
   fail "a timed-out claude should say so"
-[ "$(calls)" = "restic snapshots restic restore gh render node plan claude restic backup" ] ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan gh claude restic backup" ] ||
   fail "the backup should run after a timed-out claude; got: $(calls)"
 
 fresh
@@ -594,7 +600,7 @@ if CLAUDE_STUB_MODE=prose tick > "$WORK/prose" 2>&1; then
 fi
 grep -q 'no SUPERVISOR_CHANGESET line followed by a pkl block' "$WORK/prose" ||
   fail "a missing changeset should say so"
-[ "$(calls)" = "restic snapshots restic restore gh render node plan claude restic backup" ] && no_pr ||
+[ "$(calls)" = "restic snapshots restic restore gh render node plan gh claude restic backup" ] && no_pr ||
   fail "a run without a changeset should open no PR, and still be backed up; got: $(calls)"
 
 # A changeset that does not render goes back to the same session once.
@@ -655,7 +661,7 @@ tail -1 "$WORK/cal" | grep -qx 'SUPERVISOR_PLAN: proposed pr=https://github.com/
 if grep -q 'pr merge' "$GH_LOG"; then
   fail "a calibration off the tick must not merge its PR"
 fi
-[ "$(calls)" = "render node plan claude node apply gh gh" ] ||
+[ "$(calls)" = "render node plan gh claude node apply gh gh" ] ||
   fail "a calibration should start the dev server, plan, run planning, dry-run apply, then open the PR, and never touch restic; got: $(calls)"
 
 # Its secrets are its own: a GitHub token, and no restic.
@@ -808,7 +814,8 @@ CALIBRATION_MERGE=1 CALIBRATION_CHECKS_SETTLE=0 CLAUDE_STUB_MODE=plan calibrate 
 grep -q 'the plan matches main; nothing to propose' "$WORK/calsame" &&
   tail -1 "$WORK/calsame" | grep -qx 'SUPERVISOR_PLAN: unchanged' ||
   fail "a plan the base carries should say so, got: $(cat "$WORK/calsame")"
-[ "$(branch_sha)" = "$before" ] && [ ! -s "$GH_LOG" ] ||
+# Reading the recent pull requests for the prompt is the one gh call.
+[ "$(branch_sha)" = "$before" ] && ! grep -v -- '--limit 40' "$GH_LOG" | grep -q . ||
   fail "a plan the base carries should push nothing and touch no PR, got: $(cat "$GH_LOG")"
 git -C "$seed" reset --quiet --hard "$BASE_SHA"
 git -C "$seed" push --quiet --force "$REMOTE" main
@@ -822,7 +829,7 @@ if CLAUDE_STUB_MODE=badpkl calibrate > "$WORK/calbad" 2>&1; then
 fi
 grep -q 'the changeset does not render through pkl/Changeset.pkl' "$WORK/calbad" ||
   fail "a changeset that does not render should say so, got: $(cat "$WORK/calbad")"
-[ "$(calls)" = "render node plan claude claude" ] && no_pr ||
+[ "$(calls)" = "render node plan gh claude claude" ] && no_pr ||
   fail "a changeset that does not render, twice, should not be dry-run, pushed or opened; got: $(calls)"
 grep -q 'asking again, with the render error' "$WORK/calbad" ||
   fail "a changeset that does not render should go back to planning once, got: $(cat "$WORK/calbad")"
@@ -832,7 +839,7 @@ grep -q 'asking again, with the render error' "$WORK/calbad" ||
 reset
 CLAUDE_STUB_MODE=badpkl-once calibrate > "$WORK/calfixed" 2>&1 ||
   fail "a changeset fixed on the second planning run should pass, got: $(cat "$WORK/calfixed")"
-[ "$(calls)" = "render node plan claude claude node apply gh gh" ] ||
+[ "$(calls)" = "render node plan gh claude claude node apply gh gh" ] ||
   fail "a fixed changeset should be dry-run and proposed, got: $(calls)"
 grep -q 'Your last changeset did not render' "$CLAUDE_ARGV" ||
   fail "the second planning run should be given the render error"
