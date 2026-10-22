@@ -204,6 +204,7 @@ const toLinearIssue = (n: IssueNode): LinearIssue => ({
   branch: n.branchName,
   shipped: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)].map((m) => m[1]!)),
   reviewed: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)].map((m) => Number(m[1]))),
+  asked: n.comments.nodes.flatMap((c) => [...c.body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)].map((m) => m[1]!)),
 });
 
 export function linearClient(apiKey: string, team: string, fetcher = fetch): LinearClient {
@@ -360,6 +361,9 @@ export function linearClient(apiKey: string, team: string, fetcher = fetch): Lin
       const id = await userId(agent);
       if (!id) throw new Error(`no Linear user or agent named ${agent}`);
       await update(issue, { delegateId: id });
+    },
+    async undelegate(issue) {
+      await update(issue, { delegateId: null });
     },
     async hasPipeline(name) {
       return !!(await pipeline(name));

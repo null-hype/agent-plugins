@@ -12,6 +12,7 @@
 //
 // Dry run is calibration's test: it reads real Linear, decides every op the
 // same way, and writes nothing.
+import { createHash } from "node:crypto";
 import { RELEASE_PREFIX, validate, type Changeset, type Cluster } from "./changeset.ts";
 
 export interface LinearIssue {
@@ -32,6 +33,8 @@ export interface LinearIssue {
   shipped: string[];
   // The pull requests apply has had reviewed for it, from each review's note.
   reviewed: number[];
+  // The asks apply has handed it with, by askId, from each ask's note.
+  asked?: string[];
 }
 
 // The toolbox, for the ops that reach the host. apply never calls it in
@@ -68,6 +71,9 @@ export interface LinearClient {
   hasUser(name: string): Promise<boolean>;
   comment(issue: string, body: string): Promise<void>;
   delegate(issue: string, agent: string): Promise<void>;
+  // Clears the issue's delegate, so delegating it again starts a new agent
+  // session.
+  undelegate(issue: string): Promise<void>;
   // Releases and their pipelines, by name. Only open Releases are found.
   hasPipeline(name: string): Promise<boolean>;
   createPipeline(name: string): Promise<void>;
@@ -101,6 +107,9 @@ export const marker = (key: string) => `<!-- supervisor-changeset ${key.replaceA
 export const shipMarker = (env: string) => `<!-- supervisor-ship ${env} -->`;
 // The note a review leaves on its issue, the same way.
 export const reviewMarker = (pr: number) => `<!-- supervisor-review ${pr} -->`;
+// The note an ask leaves, by a short hash of the ask: one ask is posted once.
+export const askId = (ask: string) => createHash("sha256").update(ask).digest("hex").slice(0, 12);
+export const askMarker = (ask: string) => `<!-- supervisor-ask ${askId(ask)} -->`;
 
 const CLOSED = ["completed", "canceled"];
 
@@ -319,6 +328,25 @@ export async function apply(
     const op: Op = { op: "delegate", target, detail: `to ${d.agent}` };
     if (target.startsWith("new:")) {
       result.applied.push(op);
+      continue;
+    }
+    // An ask hands the issue back, even to the agent that has it: an agent
+    // acts only on a new session, so it is posted and the issue delegated
+    // afresh. A ship that conflicts with main goes back this way.
+    if (d.ask) {
+      const ask = d.ask;
+      await run(
+        { ...op, detail: `to ${d.agent}, asking: ${ask}` },
+        (i) => (i.asked ?? []).includes(askId(ask)),
+        async () => {
+          await host();
+          await linear.comment(target, `${ask}\n\n${askMarker(ask)}`);
+          const now = await linear.issue(target);
+          if (now?.delegate === d.agent) await linear.undelegate(target);
+          await linear.delegate(target, d.agent);
+        },
+        target,
+      );
       continue;
     }
     // Reads are cached for the run, so an issue parented above is still
