@@ -141,6 +141,9 @@ mcp__linear__list_releases
 mcp__linear__get_release
 mcp__linear__list_projects
 mcp__linear__get_project
+mcp__linear__list_initiatives
+mcp__linear__get_initiative
+mcp__linear__get_status_updates
 mcp__linear__list_teams
 mcp__linear__get_team
 mcp__linear__list_users
