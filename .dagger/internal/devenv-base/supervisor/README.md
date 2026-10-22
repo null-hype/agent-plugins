@@ -81,7 +81,10 @@ for real (`supervisor/apply-changeset.sh`).
 
 After apply comes the work itself. The workflow's `run` task takes every
 cluster of the committed changeset that the plan says is ready, and runs
-`execute` for each on its own compute. `execute` is a fresh Claude Code
+`execute` for each on its own compute. Open-source clusters come first. An
+infra cluster runs only when it blocks something in the plan, and only one
+infra cluster runs per tick (`INFRA_PER_TICK`), so plumbing cannot crowd out
+the feature it serves. `execute` is a fresh Claude Code
 session worn by the cluster's hat, on its model and effort, with the prompt
 in `workflow/execute.md`. Infra may wake, start and stop the host and ship
 through the toolbox. Open source may only look at the host. Neither may
