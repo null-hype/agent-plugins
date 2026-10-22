@@ -110,5 +110,16 @@ export const TheClaimWithItsCards: Story = {
 				if (doc.querySelector('.duo-preview-removed')) throw new Error('the diff is still rendered');
 			});
 		});
+
+		await step('showCards drops a preview whose card was removed', async () => {
+			win.previewOption!(card.id, option.id);
+			await expect(previews(editor)).toHaveLength(1);
+			win.showCards!([]);
+			await expect(previews(editor)).toHaveLength(0);
+			await expect(monaco.editor.getModelMarkers({ owner: 'duo-cards' })).toHaveLength(0);
+			win.showCards!(cards);
+			await expect(monaco.editor.getModelMarkers({ owner: 'duo-cards' })).toHaveLength(cards.length);
+			await expect(previews(editor)).toHaveLength(0);
+		});
 	},
 };
