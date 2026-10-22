@@ -150,9 +150,13 @@ case "${CLAUDE_STUB_MODE:-ok}" in
     echo "SUPERVISOR_PASS: hat=open-source handoffs=none why=no release due"
     echo "SUPERVISOR_HEARTBEAT: host=stopped work=no decision=nothing why=nothing due"
     ;;
-  plan | badpkl)
+  plan | badpkl | badpkl-once)
     hat=infra
-    [ "$CLAUDE_STUB_MODE" = plan ] || hat=planning
+    # badpkl-once: only the first planning run writes a bad changeset.
+    case "$CLAUDE_STUB_MODE" in
+      badpkl) hat=planning ;;
+      badpkl-once) [ "$(grep -c '^claude$' "$CALLS")" -gt 1 ] || hat=planning ;;
+    esac
     echo "Two findings on the supervisor belong together; one issue serves nothing."
     echo "SUPERVISOR_CHANGESET:"
     echo '```pkl'
@@ -796,8 +800,22 @@ if CLAUDE_STUB_MODE=badpkl calibrate > "$WORK/calbad" 2>&1; then
 fi
 grep -q 'the changeset does not render through pkl/Changeset.pkl' "$WORK/calbad" ||
   fail "a changeset that does not render should say so, got: $(cat "$WORK/calbad")"
-[ "$(calls)" = "render node plan claude" ] && no_pr ||
-  fail "a changeset that does not render should not be dry-run, pushed or opened; got: $(calls)"
+[ "$(calls)" = "render node plan claude claude" ] && no_pr ||
+  fail "a changeset that does not render, twice, should not be dry-run, pushed or opened; got: $(calls)"
+grep -q 'planning again, with the render error' "$WORK/calbad" ||
+  fail "a changeset that does not render should go back to planning once, got: $(cat "$WORK/calbad")"
+
+# Planning gets one more go with the render error, and a fixed changeset
+# goes on as usual.
+reset
+CLAUDE_STUB_MODE=badpkl-once calibrate > "$WORK/calfixed" 2>&1 ||
+  fail "a changeset fixed on the second planning run should pass, got: $(cat "$WORK/calfixed")"
+[ "$(calls)" = "render node plan claude claude node apply gh gh" ] ||
+  fail "a fixed changeset should be dry-run and proposed, got: $(calls)"
+grep -q 'Your last changeset did not render' "$CLAUDE_ARGV" ||
+  fail "the second planning run should be given the render error"
+git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
+rm -f "$GH_OPEN_PR"
 
 # No changeset block, no PR.
 reset

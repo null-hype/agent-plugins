@@ -58,9 +58,34 @@ test("infra runs only when it blocks feature work, one cluster per tick", () => 
       { id: "CIT-920", title: "", status: "waiting", blockedBy: ["CIT-911", "CIT-912"], serves: [] },
     ],
   };
-  const c: Changeset = { ...cs, clusters: [cluster("new:plumbing"), cluster("new:unblock-1"), cluster("new:unblock-2")] };
+  const plumbing = { serves: "release:supervisor-workflow" };
+  const c: Changeset = { ...cs, clusters: [cluster("new:plumbing", plumbing), cluster("new:unblock-1", plumbing), cluster("new:unblock-2", plumbing)] };
   const got = readyClusters(p, c, { "new:plumbing": "CIT-910", "new:unblock-1": "CIT-911", "new:unblock-2": "CIT-912" });
   assert.deepEqual(got.map((r) => r.key), ["new:unblock-1"]);
+});
+
+// The first whole tick ran nothing: CIT-484, the Duo export, is built by the
+// infra hat, and the gate read it as plumbing that blocks nothing.
+test("an infra cluster that builds a feature runs, ahead of infra that only unblocks", () => {
+  const p: Plan = {
+    ...plan,
+    order: [
+      { id: "CIT-484", title: "", status: "ready", blockedBy: [], serves: [] },
+      { id: "CIT-911", title: "", status: "ready", blockedBy: [], serves: [] },
+      { id: "CIT-920", title: "", status: "waiting", blockedBy: ["CIT-911"], serves: [] },
+    ],
+  };
+  const c: Changeset = {
+    ...cs,
+    clusters: [cluster("new:unblock", { serves: "release:supervisor-workflow" }), cluster("new:duo-export", { serves: "CIT-439" })],
+  };
+  const got = readyClusters(p, c, { "new:unblock": "CIT-911", "new:duo-export": "CIT-484" });
+  assert.deepEqual(got.map((r) => r.key), ["new:duo-export"]);
+  assert.equal("serves" in got[0]!, false);
+  assert.deepEqual(
+    readyClusters(p, { ...c, clusters: [cluster("new:duo", { serves: "release:duo-editor" })] }, { "new:duo": "CIT-484" }).map((r) => r.key),
+    ["new:duo"],
+  );
 });
 
 const infra: ReadyCluster = { key: "new:a", issue: "CIT-900", title: "Host safety", hat: "infra", model: "sonnet", effort: "high", issues: ["CIT-500", "CIT-501"] };
