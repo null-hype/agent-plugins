@@ -22,7 +22,8 @@
           "noAction": "Covered by CIT-523 (PR 346, merged). Stays open until a scheduled tick shows a failed apply surfaced in status.",
           "evidence": [
             "CIT-523 Done via PR 346",
-            "apply trn-08l4gdbdc6ng453cc738oeko0 reported completed with 2 applied"
+            "apply trn-08l4gdbdc6ng453cc738oeko0 reported completed with 2 applied",
+            "apply trn-08l4gdbdcf9k8hv3g00eltvcg reported completed with 5 applied"
           ]
         },
         {
@@ -36,7 +37,8 @@
           "evidence": [
             "CIT-518 attachments: PR 338 and PR 344",
             "CIT-523 Done via PR 346",
-            "this run's initiative input holds five sources"
+            "this run's initiative input holds five sources",
+            "this run's input carries the previous feedback record, version 1"
           ]
         },
         {
@@ -45,18 +47,12 @@
           "disposition": "adopted",
           "rationale": "CIT-522 is done in env crisp-mayfly and CIT-521's PR 347 is open. This plan ships one environment and reviews one PR. The native slices behind CIT-502 wait on the maintainer.",
           "status": "open",
-          "operations": [
-            {
-              "op": "review",
-              "target": "CIT-521"
-            },
-            {
-              "op": "ship",
-              "target": "CIT-522"
-            }
-          ],
-          "noAction": "",
-          "evidence": []
+          "operations": [],
+          "noAction": "Both operations were applied and are running: the ship of CIT-522 and the review of PR 347 (job:ship and job:review-347 busy in host_status). Repeating them would collide with the running jobs. The PRs for CIT-501 and CIT-522 are expected once their ships finish.",
+          "evidence": [
+            "apply trn-08l4gdbdcf9k8hv3g00eltvcg applied ship CIT-522 and review CIT-521",
+            "host_status shows job:ship and job:review-347"
+          ]
         },
         {
           "key": "session-recovery-followup",
@@ -64,18 +60,12 @@
           "disposition": "adopted",
           "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-523 did not cover it, and no issue exists. Replay must be checked first so ambiguous failures are not blindly retried. Duo has nothing ready for the agent, so it takes this next.",
           "status": "open",
-          "operations": [
-            {
-              "op": "create",
-              "target": "new:toolbox-session-recovery"
-            },
-            {
-              "op": "delegate",
-              "target": "new:toolbox-session-recovery"
-            }
-          ],
-          "noAction": "",
-          "evidence": []
+          "operations": [],
+          "noAction": "CIT-524 was created, CIT-450 was placed under it, and it was delegated to Claude, all applied. The work is queued and dispatched, not implemented, deployed or tested, so this stays open. No new dispatch is needed.",
+          "evidence": [
+            "CIT-524 Todo, delegate Claude",
+            "apply trn-08l4gdbdcf9k8hv3g00eltvcg: created new:toolbox-session-recovery as CIT-524, parented CIT-450, delegated CIT-524"
+          ]
         },
         {
           "key": "toolbox-deploy-triggers",
@@ -114,13 +104,13 @@
           "key": "cit495-evidence-and-image",
           "summary": "Finish CIT-495's acceptance evidence and the screenshot handoff",
           "disposition": "adopted",
-          "rationale": "CIT-495 is marked Done, but the regenerated screenshot is only in env accepted-lion, shipped as PR 342. The Codex review of PR 342 was applied and is running.",
+          "rationale": "CIT-495 is marked Done, but the regenerated screenshot is only in env accepted-lion, shipped as PR 342. The Codex review of PR 342 has now finished with no findings.",
           "status": "open",
           "operations": [],
-          "noAction": "The review of PR 342 is already running (job:review-342 busy in host_status), so it is not proposed again. This item stays open until PR 342 merges with the screenshot.",
+          "noAction": "The review of PR 342 finished clean, so nothing more is proposed. This item stays open until PR 342 merges with the screenshot.",
           "evidence": [
             "apply trn-08l4gdbdc6ng453cc738oeko0 applied review CIT-516: PR 342",
-            "host_status shows job:review-342"
+            "codex_review_status for PR 342: exit 0, no findings, QA passed"
           ]
         },
         {
@@ -243,14 +233,12 @@
           "disposition": "adopted",
           "rationale": "CIT-521 was shipped and PR 347 is open without a review. Reviewing it once is the next step.",
           "status": "open",
-          "operations": [
-            {
-              "op": "review",
-              "target": "CIT-521"
-            }
-          ],
-          "noAction": "",
-          "evidence": []
+          "operations": [],
+          "noAction": "The review of PR 347 was applied and is running (job:review-347 busy), so it is not proposed again. This stays open until PR 347 is reviewed and merged.",
+          "evidence": [
+            "apply trn-08l4gdbdcf9k8hv3g00eltvcg applied review CIT-521: PR 347",
+            "host_status shows job:review-347"
+          ]
         },
         {
           "key": "explicit-response-in-plan-pr",
@@ -259,8 +247,10 @@
           "rationale": "This feedback block is that response. The plan PR does not exist yet, so the link cannot be confirmed from here.",
           "status": "open",
           "operations": [],
-          "noAction": "No dispatch needed; the response is this output.",
-          "evidence": []
+          "noAction": "No dispatch needed; the response is this output. The previous feedback record, version 1, was committed, but I cannot see from here whether the rendered plan PR links the update.",
+          "evidence": [
+            "this run's input carries the previous feedback record, version 1"
+          ]
         },
         {
           "key": "failed-apply-status",
@@ -292,18 +282,11 @@
           "disposition": "adopted",
           "rationale": "A run without a 404 proves nothing. The new issue requires a controlled session-loss regression.",
           "status": "open",
-          "operations": [
-            {
-              "op": "create",
-              "target": "new:toolbox-session-recovery"
-            },
-            {
-              "op": "delegate",
-              "target": "new:toolbox-session-recovery"
-            }
-          ],
-          "noAction": "",
-          "evidence": []
+          "operations": [],
+          "noAction": "CIT-524 carries this and is delegated to Claude. Implementation, tests and deployment are separate milestones that have not happened, so no recovery fix is claimed.",
+          "evidence": [
+            "apply trn-08l4gdbdcf9k8hv3g00eltvcg: delegated CIT-524 to Claude"
+          ]
         },
         {
           "key": "ship-coordination",
@@ -315,7 +298,8 @@
           "noAction": "Covered by CIT-523, which is Done. No new dispatch. It stays open until a batch with competing ships is observed.",
           "evidence": [
             "CIT-523 Done via PR 346",
-            "apply trn-08l4gdbdc6ng453cc738oeko0 completed with 2 applied"
+            "apply trn-08l4gdbdc6ng453cc738oeko0 completed with 2 applied",
+            "apply trn-08l4gdbdcf9k8hv3g00eltvcg completed with 5 applied, one ship"
           ]
         }
       ]
