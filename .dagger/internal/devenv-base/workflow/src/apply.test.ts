@@ -91,10 +91,12 @@ function fakeLinear(
     async comment(id, body, thread) {
       writes.push(`comment ${id}${thread ? ` in ${thread}` : ""} ${body}`);
       for (const m of body.matchAll(/<!-- supervisor-ship ([a-z]+-[a-z]+) -->/g)) store.get(id)!.shipped.push(m[1]!);
+      for (const m of body.matchAll(/<!-- supervisor-ship-failed ([a-z]+-[a-z]+) -->/g)) (store.get(id)!.shipFailed ??= []).push(m[1]!);
       for (const m of body.matchAll(/<!-- supervisor-review ([0-9]+) -->/g)) store.get(id)!.reviewed.push(Number(m[1]));
       for (const m of body.matchAll(/<!-- supervisor-ask ([0-9a-f]{12}) -->/g)) {
         (store.get(id)!.asked ??= []).push(m[1]!);
         store.get(id)!.shipped = [];
+        store.get(id)!.shipFailed = [];
       }
       touch(id);
     },
@@ -526,7 +528,7 @@ test("done completes an issue once, with its evidence", async () => {
 // has pushed).
 const shipHost = ({ named = true } = {}) => {
   const calls: string[] = [];
-  let job: { env: string; exit: number | null } | undefined;
+  let job: { env: string; branch?: string; exit: number | null } | undefined;
   return {
     calls,
     start(env: string) { job = { env, exit: null }; },
@@ -536,12 +538,15 @@ const shipHost = ({ named = true } = {}) => {
     async ship(env: string, branch: string) {
       calls.push(`ship ${env} ${branch}`);
       if (job && job.exit === null) throw new Error("toolbox agent_ship: ship: Process exited with status 1: a job for ship is still running; check workspace_status");
-      job = { env, exit: null };
+      job = { env, branch, exit: null };
     },
     async shipStatus() {
       if (!job) return { running: false, exit: null };
       const running = job.exit === null;
-      return { running, exit: job.exit, ...(named || job.exit === 0 ? { env: job.env } : {}) };
+      return {
+        running, exit: job.exit, log: `ship ${job.env} failed: merge conflict`,
+        ...(named || job.exit === 0 ? { env: job.env, ...(job.branch ? { branch: job.branch } : {}) } : {}),
+      };
     },
   };
 };
@@ -589,6 +594,29 @@ test("a deferred ship resumes once the running job ends, and nothing is dispatch
     assert.deepEqual(settled.pending, []);
     assert.deepEqual(h.calls.filter((x) => x.startsWith("ship ")), ["ship shining-gibbon branch-cit-521", "ship factual-squirrel branch-cit-501"]);
   }
+});
+
+test("CIT-501: a ship that failed after apply started it is noted on its issue before the next ship overwrites it, and can ship again", async () => {
+  const host = shipHost();
+  const one = { ...merged343, ship: [{ issue: "CIT-501", env: "factual-squirrel" }] };
+  const two = { ...merged343, ship: [{ issue: "CIT-522", env: "crisp-mayfly" }] };
+  const { client, store, writes } = fakeLinear(
+    ["CIT-501", "CIT-522", ...Object.keys(merged343.seen)].map((identifier) => ({ identifier, updatedAt: merged343.seen[identifier] ?? T0, stage: "started" as const, branch: `${identifier.toLowerCase()}-slice` })),
+    { users: ["Claude"] },
+  );
+  await apply(one, client, { dryRun: false, toolbox: host });
+  host.finish(1);
+  const r = await apply(two, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(r.failed?.map((f) => `${f.target} ${f.why}`), ["CIT-501 the ship of factual-squirrel to cit-501-slice exited 1"]);
+  assert.ok(writes.some((w) => w.startsWith("comment CIT-501 Ship failed") && w.includes("merge conflict")), "the failure and its log go on the issue");
+  assert.deepEqual(ships(r), ["CIT-522"], "the next ship still goes");
+  host.finish(0);
+  const again = await apply(two, client, { dryRun: false, toolbox: host });
+  assert.equal(again.failed, undefined, "a failure is noted once");
+  assert.deepEqual(store.get("CIT-501")!.shipFailed, ["factual-squirrel"]);
+  // Apply does not retry it on its own; a changeset that ships it again may.
+  const retry = await apply(one, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(ships(retry), ["CIT-501"]);
 });
 
 test("a ship already running for its environment, with no note, is noted and left to finish", async () => {
