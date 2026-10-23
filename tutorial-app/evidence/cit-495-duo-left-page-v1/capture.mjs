@@ -45,6 +45,11 @@ await frame.waitForSelector('.squiggly-error');
 await frame.waitForSelector('.squiggly-info');
 await frame.waitForSelector('.duo-preview-removed');
 
+// the story's play() types into the read-only editor, which leaves Monaco's
+// "Cannot edit in read-only editor" message over the claim; close it before the shot
+await frame.evaluate(() => window.monaco.editor.getEditors()[0].trigger('capture', 'leaveEditorMessage', null));
+await frame.waitForSelector('.monaco-editor-overlaymessage', { state: 'detached', timeout: 5000 });
+
 const state = await frame.evaluate(() => ({
 	markers: window.monaco.editor.getModelMarkers({ owner: 'duo-cards' }).length,
 	previewRemoved: document.querySelectorAll('.duo-preview-removed').length,
@@ -55,3 +60,7 @@ await page.screenshot({ path: out });
 console.log(`wrote ${out}`);
 await browser.close();
 server.close();
+if (errors.length) {
+	console.error(`the page reported ${errors.length} runtime error(s):\n${errors.join('\n')}`);
+	process.exit(1);
+}
