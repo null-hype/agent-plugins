@@ -338,6 +338,8 @@ base_sha=$(git -C "$repo" rev-parse HEAD)
 APPLY_STATE=$HOME/.claude/supervisor-apply
 apply_changeset() { "${APPLY_CHANGESET:-$DIR/apply-changeset.sh}" "$@"; }
 apply_run=""
+apply_evidence_run=""
+printf 'No deployed apply was observed in this mode.\n' > "$CAL_DIR/apply-result.txt"
 if [ "$MODE" = tick ] && [ "$CALIBRATION_BASE" = main ] && [ -f "$repo/$WORKFLOW_PATH/changeset.json" ]; then
   want=$(sha256sum < "$repo/$WORKFLOW_PATH/changeset.json" | cut -c1-16)
   had="" run=""
@@ -347,14 +349,17 @@ if [ "$MODE" = tick ] && [ "$CALIBRATION_BASE" = main ] && [ -f "$repo/$WORKFLOW
   # workflow, and names it after that commit: apply on the newest such
   # commit on main, not on main's head.
   wf_commit=""
-  if [ "$had" = "$want" ] && apply_changeset status "$run" > /dev/null; then
+  if [ "$had" = "$want" ] && apply_changeset status "$run" > "$CAL_DIR/apply-result.txt"; then
+    apply_evidence_run=$run
     echo "supervisor: main's changeset is already applied (run $run)"
   elif wf_commit=$(gh api "repos/$CALIBRATION_REPO/commits?sha=$CALIBRATION_BASE&path=$WORKFLOW_PATH&per_page=1" --jq '.[0].sha // empty') &&
     apply_run=$(apply_changeset start "${wf_commit:-$base_sha}"); then
     echo "$want $apply_run" > "$APPLY_STATE"
+    apply_evidence_run=$apply_run
     echo "SUPERVISOR_APPLY: started run=$apply_run"
   else
     echo "failed" > "$APPLY_STATE"
+    printf 'Could not start the deployed apply; no completed application is established.\n' > "$CAL_DIR/apply-result.txt"
     echo "supervisor: could not start the apply of ${wf_commit:-$base_sha}; the next run starts it again" >&2
   fi
 fi
@@ -449,9 +454,12 @@ done
 
 if [ -n "$apply_run" ]; then
   echo "supervisor: waiting for apply run $apply_run before planning"
-  apply_changeset wait "$apply_run" ||
+  apply_changeset wait "$apply_run" > "$CAL_DIR/apply-result.txt" ||
     echo "supervisor: apply run $apply_run did not go through; the next run starts it again" >&2
+  cat "$CAL_DIR/apply-result.txt"
 fi
+jq -n --arg run "$apply_evidence_run" --rawfile report "$CAL_DIR/apply-result.txt" \
+  '{run: $run, report: $report}' > "$CAL_DIR/apply-evidence.json"
 
 echo "supervisor: running the plan task on the local task server"
 # Deliberately unquoted: each delivery is its own argument.
@@ -465,7 +473,15 @@ printf '%s\n' "$plan" | jq . > "$CAL_DIR/plan.json"
 # out: the run fills it in, and it is long.
 # The prompt is main's, so a merged prompt change takes effect on the next
 # run without a new image; the image's copy is the fallback.
-jq 'del(.seen)' "$CAL_DIR/plan.json" > "$CAL_DIR/plan-for-prompt.json"
+# Main carries the durable record of decisions. A missing file is the first
+# bootstrap only; a malformed record fails rather than forgetting feedback.
+feedback_previous=$wf/planning-feedback.json
+[ -f "$feedback_previous" ] || printf '{"version":1,"records":[]}\n' > "$feedback_previous"
+node "$wf/dist/feedback.js" input "$CAL_DIR/plan.json" "$feedback_previous" "$CAL_DIR/initiative-input.json"
+# Compact positive receipt evidence, without bodies or credentials.
+jq -c '[.initiatives[].sources[] | {id, revision}]' "$CAL_DIR/initiative-input.json" |
+  sed 's/^/SUPERVISOR_INITIATIVE_INPUT: /'
+jq 'del(.seen, .initiatives)' "$CAL_DIR/plan.json" > "$CAL_DIR/plan-for-prompt.json"
 prompt_file="$repo/${WORKFLOW_PATH%/workflow}/supervisor/prompt.md"
 [ -f "$prompt_file" ] || prompt_file="$DIR/prompt.md"
 # The session cannot read GitHub, so the recent pull requests go in the
@@ -480,8 +496,10 @@ jq -c '[.[] | select(.headRefName != "'"$CALIBRATION_BRANCH"'" and (.isCrossRepo
   | select((.headRefName | startswith("cit-")) or .state == "OPEN")][:40]' "$CAL_DIR/pulls.raw" > "$CAL_DIR/pulls.json" 2> /dev/null ||
   echo '[]' > "$CAL_DIR/pulls.json"
 prompt=$(sed -e "s|{{NOW}}|$now|g" "$prompt_file" |
-  awk -v plan="$CAL_DIR/plan-for-prompt.json" -v pulls="$CAL_DIR/pulls.json" \
+  awk -v plan="$CAL_DIR/plan-for-prompt.json" -v pulls="$CAL_DIR/pulls.json" -v initiatives="$CAL_DIR/initiative-input.json" -v applied="$CAL_DIR/apply-evidence.json" \
     '$0 == "{{PLAN}}" { while ((getline l < plan) > 0) print l; next }
+     $0 == "{{INITIATIVES}}" { while ((getline l < initiatives) > 0) print l; next }
+     $0 == "{{APPLY_EVIDENCE}}" { while ((getline l < applied) > 0) print l; next }
      $0 == "{{PULLS}}" { while ((getline l < pulls) > 0) print l; next } { print }')
 
 # 3. The hourly run continues the one session, with Remote Control so it
@@ -569,11 +587,16 @@ echo "supervisor: dry-running apply on the local task server"
 dry=$(cd "$wf" && node dist/calibrate.js apply "${CALIBRATION_TEAM:-CIT}") ||
   { echo "supervisor: the changeset's dry run failed" >&2; exit 1; }
 printf '%s\n' "$dry" | jq . > "$CAL_DIR/dry-run.json"
+printf '%s\n' "$out" > "$CAL_DIR/planner-response.txt"
+node "$wf/dist/feedback.js" record "$CAL_DIR/initiative-input.json" "$CAL_DIR/planner-response.txt" \
+  "$CAL_DIR/dry-run.json" "$wf/planning-feedback.json"
+echo 'SUPERVISOR_INITIATIVE_FEEDBACK: validated; proposed operations are not yet applied'
 
 # A plan the base already carries proposes nothing: no PR, nothing to
 # merge. Otherwise every merge would leave the next tick a fresh base, and
 # the same plan would be proposed and merged again each hour.
-if git -C "$repo" show "HEAD:$WORKFLOW_PATH/changeset.json" 2> /dev/null | cmp -s - "$wf/changeset.json"; then
+if { git -C "$repo" show "HEAD:$WORKFLOW_PATH/changeset.json" 2> /dev/null | cmp -s - "$wf/changeset.json"; } &&
+  { git -C "$repo" show "HEAD:$WORKFLOW_PATH/planning-feedback.json" 2> /dev/null | cmp -s - "$wf/planning-feedback.json"; }; then
   echo "supervisor: the plan matches $CALIBRATION_BASE; nothing to propose"
   jq -r '"SUPERVISOR_CHANGESET: ops=\(.applied | length) clusters=\(.clusters | length)"' "$CAL_DIR/dry-run.json"
   echo "SUPERVISOR_PLAN: unchanged"
@@ -587,13 +610,13 @@ same_as_branch() { # $1: a path under the workflow
 }
 if git -C "$repo" fetch --quiet --depth 2 origin "$CALIBRATION_BRANCH" 2> /dev/null &&
   [ "$(git -C "$repo" rev-parse FETCH_HEAD~1 2> /dev/null)" = "$base_sha" ] &&
-  same_as_branch changeset.pkl && same_as_branch changeset.json; then
+  same_as_branch changeset.pkl && same_as_branch changeset.json && same_as_branch planning-feedback.json; then
   echo "supervisor: the changeset is unchanged on $CALIBRATION_BRANCH"
 else
   # The branch is calibration's own: one commit on top of the base, so it
   # is replaced each time rather than piling up.
   git -C "$repo" checkout --quiet -B "$CALIBRATION_BRANCH"
-  git -C "$repo" add "$WORKFLOW_PATH/changeset.pkl" "$WORKFLOW_PATH/changeset.json"
+  git -C "$repo" add "$WORKFLOW_PATH/changeset.pkl" "$WORKFLOW_PATH/changeset.json" "$WORKFLOW_PATH/planning-feedback.json"
   git -C "$repo" commit --quiet -m "supervisor: changeset ($now)" \
     -m "Dry-run on the local task server. Merging this applies it."
   git -C "$repo" push --quiet --force origin "$CALIBRATION_BRANCH" ||
@@ -609,12 +632,13 @@ pr=$(gh pr list --repo "$CALIBRATION_REPO" --head "$CALIBRATION_BRANCH" --base "
 jq -r --arg model "$model" --arg effort "$effort" --arg base "$base_sha" \
   '"The supervisor'"'"'s changeset (CIT-472), written with \($model) at \($effort) effort against `\($base)`, and dry-run on the local task server.",
   "",
-  "**Merging this applies it.** Nothing has been written to Linear yet.",
+  "**Proposed operations for the next apply.** This dry run writes nothing to Linear; merge queues the plan for a subsequent cycle.",
   "",
   "| op | target | detail |",
   "| --- | --- | --- |",
   (.applied[] | "| \(.op) | \(.target) | \(.detail | gsub("[|]"; "/")) |")' \
   "$CAL_DIR/dry-run.json" > "$CAL_DIR/body.md"
+node "$wf/dist/feedback.js" render "$wf/planning-feedback.json" >> "$CAL_DIR/body.md"
 if [ -z "$pr" ]; then
   pr=$(gh pr create --repo "$CALIBRATION_REPO" --base "$CALIBRATION_BASE" --head "$CALIBRATION_BRANCH" \
     --title "Supervisor changeset" --body-file "$CAL_DIR/body.md") ||

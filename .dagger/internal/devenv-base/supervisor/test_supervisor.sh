@@ -41,6 +41,22 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 BIN=$WORK/bin
 mkdir -p "$BIN"
+# The node stub delegates feedback processing to the real implementation.
+export REAL_NODE=$(command -v node)
+export FEEDBACK_SOURCE=$DIR/../workflow/src/feedback.ts
+export INITIATIVE_FIXTURE=$DIR/../workflow/src/fixtures/initiative-zero-update.json
+export INITIATIVE_CONTEXT=$WORK/initiatives.json
+export FEEDBACK_RESPONSE=$WORK/feedback-response.json
+"$REAL_NODE" --experimental-strip-types --input-type=module - "$DIR/../workflow/src/initiatives.ts" <<'FIXTURE'
+import { readFileSync, writeFileSync } from 'node:fs';
+const { sourceRevision, BOOTSTRAP_INITIATIVES } = await import(process.argv[2]);
+const update = JSON.parse(readFileSync(process.env.INITIATIVE_FIXTURE, 'utf8'));
+const id = BOOTSTRAP_INITIATIVES[0];
+const description = { id: `initiative:${id}`, url: 'https://linear.app/example/initiative/zero', updatedAt: '2026-10-22T23:50:51.584Z', body: 'Initiative Zero: bring Duo into use' };
+const sources = [description, update].map(s => ({ ...s, initiativeId: id, kind: s.id.startsWith('initiative:') ? 'description' : 'update', revision: sourceRevision(s.body, s.updatedAt) }));
+writeFileSync(process.env.INITIATIVE_CONTEXT, JSON.stringify([{ id, name: 'Initiative Zero', url: description.url, projects: [], sources }]));
+writeFileSync(process.env.FEEDBACK_RESPONSE, JSON.stringify({ decisions: sources.map(s => ({ sourceId: s.id, revision: s.revision, items: [{ key: 'planning-integration', summary: 'Finish initiative planning', disposition: 'deferred', rationale: 'The integration is already being implemented; preserve Duo progress.', status: 'open', operations: [], noAction: 'Implementation is underway; no duplicate dispatch.', evidence: [] }] })) }));
+FIXTURE
 
 cat > "$BIN/pass-cli" <<'STUB'
 #!/usr/bin/env bash
@@ -132,6 +148,11 @@ if [ -n "$cfg" ]; then
   stat -c %a "$cfg" > "$CLAUDE_MCP_MODE"
 fi
 case "${CLAUDE_STUB_MODE:-ok}" in
+  plan-empty)
+    printf 'SUPERVISOR_FEEDBACK:\n```json\n'
+    cat "$FEEDBACK_RESPONSE"
+    printf '\n```\nSUPERVISOR_CHANGESET:\n```pkl\n// No new operations.\n```\n'
+    ;;
   prose) echo "I had a look around and it all seems fine." ;;
   plan | plan-ship | badpkl | badpkl-once)
     hat=infra
@@ -141,6 +162,13 @@ case "${CLAUDE_STUB_MODE:-ok}" in
       badpkl-once) [ "$(grep -c '^claude$' "$CALLS")" -gt 1 ] || hat=planning ;;
     esac
     echo "Two findings on the supervisor belong together; one issue serves nothing."
+    if [ "${CLAUDE_STUB_FEEDBACK:-ok}" != omit ]; then
+      echo 'SUPERVISOR_FEEDBACK:'
+      echo '```json'
+      cat "$FEEDBACK_RESPONSE"
+      echo
+      echo '```'
+    fi
     echo "SUPERVISOR_CHANGESET:"
     echo '```pkl'
     echo 'clusters {'
@@ -208,14 +236,21 @@ cat > "$BIN/node" <<'STUB'
 # dist/calibrate.js: the plan task's result, or apply's dry run, as the SDK
 # client prints them. The dry run keeps the changeset.json it was run
 # against, to show it ran on the rendered tree.
+case "$1" in
+  */dist/feedback.js) exec "$REAL_NODE" --experimental-strip-types "$FEEDBACK_SOURCE" "${@:2}" ;;
+esac
 echo "node $2" >> "$CALLS"
 echo "node $* (cwd=$PWD) RENDER_USE_LOCAL_DEV=${RENDER_USE_LOCAL_DEV:-} RENDER_LOCAL_DEV_URL=${RENDER_LOCAL_DEV_URL:-}" >> "$NODE_LOG"
 case "$2 ${NODE_STUB_MODE:-ok}" in
   "plan fail") echo "Error: task plan ended failed: LINEAR_API_KEY must be set" >&2; exit 1 ;;
   "plan "*)
-    echo '{"sinks":["CIT-439"],"order":[],"pruned":["CIT-500","CIT-501","CIT-502","CIT-777"],"cycles":[],"seen":{"CIT-500":"2026-10-21T01:00:00Z","CIT-501":"2026-10-21T02:00:00Z","CIT-502":"2026-10-21T03:00:00Z","CIT-777":"2026-10-21T04:00:00Z"}}'
+    echo '{"sinks":["CIT-439"],"order":[],"pruned":["CIT-500","CIT-501","CIT-502","CIT-777"],"cycles":[],"seen":{"CIT-500":"2026-10-21T01:00:00Z","CIT-501":"2026-10-21T02:00:00Z","CIT-502":"2026-10-21T03:00:00Z","CIT-777":"2026-10-21T04:00:00Z"}}' | jq --slurpfile initiatives "$INITIATIVE_CONTEXT" '. + {initiatives: $initiatives[0]}'
     ;;
   "apply applyfail") echo "Error: the changeset does not apply as written: parent CIT-501: CIT-501 changed since planning" >&2; exit 1 ;;
+  "apply noops")
+    cp changeset.json "$DRY_RUN_SAW"
+    echo '{"dryRun":true,"applied":[],"skipped":[],"clusters":{}}'
+    ;;
   "apply "*)
     cp changeset.json "$DRY_RUN_SAW"
     echo '{"dryRun":true,"applied":[{"op":"create","target":"new:review-findings","detail":"\"Review findings on the supervisor\" under CIT-439 (infra, sonnet, medium)"},{"op":"parent","target":"CIT-500","detail":"into new:review-findings"},{"op":"parent","target":"CIT-501","detail":"into new:review-findings"},{"op":"decline","target":"CIT-502","detail":"nothing published depends on it"},{"op":"delegate","target":"new:review-findings","detail":"to tidelands-agent"}],"skipped":[],"clusters":{"new:review-findings":"new:review-findings"}}'
@@ -277,6 +312,14 @@ echo "apply-changeset $* RENDER_API_KEY=${RENDER_API_KEY:-}" >> "$APPLY_LOG"
 case "$1" in
   start) [ "${APPLY_STUB_START:-ok}" = ok ] || exit 1; echo "trn-$2" ;;
   status) [ "$2" != "${APPLY_STUB_FAILED:-}" ] ;;
+  wait)
+    if [ "${APPLY_STUB_WAIT:-ok}" = fail ]; then
+      echo 'status: failed'
+      echo 'error: a job for ship is still running'
+      exit 1
+    fi
+    echo 'status: completed'
+    ;;
 esac
 STUB
 export APPLY_CHANGESET=$BIN/apply-changeset
@@ -443,6 +486,12 @@ grep -qx "SUPERVISOR_APPLY: started run=trn-$BASE_SHA" "$WORK/out" ||
 
 # A changeset PR whose checks all passed already is merged directly:
 # GitHub refuses auto-merge on it (the 14:13 run failed that way).
+fresh
+RESTIC_STUB_APPLY=none APPLY_STUB_WAIT=fail CLAUDE_STUB_MODE=plan tick > "$WORK/partial-apply" 2>&1 ||
+  fail "planning after a failed apply should retain the failure evidence: $(cat "$WORK/partial-apply")"
+grep -q 'status: failed' "$CLAUDE_ARGV" && grep -q 'a job for ship is still running' "$CLAUDE_ARGV" ||
+  fail "the planner must receive actual apply failure evidence, separately from the proposed dry run"
+
 fresh
 GH_STUB_CLEAN=1 CLAUDE_STUB_MODE=plan tick > "$WORK/clean" 2>&1 ||
   fail "a run whose changeset PR is already clean should pass, got: $(tail -5 "$WORK/clean")"
@@ -867,8 +916,8 @@ done
 [ -n "$(branch_sha)" ] || fail "a green calibration should push supervisor/calibration"
 [ "$(git -C "$REMOTE" rev-parse supervisor/calibration~1)" = "$BASE_SHA" ] ||
   fail "the calibration branch should be one commit on the base"
-[ "$(git -C "$REMOTE" diff --name-only main supervisor/calibration | paste -sd' ')" = "$WF/changeset.json $WF/changeset.pkl" ] ||
-  fail "the calibration commit should carry changeset.pkl and changeset.json only, got: $(git -C "$REMOTE" diff --name-only main supervisor/calibration)"
+[ "$(git -C "$REMOTE" diff --name-only main supervisor/calibration | paste -sd' ')" = "$WF/changeset.json $WF/changeset.pkl $WF/planning-feedback.json" ] ||
+  fail "the calibration commit should carry changeset.pkl, changeset.json and planning-feedback.json, got: $(git -C "$REMOTE" diff --name-only main supervisor/calibration)"
 git -C "$REMOTE" show "supervisor/calibration:$WF/changeset.json" > "$WORK/changeset.json"
 jq -e '.seen == {"CIT-500":"2026-10-21T01:00:00Z","CIT-501":"2026-10-21T02:00:00Z","CIT-502":"2026-10-21T03:00:00Z"}
   and .clusters[0].key == "new:review-findings" and .clusters[0].issues == ["CIT-500","CIT-501"]
@@ -882,8 +931,8 @@ cmp -s "$DRY_RUN_SAW" "$WORK/changeset.json" ||
   fail "apply should have been dry-run against the changeset that was committed"
 grep -qx 'gh pr create --repo null-hype/agent-plugins --base main --head supervisor/calibration --title Supervisor changeset --body-file .*' "$GH_LOG" ||
   fail "a green calibration should open a PR from supervisor/calibration into main, got: $(cat "$GH_LOG")"
-grep -q 'Merging this applies it' "$GH_PR_BODY" && grep -qx '| delegate | new:review-findings | to tidelands-agent |' "$GH_PR_BODY" ||
-  fail "the PR body should say merging applies it and list the dry run's ops, got: $(cat "$GH_PR_BODY")"
+grep -q 'Proposed operations for the next apply' "$GH_PR_BODY" && grep -qx '| delegate | new:review-findings | to tidelands-agent |' "$GH_PR_BODY" ||
+  fail "the PR body should distinguish proposed ops from execution and list the dry run's ops, got: $(cat "$GH_PR_BODY")"
 grep -q 'changeset PR https://github.com/null-hype/agent-plugins/pull/999' "$WORK/cal" ||
   fail "the run should name its PR"
 
@@ -895,6 +944,24 @@ for secret in resolved-GITHUB_TOKEN resolved-LINEAR_API_KEY resolved-TOOLBOX_TOK
 done
 [ -z "$(ls -A "$TMPDIR")" ] ||
   fail "a calibration should leave nothing in TMPDIR, left: $(ls "$TMPDIR")"
+
+# The real post-manual update must reach the assembled prompt and PR.
+grep -q 'b763920f-35e7-4760-8377-2c0385e89c54' "$CLAUDE_ARGV" || fail "initiative update ID missing from prompt"
+grep -q 'a job for ship is still running' "$CLAUDE_ARGV" || fail "actual update body missing from prompt"
+grep -q 'SUPERVISOR_INITIATIVE_INPUT:' "$WORK/cal" || fail "positive receipt manifest missing"
+grep -q 'initiative-update-b763920f' "$GH_PR_BODY" || fail "update link missing from PR"
+grep -q 'deferred; open' "$GH_PR_BODY" || fail "disposition missing from PR"
+grep -q 'Implementation is underway; no duplicate dispatch.' "$GH_PR_BODY" || fail "reasoned non-action missing from PR"
+git -C "$REMOTE" show "supervisor/calibration:$WF/planning-feedback.json" | jq -e '.records | length == 2' > /dev/null || fail "feedback artifact missing from branch"
+
+# A changeset without feedback cannot produce a PR.
+before=$(branch_sha)
+reset
+if CLAUDE_STUB_FEEDBACK=omit CLAUDE_STUB_MODE=plan calibrate > "$WORK/no-feedback" 2>&1; then
+  fail "missing feedback should fail the run"
+fi
+grep -q 'expected one SUPERVISOR_FEEDBACK JSON block' "$WORK/no-feedback" || fail "missing feedback should say why"
+[ "$(branch_sha)" = "$before" ] && ! grep -q 'pr edit' "$GH_LOG" && ! grep -q 'pr create' "$GH_LOG" || fail "invalid feedback must not change a PR"
 
 # The same changeset again, with the PR open: nothing is pushed and no
 # second PR is opened.
@@ -926,6 +993,14 @@ tail -1 "$WORK/calmerge" | grep -qx 'SUPERVISOR_PLAN: auto-merge pr=https://gith
 # A plan the base already carries proposes nothing, so a merged plan is not
 # proposed and merged again on every tick.
 git -C "$REMOTE" show "supervisor/calibration:$WF/changeset.json" > "$seed/$WF/changeset.json"
+# A feedback-only change still needs a PR even with identical operations.
+git -C "$seed" add . && git -C "$seed" commit --quiet -m "operations merged, feedback not yet recorded"
+git -C "$seed" push --quiet "$REMOTE" main
+reset
+CLAUDE_STUB_MODE=plan calibrate > "$WORK/feedback-only" 2>&1 ||
+  fail "feedback-only changes should propose a PR: $(cat "$WORK/feedback-only")"
+grep -q 'SUPERVISOR_PLAN: proposed' "$WORK/feedback-only" || fail "feedback-only planning must not take the unchanged shortcut"
+git -C "$REMOTE" show "supervisor/calibration:$WF/planning-feedback.json" > "$seed/$WF/planning-feedback.json"
 git -C "$seed" add . && git -C "$seed" commit --quiet -m "the plan, merged"
 git -C "$seed" push --quiet "$REMOTE" main
 before=$(branch_sha)
@@ -1035,5 +1110,13 @@ fi
 grep -q 'SUPERVISOR_MODE must be tick or calibrate, got: deploy' "$WORK/badmode" ||
   fail "an unknown mode should be named, got: $(cat "$WORK/badmode")"
 [ ! -s "$PASS_ARGV_LOG" ] || fail "an unknown mode should resolve no secret"
+
+# An empty executable changeset still publishes a reasoned feedback response.
+fresh
+NODE_STUB_MODE=noops CLAUDE_STUB_MODE=plan-empty calibrate > "$WORK/noops-feedback" 2>&1 ||
+  fail "zero-operation feedback should produce a PR: $(cat "$WORK/noops-feedback")"
+grep -q 'SUPERVISOR_CHANGESET: ops=0 clusters=0' "$WORK/noops-feedback" || fail "empty apply must stay zero operations"
+grep -q 'SUPERVISOR_PLAN: proposed' "$WORK/noops-feedback" && grep -q 'deferred; open' "$GH_PR_BODY" ||
+  fail "reasoned non-action must survive into the zero-operation PR"
 
 echo "supervisor stub tests: ok"

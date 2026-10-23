@@ -235,6 +235,32 @@ run with "did not produce a session":
 (cd ~ && restic backup .claude --tag supervisor)
 ```
 
+### Initiative input and feedback (CIT-518)
+
+Before the model runs, the read-only `plan` task fetches Initiative Zero's
+description, linked projects and every update page, including archived
+updates. `SUPERVISOR_INITIATIVES` can supply a comma-separated list of 1–8
+initiative UUIDs instead. Input is bounded to 100 sources and 200 KB; an
+incomplete read or overflow fails planning rather than silently dropping
+direction. Source IDs and content/timestamp revision hashes appear in the
+`SUPERVISOR_INITIATIVE_INPUT` log manifest and the assembled prompt.
+
+The model supplies structured adopted/deferred/disagreed decisions before
+its Pkl block. The workflow validates source coverage, revisions, stable
+recommendation keys, rationale and references to proposed dry-run ops.
+`workflow/planning-feedback.json` carries decisions between runs via the
+same Git branch and merge as the changeset, including prior revisions and
+unresolved recommendations. Missing prior sources fail explicitly; an
+edited source must explicitly supersede its previous revision. The PR
+feedback section is rendered from this artifact. Feedback-only changes
+can produce a PR; identical operations and feedback produce none.
+
+Receipt and validation prove transport and an explicit recorded response,
+not the quality of the model's reasoning. Adoption and proposed operations
+remain distinct from actual apply outcomes. Acceptance still needs an
+actual deployed run and subsequent-cycle evidence; a fixture test or source
+merge alone does not complete CIT-518.
+
 ### Not verified without credentials
 
 - **`--remote-control` needs a full-scope login.** Claude Code's eligibility
