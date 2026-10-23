@@ -16,14 +16,14 @@
           "key": "failed-apply-visibility",
           "summary": "Show a failed apply clearly even when planning continues, and reconcile partial operations before retrying",
           "disposition": "adopted",
-          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. The CIT-501 ship proposed earlier never appeared in an applied list, and PR 354 targets that kind of silent ship failure.",
+          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. A proposed CIT-501 ship has now twice been missing from the applied report without a skip or failure being shown, and PR 354 targets that kind of silent ship failure.",
           "status": "open",
           "operations": [],
           "noAction": "Covered by CIT-523 (PR 346, merged), with PR 354 aimed at ships that fail after apply starts them; it is no longer in the open PR list but I cannot confirm it merged. Stays open until a scheduled tick shows a failed apply surfaced in status.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "PR 354 absent from this run's open PR list",
-            "apply trn-08l4gdbde5j1utons73avn4s0 reported completed with 0 applied after a plan with no operations"
+            "apply trn-08l4gdbdhfd1utons73avneeg reported 1 applied (delegate CIT-524) with no ship line, 0 skipped and 0 pending"
           ]
         },
         {
@@ -45,26 +45,26 @@
           "key": "keep-duo-moving",
           "summary": "Keep native and Duo progress moving alongside the repairs",
           "disposition": "adopted",
-          "rationale": "CIT-521, CIT-516, CIT-517 and CIT-522 are Done: PR 352 merged at 04:30. CIT-525 and CIT-526 (run the DuoCore tests on an Xcode runner) are under CIT-439. CIT-501's ship left no PR and the agent is busy on CIT-524. The native slices behind CIT-502 and CIT-526 wait on the maintainer on a Mac.",
+          "rationale": "CIT-521, CIT-516, CIT-517 and CIT-522 are Done: PR 352 merged at 04:30. CIT-525 and CIT-526 (run the DuoCore tests on an Xcode runner) are under CIT-439. CIT-501's ship has twice produced no PR and no applied line, and the agent has just been re-delegated on CIT-524. The native slices behind CIT-502 and CIT-526 wait on the maintainer on a Mac.",
           "status": "open",
           "operations": [],
-          "noAction": "The last applied changeset clustered CIT-526 under CIT-439, so it is not proposed again. The CIT-501 ship is held until the agent reports the environment done or I can read ship status. The agent is busy on CIT-524, so nothing is delegated.",
+          "noAction": "A third CIT-501 ship is not proposed because the last one produced nothing in the applied report. It is handed back to the agent with an ask once the agent is free, if it still has no branch next tick. The agent was just re-delegated on CIT-524, so nothing else is delegated.",
           "evidence": [
             "CIT-501 has no PR or attachment since its 02:18 ship",
             "PR 352 merged at 04:30",
-            "apply trn-08l4gdbde30putons73avn4pg applied parent CIT-526 into CIT-439"
+            "apply trn-08l4gdbdhfd1utons73avneeg applied delegate CIT-524 only"
           ]
         },
         {
           "key": "session-recovery-followup",
           "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
           "disposition": "adopted",
-          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it. The agent had stopped because host Edit was denied, and the re-ask to use a container-use environment has now been applied.",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it. The agent had stopped because host Edit was denied, and the re-ask in new words has now been applied.",
           "status": "open",
           "operations": [],
-          "noAction": "CIT-524 was re-delegated with an ask in the last applied changeset, and no environment id has been reported yet. Repeating the delegation would only restart its session. The work is dispatched, not implemented, deployed or tested.",
+          "noAction": "The new-wording ask was applied in the last run and the agent has had no time to answer, so delegating again would only restart its session. The work is dispatched, not implemented, deployed or tested.",
           "evidence": [
-            "apply trn-08l4gdbddl7putons73avn4a0 applied delegate CIT-524 with ask"
+            "apply trn-08l4gdbdhfd1utons73avneeg applied delegate CIT-524 with the new-wording ask"
           ]
         },
         {
@@ -148,7 +148,7 @@
           "operations": [],
           "noAction": "Contextual qualification only.",
           "evidence": [
-            "apply trn-08l4gdbde5j1utons73avn4s0 report read this run",
+            "apply trn-08l4gdbdhfd1utons73avneeg report read this run",
             "open PR list read this run"
           ]
         },
@@ -268,14 +268,14 @@
           "key": "retry-one-ship",
           "summary": "Do not blindly rerun the failed batch; reconcile what completed",
           "disposition": "adopted",
-          "rationale": "The earlier batch was reconciled: only the unfinished CIT-501 ship and PR 342 review were re-proposed. The review applied, but the CIT-501 ship left no branch, so it is not blindly retried a third time.",
+          "rationale": "The earlier batch was reconciled: only the unfinished CIT-501 ship and PR 342 review were re-proposed. The review applied, but the CIT-501 ship left no branch, and the second attempt did not show up in the applied report either, so it is not blindly retried a third time.",
           "status": "open",
           "operations": [],
-          "noAction": "The CIT-501 ship waits until I can confirm PR 354 merged (it left the open list) or the agent reports the environment done. This stays open until that ship produces a PR.",
+          "noAction": "The CIT-501 ship is not repeated. Next tick, if CIT-501 still has no branch, it is handed back to the agent with an ask once the agent is free. This stays open until a ship produces a PR.",
           "evidence": [
             "CIT-501 has no PR or attachment",
             "PR 354 absent from this run's open PR list",
-            "apply trn-08l4gdbdc6ng453cc738oeko0: applied ship CIT-501 and review CIT-516"
+            "apply trn-08l4gdbdhfd1utons73avneeg reported delegate CIT-524 only, with no ship line"
           ]
         },
         {
@@ -285,9 +285,9 @@
           "rationale": "A run without a 404 proves nothing. The new issue requires a controlled session-loss regression.",
           "status": "open",
           "operations": [],
-          "noAction": "CIT-524 was re-delegated with an ask in the last applied changeset and the agent is working on it. Implementation, tests and deployment have not happened, so no recovery fix is claimed.",
+          "noAction": "CIT-524 was re-delegated with a new-wording ask in the last applied changeset and the agent has had no time to answer. Implementation, tests and deployment have not happened, so no recovery fix is claimed.",
           "evidence": [
-            "apply trn-08l4gdbddl7putons73avn4a0 applied delegate CIT-524 with ask"
+            "apply trn-08l4gdbdhfd1utons73avneeg applied delegate CIT-524 with the new-wording ask"
           ]
         },
         {
@@ -301,7 +301,7 @@
           "evidence": [
             "CIT-523 Done via PR 346",
             "PR 354 absent from this run's open PR list",
-            "apply trn-08l4gdbddl7putons73avn4a0 completed with 4 applied and no ship"
+            "apply trn-08l4gdbdhfd1utons73avneeg completed with 1 applied and no ship"
           ]
         }
       ]
