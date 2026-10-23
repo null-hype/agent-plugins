@@ -1,8 +1,25 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@da3b0676232415048b08e7529467f1d2be13a36b. Merging it is applying it; render with
+// main@562df2af6aaa8e228aa8baefa48eb47cebd43344. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-439"] = "2026-10-23T03:55:19.926Z"
+  ["CIT-526"] = "2026-10-23T03:58:49.349Z"
 }
 
+releases {
+  new {
+    name = "duo-editor"
+    description = "The Duo editor on iPhone Duo: the claim on the left page and question cards on the right, built on Xcode Cloud and shipped to TestFlight testers."
+  }
+}
+clusters {
+  new {
+    key = "CIT-439"
+    title = "iPhone Duo editor: one claim, one refutation, on TestFlight"
+    description = "The native slices of CIT-439: the iOS project, the build-time JSON bundle, the Xcode Cloud workflows, the supervisor reading their results, and the SwiftUI app. Review findings and verification of the iOS project (CIT-521, CIT-522, CIT-525, CIT-526) are handled as follow-ups; running the tests in Xcode needs the maintainer on a Mac."
+    serves = "release:duo-editor"
+    issues { "CIT-526" }
+  }
+}
