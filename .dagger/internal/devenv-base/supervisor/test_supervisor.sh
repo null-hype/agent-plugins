@@ -986,15 +986,6 @@ grep -q 'deferred; open' "$GH_PR_BODY" || fail "disposition missing from PR"
 grep -q 'Implementation is underway; no duplicate dispatch.' "$GH_PR_BODY" || fail "reasoned non-action missing from PR"
 git -C "$REMOTE" show "supervisor/calibration:$WF/planning-feedback.json" | jq -e '.records | length == 2' > /dev/null || fail "feedback artifact missing from branch"
 
-# A changeset without feedback cannot produce a PR.
-before=$(branch_sha)
-reset
-if CLAUDE_STUB_FEEDBACK=omit CLAUDE_STUB_MODE=plan calibrate > "$WORK/no-feedback" 2>&1; then
-  fail "missing feedback should fail the run"
-fi
-grep -q 'expected one SUPERVISOR_FEEDBACK JSON block' "$WORK/no-feedback" || fail "missing feedback should say why"
-[ "$(branch_sha)" = "$before" ] && ! grep -q 'pr edit' "$GH_LOG" && ! grep -q 'pr create' "$GH_LOG" || fail "invalid feedback must not change a PR"
-
 # The same changeset again, with the PR open: nothing is pushed and no
 # second PR is opened.
 before=$(branch_sha)
@@ -1078,32 +1069,28 @@ grep -q 'A changeset section stands for its op' "$CLAUDE_ARGV" || fail "the prom
 git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
 rm -f "$GH_OPEN_PR"
 
-# A reference no dry run has goes back with every problem and the valid
-# references, and a corrected answer is checked whole again.
+# Feedback is advisory: a missing block is warned about and the plan still
+# goes out, with the ledger as it was.
 reset
-CLAUDE_STUB_FEEDBACK=badref-once CLAUDE_STUB_MODE=plan calibrate > "$WORK/calcorrected" 2>&1 ||
-  fail "feedback corrected on the second answer should pass, got: $(cat "$WORK/calcorrected")"
-[ "$(calls)" = "render node plan gh claude node apply claude node apply gh gh" ] ||
-  fail "a corrected answer should be rendered and dry-run again before the PR, got: $(calls)"
-grep -q 'Your initiative feedback did not validate' "$CLAUDE_ARGV" &&
-  grep -q 'cluster new:never-planned is absent from this dry run' "$CLAUDE_ARGV" &&
-  grep -q -- '- `create new:review-findings`' "$CLAUDE_ARGV" ||
-  fail "the correction should name the problem and the valid references, got: $(cat "$CLAUDE_ARGV")"
-grep -q 'SUPERVISOR_PLAN: proposed' "$WORK/calcorrected" || fail "a corrected answer should be proposed"
+CLAUDE_STUB_FEEDBACK=omit CLAUDE_STUB_MODE=plan calibrate > "$WORK/no-feedback" 2>&1 ||
+  fail "missing feedback should not stop the plan: $(cat "$WORK/no-feedback")"
+grep -q 'expected one SUPERVISOR_FEEDBACK JSON block' "$WORK/no-feedback" &&
+  grep -q 'SUPERVISOR_INITIATIVE_FEEDBACK: dropped' "$WORK/no-feedback" || fail "missing feedback should be warned about"
+grep -q 'SUPERVISOR_PLAN: proposed' "$WORK/no-feedback" || fail "missing feedback should still propose the plan"
 git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
 rm -f "$GH_OPEN_PR"
 
-# One still refused after every answer publishes nothing, keeps the
-# evidence, and fails explicitly.
+# A reference no dry run has is dropped with a warning: one answer, no
+# correction, and the plan goes out.
 reset
-if CLAUDE_STUB_FEEDBACK=badref CLAUDE_STUB_MODE=plan calibrate > "$WORK/calexhausted" 2>&1; then
-  fail "feedback refused three times should fail the run"
-fi
-[ "$(calls)" = "render node plan gh claude node apply claude node apply claude node apply" ] && no_pr ||
-  fail "exhausted feedback should open no PR, got: $(calls)"
-diag=$(sed -n 's/^SUPERVISOR_PLAN: failed reason=planner-output-invalid attempts=3 diagnostics=//p' "$WORK/calexhausted")
-[ -n "$diag" ] && [ -f "$diag/planner-response-3.txt" ] && jq -e '.validOperations | index("create new:review-findings")' "$diag/rejected-3.txt" > /dev/null ||
-  fail "an exhausted correction should keep every answer and why each was refused, got: $(cat "$WORK/calexhausted")"
+CLAUDE_STUB_FEEDBACK=badref CLAUDE_STUB_MODE=plan calibrate > "$WORK/calbadref" 2>&1 ||
+  fail "invalid feedback should not stop the plan, got: $(cat "$WORK/calbadref")"
+[ "$(calls)" = "render node plan gh claude node apply gh gh" ] ||
+  fail "invalid feedback should cost no second answer, got: $(calls)"
+grep -q 'cluster new:never-planned is absent from this dry run' "$WORK/calbadref" &&
+  grep -q 'SUPERVISOR_PLAN: proposed' "$WORK/calbadref" || fail "invalid feedback should be warned about and the plan proposed"
+git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
+rm -f "$GH_OPEN_PR"
 
 # Planning gets another go with the render error, and a fixed changeset
 # goes on as usual.

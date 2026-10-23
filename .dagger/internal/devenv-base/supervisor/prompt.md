@@ -75,7 +75,7 @@ Every supplied source needs at least one item. Each item has `key`, `summary`, `
 
 {{OPERATIONS}}
 
-The dry run checks every reference after you answer. A refused one comes back to you with the references the dry run accepts, to correct once or twice; an answer still refused after that costs the run its plan. Items with proposed operations must be adopted and open. With no proposed operation, `noAction` must explain why. Resolved items require nonempty evidence. Source descriptions also need a response. Use a reasoned non-action item for contextual or already satisfied material. Do not claim a session recovery fix was tested simply because no deployment overlapped a run.
+The dry run checks every reference after you answer. Feedback that does not validate is dropped from this run's record, with a warning, and the plan goes ahead without it. Items with proposed operations must be adopted and open. With no proposed operation, `noAction` must explain why. Resolved items require nonempty evidence. Source descriptions also need a response. Use a reasoned non-action item for contextual or already satisfied material. Do not claim a session recovery fix was tested simply because no deployment overlapped a run.
 
 Finally end your reply with this line, then one fenced `pkl` block holding the changeset's body, and nothing after the block:
 

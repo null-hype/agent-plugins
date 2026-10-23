@@ -579,11 +579,9 @@ write_changeset() { # $1: a JSON object of identifier -> updatedAt
   }
 }
 
-# 3-5, checked whole on every answer: the changeset renders, its dry run
-# passes, and the initiative feedback cites only that dry run's operations
-# (CIT-523). An answer that fails the render or the feedback check goes back
-# to the session with every problem, and for feedback with the references
-# the dry run accepts, up to SUPERVISOR_ATTEMPTS answers in all. The session
+# 3-5, checked whole on every answer: the changeset renders and its dry run
+# passes. An answer that fails the render goes back to the session with the
+# error, up to SUPERVISOR_ATTEMPTS answers in all. The session
 # is read-only and nothing outside this run has happened since the apply
 # above, so asking again repeats nothing. A failed dry run is not the
 # session's to fix in prose: it fails the run as before.
@@ -609,21 +607,16 @@ while :; do
       { echo "supervisor: the changeset's dry run failed" >&2; exit 1; }
     printf '%s\n' "$dry" | jq . > "$CAL_DIR/dry-run.json"
     printf '%s\n' "$out" > "$CAL_DIR/planner-response.txt"
-    rm -f "$CAL_DIR/feedback-diagnostics.json"
-    if node "$wf/dist/feedback.js" record "$CAL_DIR/initiative-input.json" "$CAL_DIR/planner-response.txt" \
+    # Initiative feedback is advisory: an answer whose feedback does not
+    # validate still goes out, with the ledger as it was, and a warning.
+    feedback=validated
+    if ! node "$wf/dist/feedback.js" record "$CAL_DIR/initiative-input.json" "$CAL_DIR/planner-response.txt" \
       "$CAL_DIR/dry-run.json" "$wf/planning-feedback.json" "$CAL_DIR/feedback-diagnostics.json" 2> "$CAL_DIR/feedback.log"; then
-      break
+      feedback=dropped
+      echo "supervisor: warning: the initiative feedback did not validate, so it is dropped and the plan goes on:" >&2
+      cat "$CAL_DIR/feedback.log" >&2
     fi
-    cat "$CAL_DIR/feedback.log" >&2
-    [ -s "$CAL_DIR/feedback-diagnostics.json" ] ||
-      { echo "supervisor: the feedback check itself failed, with no diagnostics" >&2; exit 1; }
-    cp "$CAL_DIR/feedback-diagnostics.json" "$CAL_DIR/rejected-$attempt.txt"
-    cp "$CAL_DIR/dry-run.json" "$CAL_DIR/dry-run-$attempt.json"
-    correction=$(jq -r '"\n\n## Your initiative feedback did not validate against this changeset'"'"'s dry run\n",
-      "Every problem:\n", (.problems[] | "- \(.)"),
-      "\nThe operation references this dry run accepts, as `{\"op\": ..., \"target\": ...}`:\n", (.validOperations[] | "- `\(.)`"),
-      "\nGive your whole answer again: the findings, the corrected SUPERVISOR_FEEDBACK block and the changeset. Change only what the problems name; keep every other decision as it was."' \
-      "$CAL_DIR/feedback-diagnostics.json")
+    break
   fi
   if [ "$attempt" -ge "$attempts" ]; then
     # Exhausted: keep the evidence with the session (the backup takes it),
@@ -640,7 +633,7 @@ while :; do
   fi
   echo "supervisor: asking again ($attempt of $attempts answers used), with the problems"
 done
-echo 'SUPERVISOR_INITIATIVE_FEEDBACK: validated; proposed operations are not yet applied'
+echo "SUPERVISOR_INITIATIVE_FEEDBACK: $feedback; proposed operations are not yet applied"
 
 # A plan the base already carries proposes nothing: no PR, nothing to
 # merge. Otherwise every merge would leave the next tick a fresh base, and
