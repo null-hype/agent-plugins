@@ -432,6 +432,9 @@ ship)
   # One ship at a time: they share Codex's home, and its rules.
   refuse_if_busy "$id"
   rm -f "$JOBS/$id.exit" "$JOBS/$id.json" "$HOME/.toolbox/ship/last-message.md"
+  # Which ship this job is, for ship-status while it runs and after it
+  # fails: a caller must tell its own ship from another's (CIT-523).
+  jq -n --arg env "$env" --arg branch "$branch" '{env: $env, branch: $branch}' > "$JOBS/$id.request.json"
   setsid nohup bash -c "$(declare -p SHIP_CREDENTIAL_HELPER SHIP_PASS_REASON SHIP_PREPARE SHIP_VERIFY; declare -f ship_in_workspace run_ship)"'
     (run_ship "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$ws" "$env" "$branch" "$JOBS/$id.json" \
     > "$JOBS/$id.log" 2>&1 < /dev/null &
@@ -442,10 +445,11 @@ ship-status)
   id=ship
   jq -n --argjson job_running "$(job_running "$id" && echo true || echo false)" \
     --argjson job_exit "$(cat "$JOBS/$id.exit" 2>/dev/null || echo null)" \
+    --argjson request "$(cat "$JOBS/$id.request.json" 2>/dev/null || echo null)" \
     --argjson result "$(cat "$JOBS/$id.json" 2>/dev/null || echo null)" \
     --arg codex "$(cat "$HOME/.toolbox/ship/last-message.md" 2>/dev/null || true)" \
     --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null || true)" \
-    '{job_running: $job_running, job_exit: $job_exit, result: $result, codex: $codex, log_tail: $log_tail}'
+    '{job_running: $job_running, job_exit: $job_exit, request: $request, result: $result, codex: $codex, log_tail: $log_tail}'
   ;;
 review-status)
   id=review-$1

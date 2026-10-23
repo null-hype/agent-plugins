@@ -453,8 +453,8 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "agent_ship_status",
-		Description: "Report the latest agent_ship job: its exit code (null while running), the environment, branch and commit " +
-			"now on GitHub once it has succeeded, Codex's last message and the end of the log.",
+		Description: "Report the latest agent_ship job: its exit code (null while running), the environment and branch it was started for (request), " +
+			"the commit now on GitHub once it has succeeded, Codex's last message and the end of the log.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
 		b, err := t.host.Run(ctx, nil, "ship-status")
 		if err != nil {

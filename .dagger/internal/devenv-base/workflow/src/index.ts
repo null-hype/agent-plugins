@@ -21,7 +21,7 @@ import type { Changeset } from "./changeset.ts";
 import { plan as buildPlan, type Plan } from "./dag.ts";
 import { linearClient, openIssues, triageHints } from "./linear.ts";
 import { initiativeContext, BOOTSTRAP_INITIATIVES } from "./initiatives.ts";
-import { toolboxClient, wakeHost, type ToolResult } from "./toolbox.ts";
+import { shipJob, toolboxClient, wakeHost, type ToolResult } from "./toolbox.ts";
 
 const env = (name: string) => {
   const v = process.env[name];
@@ -69,6 +69,9 @@ const applyToolbox = () => ({
   },
   async ship(env: string, branch: string) {
     await toolbox().call("agent_ship", { env, branch });
+  },
+  async shipStatus() {
+    return shipJob((await toolbox().call("agent_ship_status")).text);
   },
   async review(pr: number) {
     await toolbox().call("codex_review", { pr });

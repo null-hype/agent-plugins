@@ -55,7 +55,14 @@ const id = BOOTSTRAP_INITIATIVES[0];
 const description = { id: `initiative:${id}`, url: 'https://linear.app/example/initiative/zero', updatedAt: '2026-10-22T23:50:51.584Z', body: 'Initiative Zero: bring Duo into use' };
 const sources = [description, update].map(s => ({ ...s, initiativeId: id, kind: s.id.startsWith('initiative:') ? 'description' : 'update', revision: sourceRevision(s.body, s.updatedAt) }));
 writeFileSync(process.env.INITIATIVE_CONTEXT, JSON.stringify([{ id, name: 'Initiative Zero', url: description.url, projects: [], sources }]));
-writeFileSync(process.env.FEEDBACK_RESPONSE, JSON.stringify({ decisions: sources.map(s => ({ sourceId: s.id, revision: s.revision, items: [{ key: 'planning-integration', summary: 'Finish initiative planning', disposition: 'deferred', rationale: 'The integration is already being implemented; preserve Duo progress.', status: 'open', operations: [], noAction: 'Implementation is underway; no duplicate dispatch.', evidence: [] }] })) }));
+const deferred = { key: 'planning-integration', summary: 'Finish initiative planning', disposition: 'deferred', rationale: 'The integration is already being implemented; preserve Duo progress.', status: 'open', operations: [], noAction: 'Implementation is underway; no duplicate dispatch.', evidence: [] };
+const respond = (extra) => JSON.stringify({ decisions: sources.map(s => ({ sourceId: s.id, revision: s.revision, items: [deferred, ...extra] })) });
+writeFileSync(process.env.FEEDBACK_RESPONSE, respond([]));
+// CIT-523: a new cluster cited by its changeset section, as the 01:13 planner
+// did, and one cited by a name no dry run has.
+const adopted = (op, target) => ({ key: 'review-findings', summary: 'Group the review findings', disposition: 'adopted', rationale: 'They share one fix.', status: 'open', operations: [{ op, target }], noAction: '', evidence: [] });
+writeFileSync(process.env.FEEDBACK_RESPONSE + '.alias', respond([adopted('cluster', 'new:review-findings')]));
+writeFileSync(process.env.FEEDBACK_RESPONSE + '.badref', respond([adopted('cluster', 'new:never-planned')]));
 FIXTURE
 
 cat > "$BIN/pass-cli" <<'STUB'
@@ -162,10 +169,16 @@ case "${CLAUDE_STUB_MODE:-ok}" in
       badpkl-once) [ "$(grep -c '^claude$' "$CALLS")" -gt 1 ] || hat=planning ;;
     esac
     echo "Two findings on the supervisor belong together; one issue serves nothing."
+    # badref-once: only the first answer cites an operation the dry run lacks.
+    feedback=$FEEDBACK_RESPONSE
+    case "${CLAUDE_STUB_FEEDBACK:-ok}" in
+      alias | badref) feedback=$FEEDBACK_RESPONSE.$CLAUDE_STUB_FEEDBACK ;;
+      badref-once) [ "$(grep -c '^claude$' "$CALLS")" -gt 1 ] || feedback=$FEEDBACK_RESPONSE.badref ;;
+    esac
     if [ "${CLAUDE_STUB_FEEDBACK:-ok}" != omit ]; then
       echo 'SUPERVISOR_FEEDBACK:'
       echo '```json'
-      cat "$FEEDBACK_RESPONSE"
+      cat "$feedback"
       echo
       echo '```'
     fi
@@ -311,8 +324,17 @@ cat > "$BIN/apply-changeset" <<'STUB'
 echo "apply-changeset $* RENDER_API_KEY=${RENDER_API_KEY:-}" >> "$APPLY_LOG"
 case "$1" in
   start) [ "${APPLY_STUB_START:-ok}" = ok ] || exit 1; echo "trn-$2" ;;
-  status) [ "$2" != "${APPLY_STUB_FAILED:-}" ] ;;
+  status)
+    [ "$2" != "${APPLY_STUB_FAILED:-}" ] || exit 1
+    # Completed, with a ship deferred behind one still running (CIT-523).
+    [ "$2" != "${APPLY_STUB_PENDING:-}" ] || { echo 'pending (deferred) ship CIT-501: the host is still shipping shining-gibbon'; exit 3; }
+    ;;
   wait)
+    if [ "${APPLY_STUB_WAIT:-ok}" = pending ]; then
+      echo 'status: completed'
+      echo 'pending (deferred) ship CIT-501: the host is still shipping shining-gibbon'
+      exit 3
+    fi
     if [ "${APPLY_STUB_WAIT:-ok}" = fail ]; then
       echo 'status: failed'
       echo 'error: a job for ship is still running'
@@ -517,6 +539,16 @@ RESTIC_STUB_APPLY="$SEED_HASH trn-bad" APPLY_STUB_FAILED=trn-bad CLAUDE_STUB_MOD
 grep -qx 'apply-changeset status trn-bad RENDER_API_KEY=resolved-RENDER_API_KEY' "$APPLY_LOG" &&
   grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
   fail "a failed apply should be started again, got: $(cat "$APPLY_LOG")"
+# One that completed with ops left pending is applied again, and a run that
+# leaves ops pending says so without calling it a failure.
+fresh
+RESTIC_STUB_APPLY="$SEED_HASH trn-pending" APPLY_STUB_PENDING=trn-pending APPLY_STUB_WAIT=pending CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
+  fail "a run after an apply with pending ops should exit 0, got: $(cat "$WORK/out")"
+grep -qx "apply-changeset start $BASE_SHA RENDER_API_KEY=resolved-RENDER_API_KEY" "$APPLY_LOG" ||
+  fail "an apply that left ops pending should be started again, got: $(cat "$APPLY_LOG")"
+grep -q "left ops pending; the next run applies again" "$WORK/out" && ! grep -q "did not go through" "$WORK/out" ||
+  fail "pending ops are neither success nor failure, got: $(cat "$WORK/out")"
+grep -q 'pending (deferred) ship CIT-501' "$CLAUDE_ARGV" || fail "the planner should see the pending ops in the apply evidence"
 # An apply that could not start is remembered, and the run fails loudly.
 fresh
 RESTIC_STUB_APPLY=none APPLY_STUB_START=fail CLAUDE_STUB_MODE=plan tick > "$WORK/out" 2>&1 ||
@@ -1025,12 +1057,55 @@ if CLAUDE_STUB_MODE=badpkl calibrate > "$WORK/calbad" 2>&1; then
 fi
 grep -q 'the changeset does not render through pkl/Changeset.pkl' "$WORK/calbad" ||
   fail "a changeset that does not render should say so, got: $(cat "$WORK/calbad")"
-[ "$(calls)" = "render node plan gh claude claude" ] && no_pr ||
-  fail "a changeset that does not render, twice, should not be dry-run, pushed or opened; got: $(calls)"
-grep -q 'asking again, with the render error' "$WORK/calbad" ||
-  fail "a changeset that does not render should go back to planning once, got: $(cat "$WORK/calbad")"
+[ "$(calls)" = "render node plan gh claude claude claude" ] && no_pr ||
+  fail "a changeset that does not render, three times, should not be dry-run, pushed or opened; got: $(calls)"
+grep -q 'asking again (2 of 3 answers used), with the problems' "$WORK/calbad" ||
+  fail "a changeset that does not render should go back to planning twice, got: $(cat "$WORK/calbad")"
+grep -q '^SUPERVISOR_PLAN: failed reason=planner-output-invalid attempts=3 ' "$WORK/calbad" ||
+  fail "an exhausted correction should end with an explicit failure, got: $(cat "$WORK/calbad")"
 
-# Planning gets one more go with the render error, and a fixed changeset
+# CIT-523: a new cluster cited as `cluster new:...`, the way the 01:13
+# planner cited it, is the dry run's `create`, and is stored that way.
+reset
+CLAUDE_STUB_FEEDBACK=alias CLAUDE_STUB_MODE=plan calibrate > "$WORK/calalias" 2>&1 ||
+  fail "a cluster cited by its section should validate, got: $(cat "$WORK/calalias")"
+[ "$(calls)" = "render node plan gh claude node apply gh gh" ] || fail "an alias needs no correction, got: $(calls)"
+git -C "$REMOTE" show "supervisor/calibration:$WF/planning-feedback.json" |
+  jq -e '[.records[].items[].operations[]] | length > 0 and all(. == {op: "create", target: "new:review-findings"})' > /dev/null ||
+  fail "the stored reference should be the dry run's own op"
+grep -q 'Proposed for subsequent apply: create new:review-findings' "$GH_PR_BODY" || fail "the PR should show the canonical op"
+grep -q 'A changeset section stands for its op' "$CLAUDE_ARGV" || fail "the prompt should carry the operation names, from the workflow"
+git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
+rm -f "$GH_OPEN_PR"
+
+# A reference no dry run has goes back with every problem and the valid
+# references, and a corrected answer is checked whole again.
+reset
+CLAUDE_STUB_FEEDBACK=badref-once CLAUDE_STUB_MODE=plan calibrate > "$WORK/calcorrected" 2>&1 ||
+  fail "feedback corrected on the second answer should pass, got: $(cat "$WORK/calcorrected")"
+[ "$(calls)" = "render node plan gh claude node apply claude node apply gh gh" ] ||
+  fail "a corrected answer should be rendered and dry-run again before the PR, got: $(calls)"
+grep -q 'Your initiative feedback did not validate' "$CLAUDE_ARGV" &&
+  grep -q 'cluster new:never-planned is absent from this dry run' "$CLAUDE_ARGV" &&
+  grep -q -- '- `create new:review-findings`' "$CLAUDE_ARGV" ||
+  fail "the correction should name the problem and the valid references, got: $(cat "$CLAUDE_ARGV")"
+grep -q 'SUPERVISOR_PLAN: proposed' "$WORK/calcorrected" || fail "a corrected answer should be proposed"
+git -C "$REMOTE" update-ref -d refs/heads/supervisor/calibration
+rm -f "$GH_OPEN_PR"
+
+# One still refused after every answer publishes nothing, keeps the
+# evidence, and fails explicitly.
+reset
+if CLAUDE_STUB_FEEDBACK=badref CLAUDE_STUB_MODE=plan calibrate > "$WORK/calexhausted" 2>&1; then
+  fail "feedback refused three times should fail the run"
+fi
+[ "$(calls)" = "render node plan gh claude node apply claude node apply claude node apply" ] && no_pr ||
+  fail "exhausted feedback should open no PR, got: $(calls)"
+diag=$(sed -n 's/^SUPERVISOR_PLAN: failed reason=planner-output-invalid attempts=3 diagnostics=//p' "$WORK/calexhausted")
+[ -n "$diag" ] && [ -f "$diag/planner-response-3.txt" ] && jq -e '.validOperations | index("create new:review-findings")' "$diag/rejected-3.txt" > /dev/null ||
+  fail "an exhausted correction should keep every answer and why each was refused, got: $(cat "$WORK/calexhausted")"
+
+# Planning gets another go with the render error, and a fixed changeset
 # goes on as usual.
 reset
 CLAUDE_STUB_MODE=badpkl-once calibrate > "$WORK/calfixed" 2>&1 ||

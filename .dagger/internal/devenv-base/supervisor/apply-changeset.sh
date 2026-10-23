@@ -8,8 +8,10 @@
 #       apply: one that delegates or ships wakes the host first, which alone
 #       may take 15 minutes.
 #   apply-changeset.sh status RUN     prints that run's status, what it
-#       applied and what it skipped. Exits 1 if it failed or is gone, so the
-#       next run can start it again; 0 while it runs or once it completed.
+#       applied, skipped and left pending. Exits 1 if it failed or is gone,
+#       so the next run can start it again; 3 if it completed with ops still
+#       pending (a ship deferred behind another, CIT-523), which the next run
+#       applies again too; 0 while it runs or once it completed in full.
 #   apply-changeset.sh wait RUN       status, once the run has ended or
 #       RUN_WAIT polls (3s apart, 10 minutes by default) have passed.
 #
@@ -25,9 +27,15 @@ status() { # $1: the task run
   local body
   body=$(api "https://api.render.com/v1/task-runs/$1") || { echo "apply-changeset: no task run $1" >&2; return 1; }
   jq -r '"status: \(.status)", (.attempts[-1].error // "" | select(. != "") | "error: \(.)"),
+    (.results[0] // empty | "outcome: \(.applied | length) applied, \(.skipped | length) skipped, \(.pending // [] | length) pending"),
     (.results[0].applied[]? | "applied \(.op) \(.target): \(.detail)"),
-    (.results[0].skipped[]? | "skipped \(.op) \(.target): \(.why)")' <<< "$body"
-  case $(jq -r .status <<< "$body") in pending | running | completed) ;; *) return 1 ;; esac
+    (.results[0].skipped[]? | "skipped \(.op) \(.target): \(.why)"),
+    (.results[0].pending[]? | "pending (\(.state)) \(.op) \(.target): \(.why)")' <<< "$body"
+  case $(jq -r .status <<< "$body") in
+    pending | running) ;;
+    completed) [ "$(jq '.results[0].pending // [] | length' <<< "$body")" = 0 ] || return 3 ;;
+    *) return 1 ;;
+  esac
 }
 
 case "${1:-}" in

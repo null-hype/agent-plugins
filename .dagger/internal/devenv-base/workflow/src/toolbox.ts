@@ -5,6 +5,8 @@
 //
 // Only the tools named here can be called. Deleting a workspace and the
 // codespace tools stay with people.
+import type { ShipJob } from "./apply.ts";
+
 export const TASK_TOOLS = [
   "host_status",
   // Starts the host and steps until it is ready (CIT-466, #241); the toolbox
@@ -118,4 +120,20 @@ export async function wakeHost(
     if (Date.now() > deadline) throw new Error(`the host was not ready after ${timeout / 60_000} minutes: ${r.text}`);
     await new Promise((done) => setTimeout(done, pause));
   }
+}
+
+// agent_ship_status's answer, as apply reads it. The environment is the one
+// the host says it started (`request`), or the one a successful job pushed.
+// An answer apply cannot read fails: guessing "idle" would start a second
+// ship over a running one.
+export function shipJob(text: string): ShipJob {
+  const s = JSON.parse(text) as {
+    job_running?: unknown; job_exit?: unknown;
+    request?: { env?: unknown } | null; result?: { env?: unknown } | null;
+  };
+  if (typeof s.job_running !== "boolean" || !(s.job_exit === null || typeof s.job_exit === "number")) {
+    throw new Error(`agent_ship_status gave no job state: ${text.slice(0, 300)}`);
+  }
+  const env = s.request?.env ?? s.result?.env;
+  return { running: s.job_running, exit: s.job_exit, ...(typeof env === "string" ? { env } : {}) };
 }
