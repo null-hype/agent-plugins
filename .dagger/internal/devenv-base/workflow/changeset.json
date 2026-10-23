@@ -1,25 +1,12 @@
 {
-  "seen": {
-    "CIT-501": "2026-10-23T04:27:10.999Z",
-    "CIT-525": "2026-10-23T03:55:19.926Z"
-  },
+  "seen": {},
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [
-    {
-      "issue": "CIT-525",
-      "agent": "Claude"
-    }
-  ],
-  "ship": [
-    {
-      "issue": "CIT-501",
-      "env": "guiding-baboon"
-    }
-  ],
+  "delegate": [],
+  "ship": [],
   "review": []
 }
