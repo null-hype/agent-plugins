@@ -92,7 +92,7 @@ final class EvidenceLogTests: XCTestCase {
     }
 
     func testIntegersOutsideSixtyFourBitsInAnySpellingFail() {
-        for literal in ["1e400", "1e19", "18446744073709551616e0", "184467440737095516150e-1", "-9223372036854775809", "-9223372036854775809e0", "1e999999999999999999999"] {
+        for literal in ["1e400", "1e20", "18446744073709551616e0", "184467440737095516160e-1", "-9223372036854775809", "-9223372036854775809e0", "1e999999999999999999999"] {
             XCTAssertThrowsError(try JSONValue(parsing: Data(literal.utf8)), literal)
         }
     }
