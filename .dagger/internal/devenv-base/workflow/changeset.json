@@ -1,12 +1,26 @@
 {
-  "seen": {},
+  "seen": {
+    "CIT-450": "2026-10-23T02:34:23.203Z",
+    "CIT-525": "2026-10-23T13:29:02.826Z"
+  },
   "releases": [],
   "clusters": [],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [],
-  "ship": [],
+  "delegate": [
+    {
+      "issue": "CIT-450",
+      "agent": "Claude",
+      "ask": "Host Write, Edit and Bash are denied on purpose, so do the work in a container-use environment: create one with environment_create. The fix is the one you planned in toolbox/host.sh around lines 189-190: SHIP_ALREADY may be reported only after you have confirmed that the requested remote branch exists and contains the environment; otherwise create the branch or fail. Add a test for it, run the tests in that environment, commit, and reply here with the environment id. Start from current main, not from an older environment."
+    }
+  ],
+  "ship": [
+    {
+      "issue": "CIT-525",
+      "env": "renewed-javelin"
+    }
+  ],
   "review": []
 }
