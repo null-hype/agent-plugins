@@ -60,13 +60,13 @@
           "key": "session-recovery-followup",
           "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
           "disposition": "adopted",
-          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock. That environment shipped alone and PR 376 is now open on the issue branch. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on host contention and is handed back after the PR 376 review finishes.",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock. That environment shipped alone and PR 376 is now open on the issue branch, and its Codex review was applied and is running. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on host contention and is handed back after the PR 376 review finishes.",
           "status": "open",
           "operations": [],
-          "noAction": "The ship of ruling-raccoon is not repeated; its PR exists and its single review is proposed under the session-recovery item. CIT-450 is handed back with an ask once that review is done so the host stays free. The Render deploy filter stays for a later round.",
+          "noAction": "The ship of ruling-raccoon is not repeated and the review of PR 376 is not repeated: it was applied and is running. CIT-450 is handed back with an ask once that review is done so the host stays free. The Render deploy filter stays for a later round.",
           "evidence": [
             "agent_sessions CIT-524: ruling-raccoon reported at 17:25 with 71 workflow tests passing and tsc clean",
-            "apply trn-08l4gdbdr4pc8hv3g00elvrfg applied ship CIT-524: ruling-raccoon",
+            "apply trn-08l4gdbdst20453cc738oisg0 applied review CIT-524: PR #376",
             "open PR list: PR 376 CIT-524: Merge environment ruling-raccoon"
           ]
         },
@@ -225,6 +225,73 @@
     },
     {
       "source": {
+        "body": "## Observer steering — initiative feedback is now in the loop; protect the product frontier\n\n### Observed facts\n\nThe latest completed supervisor plan is a material change from the earlier retrospectives. PR 377 explicitly contains an **Initiative feedback** section, cites Initiative Zero updates by ID and revision, and records adopted/deferred/resolved dispositions with reasons. It carries unresolved feedback forward rather than treating the initiative as unreadable. This is positive evidence that the initiative-to-planner path is now functioning at the planning layer.\n\nThe same tick reconciles current execution state rather than simply repeating work: CIT-525 is Done after PR 371 merged; CIT-524's `ruling-raccoon` environment was shipped and PR 376 is open; the next proposed operation is a review of PR 376, not another ship. Current Linear state independently shows CIT-524 In Progress with Claude. Its agent session reports 71 workflow tests passing and `tsc --noEmit` clean for bounded missing-session recovery, while also recording that earlier shipping failed on a host repository lock. CIT-450 remains In Progress after its own ship failed on a missing Proton session.\n\nThe planner also states that the ready Duo/native frontier is presently blocked on maintainer/Mac work: CIT-503 waits on CIT-502, with downstream native work waiting on that path. That means using the available agent on the concrete session-recovery failure is not, by itself, evidence of infrastructure drift.\n\n### Interpretation\n\nThe failure frontier has moved. The earlier problem was that Initiative Zero was not reaching planning at all. The latest plan demonstrates that it is now being read and answered. The immediate execution bottleneck is narrower: reliable shipping/review around CIT-524/CIT-450, while the next native step is externally blocked.\n\nThere is still a risk of a local infrastructure attractor. Session recovery is justified because it is directly blocking the loop, but once PR 376 is reviewed/merged and the observed 404 recovery is proven in the running path, further supervisor/toolbox hardening should not expand automatically while Duo remains blocked. The initiative outcome is still the Duo claim-and-refutation experience in Richard's hands, not a generally hardened autonomous supervisor.\n\nCIT-518 should remain open for now. PR 377 is strong evidence for its plan-PR acceptance requirement, but the acceptance also asks for a subsequent cycle that retains unresolved feedback. This observer cycle should not convert one successful initiative-aware plan into end-to-end completion.\n\n### Steering\n\n- **Continue:** review and, if valid, land PR 376; verify the bounded missing-session recovery in the running workflow. Finish the already-started CIT-450 handoff when the host is available.\n- **Continue:** retain unresolved Initiative Zero dispositions into the next plan. If the next tick does this without reintroducing them as duplicate work, that is the important remaining evidence for CIT-518.\n- **Change emphasis after recovery:** as soon as the concrete shipping/session blocker is demonstrated fixed, return planning pressure to the Duo/native frontier. Do not create additional supervisor-hardening work merely because more robustness opportunities are visible.\n- **Defer:** the Render deploy-trigger restriction remains optional mitigation, not the initiative objective. Do not let it block product progress; it can remain deferred unless repeated deployment-induced session loss survives the client recovery.\n- **New uncertainty:** the planner says no Duo issue is agent-ready because the frontier requires Richard on a Mac. Recheck this each tick rather than allowing that snapshot to become a standing reason to work on infrastructure indefinitely.\n\nHealth remains **at risk**, but for a narrower reason than before: initiative steering appears to be working at the planning layer; end-to-end retention and the transition back to user-facing native delivery are not yet demonstrated.",
+        "id": "a94fac50-810c-4fb8-be35-c9d4294e0f48",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "update",
+        "revision": "50aeba30cc517cb94045f513dc3ca6d4c14f5a3dbc2f30792c67cec2acd6b1fb",
+        "updatedAt": "2026-10-23T20:30:09.475Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-a94fac50"
+      },
+      "items": [
+        {
+          "key": "deploy-trigger-stays-optional",
+          "summary": "Keep the Render deploy-trigger restriction as optional mitigation that does not block product progress",
+          "disposition": "adopted",
+          "rationale": "This matches the deferral already recorded in the toolbox-deploy-triggers item. It is revisited only if deployment-induced session loss survives the client recovery.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Deferred with the existing item; no operation, and it does not block Duo.",
+          "evidence": [
+            "agent_sessions CIT-524 at 17:25: Render deploy filter left out as asked",
+            "toolbox-deploy-triggers item deferred"
+          ]
+        },
+        {
+          "key": "land-pr-376-and-finish-cit450",
+          "summary": "Review and, if valid, land PR 376, verify recovery in the running workflow, and finish the CIT-450 handoff when the host is available",
+          "disposition": "adopted",
+          "rationale": "The review of PR 376 was applied and is running alone on the host. CIT-450 is finished in engaged-jawfish, and its ship waits on that review so the host stays free. Recovery is not claimed until PR 376 merges and a deployment overlaps a scheduled tick.",
+          "status": "open",
+          "operations": [],
+          "noAction": "The review is not repeated. Next tick, if it has finished, CIT-450 is handed back with an ask to confirm engaged-jawfish is current with main, then shipped alone. Findings from the review go to Triage for clustering.",
+          "evidence": [
+            "agent_sessions CIT-450: engaged-jawfish reported done at 15:25",
+            "apply trn-08l4gdbdst20453cc738oisg0 applied review CIT-524: PR #376",
+            "codex_review_status PR 376: job_running true, no findings yet"
+          ]
+        },
+        {
+          "key": "retain-feedback-for-cit518",
+          "summary": "Retain unresolved Initiative Zero dispositions into the next plan without duplicate work",
+          "disposition": "adopted",
+          "rationale": "This record carries every earlier item key forward unchanged where nothing changed, and adds items for this update. The update says one initiative-aware plan does not complete CIT-518, and I agree.",
+          "status": "open",
+          "operations": [],
+          "noAction": "No new dispatch; retention is shown by this record. CIT-518 stays open until a later cycle is seen to carry the items without reintroducing duplicate work.",
+          "evidence": [
+            "this run's feedback keeps the earlier item keys",
+            "this run's input carries the previous feedback record, version 1"
+          ]
+        },
+        {
+          "key": "return-to-duo-frontier",
+          "summary": "Return planning pressure to Duo and native delivery once the shipping and session blocker is fixed, and recheck agent-readiness each tick",
+          "disposition": "adopted",
+          "rationale": "Agreed: the initiative outcome is Duo in Richard's hands, not a hardened supervisor. I rechecked this tick: CIT-502 needs Richard on a Mac, CIT-503 and CIT-504 wait on it, CIT-505 waits on CIT-503 and CIT-526 needs an Xcode runner, so nothing Duo is ready for the agent. I propose no new supervisor-hardening work.",
+          "status": "open",
+          "operations": [],
+          "noAction": "No Duo issue is agent-ready, so nothing is delegated. Once the CIT-524 and CIT-450 work lands, the agent is free for Duo work as soon as any becomes ready.",
+          "evidence": [
+            "PR 371 merged at 18:16",
+            "frozen plan: CIT-502 status triage, needs Richard on a Mac",
+            "frozen plan: CIT-503 and CIT-504 blocked by CIT-502, CIT-505 blocked by CIT-503"
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
         "body": "## Manual-run retrospective and second-round steering — 23 October 2026, 10:32–10:40 Sydney\n\nRichard requested this retrospective after the manual iteration, followed by an eligible scheduled cycle to assess incorporation of this second feedback round. This follows the [10:31 steering update](https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-152a984b); it preserves that update and the original bootstrap as unresolved inputs.\n\n### Actual outcome\n\nThe manual cron started at 10:32:43, restored snapshot 0a2b83b5, and finished green at 10:40:11. Its [apply trn-08l4gdbd9s68ogb4c73fhlc90](https://dashboard.render.com/wf/wfl-dbche33rjlhs73bgkrr0/runs/trn-08l4gdbd9s68ogb4c73fhlc90) actually **failed at 10:39:13**, with zero retries and no result payload:\n\n`toolbox agent_ship: ship: Process exited with status 1: a job for ship is still running; check workspace_status`\n\nThis is a different failure from the prior missing-session 404. It does not establish session recovery is fixed, and it is not evidence of another session loss.\n\nThe planner reported CIT-521's session started and accepted-lion's CIT-516 ship running. Linear inspection confirms CIT-521 and CIT-516 have Claude delegates and environment branch attachments. This is progress, not proof of completed shipping. CIT-501 had no ship attachment when inspected. The planner recognized a single ship at a time and avoided proposing another ship, but also described the previous operations as applied and said “Nothing is stuck,” despite the recorded apply failure. Reconcile task-level failure and partial side effects rather than treating either statement as authoritative on its own.\n\n[PR341](https://github.com/null-hype/agent-plugins/pull/341) merged at 10:39:50 against d7e32de. It contains zero operations. Its body links no initiative update and records no adopted/deferred/disagreed rationale. The visible planner assessment did not address Initiative Zero, CIT-518 or the session-recovery recommendation. [CIT-518](https://linear.app/citizen6librarian6refrain4/issue/CIT-518) remains Todo, undelegated and unchanged since the maintainer-requested reopening at 10:27. We therefore have no positive evidence that the 10:31 feedback was consumed or acted upon. No session-recovery dispatch was demonstrated in the inspected run evidence.\n\n[Supervisor logs](https://dashboard.render.com/cron/crn-dbc1s9ss728c73dn3tl0/logs) show the apply error, planner assessment, empty changeset, snapshot 39840ca3 and successful outer completion.\n\n### Direction for the next cycle\n\n1. Explicitly read this update, the 10:31 update and original bootstrap before planning. Link this update in the plan PR and explain what is adopted, deferred or disagreed with. If initiative context still does not reach planning, prioritize the missing CIT-518 integration rather than inferring that silence means the feedback was rejected or completed. Keep CIT-518 open until its full runtime acceptance is demonstrated.\n2. Refresh workspace_status and ship status before starting another ship. Determine which prior side effects actually completed, reconcile partial apply state, and sequence or wait for the existing host job rather than launching competing ships or blindly rerunning the entire failed batch. Create/reuse a bounded follow-up for asynchronous ship coordination if the current implementation cannot do this reliably.\n3. Carry forward the deployment/session recovery work described in the previous update: a deployment invalidated an in-memory session and the workflow client did not reconnect. Create/reuse a focused task, implement bounded recovery after definitive missing-session responses with safe operation replay, and verify with a session-loss regression. A run without a 404 is insufficient evidence of repair.\n4. Make failed apply versus successful planning visible in status and retrospective language. Preserve useful planning after a failure if appropriate, but do not call the cycle successfully applied or say nothing is stuck without resolving the task failure and pending work.\n5. Continue CIT-521 and useful Duo/native delivery alongside the bounded integration and reliability work. Explain prioritization rather than silently dropping initiative feedback.\n\n### Next verification\n\nThe next scheduled tick is 11:13 Sydney, after publication of this update. The observer will check its actual apply outcome, current issue/PR state, and explicit response to this second feedback round. Dispatch is progress; implementation, tests, deployment and runtime acceptance are separate milestones. No extra workflow trigger or manual run is required.\n\nManual interventions in this round: one authorized cron trigger and this evidence-backed initiative update. No direct session/ship fix, extra dispatch, merge or deployment was performed by the observer.\n\n<!-- cit518-retro manual-cron-1792711963 apply-trn-08l4gdbd9s68ogb4c73fhlc90 -->",
         "id": "b763920f-35e7-4760-8377-2c0385e89c54",
         "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
@@ -291,19 +358,15 @@
           "key": "session-recovery",
           "summary": "Implement bounded recovery after a missing-session response, verified by a session-loss regression",
           "disposition": "adopted",
-          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression, and after the first ship failed on a host lock it redid the work in ruling-raccoon from origin/main, reporting 71 workflow tests passing and the session-loss test failing on the old client. The ship ran alone and PR 376 is now open. It is not yet reviewed, merged or deployed, and it is untested against the real server. Its single Codex review is proposed now.",
+          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression, and after the first ship failed on a host lock it redid the work in ruling-raccoon from origin/main, reporting 71 workflow tests passing and the session-loss test failing on the old client. The ship ran alone and PR 376 is open. Its single Codex review was applied and is running. It is not yet merged or deployed, and it is untested against the real server.",
           "status": "open",
-          "operations": [
-            {
-              "op": "review",
-              "target": "CIT-524"
-            }
-          ],
-          "noAction": "",
+          "operations": [],
+          "noAction": "The review was applied and is running, so it is not repeated. The next steps are its findings, the merge and then a scheduled tick that survives a deployment. No fix is claimed as deployed or accepted.",
           "evidence": [
             "agent_sessions CIT-524: ruling-raccoon reported at 17:25",
-            "apply trn-08l4gdbds151utons73avqfgg: completed, 0 applied (no reconciliation needed for CIT-524)",
-            "open PR list: PR 376 CIT-524: Merge environment ruling-raccoon, open"
+            "apply trn-08l4gdbdst20453cc738oisg0 applied review CIT-524: PR #376 (codex_review)",
+            "codex_review_status PR 376: job_running true, no findings yet",
+            "host_status busy: job:review-376 and codex"
           ]
         },
         {
