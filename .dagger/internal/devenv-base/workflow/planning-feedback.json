@@ -1,0 +1,357 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "source": {
+        "body": "## Post-hotfix retrospective and next-cycle steering — 23 October 2026, 10:31 Sydney\n\nRichard requested this follow-up, a manual iteration, and monitoring of whether the loop incorporates the feedback and fixes the observed bug. Continue useful Duo delivery alongside this work.\n\n### What the comparison established\n\n[PR338](https://github.com/null-hype/agent-plugins/pull/338) enabled narrowly scoped initiative/status-update reads. The supervisor credential successfully read Initiative Zero and its updates. That removes the access blocker; it does not complete [CIT-518](https://linear.app/citizen6librarian6refrain4/issue/CIT-518). Its inclusion in the hotfix commit closed it prematurely; Richard requested reopening it, and it is now Todo.\n\nThe 09:37 manual cron and 10:13 scheduled cron used the same hotfix image and execution path. The manual apply completed with no operations. The scheduled apply [trn-08l4gdbd9ibhbta0s73f9p6gg](https://dashboard.render.com/wf/wfl-dbche33rjlhs73bgkrr0/runs/trn-08l4gdbd9ibhbta0s73f9p6gg) failed at 10:17:11 with `toolbox answered 404: session not found`. The outer cron still finished green. [PR339](https://github.com/null-hype/agent-plugins/pull/339) and [PR340](https://github.com/null-hype/agent-plugins/pull/340) did not link the initiative update or state adopted/deferred/disagreed feedback with reasons. Neither demonstrates full CIT-518 acceptance.\n\n### Deployment/session evidence\n\nToolbox logs show the workflow Node client initialized a session on instance hqms2 at 10:16:21 and reused it at 10:16:43. [PR334](https://github.com/null-hype/agent-plugins/pull/334) merged at 10:16:43; its commit 7a65a8b triggered automatic toolbox deployment dep-dbd9inm1egvs738e1uig. Replacement instance p4tzg started at 10:17:02, deployment went live at 10:17:10, and the workflow's next request carried its existing session to p4tzg at 10:17:11, immediately before the recorded 404.\n\nThe server uses in-memory MCP sessions; workflow/src/toolbox.ts retains a session ID and currently fails on HTTP 404 without reinitializing. This is strong evidence of deployment invalidating an active session. It is conditional on timing, so a later successful run alone would not establish a fix. This is separate from the earlier 502; do not conflate their causes.\n\n### Requested direction for the existing loop\n\n1. Pick up CIT-518's unfinished initiative input preparation, durable revision/unresolved-feedback tracking, and explicit plan-PR response. Read this update plus the original bootstrap and prior retrospective before forming the next plan. Keep the issue open until its runtime acceptance is demonstrated; access-only changes do not satisfy it.\n2. Reconcile current main and existing issues, then create or reuse a focused toolbox/session-recovery follow-up through the normal loop. Implement bounded MCP reinitialization after a definitive missing-session response. Preserve completed-operation bookkeeping and inspect replay/idempotency before retries; avoid blindly replaying side effects after ambiguous network failures. Add a meaningful regression case covering session loss between calls.\n3. Consider restricting toolbox deploy triggers to relevant source changes, since unrelated main merges currently replace it. This reduces exposure but does not replace client recovery. Explain the selected approach or a reasoned deferral.\n4. Surface a failed apply clearly even if planning continues. A green outer cron is not successful execution. Preserve actionable error details and reconcile any partial operations before retrying.\n5. Keep native/Duo progress moving alongside these bounded repairs. Retain the original bootstrap's unresolved recommendations rather than replacing them with this incident.\n\n### Evidence expected\n\nIn the next changeset PR, link this update and state adopted, deferred or disagreed items with reasons based on refreshed state. Distinguish queued work, dispatched work, implemented revisions, deployed behavior and full acceptance. Verify recovery with a controlled session-loss regression and actual apply outcomes; merely avoiding a deployment overlap is insufficient. Observe one manual iteration and a genuinely scheduled tick without using an extra workflow trigger to mask a failure.\n\nObserver interventions: PR338 read-access hotfix; one earlier manual cron; CIT-518 moved back to Todo at Richard's request; this authorized initiative update and one new manual iteration. No direct implementation of the session fix by this observer is being claimed.\n\n<!-- cit518-retro post-hotfix-session-loss-2026-10-22T23:17:11Z -->",
+        "id": "152a984b-a5f7-4aeb-8757-8e9edfcbe6b8",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "update",
+        "revision": "6d122faa9932e7a41a89027b98b81f188fc63159218e2443af315d3d0f140df0",
+        "updatedAt": "2026-10-22T23:31:52.274Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-152a984b"
+      },
+      "items": [
+        {
+          "key": "failed-apply-visibility",
+          "summary": "Show a failed apply clearly even when planning continues, and reconcile partial operations before retrying",
+          "disposition": "adopted",
+          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Covered by CIT-523 (PR 346, merged). Stays open until a scheduled tick shows a failed apply surfaced in status.",
+          "evidence": [
+            "CIT-523 Done via PR 346",
+            "apply trn-08l4gdbdc6ng453cc738oeko0 reported completed with 2 applied"
+          ]
+        },
+        {
+          "key": "finish-input-preparation",
+          "summary": "Finish CIT-518's initiative input preparation, revision tracking and plan-PR response",
+          "disposition": "adopted",
+          "rationale": "This run received all five Initiative Zero sources, so input preparation is working. PR 344 added feedback transport and validation, and CIT-523 (PR 346) fixed the two failures that kept the last plan from committing. The remaining acceptance needs a plan PR that links the updates and a later cycle that retains unresolved feedback. Code merge alone does not close it.",
+          "status": "open",
+          "operations": [],
+          "noAction": "PR 344 and PR 346 are merged and CIT-518 is open. The maintainer-requested verification is a plan PR plus a later tick, not new build work, and the agent is better used on session recovery. CIT-518 stays Todo.",
+          "evidence": [
+            "CIT-518 attachments: PR 338 and PR 344",
+            "CIT-523 Done via PR 346",
+            "this run's initiative input holds five sources"
+          ]
+        },
+        {
+          "key": "keep-duo-moving",
+          "summary": "Keep native and Duo progress moving alongside the repairs",
+          "disposition": "adopted",
+          "rationale": "CIT-522 is done in env crisp-mayfly and CIT-521's PR 347 is open. This plan ships one environment and reviews one PR. The native slices behind CIT-502 wait on the maintainer.",
+          "status": "open",
+          "operations": [
+            {
+              "op": "review",
+              "target": "CIT-521"
+            },
+            {
+              "op": "ship",
+              "target": "CIT-522"
+            }
+          ],
+          "noAction": "",
+          "evidence": []
+        },
+        {
+          "key": "session-recovery-followup",
+          "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
+          "disposition": "adopted",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-523 did not cover it, and no issue exists. Replay must be checked first so ambiguous failures are not blindly retried. Duo has nothing ready for the agent, so it takes this next.",
+          "status": "open",
+          "operations": [
+            {
+              "op": "create",
+              "target": "new:toolbox-session-recovery"
+            },
+            {
+              "op": "delegate",
+              "target": "new:toolbox-session-recovery"
+            }
+          ],
+          "noAction": "",
+          "evidence": []
+        },
+        {
+          "key": "toolbox-deploy-triggers",
+          "summary": "Consider restricting toolbox deploy triggers to relevant source changes",
+          "disposition": "deferred",
+          "rationale": "Narrowing triggers lowers exposure but does not replace client recovery. It is scoped as the second step of the new session-recovery issue, after recovery is implemented and tested.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Deferred inside the new session-recovery issue; no separate dispatch is needed until the recovery step lands.",
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "body": "## Bootstrap update — corrected retrospective, 23 October 2026 (Sydney)\n\nThis is Initiative Zero’s first planning input, carrying the retrospective and its red-team corrections. Richard authorized using it to bootstrap and test initiative-focused planning. These are observations and recommendations; Richard’s decisions are binding, and planning may disagree with recommendations with reasons.\n\n### Delivery assessment\n\nThe Duo claim page, standalone export, Pkl-backed cards and stale-preview fix reached main through [#240](https://github.com/null-hype/agent-plugins/pull/240), [#304](https://github.com/null-hype/agent-plugins/pull/304), [#315](https://github.com/null-hype/agent-plugins/pull/315) and [#321](https://github.com/null-hype/agent-plugins/pull/321). That is real product progress. Native Xcode/TestFlight delivery remained unverified in this review.\n\n[CIT-500](https://linear.app/citizen6librarian6refrain4/issue/CIT-500) reports improved-javelin with deterministic XcodeGen output and eight Linux Swift tests. Its Xcode side is unverified, its app is an empty shell, and the worker identified missing supervisor/CI Swift testing and an unchecked branch-history/blob-size concern. Treat these as reported limits, not independently reproduced failures.\n\n### Proposed steering\n\n1. **Continue ready native work alongside CIT-495 acceptance evidence.** Locate existing qualifying merged-head test evidence before rerunning anything. The screenshot worker’s “I did not run those tests” does not establish that no qualifying evidence exists elsewhere. #321 has successful branch-checks and Storybook deployment, but those badges alone do not prove the precise Duo play tests and investigation spec required by [CIT-495](https://linear.app/citizen6librarian6refrain4/issue/CIT-495).\n2. **Finish the image handoff.** [#331’s files](https://github.com/null-hype/agent-plugins/pull/331/files) contained only capture.mjs. CIT-495’s inspected attachments held the PR link, not the PNG. The worker reported a capture in fair-labrador but had not inspected or attached it. Recover or regenerate, inspect and attach it. This does not establish that the image was lost, and it is not a prerequisite for independent native work.\n3. **Reconcile backlog policy.** The [reviewed supervisor prompt](https://github.com/null-hype/agent-plugins/blob/28ed9c5951ea9824535e101de9da0e309ae29623/.dagger/internal/devenv-base/supervisor/prompt.md) says both to preserve old work that blocks no Release and to decline nonblocking infrastructure for “blocks no Release.” [CIT-496](https://linear.app/citizen6librarian6refrain4/issue/CIT-496) explicitly remains Backlog and unqueued, separate from product acceptance. Distinguish retained-but-not-queued work from declined work and make the intended precedence explicit.\n4. **Consider stronger review-completion evidence while preserving the chosen follow-up policy.** The [merge loop](https://github.com/null-hype/agent-plugins/blob/28ed9c5951ea9824535e101de9da0e309ae29623/.dagger/internal/devenv-base/supervisor/supervisor.sh) checks a PR-level review marker’s age and current CI. The tool starts review asynchronously; the marker does not establish completion or coverage of the current head. Host-side SHA and exit records exist but are not connected to the merge decision. However, [#318](https://github.com/null-hype/agent-plugins/pull/318) explicitly records approval of the 30-minute rule. Requiring completed review would strengthen and change that policy, potentially delaying merges. Do not treat this recommendation as Richard having revoked his earlier decision. Findings continuing as follow-ups is a separate policy.\n\n### Lessons supported by the sample\n\n[CIT-433](https://linear.app/citizen6librarian6refrain4/issue/CIT-433) went through recovery and shipping before the maintainer established it was already fixed by [#233](https://github.com/null-hype/agent-plugins/pull/233/files). Reconcile current main before recovering an old implementation. That does not make all credential and shipping repairs valueless.\n\n[CIT-465](https://linear.app/citizen6librarian6refrain4/issue/CIT-465) required ask delivery, shipping eligibility and session-thread repairs (#303/#307/#308/#309); the repaired path then produced merged Pkl cards. Observe the actual worker response and resulting artifact, rather than treating accepted dispatch as completed work. The receiving agent could not perform the requested git rebase and recreated the environment from newer main instead.\n\n### Red-team qualifications and evidence boundary\n\nThis is a bounded delivery-and-handoff review through main 28ed9c5951ea9824535e101de9da0e309ae29623 and morning-of-23-October Linear observations. Refresh current issue/PR state before turning these observations into work.\n\nThe sample selected troubled handoffs and did not measure the successful-handoff denominator, intervention burden, cost or dominant bottleneck. No new restic restoration, tests, UI QA or live-host audit was performed. Agent test claims remain attributed reports. The exact pinned main also has a failed [dagger-check run](https://github.com/null-hype/agent-plugins/actions/runs/39856191457), whose cause and effect on Duo were not diagnosed. No actual unreviewed merge or erroneous decline was demonstrated.\n\n### Response expected from planning\n\nLink this update in the first enabled changeset and state which recommendations are adopted, deferred or disagreed with, with reasons and current evidence. An explicit reasoned disagreement is a valid response. Keep unresolved feedback visible across cycles until addressed or superseded. The initiative structure can evolve as Richard shadows and steers; do not wait for a final taxonomy before moving useful work forward.",
+        "id": "24c54be5-dd2f-4440-88a1-a19c49b598de",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "update",
+        "revision": "045b05ec08744eca0aba33d30fbaef197c49c4729a4339d613e1ce8619640058",
+        "updatedAt": "2026-10-22T21:38:07.708Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-24c54be5"
+      },
+      "items": [
+        {
+          "key": "backlog-policy",
+          "summary": "Distinguish retained-but-not-queued work from declined work",
+          "disposition": "deferred",
+          "rationale": "This plan declines nothing for blocking no Release, and CIT-496 stays in Backlog. Rewriting the prompt text is outside what a changeset can change.",
+          "status": "open",
+          "operations": [],
+          "noAction": "No issue is affected this run; the intended precedence is applied by not declining retained work.",
+          "evidence": []
+        },
+        {
+          "key": "cit495-evidence-and-image",
+          "summary": "Finish CIT-495's acceptance evidence and the screenshot handoff",
+          "disposition": "adopted",
+          "rationale": "CIT-495 is marked Done, but the regenerated screenshot is only in env accepted-lion, shipped as PR 342. The Codex review of PR 342 was applied and is running.",
+          "status": "open",
+          "operations": [],
+          "noAction": "The review of PR 342 is already running (job:review-342 busy in host_status), so it is not proposed again. This item stays open until PR 342 merges with the screenshot.",
+          "evidence": [
+            "apply trn-08l4gdbdc6ng453cc738oeko0 applied review CIT-516: PR 342",
+            "host_status shows job:review-342"
+          ]
+        },
+        {
+          "key": "observe-worker-response",
+          "summary": "Observe the actual worker response and artifact instead of treating accepted dispatch as completed work",
+          "disposition": "adopted",
+          "rationale": "The same ask path produced merged Pkl cards, and later asks produced real environments for CIT-516, CIT-521, CIT-501 and CIT-522. Each is checked against Linear and the host before it is called done.",
+          "status": "resolved",
+          "operations": [],
+          "noAction": "The practice is applied each run.",
+          "evidence": [
+            "PR 315 merged",
+            "env accepted-lion, shining-gibbon, factual-squirrel and crisp-mayfly reported on their issues"
+          ]
+        },
+        {
+          "key": "reconcile-main-before-recovering",
+          "summary": "Reconcile current main before recovering an old implementation",
+          "disposition": "adopted",
+          "rationale": "CIT-433 was already fixed by PR 233, and its PR 271 is still open and unmerged. Nothing is being recovered from it this run.",
+          "status": "resolved",
+          "operations": [],
+          "noAction": "No recovery of old implementations is proposed this run.",
+          "evidence": [
+            "CIT-433 not in this plan",
+            "PR 271 still open"
+          ]
+        },
+        {
+          "key": "red-team-qualifications",
+          "summary": "Treat the review as a bounded sample and refresh state before acting",
+          "disposition": "adopted",
+          "rationale": "Every claim used here was rechecked against live Linear, the host and the open PR list this run, not copied from the update.",
+          "status": "resolved",
+          "operations": [],
+          "noAction": "Contextual qualification only.",
+          "evidence": [
+            "Linear issue states read this run",
+            "host_status and agent_ship_status read this run"
+          ]
+        },
+        {
+          "key": "review-completion-evidence",
+          "summary": "Consider requiring completed-review evidence before merge",
+          "disposition": "deferred",
+          "rationale": "PR 318 records Richard's approval of the 30-minute rule. Requiring a completed review would change that policy and could delay merges, and nothing here shows he has revoked it.",
+          "status": "open",
+          "operations": [],
+          "noAction": "No policy change proposed; the existing rule stands until Richard decides otherwise.",
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "body": "## Manual-cycle retrospective — 23 October 2026, 09:04–09:10 Sydney\n\nRichard authorized a manual cron run, an evidence-backed retrospective here, verification of feedback incorporation, and a double-check on the automatic tick. This is the retrospective from that manual run; it is not evidence that initiative integration is active.\n\n### Observed result\n\n* [CIT-518](https://linear.app/citizen6librarian6refrain4/issue/CIT-518) advanced from Triage to Todo under [CIT-519 — Initiative-focused planning](https://linear.app/citizen6librarian6refrain4/issue/CIT-519). Both had no delegate when inspected. This is acceptance and queue structure, not implementation.\n* The real [apply run trn-08l4gdbd8ibhbta0s73f9p5ig](https://dashboard.render.com/wf/wfl-dbche33rjlhs73bgkrr0/runs/trn-08l4gdbd8ibhbta0s73f9p5ig) executed revision c0738ca from [#335](https://github.com/null-hype/agent-plugins/pull/335). It failed at 09:08:58 with a toolbox HTTP 502 during host wake, after the structural Linear writes. CIT-516 was still undelegated when inspected. Do not describe this apply as successful because the outer cron succeeded.\n* The cron continued planning, repaired one Pkl validation error, produced [#336](https://github.com/null-hype/agent-plugins/pull/336), and finished at 09:10:18. #336 merged at 09:09:54; it re-proposes CIT-516's screenshot fixes and CIT-500's review, and clusters CIT-507 into a new duo-content release. These are planned operations for a later apply.\n* The run explicitly reported Initiative Zero remained unreadable through its tools and CIT-518 stayed accepted but unstarted. It did not demonstrate reading or answering the bootstrap update. The inspected supervisor allowlist omits initiative/status-update reads; that is a likely tool-policy restriction, not proof that its Linear API credential lacks access.\n* [#331](https://github.com/null-hype/agent-plugins/pull/331) merged at 09:08:34. This advances the capture-script artifact; it does not establish that the PNG was inspected/attached or all CIT-495 acceptance evidence is complete. No new native/TestFlight delivery was established by this review.\n\n[Supervisor logs](https://dashboard.render.com/cron/crn-dbc1s9ss728c73dn3tl0/logs) contain the 09:04:46 start, 09:09:42 planning assessment, #336, and successful outer completion.\n\n### Recommended next direction\n\n1. Follow through on CIT-518/CIT-519: implement initiative input preparation, permit the narrowly required initiative reads through the established review/deploy path, verify access with the running planner, and retain unresolved feedback. An inability to read initiatives is part of the integration work, not a reason to leave it indefinitely unstarted. The existing product priority may justify a bounded deferral; explain that tradeoff.\n2. On the automatic tick, reconcile the partial apply before retrying. Verify actual delegation/review results and inspect for duplicates; do not equate a new changeset or green cron with recovered execution.\n3. Keep useful Duo/native progress moving alongside capture evidence. Explain what is adopted, deferred or disagreed with from the original bootstrap and this update using refreshed issue/PR state. Recommendations remain open to reasoned disagreement; Richard's decisions remain binding.\n\n### Verification and limits\n\nThe next planner run beginning after publication should link this update and explain its response. A source change, cluster, or similar-looking plan alone does not demonstrate consumption. This review inspected run logs, live Linear state and PR metadata; it did not reproduce tests, audit the host, diagnose the 502's underlying cause, or prove duplicate suppression. One additional cycle of deferral is not proof of indefinite starvation.\n\nManual intervention: this observer triggered the cron at Richard's request and published this update. No direct workflow rerun, permission edit, issue-state edit, merge or deployment was performed by this observer.\n\n<!-- cit518-retro manual-cron-2026-10-22T22:04:46Z apply-trn-08l4gdbd8ibhbta0s73f9p5ig -->",
+        "id": "37feb4cc-e3d5-4523-8b9f-c3cdcaca899b",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "update",
+        "revision": "ba8b35f16114faf02b1f3d601809157536a06f278e317375dbbf88f350e84e68",
+        "updatedAt": "2026-10-22T22:12:08.457Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-37feb4cc"
+      },
+      "items": [
+        {
+          "key": "cit518-follow-through",
+          "summary": "Follow through on CIT-518 and CIT-519 initiative integration",
+          "disposition": "adopted",
+          "rationale": "The inability to read initiatives that this update described is gone: this run has the input. CIT-518 stays open for the acceptance steps.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Already covered by PR 344, PR 346 and the open CIT-518. The remaining work is verification across cycles, not a build task for the agent.",
+          "evidence": [
+            "CIT-518 attachments",
+            "this run's initiative input"
+          ]
+        },
+        {
+          "key": "duo-progress",
+          "summary": "Keep Duo and native work moving alongside capture evidence",
+          "disposition": "adopted",
+          "rationale": "CIT-522 is done and its ship is proposed, CIT-521's PR is open and CIT-501 and CIT-516 are in flight. The native app slices wait on CIT-502, which needs the maintainer on a Mac.",
+          "status": "open",
+          "operations": [],
+          "noAction": "The work is underway; the open ops are listed in the first source's keep-duo-moving item.",
+          "evidence": [
+            "CIT-522 done in crisp-mayfly",
+            "PR 347 open for CIT-521"
+          ]
+        },
+        {
+          "key": "reconcile-partial-apply",
+          "summary": "Reconcile the partial apply before retrying",
+          "disposition": "adopted",
+          "rationale": "The 09:08 apply's effects have since been confirmed in Linear: CIT-516 is delegated and in progress, and the CIT-500 review ran.",
+          "status": "resolved",
+          "operations": [],
+          "noAction": "Verified against live state.",
+          "evidence": [
+            "CIT-500 Done via PR 334",
+            "CIT-516 delegate Claude, In Progress"
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "body": "## Manual-run retrospective and second-round steering — 23 October 2026, 10:32–10:40 Sydney\n\nRichard requested this retrospective after the manual iteration, followed by an eligible scheduled cycle to assess incorporation of this second feedback round. This follows the [10:31 steering update](https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-152a984b); it preserves that update and the original bootstrap as unresolved inputs.\n\n### Actual outcome\n\nThe manual cron started at 10:32:43, restored snapshot 0a2b83b5, and finished green at 10:40:11. Its [apply trn-08l4gdbd9s68ogb4c73fhlc90](https://dashboard.render.com/wf/wfl-dbche33rjlhs73bgkrr0/runs/trn-08l4gdbd9s68ogb4c73fhlc90) actually **failed at 10:39:13**, with zero retries and no result payload:\n\n`toolbox agent_ship: ship: Process exited with status 1: a job for ship is still running; check workspace_status`\n\nThis is a different failure from the prior missing-session 404. It does not establish session recovery is fixed, and it is not evidence of another session loss.\n\nThe planner reported CIT-521's session started and accepted-lion's CIT-516 ship running. Linear inspection confirms CIT-521 and CIT-516 have Claude delegates and environment branch attachments. This is progress, not proof of completed shipping. CIT-501 had no ship attachment when inspected. The planner recognized a single ship at a time and avoided proposing another ship, but also described the previous operations as applied and said “Nothing is stuck,” despite the recorded apply failure. Reconcile task-level failure and partial side effects rather than treating either statement as authoritative on its own.\n\n[PR341](https://github.com/null-hype/agent-plugins/pull/341) merged at 10:39:50 against d7e32de. It contains zero operations. Its body links no initiative update and records no adopted/deferred/disagreed rationale. The visible planner assessment did not address Initiative Zero, CIT-518 or the session-recovery recommendation. [CIT-518](https://linear.app/citizen6librarian6refrain4/issue/CIT-518) remains Todo, undelegated and unchanged since the maintainer-requested reopening at 10:27. We therefore have no positive evidence that the 10:31 feedback was consumed or acted upon. No session-recovery dispatch was demonstrated in the inspected run evidence.\n\n[Supervisor logs](https://dashboard.render.com/cron/crn-dbc1s9ss728c73dn3tl0/logs) show the apply error, planner assessment, empty changeset, snapshot 39840ca3 and successful outer completion.\n\n### Direction for the next cycle\n\n1. Explicitly read this update, the 10:31 update and original bootstrap before planning. Link this update in the plan PR and explain what is adopted, deferred or disagreed with. If initiative context still does not reach planning, prioritize the missing CIT-518 integration rather than inferring that silence means the feedback was rejected or completed. Keep CIT-518 open until its full runtime acceptance is demonstrated.\n2. Refresh workspace_status and ship status before starting another ship. Determine which prior side effects actually completed, reconcile partial apply state, and sequence or wait for the existing host job rather than launching competing ships or blindly rerunning the entire failed batch. Create/reuse a bounded follow-up for asynchronous ship coordination if the current implementation cannot do this reliably.\n3. Carry forward the deployment/session recovery work described in the previous update: a deployment invalidated an in-memory session and the workflow client did not reconnect. Create/reuse a focused task, implement bounded recovery after definitive missing-session responses with safe operation replay, and verify with a session-loss regression. A run without a 404 is insufficient evidence of repair.\n4. Make failed apply versus successful planning visible in status and retrospective language. Preserve useful planning after a failure if appropriate, but do not call the cycle successfully applied or say nothing is stuck without resolving the task failure and pending work.\n5. Continue CIT-521 and useful Duo/native delivery alongside the bounded integration and reliability work. Explain prioritization rather than silently dropping initiative feedback.\n\n### Next verification\n\nThe next scheduled tick is 11:13 Sydney, after publication of this update. The observer will check its actual apply outcome, current issue/PR state, and explicit response to this second feedback round. Dispatch is progress; implementation, tests, deployment and runtime acceptance are separate milestones. No extra workflow trigger or manual run is required.\n\nManual interventions in this round: one authorized cron trigger and this evidence-backed initiative update. No direct session/ship fix, extra dispatch, merge or deployment was performed by the observer.\n\n<!-- cit518-retro manual-cron-1792711963 apply-trn-08l4gdbd9s68ogb4c73fhlc90 -->",
+        "id": "b763920f-35e7-4760-8377-2c0385e89c54",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "update",
+        "revision": "b41415a9aa78f49e85786b1e0720d1a96c40814dbc43f3c20bab92c52ed64454",
+        "updatedAt": "2026-10-22T23:50:51.584Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-b763920f"
+      },
+      "items": [
+        {
+          "key": "continue-cit521",
+          "summary": "Continue CIT-521 and Duo native delivery",
+          "disposition": "adopted",
+          "rationale": "CIT-521 was shipped and PR 347 is open without a review. Reviewing it once is the next step.",
+          "status": "open",
+          "operations": [
+            {
+              "op": "review",
+              "target": "CIT-521"
+            }
+          ],
+          "noAction": "",
+          "evidence": []
+        },
+        {
+          "key": "explicit-response-in-plan-pr",
+          "summary": "Link this update and state adopted, deferred and disagreed items in the plan PR",
+          "disposition": "adopted",
+          "rationale": "This feedback block is that response. The plan PR does not exist yet, so the link cannot be confirmed from here.",
+          "status": "open",
+          "operations": [],
+          "noAction": "No dispatch needed; the response is this output.",
+          "evidence": []
+        },
+        {
+          "key": "failed-apply-status",
+          "summary": "Make a failed apply versus a successful plan visible in status and retrospectives",
+          "disposition": "adopted",
+          "rationale": "This response states the observed apply outcome separately from the proposed operations. CIT-523 keeps the two outcomes separate in the code.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Covered by CIT-523 (PR 346, merged). Open until a failing scheduled tick is shown surfaced.",
+          "evidence": [
+            "CIT-523 Done via PR 346"
+          ]
+        },
+        {
+          "key": "retry-one-ship",
+          "summary": "Do not blindly rerun the failed batch; reconcile what completed",
+          "disposition": "adopted",
+          "rationale": "The earlier batch was reconciled: only the unfinished CIT-501 ship and PR 342 review were re-proposed, and both applied.",
+          "status": "resolved",
+          "operations": [],
+          "noAction": "Done.",
+          "evidence": [
+            "apply trn-08l4gdbdc6ng453cc738oeko0: applied ship CIT-501 and review CIT-516"
+          ]
+        },
+        {
+          "key": "session-recovery",
+          "summary": "Implement bounded recovery after a missing-session response, verified by a session-loss regression",
+          "disposition": "adopted",
+          "rationale": "A run without a 404 proves nothing. The new issue requires a controlled session-loss regression.",
+          "status": "open",
+          "operations": [
+            {
+              "op": "create",
+              "target": "new:toolbox-session-recovery"
+            },
+            {
+              "op": "delegate",
+              "target": "new:toolbox-session-recovery"
+            }
+          ],
+          "noAction": "",
+          "evidence": []
+        },
+        {
+          "key": "ship-coordination",
+          "summary": "Refresh ship status before starting another ship, sequence ships, and create a bounded follow-up if needed",
+          "disposition": "adopted",
+          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, so no new follow-up is needed for it. This plan still proposes only one ship. The last apply carried one ship and one review without collision, which does not yet show two concurrent ships are handled.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Covered by CIT-523, which is Done. No new dispatch. It stays open until a batch with competing ships is observed.",
+          "evidence": [
+            "CIT-523 Done via PR 346",
+            "apply trn-08l4gdbdc6ng453cc738oeko0 completed with 2 applied"
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "body": "Initiative Zero — Bring Duo’s claim-and-refutation experience into use\n\nSteer Duo delivery across projects through evidence-led initiative updates, with explicit planner responses and Richard’s decisions taking precedence.\n\n## Outcome\n\nPut the Duo claim-and-refutation experience into Richard’s hands, initially through the existing [CIT-439](https://linear.app/citizen6librarian6refrain4/issue/CIT-439/iphone-duo-editor-one-claim-one-refutation-on-testflight) delivery work. Coordinate the app, enabling infrastructure and relevant content across projects.\n\nThis is the first proposed direction, not a fixed taxonomy. Richard will shadow and steer as work develops. Propose changes, splits or additional initiatives when evidence warrants them; the initial structure need not be settled before useful work continues.\n\n## How the initiative steers the loop\n\nInitiative updates hold retrospectives, evidence, uncertainty and proposed next moves. Before writing its changeset, planning considers the initiative description, new or revised updates and unresolved feedback alongside current issues and PRs.\n\nThe changeset links the updates considered and explains what it adopted, deferred or disagreed with, and why. Recommendations are open to reasoned disagreement. Richard’s explicit decisions take precedence over agent recommendations and stale operating instructions.\n\nKeep unresolved feedback visible until addressed or explicitly superseded. Reconcile historical observations with current state before acting. Projects and issues continue to hold concrete work; the existing loop plans and applies it.\n\n## Bootstrap\n\nThe first update is the corrected 23 October retrospective, including its red-team qualifications. Use it as real input for the planning integration and its acceptance test.\n\nRichard authorized creating this initiative and a Triage issue so the existing loop can implement the integration. The first initiative-focused cycle occurs once that integration is active; creating this initiative alone does not change the running planner.\n\nInitial delivery context: [CIT-439](<https://linear.app/citizen6librarian6refrain4/issue/CIT-439>), [CIT-495](<https://linear.app/citizen6librarian6refrain4/issue/CIT-495>), [CIT-472](<https://linear.app/citizen6librarian6refrain4/issue/CIT-472>). Planning should associate the relevant existing projects as it takes up the bootstrap.\n\nBootstrap implementation is queued in [CIT-518 — Bootstrap initiative-focused planning using Initiative Zero’s corrected retro](<https://linear.app/citizen6librarian6refrain4/issue/CIT-518/bootstrap-initiative-focused-planning-using-initiative-zeros-corrected>), currently in Triage for the existing loop.",
+        "id": "initiative:be78729c-779b-457c-b514-f88dddd55e0a",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "description",
+        "revision": "25f6e71e0f4871e7736d3375a310a8bb345542847ac3fa7d311514342cfb064a",
+        "updatedAt": "2026-10-22T21:38:42.298Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d"
+      },
+      "items": [
+        {
+          "key": "associate-existing-projects",
+          "summary": "Associate relevant existing projects with Initiative Zero",
+          "disposition": "deferred",
+          "rationale": "The input lists no projects, and a changeset has no operation for associating projects with an initiative.",
+          "status": "open",
+          "operations": [],
+          "noAction": "No available operation; a person or a later tool change must associate them.",
+          "evidence": []
+        },
+        {
+          "key": "initiative-description-context",
+          "summary": "Use the initiative description as planning context for Duo delivery",
+          "disposition": "adopted",
+          "rationale": "The description sets the outcome as getting the Duo experience into Richard's hands through CIT-439. This plan keeps that delivery moving and applies the maintainer-precedence rule.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Contextual. The Duo work it describes is already in the plan.",
+          "evidence": []
+        }
+      ]
+    }
+  ]
+}

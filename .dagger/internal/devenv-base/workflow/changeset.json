@@ -1,36 +1,51 @@
 {
   "seen": {
-    "CIT-501": "2026-10-22T21:43:06.333Z",
-    "CIT-516": "2026-10-23T00:17:02.208Z",
-    "CIT-521": "2026-10-22T23:45:38.363Z",
-    "CIT-522": "2026-10-22T23:16:09.331Z"
+    "CIT-450": "2026-10-22T05:31:28.387Z",
+    "CIT-521": "2026-10-23T02:17:02.232Z",
+    "CIT-522": "2026-10-23T01:54:04.982Z"
   },
-  "releases": [],
-  "clusters": [],
+  "releases": [
+    {
+      "name": "supervisor-workflow",
+      "description": "The supervisor loop itself: planning that reads Initiative Zero, applies reliably and reports failures honestly.",
+      "pipeline": "supervisor"
+    }
+  ],
+  "clusters": [
+    {
+      "key": "new:toolbox-session-recovery",
+      "title": "Toolbox session recovery for the supervisor workflow",
+      "description": "From Initiative Zero's retrospectives: a toolbox deployment replaced the instance while the workflow client held an in-memory MCP session, and the client failed on HTTP 404 without reconnecting. Step 1: after a definitive missing-session response the workflow's toolbox client reinitializes a bounded number of times, checks completed-operation bookkeeping and idempotency before replaying anything, and does not blindly replay side effects after ambiguous network failures. Add a regression test that loses the session between calls. Step 2, after step 1: restrict toolbox deploy triggers to relevant source changes. CIT-450 (do not report success that did not happen) is the first member.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "medium",
+      "serves": "release:supervisor-workflow",
+      "blockedBy": [],
+      "issues": [
+        "CIT-450"
+      ]
+    }
+  ],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
   "delegate": [
     {
-      "issue": "CIT-522",
+      "issue": "new:toolbox-session-recovery",
       "agent": "Claude"
     }
   ],
   "ship": [
     {
-      "issue": "CIT-521",
-      "env": "shining-gibbon"
-    },
-    {
-      "issue": "CIT-501",
-      "env": "factual-squirrel"
+      "issue": "CIT-522",
+      "env": "crisp-mayfly"
     }
   ],
   "review": [
     {
-      "issue": "CIT-516",
-      "pr": 342
+      "issue": "CIT-521",
+      "pr": 347
     }
   ]
 }
