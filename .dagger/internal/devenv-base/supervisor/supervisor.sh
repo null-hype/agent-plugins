@@ -505,9 +505,31 @@ gh pr list --repo "$CALIBRATION_REPO" --state all --limit 200 \
 jq -c '[.[] | select(.headRefName != "'"$CALIBRATION_BRANCH"'" and (.isCrossRepository | not))
   | select((.headRefName | startswith("cit-")) or .state == "OPEN")][:40]' "$CAL_DIR/pulls.raw" > "$CAL_DIR/pulls.json" 2> /dev/null ||
   echo '[]' > "$CAL_DIR/pulls.json"
+# The agent answers in its Linear agent session, not in issue comments, and
+# Linear's MCP has no tool that reads a session, so the recent sessions go in
+# the prompt: without them planning never sees an agent say it is done, and
+# delegates the same issue again. Only what the agent said back (responses,
+# questions, errors) and the asks it got; its thoughts and tool calls are
+# narration.
+hfile=$(mktemp)
+printf 'Authorization: %s\n' "$LINEAR_API_KEY" > "$hfile"
+jq -n '{query: "{ agentSessions(first: 20, orderBy: updatedAt) { nodes { status updatedAt issue { identifier }
+  activities(first: 25) { nodes { createdAt content { __typename
+    ... on AgentActivityResponseContent { body } ... on AgentActivityErrorContent { body }
+    ... on AgentActivityElicitationContent { body } ... on AgentActivityPromptContent { body } } } } } } }"}' |
+  curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H @"$hfile" --data @- 2> /dev/null |
+  jq -c '[.data.agentSessions.nodes | sort_by(.updatedAt) | reverse | .[] | select(.issue)
+    | {issue: .issue.identifier, status, updatedAt,
+       activities: [.activities.nodes | sort_by(.createdAt) | .[] | select(.content.body)
+         | {at: .createdAt, type: (.content.__typename | sub("^AgentActivity"; "") | sub("Content$"; "") | ascii_downcase),
+            body: (.content.body | if length > 1500 then .[:1500] + " [cut]" else . end)}][-4:]}]' \
+  > "$CAL_DIR/agent-sessions.json" 2> /dev/null && [ -s "$CAL_DIR/agent-sessions.json" ] ||
+  { echo "supervisor: WARNING could not read the agent sessions" >&2; echo '[]' > "$CAL_DIR/agent-sessions.json"; }
+rm -f "$hfile"
 prompt=$(sed -e "s|{{NOW}}|$now|g" "$prompt_file" |
-  awk -v plan="$CAL_DIR/plan-for-prompt.json" -v pulls="$CAL_DIR/pulls.json" -v initiatives="$CAL_DIR/initiative-input.json" -v applied="$CAL_DIR/apply-evidence.json" -v ops="$CAL_DIR/operations.txt" \
+  awk -v plan="$CAL_DIR/plan-for-prompt.json" -v pulls="$CAL_DIR/pulls.json" -v sessions="$CAL_DIR/agent-sessions.json" -v initiatives="$CAL_DIR/initiative-input.json" -v applied="$CAL_DIR/apply-evidence.json" -v ops="$CAL_DIR/operations.txt" \
     '$0 == "{{PLAN}}" { while ((getline l < plan) > 0) print l; next }
+     $0 == "{{AGENT_SESSIONS}}" { while ((getline l < sessions) > 0) print l; next }
      $0 == "{{OPERATIONS}}" { while ((getline l < ops) > 0) print l; next }
      $0 == "{{INITIATIVES}}" { while ((getline l < initiatives) > 0) print l; next }
      $0 == "{{APPLY_EVIDENCE}}" { while ((getline l < applied) > 0) print l; next }

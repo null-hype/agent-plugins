@@ -227,9 +227,15 @@ cat > "$BIN/curl" <<'STUB'
 # Linear's API answers whether apply noted a review of the PR: one noted an
 # hour ago for each PR in CURL_STUB_REVIEWED, and just now for one in
 # CURL_STUB_REVIEWING.
+# The agent sessions query answers with one finished session on CIT-524.
 case "$*" in
   *api.linear.app*)
-    pr=$(jq -r '.variables.m' | sed -E 's/.*review ([0-9]+).*/\1/')
+    q=$(cat)
+    if [[ "$q" == *agentSessions* ]]; then
+      echo '{"data":{"agentSessions":{"nodes":[{"status":"complete","updatedAt":"2026-10-23T07:00:00Z","issue":{"identifier":"CIT-524"},"activities":{"nodes":[{"createdAt":"2026-10-23T06:59:00Z","content":{"__typename":"AgentActivityThoughtContent"}},{"createdAt":"2026-10-23T07:00:00Z","content":{"__typename":"AgentActivityResponseContent","body":"Done, env amazed-bluebird"}}]}}]}}}'
+      exit 0
+    fi
+    pr=$(printf '%s' "$q" | jq -r '.variables.m' | sed -E 's/.*review ([0-9]+).*/\1/')
     if [[ " ${CURL_STUB_REVIEWED:-} " == *" $pr "* ]]; then when=$(date -u -d -1hour +%FT%TZ)
     elif [[ " ${CURL_STUB_REVIEWING:-} " == *" $pr "* ]]; then when=$(date -u +%FT%TZ)
     else echo '{"data":{"comments":{"nodes":[]}}}'; exit 0; fi
@@ -623,6 +629,8 @@ fi
 if grep -q '"headRefName":"cit-446-fork"' "$CLAUDE_ARGV"; then
   fail "the prompt should leave fork PRs out: planning would make them review candidates"
 fi
+grep -q '"issue":"CIT-524","status":"complete","updatedAt":"2026-10-23T07:00:00Z","activities":\[{"at":"2026-10-23T07:00:00Z","type":"response","body":"Done, env amazed-bluebird"}\]' "$CLAUDE_ARGV" ||
+  fail "the prompt should carry what the agent said in its sessions, without its narration"
 grep -qE 'Now, UTC: \*\*[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$CLAUDE_ARGV" ||
   fail "the prompt should carry the current UTC time"
 if grep -q '{{' "$CLAUDE_ARGV"; then
