@@ -18,7 +18,6 @@ public enum EvidenceLog {
     /// A line that does not parse throws with its number; it is never skipped, because the
     /// evidence the app shows would then silently be a different log from the one recorded.
     public static func records(from data: Data) throws -> [EvidenceRecord] {
-        let decoder = JSONDecoder()
         var records: [EvidenceRecord] = []
         var lineNumber = 0
         for rawLine in data.split(separator: UInt8(ascii: "\n"), omittingEmptySubsequences: false) {
@@ -26,7 +25,7 @@ public enum EvidenceLog {
             let line = rawLine.last == UInt8(ascii: "\r") ? rawLine.dropLast() : rawLine[...]
             if line.allSatisfy({ $0 == UInt8(ascii: " ") || $0 == UInt8(ascii: "\t") }) { continue }
             do {
-                records.append(EvidenceRecord(lineNumber: lineNumber, value: try decoder.decode(JSONValue.self, from: Data(line))))
+                records.append(EvidenceRecord(lineNumber: lineNumber, value: try JSONValue(parsing: Data(line))))
             } catch {
                 throw EvidenceLogError(lineNumber: lineNumber, reason: String(describing: error))
             }
