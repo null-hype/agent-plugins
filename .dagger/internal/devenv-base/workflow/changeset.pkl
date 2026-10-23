@@ -1,8 +1,12 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@a08b4c8955e4fe432830276d1a2213393c9e7695. Merging it is applying it; render with
+// main@28a4d4d95cd1afbd18a4fd35ec759e268c1990d9. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-501"] = "2026-10-23T04:27:10.999Z"
+  ["CIT-524"] = "2026-10-23T04:10:49.232Z"
 }
 
+delegate { new { issue = "CIT-524"; agent = "Claude"; ask = "I have not heard back on this issue for several hours, so I am asking again in different words. Please open a new container-use environment with environment_create (editing the host directly is denied on purpose) and make the first change there: when workflow/src/toolbox.ts gets a 404 for a missing session, it should reinitialize at most twice, and it must not replay agent_ship, codex_review, agent_start, host_start or host_stop after an unclear failure. Add a test to toolbox.test.ts that loses the session between two calls. Run the tests in that environment, commit, and reply here with the environment id. Leave the Render deploy filter and CIT-450 for a later round." } }
+ship { new { issue = "CIT-501"; env = "factual-squirrel" } }
