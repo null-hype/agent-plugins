@@ -16,14 +16,15 @@
           "key": "failed-apply-visibility",
           "summary": "Show a failed apply clearly even when planning continues, and reconcile partial operations before retrying",
           "disposition": "adopted",
-          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. This run's apply failed with no operations listed and no error detail, which is stated as a failure and not as recovered execution.",
+          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. The earlier CIT-501 ships did fail without a reported line, and the agent session now explains why: the environment was built on an unmerged branch.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 (PR 346, merged), with PR 354 aimed at ships that fail after apply starts them; it is no longer in the open PR list but I cannot confirm it merged. The failed apply carries no error detail, so no retry or partial-operation reconciliation is possible from here. Stays open until a scheduled tick shows a failed apply surfaced with actionable detail.",
+          "noAction": "Covered by CIT-523 (PR 346, merged), with PR 354 aimed at ships that fail after apply starts them; it is no longer in the open PR list but I cannot confirm it merged. The 09:13 failed apply still has no error detail. Stays open until a scheduled tick shows a failed apply surfaced with actionable detail.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "PR 354 absent from this run's open PR list",
-            "apply trn-08l4gdbdibmgce30c73antmgg status failed: Task exited with non-zero exit code, after a plan with no operations"
+            "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail",
+            "apply trn-08l4gdbdj7so453cc738ofi7g completed with 0 applied after a plan with no operations"
           ]
         },
         {
@@ -45,37 +46,49 @@
           "key": "keep-duo-moving",
           "summary": "Keep native and Duo progress moving alongside the repairs",
           "disposition": "adopted",
-          "rationale": "CIT-521, CIT-516, CIT-517 and CIT-522 are Done: PR 352 merged at 04:30. CIT-525 and CIT-526 (run the DuoCore tests on an Xcode runner) are under CIT-439. CIT-501's ship has twice produced no PR and no applied line, and the agent has just been re-delegated on CIT-524. The native slices behind CIT-502 and CIT-526 wait on the maintainer on a Mac.",
+          "rationale": "CIT-521, CIT-516, CIT-517 and CIT-522 are Done: PR 352 merged at 04:30. The agent redid CIT-501 in guiding-baboon from current main, so it is shipped now, and the agent is free, so CIT-525 (the token-precision follow-up) goes to it. CIT-526 and the native slices behind CIT-502 wait on the maintainer on a Mac.",
           "status": "open",
-          "operations": [],
-          "noAction": "A third CIT-501 ship is not proposed because the last one produced nothing in the applied report. It is handed back to the agent with an ask once the agent is free, if it still has no branch next tick. The agent was just re-delegated on CIT-524, so nothing else is delegated.",
+          "operations": [
+            {
+              "op": "delegate",
+              "target": "CIT-525"
+            },
+            {
+              "op": "ship",
+              "target": "CIT-501"
+            }
+          ],
+          "noAction": "",
           "evidence": [
-            "CIT-501 has no PR or attachment since its 02:18 ship",
             "PR 352 merged at 04:30",
-            "apply trn-08l4gdbdhfd1utons73avneeg applied delegate CIT-524 only"
+            "agent_sessions CIT-501: guiding-baboon reported at 04:17 with 13 DuoCore tests passing, built from origin/main 562df2a",
+            "agent_sessions CIT-524 and CIT-501 both complete"
           ]
         },
         {
           "key": "session-recovery-followup",
           "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
           "disposition": "adopted",
-          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it. The agent had stopped because host Edit was denied, and the re-ask in new words has now been applied.",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent has implemented Step 1 in environment prime-flounder. It is committed in the environment and not yet on a branch, so it is not deployed and the real server was not exercised.",
           "status": "open",
           "operations": [],
-          "noAction": "The new-wording ask was applied in the last run and the agent has had no time to answer, so delegating again would only restart its session. The work is dispatched, not implemented, deployed or tested.",
+          "noAction": "The work is implemented and tested in prime-flounder only. Its ship is the next one after CIT-501, since one ship runs per changeset, so it is not proposed this tick and the delegation is not repeated. The Render deploy filter and CIT-450 stay for later rounds.",
           "evidence": [
-            "apply trn-08l4gdbdhfd1utons73avneeg applied delegate CIT-524 with the new-wording ask"
+            "agent_sessions CIT-524 at 08:18: the agent confirmed the ask was already done",
+            "agent_sessions CIT-524: prime-flounder reported at 04:10 with 71 workflow tests passing and tsc clean"
           ]
         },
         {
           "key": "toolbox-deploy-triggers",
           "summary": "Consider restricting toolbox deploy triggers to relevant source changes",
           "disposition": "deferred",
-          "rationale": "Narrowing triggers lowers exposure but does not replace client recovery. It is scoped as the second step of the new session-recovery issue, after recovery is implemented and tested.",
+          "rationale": "Narrowing triggers lowers exposure but does not replace client recovery. The agent found the toolbox-spike Render service is not defined in this repo, so the change is a Render dashboard or API setting that needs Richard's OK. It stays as the second step of the session-recovery issue.",
           "status": "open",
           "operations": [],
-          "noAction": "Deferred inside the new session-recovery issue; no separate dispatch is needed until the recovery step lands.",
-          "evidence": []
+          "noAction": "Deferred inside the session-recovery issue; it needs the maintainer's OK to touch Render, and that is not a budget or irreversible decision, so nothing is escalated.",
+          "evidence": [
+            "agent_sessions CIT-524 at 04:10: Step 2 left out because toolbox-spike is not defined in the repo"
+          ]
         }
       ]
     },
@@ -117,12 +130,13 @@
           "key": "observe-worker-response",
           "summary": "Observe the actual worker response and artifact instead of treating accepted dispatch as completed work",
           "disposition": "adopted",
-          "rationale": "The same ask path produced merged Pkl cards, and later asks produced real environments for CIT-516, CIT-521, CIT-501 and CIT-522. Each is checked against Linear and the host before it is called done.",
+          "rationale": "The same ask path produced merged Pkl cards, and later asks produced real environments for CIT-516, CIT-521, CIT-501 and CIT-522. Each is checked against Linear and the host before it is called done. For several runs the agent's replies in its sessions went unread because that tool failed, and this run corrected it by reading both sessions.",
           "status": "resolved",
           "operations": [],
-          "noAction": "The practice is applied each run.",
+          "noAction": "The practice is applied each run, now including the agent sessions.",
           "evidence": [
             "PR 315 merged",
+            "agent_sessions CIT-524 and CIT-501 read this run",
             "env accepted-lion, shining-gibbon, factual-squirrel and crisp-mayfly reported on their issues"
           ]
         },
@@ -143,12 +157,13 @@
           "key": "red-team-qualifications",
           "summary": "Treat the review as a bounded sample and refresh state before acting",
           "disposition": "adopted",
-          "rationale": "Every claim used here was rechecked against the applied report and the open PR list this run, not copied from the update.",
+          "rationale": "Every claim used here was rechecked against the applied report, the open PR list and the agent sessions this run, not copied from the update.",
           "status": "resolved",
           "operations": [],
           "noAction": "Contextual qualification only.",
           "evidence": [
-            "apply trn-08l4gdbdibmgce30c73antmgg report read this run",
+            "agent_sessions read this run",
+            "apply trn-08l4gdbdj7so453cc738ofi7g report read this run",
             "open PR list read this run"
           ]
         },
@@ -192,12 +207,13 @@
           "key": "duo-progress",
           "summary": "Keep Duo and native work moving alongside capture evidence",
           "disposition": "adopted",
-          "rationale": "CIT-521, CIT-516, CIT-517 and CIT-522 are merged or Done, and CIT-501 awaits a working ship. The native app slices wait on CIT-502 and CIT-526, which need the maintainer on a Mac.",
+          "rationale": "CIT-521, CIT-516, CIT-517 and CIT-522 are merged or Done, CIT-501 is redone and being shipped, and CIT-525 goes to the agent. The native app slices wait on CIT-502 and CIT-526, which need the maintainer on a Mac.",
           "status": "open",
           "operations": [],
           "noAction": "The work is underway; the open ops are listed in the first source's keep-duo-moving item.",
           "evidence": [
-            "PR 347, PR 342 and PR 352 merged"
+            "PR 347, PR 342 and PR 352 merged",
+            "agent_sessions CIT-501: guiding-baboon reported at 04:17"
           ]
         },
         {
@@ -256,10 +272,10 @@
           "key": "failed-apply-status",
           "summary": "Make a failed apply versus a successful plan visible in status and retrospectives",
           "disposition": "adopted",
-          "rationale": "This response states the observed apply outcome separately from the proposed operations, and the failed apply this run is reported as a failure. CIT-523 keeps the two outcomes separate in the code, but the report carries no error detail to act on.",
+          "rationale": "This response states the observed apply outcome separately from the proposed operations, and the failed apply of the previous tick is reported as a failure. CIT-523 keeps the two outcomes separate in the code, but that report carried no error detail to act on.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 (PR 346, merged). The failed apply this run shows the failure is surfaced but without actionable detail, so this stays open until a failing scheduled tick is shown with its error.",
+          "noAction": "Covered by CIT-523 (PR 346, merged). The 09:13 failed apply showed the failure is surfaced but without actionable detail, so this stays open until a failing scheduled tick is shown with its error.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail"
@@ -269,41 +285,45 @@
           "key": "retry-one-ship",
           "summary": "Do not blindly rerun the failed batch; reconcile what completed",
           "disposition": "adopted",
-          "rationale": "The earlier batch was reconciled: only the unfinished CIT-501 ship and PR 342 review were re-proposed. The review applied, but the CIT-501 ship left no branch, and the second attempt did not show up in the applied report either, so it is not blindly retried a third time. The agent session that would say what happened could not be read this run.",
+          "rationale": "The earlier batch was reconciled and the ship of factual-squirrel was not blindly retried. The agent session shows why it failed: the environment was built on the unmerged improved-javelin, and after CIT-500 merged the agent redid the work in guiding-baboon from current main. Shipping that new environment once is a different ship, not a repeat.",
           "status": "open",
-          "operations": [],
-          "noAction": "The CIT-501 ship is not repeated. It is handed back to the agent with an ask once the agent is free and its session can be read. This stays open until a ship produces a PR.",
+          "operations": [
+            {
+              "op": "ship",
+              "target": "CIT-501"
+            }
+          ],
+          "noAction": "",
           "evidence": [
-            "CIT-501 has no PR or attachment",
-            "PR 354 absent from this run's open PR list",
-            "agent_sessions for CIT-501 returned Query too complex (62830 against a limit of 10000)"
+            "agent_sessions CIT-501: guiding-baboon reported at 04:17 from origin/main 562df2a",
+            "agent_sessions CIT-501: ship of factual-squirrel failed and never reached the branch, per the 04:03 note"
           ]
         },
         {
           "key": "session-recovery",
           "summary": "Implement bounded recovery after a missing-session response, verified by a session-loss regression",
           "disposition": "adopted",
-          "rationale": "A run without a 404 proves nothing. The new issue requires a controlled session-loss regression.",
+          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression in prime-flounder, and reports the test fails on the old client and passes on the new one. It is in an environment only: not shipped, merged or deployed, and untested against the real server.",
           "status": "open",
           "operations": [],
-          "noAction": "CIT-524 was re-delegated with a new-wording ask in the last applied changeset and the agent has had about an hour to answer. Its session could not be read this run, so no reply is confirmed. Implementation, tests and deployment have not happened, so no recovery fix is claimed.",
+          "noAction": "The implementation exists and awaits shipping, which is the next ship after CIT-501 since one ship runs per changeset. No fix is claimed as deployed or accepted.",
           "evidence": [
-            "agent_sessions for CIT-524 returned Query too complex (62830 against a limit of 10000)",
-            "apply trn-08l4gdbdhfd1utons73avneeg applied delegate CIT-524 with the new-wording ask"
+            "agent_sessions CIT-524: prime-flounder reported at 04:10 with 71 workflow tests passing",
+            "agent_sessions CIT-524: the new tests fail on the old client and pass on the new one, per the agent"
           ]
         },
         {
           "key": "ship-coordination",
           "summary": "Refresh ship status before starting another ship, sequence ships, and create a bounded follow-up if needed",
           "disposition": "adopted",
-          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, so no new follow-up is needed for it. This plan proposes no ship. PR 354 added notice of a ship that failed after apply started it, but I cannot confirm it merged.",
+          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, so no new follow-up is needed for it. This plan proposes a single ship, and the second environment, prime-flounder, waits for the next tick.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523, which is Done, and PR 354. No new dispatch. It stays open until a batch with competing ships is observed.",
+          "noAction": "Covered by CIT-523, which is Done, and PR 354. One ship only is proposed, so no competing ships. It stays open until a batch with competing ships is observed.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "PR 354 absent from this run's open PR list",
-            "apply trn-08l4gdbdhfd1utons73avneeg completed with 1 applied and no ship"
+            "two environments are ready to ship: guiding-baboon and prime-flounder"
           ]
         }
       ]
