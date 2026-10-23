@@ -13,6 +13,7 @@
 import { createWorkflowsClient } from "@renderinc/sdk/workflows";
 import type { ApplyResult } from "./apply.ts";
 import type { Plan } from "./dag.ts";
+import { BOOTSTRAP_INITIATIVES } from "./initiatives.ts";
 
 export interface TaskRunner {
   runTask(slug: string, input: unknown[]): Promise<{ status: string; results: unknown[]; error?: string }>;
@@ -21,13 +22,13 @@ export interface TaskRunner {
 // A run that did not finish, or finished without a plan, is a failed
 // calibration, never an empty plan: an empty plan would read as "nothing to
 // do tomorrow".
-export async function runPlan(client: TaskRunner, slug: string, team: string, deliveries: string[]): Promise<Plan> {
-  const run = await client.runTask(slug, [team, deliveries]);
+export async function runPlan(client: TaskRunner, slug: string, team: string, deliveries: string[], initiativeIds = BOOTSTRAP_INITIATIVES): Promise<Plan> {
+  const run = await client.runTask(slug, [team, deliveries, initiativeIds]);
   if (run.status !== "completed" && run.status !== "succeeded") {
     throw new Error(`task ${slug} ended ${run.status}${run.error ? `: ${run.error}` : ""}`);
   }
   const plan = run.results[0] as Plan | undefined;
-  if (!plan || !Array.isArray(plan.order) || !Array.isArray(plan.sinks)) {
+  if (!plan || !Array.isArray(plan.order) || !Array.isArray(plan.sinks) || !Array.isArray(plan.initiatives) || !plan.initiatives.length) {
     throw new Error(`task ${slug} returned no plan`);
   }
   return plan;
@@ -69,6 +70,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const out =
     which === "apply"
       ? await runApplyDryRun(client, slug, team)
-      : await runPlan(client, slug, team, deliveries.length ? deliveries : ["CIT-439"]);
+      : await runPlan(client, slug, team, deliveries.length ? deliveries : ["CIT-439"],
+          process.env.SUPERVISOR_INITIATIVES?.split(",").map((id) => id.trim()) ?? BOOTSTRAP_INITIATIVES);
   process.stdout.write(JSON.stringify(out) + "\n");
 }

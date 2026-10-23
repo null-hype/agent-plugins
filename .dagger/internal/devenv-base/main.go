@@ -528,6 +528,9 @@ curl -fsS -X POST "https://api.render.com/v1/services/$SERVICE/deploys" \
 func (m *DevenvBase) CheckSupervisor(ctx context.Context) error {
 	out, err := m.Supervisor("").
 		WithFile("/app/render.yaml", dag.CurrentModule().Source().File("render.yaml")).
+		// The shell harness uses the real feedback processor against fixtures,
+		// while stubbing the task server, credentials and model.
+		WithDirectory("/app/workflow/src", dag.CurrentModule().Source().Directory("workflow/src")).
 		WithExec([]string{"bash", "-n", "/app/supervisor/supervisor.sh"}).
 		WithExec([]string{"claude", "--version"}).
 		WithExec([]string{"restic", "version"}).
