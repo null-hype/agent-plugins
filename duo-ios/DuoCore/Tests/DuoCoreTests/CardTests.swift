@@ -28,6 +28,22 @@ final class CardTests: XCTestCase {
         XCTAssertTrue(cards.contains(where: { !$0.isRefuted }))
     }
 
+    private func bundle(containing file: URL?) throws -> Bundle {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if let file { try FileManager.default.copyItem(at: file, to: dir.appendingPathComponent("cards.json")) }
+        return try XCTUnwrap(Bundle(path: dir.path))
+    }
+
+    func testBundledCardsAreTheCommittedFileCopiedIntoTheBundle() throws {
+        let bundled = try Card.loadBundled(in: bundle(containing: cardsURL))
+        XCTAssertEqual(bundled, try Card.loadAll(contentsOf: cardsURL))
+    }
+
+    func testABundleWithoutCardsJsonFailsLoudly() throws {
+        XCTAssertThrowsError(try Card.loadBundled(in: bundle(containing: nil)))
+    }
+
     func testMissingRequiredFieldFails() {
         let json = #"[{"id":"x","line":1,"options":[]}]"#
         XCTAssertThrowsError(try Card.decodeAll(from: Data(json.utf8)))
