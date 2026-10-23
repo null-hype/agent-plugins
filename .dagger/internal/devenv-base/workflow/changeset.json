@@ -1,60 +1,12 @@
 {
-  "seen": {
-    "CIT-439": "2026-10-22T23:16:08.391Z",
-    "CIT-501": "2026-10-23T02:18:55.039Z",
-    "CIT-517": "2026-10-22T22:07:55.817Z",
-    "CIT-522": "2026-10-23T03:49:35.872Z",
-    "CIT-524": "2026-10-23T03:00:06.309Z",
-    "CIT-525": "2026-10-23T02:38:19.312Z"
-  },
-  "releases": [
-    {
-      "name": "duo-editor",
-      "description": "The Duo editor on iPhone Duo: the claim on the left page and question cards on the right, built on Xcode Cloud and shipped to TestFlight testers.",
-      "pipeline": "supervisor"
-    }
-  ],
-  "clusters": [
-    {
-      "key": "CIT-439",
-      "title": "iPhone Duo editor: one claim, one refutation, on TestFlight",
-      "description": "The native slices of CIT-439: the iOS project, the build-time JSON bundle, the Xcode Cloud workflows, the supervisor reading their results, and the SwiftUI app. The Linux-capable pieces run through the agent first; the one-time Xcode Cloud setup needs the maintainer on a Mac. Review findings on the iOS project (CIT-521, CIT-522, CIT-525) are fixed as follow-ups.",
-      "hat": "infra",
-      "model": "sonnet",
-      "effort": "medium",
-      "serves": "release:duo-editor",
-      "blockedBy": [],
-      "issues": [
-        "CIT-525"
-      ]
-    }
-  ],
+  "seen": {},
+  "releases": [],
+  "clusters": [],
   "decline": [],
-  "done": [
-    {
-      "issue": "CIT-517",
-      "evidence": "PR #342 merged: capture.mjs exits 1 when the page reports a runtime error, and Codex's QA confirmed an injected error gives exit code 1"
-    }
-  ],
+  "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": [
-    {
-      "issue": "CIT-524",
-      "agent": "Claude",
-      "ask": "Host Edit, Write and Bash are denied by design, so there is nothing to wait for. Start with environment_create to get a container-use environment, then make the Step 1 change to workflow/src/toolbox.ts there: bounded session reinitialization after a 404, no blind replay of side-effect tools, and the session-loss regression test in toolbox.test.ts. Run the tests inside that environment, commit, and reply on this issue with the environment id. Leave Step 2 (the Render deploy filter) and CIT-450 for later."
-    }
-  ],
-  "ship": [
-    {
-      "issue": "CIT-501",
-      "env": "factual-squirrel"
-    }
-  ],
-  "review": [
-    {
-      "issue": "CIT-522",
-      "pr": 352
-    }
-  ]
+  "delegate": [],
+  "ship": [],
+  "review": []
 }
