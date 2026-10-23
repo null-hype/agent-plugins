@@ -10,12 +10,13 @@ import { createInterface } from "node:readline";
 const KEY = process.env.LINEAR_API_KEY;
 const API = process.env.LINEAR_API_URL || "https://api.linear.app/graphql";
 
-const SESSION = `status createdAt updatedAt issue { identifier }
-  activities(first: 250) { nodes { createdAt content { __typename
-    ... on AgentActivityPromptContent { body } ... on AgentActivityResponseContent { body }
-    ... on AgentActivityElicitationContent { body } ... on AgentActivityErrorContent { body }
-    ... on AgentActivityThoughtContent { body }
-    ... on AgentActivityActionContent { action parameter result } } } }`;
+// Linear caps a query's complexity at 10000, and that cost multiplies page
+// sizes, so a session list carrying every session's activities is refused.
+// The sessions are listed bare, and each one's activities are read in a
+// query of their own, filtered by type on Linear's side.
+const SESSION = "id status createdAt updatedAt issue { identifier }";
+const SAID = ["prompt", "response", "elicitation", "error"];
+const PAGE = 50;
 
 async function gql(query, variables) {
   const res = await fetch(API, {
@@ -29,11 +30,11 @@ async function gql(query, variables) {
 }
 
 // Issue.agentSessions is the direct way, but Linear marks it internal; if it
-// is refused, page through every session and keep the issue's.
+// is refused, page through recent sessions and keep the issue's.
 async function sessionsOf(issue) {
   try {
     const data = await gql(
-      `query($id: String!) { issue(id: $id) { agentSessions(first: 20) { nodes { ${SESSION} } } } }`,
+      `query($id: String!) { issue(id: $id) { agentSessions(first: 10) { nodes { ${SESSION} } } } }`,
       { id: issue },
     );
     return data.issue?.agentSessions.nodes ?? [];
@@ -43,21 +44,43 @@ async function sessionsOf(issue) {
   }
 }
 
+async function activitiesOf(session, narration) {
+  const out = [];
+  let after = null;
+  do {
+    const data = await gql(
+      `query($id: String!, $after: String, $filter: AgentActivityFilter) { agentSession(id: $id) {
+        activities(first: ${PAGE}, after: $after, filter: $filter) { pageInfo { hasNextPage endCursor }
+          nodes { createdAt content { __typename
+            ... on AgentActivityPromptContent { body } ... on AgentActivityResponseContent { body }
+            ... on AgentActivityElicitationContent { body } ... on AgentActivityErrorContent { body }
+            ... on AgentActivityThoughtContent { body }
+            ... on AgentActivityActionContent { action parameter result } } } } } }`,
+      { id: session, after, filter: narration ? null : { type: { in: SAID } } },
+    );
+    const page = data.agentSession.activities;
+    out.push(...page.nodes);
+    after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (after);
+  return out;
+}
+
 function kind(typename) {
   return typename.replace(/^AgentActivity/, "").replace(/Content$/, "").toLowerCase();
 }
 
 export async function transcript(issue, narration = false) {
   const sessions = (await sessionsOf(issue)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  return sessions.map((s) => ({
-    status: s.status,
-    startedAt: s.createdAt,
-    updatedAt: s.updatedAt,
-    activities: s.activities.nodes
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-      .filter((a) => narration || !["thought", "action"].includes(kind(a.content.__typename)))
-      .map(({ createdAt, content: { __typename, ...rest } }) => ({ at: createdAt, type: kind(__typename), ...rest })),
-  }));
+  return Promise.all(
+    sessions.map(async (s) => ({
+      status: s.status,
+      startedAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      activities: (await activitiesOf(s.id, narration))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map(({ createdAt, content: { __typename, ...rest } }) => ({ at: createdAt, type: kind(__typename), ...rest })),
+    })),
+  );
 }
 
 const TOOL = {
