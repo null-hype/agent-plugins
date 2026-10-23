@@ -172,6 +172,7 @@ func TestHostShip(t *testing.T) {
 		for e in trusty-burro quiet-fox; do
 			git switch -qc $e main && echo $e > b-$e && git add b-$e && git commit -qm $e && git push -q ../cu.git $e
 		done &&
+		git push -q ../cu.git main:idle-owl &&
 		mkdir workspaces && git clone -q ../origin.git ../workspaces/linear-agent && cd ../workspaces/linear-agent &&
 		git remote add container-use "$(cd ../.. && pwd)/cu.git"`)
 	// The workspace's /workspaces is $HOME/workspaces here.
