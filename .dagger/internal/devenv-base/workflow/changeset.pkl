@@ -1,8 +1,12 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@2501046d71e5dfa3044a2ebbcaa21f00ed748ca0. Merging it is applying it; render with
+// main@7da11a750697ff6a291865b69decdf62f76a019c. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-450"] = "2026-10-23T02:34:23.203Z"
+  ["CIT-525"] = "2026-10-23T13:29:02.826Z"
 }
 
+ship { new { issue = "CIT-525"; env = "renewed-javelin" } }
+delegate { new { issue = "CIT-450"; agent = "Claude"; ask = "Host Write, Edit and Bash are denied on purpose, so do the work in a container-use environment: create one with environment_create. The fix is the one you planned in toolbox/host.sh around lines 189-190: SHIP_ALREADY may be reported only after you have confirmed that the requested remote branch exists and contains the environment; otherwise create the branch or fail. Add a test for it, run the tests in that environment, commit, and reply here with the environment id. Start from current main, not from an older environment." } }
