@@ -71,7 +71,11 @@ Say in a few sentences what you found, especially anything stuck or more expensi
 {"decisions":[{"sourceId":"<actual source id>","revision":"<actual revision>","items":[{"key":"finish-input-preparation","summary":"Finish the initiative planning integration","disposition":"adopted","rationale":"Why this choice follows from current evidence","status":"open","operations":[],"noAction":"Existing work is underway; cite its issue or PR and why no new dispatch is needed","evidence":[]}]}]}
 ```
 
-Every supplied source needs at least one item. Each item has `key`, `summary`, `disposition` (adopted/deferred/disagreed), `rationale`, `status` (open/resolved), `operations`, `noAction` and `evidence`. Operation references are `{ "op": "delegate", "target": "CIT-518" }`, matching the dry-run operation table for this changeset. Items with proposed operations must be adopted and open. With no proposed operation, `noAction` must explain why. Resolved items require nonempty evidence. Source descriptions also need a response. Use a reasoned non-action item for contextual or already satisfied material. Do not claim a session recovery fix was tested simply because no deployment overlapped a run.
+Every supplied source needs at least one item. Each item has `key`, `summary`, `disposition` (adopted/deferred/disagreed), `rationale`, `status` (open/resolved), `operations`, `noAction` and `evidence`. Operation references are `{ "op": "delegate", "target": "CIT-518" }`, matching the dry-run operation table for this changeset; a new cluster is `{ "op": "create", "target": "new:<slug>" }`.
+
+{{OPERATIONS}}
+
+The dry run checks every reference after you answer. A refused one comes back to you with the references the dry run accepts, to correct once or twice; an answer still refused after that costs the run its plan. Items with proposed operations must be adopted and open. With no proposed operation, `noAction` must explain why. Resolved items require nonempty evidence. Source descriptions also need a response. Use a reasoned non-action item for contextual or already satisfied material. Do not claim a session recovery fix was tested simply because no deployment overlapped a run.
 
 Finally end your reply with this line, then one fenced `pkl` block holding the changeset's body, and nothing after the block:
 

@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { apply, askMarker, marker, reviewMarker, shipMarker, type LinearClient, type LinearIssue } from "./apply.ts";
 import { validate, type Changeset } from "./changeset.ts";
@@ -9,7 +10,8 @@ const T0 = "2026-10-21T00:00:00Z";
 // making none, and every write bumps updatedAt, the way Linear does.
 // A host that is always ready and ships nothing: for the tests that are not
 // about the host.
-const idleHost = { wake: async () => {}, ship: async () => {}, review: async () => {} };
+const idleShip = { running: false, exit: null };
+const idleHost = { wake: async () => {}, ship: async () => {}, shipStatus: async () => idleShip, review: async () => {} };
 
 function fakeLinear(
   issues: Partial<LinearIssue>[],
@@ -391,7 +393,7 @@ test("a write that fails halfway is not repeated on the rerun", async () => {
 // A host that records what was asked of it.
 const recordingHost = () => {
   const calls: string[] = [];
-  return { calls, wake: async () => void calls.push("wake"), ship: async (env: string, branch: string) => void calls.push(`ship ${env} ${branch}`), review: async (pr: number) => void calls.push(`review ${pr}`) };
+  return { calls, wake: async () => void calls.push("wake"), ship: async (env: string, branch: string) => void calls.push(`ship ${env} ${branch}`), shipStatus: async () => idleShip, review: async (pr: number) => void calls.push(`review ${pr}`) };
 };
 
 test("the host is woken once, before the first delegation, and never in a dry run", async () => {
@@ -515,4 +517,125 @@ test("done completes an issue once, with its evidence", async () => {
 
   const again = await apply(cs, client, { dryRun: false, toolbox: idleHost });
   assert.equal(again.applied.some((o) => o.op === "done"), false);
+});
+
+// CIT-523: the host's one ship job, the way host.sh runs it: agent_ship
+// starts it and returns, a second agent_ship while it runs is refused with
+// refuse_if_busy's words, and agent_ship_status names the ship it is for
+// (`named: false` is a host from before CIT-523, which names it only once it
+// has pushed).
+const shipHost = ({ named = true } = {}) => {
+  const calls: string[] = [];
+  let job: { env: string; exit: number | null } | undefined;
+  return {
+    calls,
+    start(env: string) { job = { env, exit: null }; },
+    finish(exit: number) { job!.exit = exit; },
+    wake: async () => void calls.push("wake"),
+    review: async (pr: number) => void calls.push(`review ${pr}`),
+    async ship(env: string, branch: string) {
+      calls.push(`ship ${env} ${branch}`);
+      if (job && job.exit === null) throw new Error("toolbox agent_ship: ship: Process exited with status 1: a job for ship is still running; check workspace_status");
+      job = { env, exit: null };
+    },
+    async shipStatus() {
+      if (!job) return { running: false, exit: null };
+      const running = job.exit === null;
+      return { running, exit: job.exit, ...(named || job.exit === 0 ? { env: job.env } : {}) };
+    },
+  };
+};
+const ships = (r: { applied: { op: string; target: string }[] }) => r.applied.filter((o) => o.op === "ship").map((o) => o.target);
+const pendingOf = (r: Awaited<ReturnType<typeof apply>>) => r.pending.map((p) => `${p.state} ${p.op} ${p.target}`);
+// The changeset #343 merged, which the 01:15 apply (trn-08l4gdbdbahhbta0s73f9p7n0)
+// failed on: two ships, so the second always met the first still running.
+const merged343 = JSON.parse(await readFile(new URL("./fixtures/changeset-2026-10-23T0018.json", import.meta.url), "utf8")) as Changeset;
+const world343 = () =>
+  fakeLinear(Object.entries(merged343.seen).map(([identifier, updatedAt]) => ({ identifier, updatedAt, stage: "started" })), { users: ["Claude"] });
+
+test("two ships in one apply: the first is dispatched, the second deferred, and the rest still applied", async () => {
+  const host = shipHost();
+  const { client, writes } = world343();
+  const r = await apply(merged343, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(ships(r), ["CIT-521"]);
+  assert.deepEqual(pendingOf(r), ["deferred ship CIT-501"]);
+  assert.match(r.pending[0].why, /still shipping shining-gibbon/);
+  assert.deepEqual(r.applied.map((o) => o.op), ["delegate", "ship", "review"]);
+  assert.deepEqual(host.calls.filter((c) => c.startsWith("ship ")), ["ship shining-gibbon branch-cit-521"], "agent_ship is called once, never over a running job");
+  assert.ok(!writes.some((w) => w.includes(shipMarker("factual-squirrel"))), "a deferred ship leaves no note, so the next apply ships it");
+});
+
+test("a deferred ship resumes once the running job ends, and nothing is dispatched twice", async () => {
+  const host = shipHost();
+  const { client } = world343();
+  await apply(merged343, client, { dryRun: false, toolbox: host });
+  // The next hour, the first ship still runs: nothing new starts.
+  const waiting = await apply(merged343, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(waiting.applied, []);
+  assert.deepEqual(pendingOf(waiting), ["deferred ship CIT-501"]);
+  for (const exit of [1, 0]) {
+    // A failed ship is the planner's to hand back, not apply's to retry: its
+    // note stands. Either way the deferred one goes next.
+    const h = shipHost();
+    const { client: c } = world343();
+    await apply(merged343, c, { dryRun: false, toolbox: h });
+    h.finish(exit);
+    const resumed = await apply(merged343, c, { dryRun: false, toolbox: h });
+    assert.deepEqual(ships(resumed), ["CIT-501"], `after exit ${exit}`);
+    assert.deepEqual(resumed.pending, []);
+    h.finish(0);
+    const settled = await apply(merged343, c, { dryRun: false, toolbox: h });
+    assert.deepEqual(settled.applied, []);
+    assert.deepEqual(settled.pending, []);
+    assert.deepEqual(h.calls.filter((x) => x.startsWith("ship ")), ["ship shining-gibbon branch-cit-521", "ship factual-squirrel branch-cit-501"]);
+  }
+});
+
+test("a ship already running for its environment, with no note, is noted and left to finish", async () => {
+  const host = shipHost();
+  const { client, writes } = world343();
+  // An earlier apply started factual-squirrel and died before its note.
+  host.start("factual-squirrel");
+  const r = await apply({ ...merged343, ship: [{ issue: "CIT-501", env: "factual-squirrel" }] }, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(ships(r), []);
+  assert.deepEqual(pendingOf(r), ["in-flight ship CIT-501"]);
+  assert.ok(writes.some((w) => w.startsWith("comment CIT-501 ") && w.includes(shipMarker("factual-squirrel"))));
+  assert.deepEqual(host.calls.filter((c) => c.startsWith("ship ")), []);
+  const again = await apply({ ...merged343, ship: [{ issue: "CIT-501", env: "factual-squirrel" }] }, client, { dryRun: false, toolbox: host });
+  assert.deepEqual(again.pending, []);
+});
+
+test("a running ship the host does not name defers every ship, and a race with agent_ship defers too", async () => {
+  const old = shipHost({ named: false });
+  old.start("shining-gibbon");
+  const { client } = world343();
+  const r = await apply(merged343, client, { dryRun: false, toolbox: old });
+  assert.deepEqual(pendingOf(r), ["deferred ship CIT-521", "deferred ship CIT-501"]);
+  assert.match(r.pending[0].why, /an environment it does not name/);
+  assert.deepEqual(old.calls.filter((c) => c.startsWith("ship ")), []);
+
+  // agent_status said idle, but a person's ship started before agent_ship.
+  const racy = shipHost();
+  const status = racy.shipStatus;
+  racy.shipStatus = async () => { const s = await status(); racy.start("other-env"); return s; };
+  const { client: c } = world343();
+  const raced = await apply(merged343, c, { dryRun: false, toolbox: racy });
+  assert.deepEqual(ships(raced), []);
+  assert.deepEqual(pendingOf(raced), ["deferred ship CIT-521", "deferred ship CIT-501"]);
+});
+
+test("an apply that fails partway says what it had already done", async () => {
+  const host = { ...shipHost(), ship: async () => { throw new Error("toolbox answered 404: session not found"); } };
+  const { client } = world343();
+  await assert.rejects(apply(merged343, client, { dryRun: false, toolbox: host }), /session not found\nbefore the failure this apply had done: delegate CIT-522/);
+});
+
+test("a dry run reports every ship and reads no job state", async () => {
+  const host = shipHost();
+  host.start("shining-gibbon");
+  const { client } = world343();
+  const r = await apply(merged343, client, { dryRun: true, toolbox: host });
+  assert.deepEqual(ships(r), ["CIT-521", "CIT-501"]);
+  assert.deepEqual(r.pending, []);
+  assert.deepEqual(host.calls, []);
 });

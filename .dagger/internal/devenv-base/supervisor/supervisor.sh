@@ -334,7 +334,8 @@ base_sha=$(git -C "$repo" rev-parse HEAD)
 # already applied, and waits for it just before planning (below), so the plan
 # is made on Linear as the last one left it. Nothing on GitHub is involved.
 # The applied changeset's hash and task run are kept with the session; one
-# whose apply failed is started again. Apply is idempotent.
+# whose apply failed, or left ops pending, is started again. Apply is
+# idempotent.
 APPLY_STATE=$HOME/.claude/supervisor-apply
 apply_changeset() { "${APPLY_CHANGESET:-$DIR/apply-changeset.sh}" "$@"; }
 apply_run=""
@@ -454,8 +455,15 @@ done
 
 if [ -n "$apply_run" ]; then
   echo "supervisor: waiting for apply run $apply_run before planning"
-  apply_changeset wait "$apply_run" > "$CAL_DIR/apply-result.txt" ||
-    echo "supervisor: apply run $apply_run did not go through; the next run starts it again" >&2
+  apply_rc=0
+  apply_changeset wait "$apply_run" > "$CAL_DIR/apply-result.txt" || apply_rc=$?
+  case $apply_rc in
+    0) ;;
+    # Completed, with ops deferred behind work already on the host: not a
+    # failure, and not fully applied either.
+    3) echo "supervisor: apply run $apply_run left ops pending; the next run applies again" ;;
+    *) echo "supervisor: apply run $apply_run did not go through; the next run starts it again" >&2 ;;
+  esac
   cat "$CAL_DIR/apply-result.txt"
 fi
 jq -n --arg run "$apply_evidence_run" --rawfile report "$CAL_DIR/apply-result.txt" \
@@ -482,6 +490,8 @@ node "$wf/dist/feedback.js" input "$CAL_DIR/plan.json" "$feedback_previous" "$CA
 jq -c '[.initiatives[].sources[] | {id, revision}]' "$CAL_DIR/initiative-input.json" |
   sed 's/^/SUPERVISOR_INITIATIVE_INPUT: /'
 jq 'del(.seen, .initiatives)' "$CAL_DIR/plan.json" > "$CAL_DIR/plan-for-prompt.json"
+# The operation names feedback may cite, from the workflow's own list.
+node "$wf/dist/feedback.js" ops > "$CAL_DIR/operations.txt"
 prompt_file="$repo/${WORKFLOW_PATH%/workflow}/supervisor/prompt.md"
 [ -f "$prompt_file" ] || prompt_file="$DIR/prompt.md"
 # The session cannot read GitHub, so the recent pull requests go in the
@@ -496,8 +506,9 @@ jq -c '[.[] | select(.headRefName != "'"$CALIBRATION_BRANCH"'" and (.isCrossRepo
   | select((.headRefName | startswith("cit-")) or .state == "OPEN")][:40]' "$CAL_DIR/pulls.raw" > "$CAL_DIR/pulls.json" 2> /dev/null ||
   echo '[]' > "$CAL_DIR/pulls.json"
 prompt=$(sed -e "s|{{NOW}}|$now|g" "$prompt_file" |
-  awk -v plan="$CAL_DIR/plan-for-prompt.json" -v pulls="$CAL_DIR/pulls.json" -v initiatives="$CAL_DIR/initiative-input.json" -v applied="$CAL_DIR/apply-evidence.json" \
+  awk -v plan="$CAL_DIR/plan-for-prompt.json" -v pulls="$CAL_DIR/pulls.json" -v initiatives="$CAL_DIR/initiative-input.json" -v applied="$CAL_DIR/apply-evidence.json" -v ops="$CAL_DIR/operations.txt" \
     '$0 == "{{PLAN}}" { while ((getline l < plan) > 0) print l; next }
+     $0 == "{{OPERATIONS}}" { while ((getline l < ops) > 0) print l; next }
      $0 == "{{INITIATIVES}}" { while ((getline l < initiatives) > 0) print l; next }
      $0 == "{{APPLY_EVIDENCE}}" { while ((getline l < applied) > 0) print l; next }
      $0 == "{{PULLS}}" { while ((getline l < pulls) > 0) print l; next } { print }')
@@ -568,28 +579,67 @@ write_changeset() { # $1: a JSON object of identifier -> updatedAt
   }
 }
 
+# 3-5, checked whole on every answer: the changeset renders, its dry run
+# passes, and the initiative feedback cites only that dry run's operations
+# (CIT-523). An answer that fails the render or the feedback check goes back
+# to the session with every problem, and for feedback with the references
+# the dry run accepts, up to SUPERVISOR_ATTEMPTS answers in all. The session
+# is read-only and nothing outside this run has happened since the apply
+# above, so asking again repeats nothing. A failed dry run is not the
+# session's to fix in prose: it fails the run as before.
+attempts=${SUPERVISOR_ATTEMPTS:-3}
+correction="" attempt=0
 echo "supervisor: running the session ($model, $effort), read-only"
-plan_once ""
-# A changeset that does not render goes back to the session once, with the
-# error, rather than costing the run its changeset.
-if ! write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")"; then
-  echo "supervisor: asking again, with the render error"
-  plan_once "$(printf '\n\n## Your last changeset did not render\n\nFix this and give your whole answer again, ending with the changeset:\n\n```\n%s\n```\n' "$(cat "$CAL_DIR/pkl.log")")"
-  write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")" || exit 1
-fi
-touched=$(jq -c '[.clusters[] | .key, .issues[]] + [(.decline, .done, .duplicate, .escalate, .delegate, .ship, .review) // [] | .[] | .issue]
-  | map(select(startswith("new:") | not)) | unique' "$wf/changeset.json")
-write_changeset "$(jq -c --argjson t "$touched" '.seen | with_entries(select(.key as $k | $t | index($k)))' "$CAL_DIR/plan.json")" || exit 1
+while :; do
+  attempt=$((attempt + 1))
+  plan_once "$correction"
+  printf '%s\n' "$out" > "$CAL_DIR/planner-response-$attempt.txt"
+  if ! write_changeset "$(jq -c .seen "$CAL_DIR/plan.json")"; then
+    cp "$CAL_DIR/pkl.log" "$CAL_DIR/rejected-$attempt.txt"
+    correction=$(printf '\n\n## Your last changeset did not render\n\nFix this and give your whole answer again, ending with the changeset:\n\n```\n%s\n```\n' "$(cat "$CAL_DIR/pkl.log")")
+  else
+    touched=$(jq -c '[.clusters[] | .key, .issues[]] + [(.decline, .done, .duplicate, .escalate, .delegate, .ship, .review) // [] | .[] | .issue]
+      | map(select(startswith("new:") | not)) | unique' "$wf/changeset.json")
+    write_changeset "$(jq -c --argjson t "$touched" '.seen | with_entries(select(.key as $k | $t | index($k)))' "$CAL_DIR/plan.json")" || exit 1
 
-# The test: apply, dry, on the dev server, against the tree the PR will
-# carry. It reads changeset.json afresh on every call.
-echo "supervisor: dry-running apply on the local task server"
-dry=$(cd "$wf" && node dist/calibrate.js apply "${CALIBRATION_TEAM:-CIT}") ||
-  { echo "supervisor: the changeset's dry run failed" >&2; exit 1; }
-printf '%s\n' "$dry" | jq . > "$CAL_DIR/dry-run.json"
-printf '%s\n' "$out" > "$CAL_DIR/planner-response.txt"
-node "$wf/dist/feedback.js" record "$CAL_DIR/initiative-input.json" "$CAL_DIR/planner-response.txt" \
-  "$CAL_DIR/dry-run.json" "$wf/planning-feedback.json"
+    # The test: apply, dry, on the dev server, against the tree the PR will
+    # carry. It reads changeset.json afresh on every call.
+    echo "supervisor: dry-running apply on the local task server"
+    dry=$(cd "$wf" && node dist/calibrate.js apply "${CALIBRATION_TEAM:-CIT}") ||
+      { echo "supervisor: the changeset's dry run failed" >&2; exit 1; }
+    printf '%s\n' "$dry" | jq . > "$CAL_DIR/dry-run.json"
+    printf '%s\n' "$out" > "$CAL_DIR/planner-response.txt"
+    rm -f "$CAL_DIR/feedback-diagnostics.json"
+    if node "$wf/dist/feedback.js" record "$CAL_DIR/initiative-input.json" "$CAL_DIR/planner-response.txt" \
+      "$CAL_DIR/dry-run.json" "$wf/planning-feedback.json" "$CAL_DIR/feedback-diagnostics.json" 2> "$CAL_DIR/feedback.log"; then
+      break
+    fi
+    cat "$CAL_DIR/feedback.log" >&2
+    [ -s "$CAL_DIR/feedback-diagnostics.json" ] ||
+      { echo "supervisor: the feedback check itself failed, with no diagnostics" >&2; exit 1; }
+    cp "$CAL_DIR/feedback-diagnostics.json" "$CAL_DIR/rejected-$attempt.txt"
+    cp "$CAL_DIR/dry-run.json" "$CAL_DIR/dry-run-$attempt.json"
+    correction=$(jq -r '"\n\n## Your initiative feedback did not validate against this changeset'"'"'s dry run\n",
+      "Every problem:\n", (.problems[] | "- \(.)"),
+      "\nThe operation references this dry run accepts, as `{\"op\": ..., \"target\": ...}`:\n", (.validOperations[] | "- `\(.)`"),
+      "\nGive your whole answer again: the findings, the corrected SUPERVISOR_FEEDBACK block and the changeset. Change only what the problems name; keep every other decision as it was."' \
+      "$CAL_DIR/feedback-diagnostics.json")
+  fi
+  if [ "$attempt" -ge "$attempts" ]; then
+    # Exhausted: keep the evidence with the session (the backup takes it),
+    # publish nothing, and say so. Only the newest few runs are kept.
+    diag=${SUPERVISOR_DIAGNOSTICS:-$HOME/.claude/supervisor-diagnostics}/$now
+    mkdir -p "$diag"
+    cp "$CAL_DIR"/planner-response-*.txt "$CAL_DIR"/rejected-*.txt "$diag/"
+    cp "$CAL_DIR"/dry-run-*.json "$CAL_DIR/apply-evidence.json" "$CAL_DIR/initiative-input.json" "$diag/" 2> /dev/null || true
+    # shellcheck disable=SC2012 # the names are timestamps
+    ls -1d "${diag%/*}"/*/ 2> /dev/null | sort | head -n -"${SUPERVISOR_DIAGNOSTICS_KEEP:-10}" | xargs -r rm -rf
+    echo "supervisor: no valid answer after $attempt; the evidence is in $diag" >&2
+    echo "SUPERVISOR_PLAN: failed reason=planner-output-invalid attempts=$attempt diagnostics=$diag"
+    exit 1
+  fi
+  echo "supervisor: asking again ($attempt of $attempts answers used), with the problems"
+done
 echo 'SUPERVISOR_INITIATIVE_FEEDBACK: validated; proposed operations are not yet applied'
 
 # A plan the base already carries proposes nothing: no PR, nothing to

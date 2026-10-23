@@ -28,8 +28,11 @@ Render cron `supervisor` ──▶ supervisor.sh
   │        └─MCP, Bearer LINEAR_API_KEY─▶ Linear (read tools only)
   │        → SUPERVISOR_CHANGESET: + a pkl block
   │ 4. changeset.pkl = that block + `seen`; pkl eval → changeset.json
-  │    (pkl/Changeset.pkl refuses a bad one; the session gets one more go)
+  │    (pkl/Changeset.pkl refuses a bad one)
   │ 5. node dist/calibrate.js apply         (apply, dry, on the PR's own tree)
+  │    node dist/feedback.js record         (feedback cites only that dry run's ops)
+  │    a refused render or feedback goes back to the session, up to
+  │    SUPERVISOR_ATTEMPTS (3) answers, each checked whole again
   │ 6. push supervisor/calibration, open or update the PR,
   │    gh pr merge --auto                   (nothing waits on the checks)
   │ 7. restic backup                        (whatever happened above)
@@ -254,6 +257,41 @@ unresolved recommendations. Missing prior sources fail explicitly; an
 edited source must explicitly supersede its previous revision. The PR
 feedback section is rendered from this artifact. Feedback-only changes
 can produce a PR; identical operations and feedback produce none.
+
+### Operation references, corrections and shipping (CIT-523)
+
+The 2026-10-23 01:13 UTC run lost its plan and its apply to two things this
+section fixes.
+
+- **One operation contract.** Apply's `OPS` (`workflow/src/apply.ts`) names
+  every op a dry run reports, and a feedback item's `operations` cite them as
+  the dry run's table prints them. The prompt's list of names is generated
+  from it (`feedback.js ops`). The planner writes feedback before the dry
+  run, so a changeset section is accepted where it means exactly one op of
+  that dry run (`cluster new:x` is its `create`), and is stored as that op.
+  A reference that names no op, or more than one, is refused.
+- **A bounded correction.** A changeset that does not render, or feedback
+  the dry run refuses, goes back to the session with every problem and, for
+  feedback, the references the dry run accepts. Each answer is rendered,
+  dry-run and checked again in full, up to `SUPERVISOR_ATTEMPTS` (3) answers.
+  The session is read-only, so asking again repeats nothing outside the run.
+  After the last, the run publishes nothing, keeps every answer and its
+  refusal in `~/.claude/supervisor-diagnostics/<time>/` (backed up with the
+  session; the newest 10 are kept) and ends with `SUPERVISOR_PLAN: failed
+  reason=planner-output-invalid`.
+- **One ship at a time.** The host runs one ship job, and `agent_ship`
+  returns as soon as it starts, so two ships in one apply always collided
+  and failed the whole apply. Apply now reads `agent_ship_status` first. A
+  job already running for the same environment, with no note on the issue,
+  is noted and left to finish; one running for anything else defers the
+  ship. Nothing running is cancelled. A deferred or in-flight ship is
+  reported under `pending`, apart from `applied` and `skipped`;
+  `apply-changeset.sh status` exits 3 for a run that completed with pending
+  ops, and the next run applies again. A ship is still dispatched at most
+  once per environment until an `ask` hands the issue back. An apply that
+  fails partway names the ops it had already done. The host names the ship
+  it is running (`request` in `agent_ship_status`); an older host that does
+  not is treated as busy with an unknown ship, which defers every ship.
 
 Receipt and validation prove transport and an explicit recorded response,
 not the quality of the model's reasoning. Adoption and proposed operations
