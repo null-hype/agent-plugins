@@ -1,4 +1,6 @@
-public enum JSONValue: Codable, Sendable, Equatable {
+/// Encodable only: decoding goes through `JSONValue(parsing:)`, because a `Decoder` hides the source
+/// numeric token and so cannot tell an exact integer from one that rounding made look exact.
+public enum JSONValue: Encodable, Sendable, Equatable {
     case null
     case bool(Bool)
     /// An integer literal that fits Int64, kept exact.
