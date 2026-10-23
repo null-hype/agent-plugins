@@ -1,8 +1,14 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@0c29bc5c4fe679a05d016500e0af1f06da775aca. Merging it is applying it; render with
+// main@8471ab7c0d6d91717eedc1d520b247602a3eed14. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-450"] = "2026-10-23T15:25:29.923Z"
+  ["CIT-524"] = "2026-10-23T15:19:11.841Z"
+  ["CIT-525"] = "2026-10-23T16:17:24.998Z"
 }
 
+review { new { issue = "CIT-525"; pr = 371 } }
+ship { new { issue = "CIT-450"; env = "engaged-jawfish" } }
+delegate { new { issue = "CIT-524"; agent = "Claude"; ask = "The ship of your prime-flounder environment to cit-524-toolbox-session-recovery-for-the-supervisor-workflow exited 1 and no branch or pull request exists, and the apply gave no cause. Please check that prime-flounder still exists and is up to date with current origin/main. If it is behind, bring it up to date in the environment, re-run the workflow tests there, and commit. If it is gone or cannot be brought up to date, redo Step 1 in a new container-use environment created from origin/main. Then reply here with the environment id and say it is done, so it can be shipped once more. Leave the Render deploy filter out." } }
