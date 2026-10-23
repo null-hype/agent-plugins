@@ -20,6 +20,7 @@ import { apply as applyChangeset, type ApplyResult } from "./apply.ts";
 import type { Changeset } from "./changeset.ts";
 import { plan as buildPlan, type Plan } from "./dag.ts";
 import { linearClient, openIssues, triageHints } from "./linear.ts";
+import { initiativeContext, BOOTSTRAP_INITIATIVES } from "./initiatives.ts";
 import { toolboxClient, wakeHost, type ToolResult } from "./toolbox.ts";
 
 const env = (name: string) => {
@@ -31,9 +32,11 @@ const linearKey = () => env("LINEAR_API_KEY");
 
 task(
   { name: "plan", retry: { maxRetries: 2, waitDurationMs: 5000, backoffScaling: 2 } },
-  async function plan(_ctx: TaskContext, team: string = "CIT", deliveries: string[] = ["CIT-439"]): Promise<Plan> {
-    const [issues, hints] = await Promise.all([openIssues(linearKey(), team), triageHints(linearKey(), team)]);
-    return { ...buildPlan(issues, deliveries), hints };
+  async function plan(_ctx: TaskContext, team: string = "CIT", deliveries: string[] = ["CIT-439"], initiativeIds: string[] = BOOTSTRAP_INITIATIVES): Promise<Plan> {
+    const [issues, hints, initiatives] = await Promise.all([
+      openIssues(linearKey(), team), triageHints(linearKey(), team), initiativeContext(linearKey(), initiativeIds),
+    ]);
+    return { ...buildPlan(issues, deliveries), hints, initiatives };
   },
 );
 
