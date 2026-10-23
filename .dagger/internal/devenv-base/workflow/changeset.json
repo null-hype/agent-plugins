@@ -1,7 +1,5 @@
 {
-  "seen": {
-    "CIT-524": "2026-10-23T17:25:28.198Z"
-  },
+  "seen": {},
   "releases": [],
   "clusters": [],
   "decline": [],
@@ -9,11 +7,6 @@
   "duplicate": [],
   "escalate": [],
   "delegate": [],
-  "ship": [
-    {
-      "issue": "CIT-524",
-      "env": "ruling-raccoon"
-    }
-  ],
+  "ship": [],
   "review": []
 }
