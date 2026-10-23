@@ -60,14 +60,14 @@
           "key": "session-recovery-followup",
           "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
           "disposition": "adopted",
-          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock. That environment's ship was applied and is running alone on the host, with the push in progress. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on the same host contention and is handed back after this ship lands.",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock. That environment shipped alone and PR 376 is now open on the issue branch. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on host contention and is handed back after the PR 376 review finishes.",
           "status": "open",
           "operations": [],
-          "noAction": "The ship of ruling-raccoon is not repeated and no other host job is added while its push runs. If its PR exists next tick it is reviewed once, and CIT-450 is handed back with an ask then. The Render deploy filter stays for a later round.",
+          "noAction": "The ship of ruling-raccoon is not repeated; its PR exists and its single review is proposed under the session-recovery item. CIT-450 is handed back with an ask once that review is done so the host stays free. The Render deploy filter stays for a later round.",
           "evidence": [
             "agent_sessions CIT-524: ruling-raccoon reported at 17:25 with 71 workflow tests passing and tsc clean",
-            "agent_ship_status: job_running true for ruling-raccoon, merge succeeded with 2 files changed",
-            "apply trn-08l4gdbdr4pc8hv3g00elvrfg applied ship CIT-524: ruling-raccoon"
+            "apply trn-08l4gdbdr4pc8hv3g00elvrfg applied ship CIT-524: ruling-raccoon",
+            "open PR list: PR 376 CIT-524: Merge environment ruling-raccoon"
           ]
         },
         {
@@ -291,30 +291,34 @@
           "key": "session-recovery",
           "summary": "Implement bounded recovery after a missing-session response, verified by a session-loss regression",
           "disposition": "adopted",
-          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression, and after the first ship failed on a host lock it redid the work in ruling-raccoon from origin/main, reporting 71 workflow tests passing and the session-loss test failing on the old client. That environment's ship is running alone and its push is in progress. It is not yet on a branch, merged or deployed, and it is untested against the real server.",
+          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression, and after the first ship failed on a host lock it redid the work in ruling-raccoon from origin/main, reporting 71 workflow tests passing and the session-loss test failing on the old client. The ship ran alone and PR 376 is now open. It is not yet reviewed, merged or deployed, and it is untested against the real server. Its single Codex review is proposed now.",
           "status": "open",
-          "operations": [],
-          "noAction": "The ship was applied and is running, so it is not repeated. The next steps are the PR, one review, the merge and then a scheduled tick that survives a deployment. No fix is claimed as deployed or accepted.",
+          "operations": [
+            {
+              "op": "review",
+              "target": "CIT-524"
+            }
+          ],
+          "noAction": "",
           "evidence": [
             "agent_sessions CIT-524: ruling-raccoon reported at 17:25",
-            "agent_ship_status: job_running true, merge succeeded, push in progress",
-            "apply trn-08l4gdbdr4pc8hv3g00elvrfg applied ship CIT-524: ruling-raccoon",
-            "open PR list: no cit-524 PR yet"
+            "apply trn-08l4gdbds151utons73avqfgg: completed, 0 applied (no reconciliation needed for CIT-524)",
+            "open PR list: PR 376 CIT-524: Merge environment ruling-raccoon, open"
           ]
         },
         {
           "key": "ship-coordination",
           "summary": "Refresh ship status before starting another ship, sequence ships, and create a bounded follow-up if needed",
           "disposition": "adopted",
-          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, but ships have also failed when other host jobs ran: the earlier CIT-524 ship hit a restic repository lock and the CIT-450 push lost its Pass session while a review ran, and the ships that ran alone succeeded. The agent traced the CIT-524 failure to the lock. That is strong, not conclusive, evidence. The current ship is running alone with no review, delegation or other op beside it, and its outcome will test the theory.",
+          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, but ships have also failed when other host jobs ran: the earlier CIT-524 ship hit a restic repository lock and the CIT-450 push lost its Pass session while a review ran. The ship that ran alone, ruling-raccoon, produced PR 376. That is strong, not conclusive, evidence for the contention theory, so ships stay sequenced and the review of PR 376 is the only host job proposed now.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 for competing ships. Ship-versus-other-job overlap is handled by sequencing for now. If this ship fails while running alone, a bounded follow-up is created for host job locking.",
+          "noAction": "Covered by CIT-523 for competing ships. Ship-versus-other-job overlap is handled by sequencing. No follow-up for host job locking is created because the ship that ran alone succeeded; it is created if a ship fails while running alone.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "agent_sessions CIT-524 at 17:25: restic lock on toolbox-host then git push failed",
-            "agent_ship_status: ruling-raccoon running",
-            "host_status busy: job:ship, restic, codex and no review or agent job"
+            "host_status: TERMINATED, so agent_ship_status could not be read",
+            "open PR list: PR 376 exists after the lone ruling-raccoon ship"
           ]
         }
       ]

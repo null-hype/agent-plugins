@@ -1,5 +1,7 @@
 {
-  "seen": {},
+  "seen": {
+    "CIT-524": "2026-10-23T20:17:11.246Z"
+  },
   "releases": [],
   "clusters": [],
   "decline": [],
@@ -8,5 +10,10 @@
   "escalate": [],
   "delegate": [],
   "ship": [],
-  "review": []
+  "review": [
+    {
+      "issue": "CIT-524",
+      "pr": 376
+    }
+  ]
 }
