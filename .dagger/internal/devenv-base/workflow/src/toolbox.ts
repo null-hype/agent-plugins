@@ -129,11 +129,18 @@ export async function wakeHost(
 export function shipJob(text: string): ShipJob {
   const s = JSON.parse(text) as {
     job_running?: unknown; job_exit?: unknown;
-    request?: { env?: unknown } | null; result?: { env?: unknown } | null;
+    request?: { env?: unknown; branch?: unknown } | null; result?: { env?: unknown; branch?: unknown } | null;
+    log_tail?: unknown;
   };
   if (typeof s.job_running !== "boolean" || !(s.job_exit === null || typeof s.job_exit === "number")) {
     throw new Error(`agent_ship_status gave no job state: ${text.slice(0, 300)}`);
   }
   const env = s.request?.env ?? s.result?.env;
-  return { running: s.job_running, exit: s.job_exit, ...(typeof env === "string" ? { env } : {}) };
+  const branch = s.request?.branch ?? s.result?.branch;
+  return {
+    running: s.job_running, exit: s.job_exit,
+    ...(typeof env === "string" ? { env } : {}),
+    ...(typeof branch === "string" ? { branch } : {}),
+    ...(typeof s.log_tail === "string" ? { log: s.log_tail } : {}),
+  };
 }
