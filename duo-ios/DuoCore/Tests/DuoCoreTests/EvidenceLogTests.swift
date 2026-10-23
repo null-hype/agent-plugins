@@ -82,7 +82,7 @@ final class EvidenceLogTests: XCTestCase {
             ("0", .integer(0)),
             ("0.0", .integer(0)),
             ("0e5", .integer(0)),
-            ("9007199254740991.5", .number(9007199254740991.5)),
+            ("4503599627370495.5", .number(4503599627370495.5)),
             ("1e-5", .number(1e-5)),
         ]
         for (literal, expected) in cases {
