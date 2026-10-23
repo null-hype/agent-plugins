@@ -25,7 +25,7 @@ public enum EvidenceLog {
             let line = rawLine.last == UInt8(ascii: "\r") ? rawLine.dropLast() : rawLine[...]
             if line.allSatisfy({ $0 == UInt8(ascii: " ") || $0 == UInt8(ascii: "\t") }) { continue }
             do {
-                records.append(EvidenceRecord(lineNumber: lineNumber, value: try decoder.decode(JSONValue.self, from: Data(line))))
+                records.append(EvidenceRecord(lineNumber: lineNumber, value: try JSONValue(parsing: Data(line))))
             } catch {
                 throw EvidenceLogError(lineNumber: lineNumber, reason: String(describing: error))
             }
