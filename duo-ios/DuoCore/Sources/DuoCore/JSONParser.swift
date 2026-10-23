@@ -244,13 +244,7 @@ private struct JSONParser {
         }
 
         let token = String(decoding: bytes[start..<index], as: UTF8.self)
-        var digits = Array(integerDigits.drop { $0 == UInt8(ascii: "0") }) + Array(fractionDigits)
-        var leadingZerosDropped = 0
-        while digits.first == UInt8(ascii: "0") {
-            digits.removeFirst()
-            leadingZerosDropped += 1
-        }
-        _ = leadingZerosDropped
+        var digits = Array((integerDigits + fractionDigits).drop { $0 == UInt8(ascii: "0") })
         var scale = exponent - fractionDigits.count
         while digits.last == UInt8(ascii: "0") {
             digits.removeLast()
