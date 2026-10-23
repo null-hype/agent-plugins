@@ -172,6 +172,7 @@ func TestHostShip(t *testing.T) {
 		for e in trusty-burro quiet-fox; do
 			git switch -qc $e main && echo $e > b-$e && git add b-$e && git commit -qm $e && git push -q ../cu.git $e
 		done &&
+		git push -q ../cu.git main:idle-owl &&
 		mkdir workspaces && git clone -q ../origin.git ../workspaces/linear-agent && cd ../workspaces/linear-agent &&
 		git remote add container-use "$(cd ../.. && pwd)/cu.git"`)
 	// The workspace's /workspaces is $HOME/workspaces here.
@@ -291,6 +292,29 @@ echo done > "$2"
 	}
 	if first := sh(origin, "git rev-parse cit-2-fix^1"); first != sh(origin, "git rev-parse main") {
 		t.Fatalf("the new branch's merge has first parent %s, not main", first)
+	}
+
+	// An environment already contained in main (unchanged, or already landed)
+	// is not "already on the branch" while the branch is absent from origin:
+	// the branch is created, and the result matches origin.
+	if out := sh(origin, "git branch --list cit-3-fix"); out != "" {
+		t.Fatalf("cit-3-fix exists before the ship: %s", out)
+	}
+	exit, got = ship("idle-owl", "cit-3-fix")
+	if exit != "0" || got["status"] != "pushed" || got["sha"] != sh(origin, "git rev-parse cit-3-fix") || got["sha"] != sh(origin, "git rev-parse main") {
+		t.Fatalf("absent branch, environment contained in main: exit %q result %v\n%s", exit, got, jobLog())
+	}
+	// Once the branch exists and holds the environment, that is the shortcut.
+	exit, got = ship("idle-owl", "cit-3-fix")
+	if exit != "0" || got["status"] != "already on the branch" {
+		t.Fatalf("present branch holding the environment: exit %q result %v\n%s", exit, got, jobLog())
+	}
+	// A branch deleted on origin after the workspace fetched it is absent
+	// too, whatever the workspace's stale remote-tracking ref says.
+	sh(origin, "git branch -D cit-3-fix")
+	exit, got = ship("idle-owl", "cit-3-fix")
+	if exit != "0" || got["status"] != "pushed" || got["sha"] != sh(origin, "git rev-parse cit-3-fix") {
+		t.Fatalf("branch deleted after fetch: exit %q result %v\n%s", exit, got, jobLog())
 	}
 
 	// The token is in the environment of the push and of the check that reads
