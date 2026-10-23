@@ -49,5 +49,9 @@ schemes:
         Duo: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: DuoCore/DuoCoreTests
     archive:
       config: Release
