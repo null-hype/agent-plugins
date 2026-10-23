@@ -30,7 +30,8 @@ status() { # $1: the task run
     (.results[0] // empty | "outcome: \(.applied | length) applied, \(.skipped | length) skipped, \(.pending // [] | length) pending"),
     (.results[0].applied[]? | "applied \(.op) \(.target): \(.detail)"),
     (.results[0].skipped[]? | "skipped \(.op) \(.target): \(.why)"),
-    (.results[0].pending[]? | "pending (\(.state)) \(.op) \(.target): \(.why)")' <<< "$body"
+    (.results[0].pending[]? | "pending (\(.state)) \(.op) \(.target): \(.why)"),
+    (.results[0].failed[]? | "failed \(.op) \(.target): \(.why)")' <<< "$body"
   case $(jq -r .status <<< "$body") in
     pending | running) ;;
     completed) [ "$(jq '.results[0].pending // [] | length' <<< "$body")" = 0 ] || return 3 ;;
