@@ -5,6 +5,8 @@
 // writes to Linear, so a plan can be computed against the real workspace on
 // the dev server without changing anything.
 
+import type { InitiativeContext } from "./initiatives.ts";
+
 export type Stage = "triage" | "backlog" | "unstarted" | "started";
 
 export interface Issue {
@@ -24,6 +26,8 @@ export interface Issue {
 }
 
 export interface Plan {
+  // Filled by input preparation, not by the issue-graph projection.
+  initiatives?: InitiativeContext[];
   // The sinks the plan was built back from.
   sinks: string[];
   // Kept issues in dependency order: every issue comes after everything that

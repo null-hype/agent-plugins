@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runApplyDryRun, runPlan, type TaskRunner } from "./calibrate.ts";
 
-const plan = { sinks: ["CIT-439"], order: [], pruned: [], cycles: [], seen: {} };
+const initiativeIds = ["be78729c-779b-457c-b514-f88dddd55e0a"];
+const plan = { sinks: ["CIT-439"], order: [], pruned: [], cycles: [], seen: {}, initiatives: [{ id: initiativeIds[0] }] };
 
 function runner(run: Awaited<ReturnType<TaskRunner["runTask"]>>, calls: unknown[][] = []): TaskRunner {
   return {
@@ -17,7 +18,7 @@ test("runs the plan task with the team and deliveries and returns its plan", asy
   const calls: unknown[][] = [];
   const got = await runPlan(runner({ status: "completed", results: [plan] }, calls), "plan", "CIT", ["CIT-439"]);
   assert.deepEqual(got, plan);
-  assert.deepEqual(calls, [["plan", ["CIT", ["CIT-439"]]]]);
+  assert.deepEqual(calls, [["plan", ["CIT", ["CIT-439"], initiativeIds]]]);
 });
 
 test("a failed run is a failed calibration, with the task's error", async () => {
@@ -30,6 +31,7 @@ test("a failed run is a failed calibration, with the task's error", async () => 
 test("a completed run without a plan is not read as an empty plan", async () => {
   await assert.rejects(runPlan(runner({ status: "completed", results: [] }), "plan", "CIT", []), /returned no plan/);
   await assert.rejects(runPlan(runner({ status: "completed", results: [{ order: [] }] }), "plan", "CIT", []), /returned no plan/);
+  await assert.rejects(runPlan(runner({ status: "completed", results: [{ ...plan, initiatives: undefined }] }), "plan", "CIT", []), /returned no plan/);
 });
 
 test("the apply dry run is always asked for with dryRun true", async () => {
