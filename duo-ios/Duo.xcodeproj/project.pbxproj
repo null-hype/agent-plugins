@@ -137,6 +137,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		41AF9F4B8B1D0E82128016E4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03FD2CD3F87A35EE6125926F /* cards.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		FFA0ABBCC4C831DB5EA50D14 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
