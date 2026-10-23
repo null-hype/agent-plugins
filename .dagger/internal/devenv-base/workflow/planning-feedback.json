@@ -16,16 +16,15 @@
           "key": "failed-apply-visibility",
           "summary": "Show a failed apply clearly even when planning continues, and reconcile partial operations before retrying",
           "disposition": "adopted",
-          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. The agent's session now explains the failed ships: the host's backup repository was locked by another job and the push then failed, which the earlier apply report showed only as an exit code or as applied.",
+          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. This run's apply report now carries both an applied ship and the delayed failure line for the earlier CIT-450 ship, so a failed ship that was first reported as applied is surfaced in a later report, though only with an exit code.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 (PR 346, merged), and the earlier failed-ship line suggests the ship-failure notice from PR 354 is live, though I cannot confirm that PR merged. The 09:13 failed apply still has no error detail, and ship failures still show their cause only in the agent's session or the host log. Stays open until a failure is shown with actionable detail.",
+          "noAction": "Covered by CIT-523 (PR 346, merged), and the failed-ship lines suggest the ship-failure notice from PR 354 is live, though I cannot confirm that PR merged. The report still gives no cause, which only the agent's session or host log shows, and the 09:13 failed apply still has no error detail. Stays open until a failure is shown with actionable detail.",
           "evidence": [
             "CIT-523 Done via PR 346",
-            "agent_sessions CIT-524: ship failure came from a restic repository lock on toolbox-host, then the git push failed",
-            "agent_ship_status: engaged-jawfish push failed on Pass non-existent session",
+            "agent_sessions CIT-524: earlier ship failure came from a restic repository lock on toolbox-host, then the git push failed",
             "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail",
-            "apply trn-08l4gdbdq8ls8hv3g00elvqlg completed with 0 applied after a plan with no operations"
+            "apply trn-08l4gdbdr4pc8hv3g00elvrfg: applied ship CIT-524 and failed ship CIT-450 exited 1"
           ]
         },
         {
@@ -61,19 +60,14 @@
           "key": "session-recovery-followup",
           "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
           "disposition": "adopted",
-          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock, so it is shipped now. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on the same host contention and is handed back after this ship.",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock. That environment's ship was applied and is running alone on the host, with the push in progress. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on the same host contention and is handed back after this ship lands.",
           "status": "open",
-          "operations": [
-            {
-              "op": "ship",
-              "target": "CIT-524"
-            }
-          ],
-          "noAction": "",
+          "operations": [],
+          "noAction": "The ship of ruling-raccoon is not repeated and no other host job is added while its push runs. If its PR exists next tick it is reviewed once, and CIT-450 is handed back with an ask then. The Render deploy filter stays for a later round.",
           "evidence": [
-            "agent_sessions CIT-450: engaged-jawfish reported at 15:25",
             "agent_sessions CIT-524: ruling-raccoon reported at 17:25 with 71 workflow tests passing and tsc clean",
-            "agent_ship_status: engaged-jawfish push failed on Pass non-existent session"
+            "agent_ship_status: job_running true for ruling-raccoon, merge succeeded with 2 files changed",
+            "apply trn-08l4gdbdr4pc8hv3g00elvrfg applied ship CIT-524: ruling-raccoon"
           ]
         },
         {
@@ -161,9 +155,8 @@
           "operations": [],
           "noAction": "Contextual qualification only.",
           "evidence": [
-            "agent_sessions read this run",
-            "apply trn-08l4gdbdq8ls8hv3g00elvqlg report read this run",
-            "host_status read this run: TERMINATED",
+            "agent_ship_status and host_status read this run",
+            "apply trn-08l4gdbdr4pc8hv3g00elvrfg report read this run",
             "open PR list read this run"
           ]
         },
@@ -271,14 +264,14 @@
           "key": "failed-apply-status",
           "summary": "Make a failed apply versus a successful plan visible in status and retrospectives",
           "disposition": "adopted",
-          "rationale": "This response states the observed apply outcome separately from the proposed operations. A ship reported as applied failed afterwards on host contention, so the apply report alone is not enough to call it executed. The earlier failed-ship line carried only an exit code.",
+          "rationale": "This response states the observed apply outcome separately from the proposed operations. A ship reported as applied failed afterwards on host contention and its failure appeared only in a later apply report, so a single report alone is not enough to call a ship executed. The failure lines carry only an exit code.",
           "status": "open",
           "operations": [],
           "noAction": "Covered by CIT-523 (PR 346, merged). This stays open until a failing scheduled tick is shown with its error, and a ship that fails after being reported applied is visible in the report.",
           "evidence": [
             "CIT-523 Done via PR 346",
-            "agent_sessions CIT-524: the ship failed after a restic lock on toolbox-host and then the push failed",
-            "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail"
+            "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail",
+            "apply trn-08l4gdbdr4pc8hv3g00elvrfg: failed ship CIT-450 exited 1"
           ]
         },
         {
@@ -298,29 +291,30 @@
           "key": "session-recovery",
           "summary": "Implement bounded recovery after a missing-session response, verified by a session-loss regression",
           "disposition": "adopted",
-          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression, and after the first ship failed on a host lock it redid the work in ruling-raccoon from origin/main, reporting 71 workflow tests passing and the session-loss test failing on the old client. It is not on a branch, merged or deployed, and it is untested against the real server. It is shipped now, on its own.",
+          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression, and after the first ship failed on a host lock it redid the work in ruling-raccoon from origin/main, reporting 71 workflow tests passing and the session-loss test failing on the old client. That environment's ship is running alone and its push is in progress. It is not yet on a branch, merged or deployed, and it is untested against the real server.",
           "status": "open",
           "operations": [],
-          "noAction": "The ship is proposed under the session-recovery follow-up item, so it is not repeated here. No fix is claimed as deployed or accepted.",
+          "noAction": "The ship was applied and is running, so it is not repeated. The next steps are the PR, one review, the merge and then a scheduled tick that survives a deployment. No fix is claimed as deployed or accepted.",
           "evidence": [
             "agent_sessions CIT-524: ruling-raccoon reported at 17:25",
-            "apply trn-08l4gdbdnkboogb4c73fhnveg: failed ship CIT-524 exited 1",
-            "open PR list: no cit-524 PR"
+            "agent_ship_status: job_running true, merge succeeded, push in progress",
+            "apply trn-08l4gdbdr4pc8hv3g00elvrfg applied ship CIT-524: ruling-raccoon",
+            "open PR list: no cit-524 PR yet"
           ]
         },
         {
           "key": "ship-coordination",
           "summary": "Refresh ship status before starting another ship, sequence ships, and create a bounded follow-up if needed",
           "disposition": "adopted",
-          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, but ships have also failed when other host jobs ran: the CIT-524 ship hit a restic repository lock and the CIT-450 push lost its Pass session while a review ran, and the ships that ran alone succeeded. The agent traced the CIT-524 failure to the lock. That is strong, not conclusive, evidence, and it shows ships need sequencing against reviews and backups too. This ship is proposed with nothing else in the changeset.",
+          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, but ships have also failed when other host jobs ran: the earlier CIT-524 ship hit a restic repository lock and the CIT-450 push lost its Pass session while a review ran, and the ships that ran alone succeeded. The agent traced the CIT-524 failure to the lock. That is strong, not conclusive, evidence. The current ship is running alone with no review, delegation or other op beside it, and its outcome will test the theory.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 for competing ships. Ship-versus-other-job overlap is handled by sequencing for now. If a ship that runs alone fails again on a lock, a bounded follow-up is created for host job locking. Live ship status could not be read because the host is terminated.",
+          "noAction": "Covered by CIT-523 for competing ships. Ship-versus-other-job overlap is handled by sequencing for now. If this ship fails while running alone, a bounded follow-up is created for host job locking.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "agent_sessions CIT-524 at 17:25: restic lock on toolbox-host then git push failed",
-            "agent_ship_status: engaged-jawfish failed on Pass non-existent session",
-            "host_status: TERMINATED"
+            "agent_ship_status: ruling-raccoon running",
+            "host_status busy: job:ship, restic, codex and no review or agent job"
           ]
         }
       ]
