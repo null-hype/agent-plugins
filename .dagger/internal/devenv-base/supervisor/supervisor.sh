@@ -131,6 +131,7 @@ mcp__toolbox__workspace_status
 mcp__toolbox__codespace_status
 mcp__toolbox__codex_review_status
 mcp__toolbox__agent_ship_status
+mcp__sessions__agent_sessions
 mcp__linear__list_issues
 mcp__linear__get_issue
 mcp__linear__list_comments
@@ -232,12 +233,17 @@ chmod 600 "$MCP_FILE" "$GCS_KEY_FILE"
 # without --strict-mcp-config. So --strict-mcp-config costs the Linear tools
 # nothing -- they were never there -- and an explicit server is what provides
 # them.
-jq -n \
+#
+# Linear's MCP has no tool that reads an agent session, where the agent
+# reports its work, so sessions is a local read-only server that does
+# (agent-sessions-mcp.mjs). It queries and nothing else.
+jq -n --arg sessions_cmd "$DIR/agent-sessions-mcp.mjs" --arg linear_key "$LINEAR_API_KEY" \
   --arg toolbox_url "$TOOLBOX_URL" --arg toolbox_auth "Bearer $TOOLBOX_TOKEN" \
   --arg linear_url "$LINEAR_MCP_URL" --arg linear_auth "Bearer $LINEAR_API_KEY" \
   '{mcpServers: {
       toolbox: {type: "http", url: $toolbox_url, headers: {Authorization: $toolbox_auth}},
-      linear:  {type: "http", url: $linear_url,  headers: {Authorization: $linear_auth}}
+      linear:  {type: "http", url: $linear_url,  headers: {Authorization: $linear_auth}},
+      sessions: {type: "stdio", command: "node", args: [$sessions_cmd], env: {LINEAR_API_KEY: $linear_key}}
   }}' > "$MCP_FILE"
 
 now=$(date -u +%FT%TZ)

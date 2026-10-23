@@ -446,6 +446,11 @@ func (m *DevenvBase) Supervisor(
 			dagger.ContainerWithFileOpts{Permissions: 0o755},
 		).
 		WithFile(
+			"/app/supervisor/agent-sessions-mcp.mjs",
+			dag.CurrentModule().Source().File("supervisor/agent-sessions-mcp.mjs"),
+			dagger.ContainerWithFileOpts{Permissions: 0o755},
+		).
+		WithFile(
 			"/app/supervisor/prompt.md",
 			dag.CurrentModule().Source().File("supervisor/prompt.md"),
 			dagger.ContainerWithFileOpts{Permissions: 0o644},
