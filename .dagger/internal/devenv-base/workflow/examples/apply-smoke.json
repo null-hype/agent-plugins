@@ -27,7 +27,10 @@
     }
   ],
   "decline": [],
+  "done": [],
   "duplicate": [],
   "escalate": [],
-  "delegate": []
+  "delegate": [],
+  "ship": [],
+  "review": []
 }
