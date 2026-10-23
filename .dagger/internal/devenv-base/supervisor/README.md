@@ -30,8 +30,9 @@ Render cron `supervisor` ──▶ supervisor.sh
   │ 4. changeset.pkl = that block + `seen`; pkl eval → changeset.json
   │    (pkl/Changeset.pkl refuses a bad one)
   │ 5. node dist/calibrate.js apply         (apply, dry, on the PR's own tree)
-  │    node dist/feedback.js record         (feedback cites only that dry run's ops)
-  │    a refused render or feedback goes back to the session, up to
+  │    node dist/feedback.js record         (advisory: invalid feedback is dropped
+  │                                          with a warning; the plan goes on)
+  │    a refused render goes back to the session, up to
   │    SUPERVISOR_ATTEMPTS (3) answers, each checked whole again
   │ 6. push supervisor/calibration, open or update the PR,
   │    gh pr merge --auto                   (nothing waits on the checks)
@@ -270,15 +271,14 @@ section fixes.
   run, so a changeset section is accepted where it means exactly one op of
   that dry run (`cluster new:x` is its `create`), and is stored as that op.
   A reference that names no op, or more than one, is refused.
-- **A bounded correction.** A changeset that does not render, or feedback
-  the dry run refuses, goes back to the session with every problem and, for
-  feedback, the references the dry run accepts. Each answer is rendered,
-  dry-run and checked again in full, up to `SUPERVISOR_ATTEMPTS` (3) answers.
-  The session is read-only, so asking again repeats nothing outside the run.
-  After the last, the run publishes nothing, keeps every answer and its
-  refusal in `~/.claude/supervisor-diagnostics/<time>/` (backed up with the
-  session; the newest 10 are kept) and ends with `SUPERVISOR_PLAN: failed
-  reason=planner-output-invalid`.
+- **Feedback is advisory.** Feedback the dry run refuses, or a missing
+  block, is logged as a warning and left out of the ledger; the changeset
+  and its PR still go out (`SUPERVISOR_INITIATIVE_FEEDBACK: dropped`).
+- **A bounded correction.** A changeset that does not render goes back to
+  the session with the error. Each answer is rendered and dry-run again, up
+  to `SUPERVISOR_ATTEMPTS` (3) answers. After the last, the run publishes
+  nothing, keeps every answer in `~/.claude/supervisor-diagnostics/<time>/`
+  and ends with `SUPERVISOR_PLAN: failed reason=planner-output-invalid`.
 - **One ship at a time.** The host runs one ship job, and `agent_ship`
   returns as soon as it starts, so two ships in one apply always collided
   and failed the whole apply. Apply now reads `agent_ship_status` first. A
