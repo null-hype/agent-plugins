@@ -255,6 +255,21 @@ esac
 	if exit != "0" || got["status"] != "pushed" {
 		t.Fatalf("ship exit %q result %v\n%s", exit, got, jobLog())
 	}
+	// ship-status names the ship it ran, so a caller can tell its own ship
+	// from another's while it runs or after it fails (CIT-523).
+	status := exec.Command("bash", "-s", "--", "ship-status")
+	status.Env = env
+	status.Stdin = strings.NewReader(hostScript)
+	statusOut, err := status.Output()
+	if err != nil {
+		t.Fatalf("ship-status: %v", err)
+	}
+	var st struct {
+		Request map[string]string `json:"request"`
+	}
+	if err := json.Unmarshal(statusOut, &st); err != nil || st.Request["env"] != "trusty-burro" || st.Request["branch"] != "cit-1-fix" {
+		t.Fatalf("ship-status does not name the ship: %v\n%s", err, statusOut)
+	}
 	// A fast-forward of the finding's branch, holding the finding and the fix.
 	tip := sh(origin, "git rev-parse cit-1-fix")
 	if got["sha"] != tip || sh(origin, "git show cit-1-fix:b-trusty-burro") != "trusty-burro" || sh(origin, "git show cit-1-fix:f") != "finding" {

@@ -41,12 +41,23 @@ export interface LinearIssue {
   sessions?: Record<string, string>;
 }
 
+// The host's one ship job, as agent_ship_status reports it: whether it is
+// still running, its exit once it ended, and the environment it is for when
+// the host names it (a host from before CIT-523 names it only on success).
+export interface ShipJob {
+  running: boolean;
+  exit: number | null;
+  env?: string;
+}
+
 // The toolbox, for the ops that reach the host. apply never calls it in
 // a dry run.
 export interface Toolbox {
   // Brings the host up and returns once the Linear agent can take work.
   wake(): Promise<void>;
+  // Starts the ship job and returns; the host refuses while one runs.
   ship(env: string, branch: string): Promise<void>;
+  shipStatus(): Promise<ShipJob>;
   review(pr: number): Promise<void>;
 }
 
@@ -87,8 +98,12 @@ export interface LinearClient {
   addToRelease(issue: string, release: string): Promise<void>;
 }
 
+// Every kind of op apply reports. A dry run's ops are what the plan proposes,
+// and initiative feedback names them the same way (feedback.ts).
+export const OPS = ["pipeline", "release", "label", "create", "attach", "parent", "blocks", "decline", "done", "duplicate", "escalate", "delegate", "ship", "review"] as const;
+
 export interface Op {
-  op: "pipeline" | "release" | "label" | "create" | "attach" | "parent" | "blocks" | "decline" | "done" | "duplicate" | "escalate" | "delegate" | "ship" | "review";
+  op: (typeof OPS)[number];
   target: string;
   detail: string;
 }
@@ -99,6 +114,10 @@ export interface ApplyResult {
   applied: Op[];
   // Ops whose target changed since planning or no longer exists.
   skipped: (Op & { why: string })[];
+  // Ops neither done nor failed: in flight on the host from an earlier
+  // start, or deferred behind other work there. The next apply takes them
+  // up again, so a run with any is not fully applied.
+  pending: (Op & { state: "in-flight" | "deferred"; why: string })[];
   // The issue each cluster key resolved to; a cluster that does not exist
   // yet resolves to its own key in a dry run.
   clusters: Record<string, string>;
@@ -126,7 +145,22 @@ export async function apply(
   const problems = validate(cs);
   if (problems.length) throw new Error(`the changeset is invalid:\n- ${problems.join("\n- ")}`);
 
-  const result: ApplyResult = { dryRun, applied: [], skipped: [], clusters: {} };
+  const result: ApplyResult = { dryRun, applied: [], skipped: [], pending: [], clusters: {} };
+  try {
+    await converge(cs, linear, dryRun, toolbox, result);
+  } catch (e) {
+    // What this run did before it failed is in Linear already: say so, rather
+    // than leave the next run to rediscover it.
+    const done = result.applied.map((o) => `${o.op} ${o.target}`).join(", ") || "nothing";
+    throw new Error(`${(e as Error).message}\nbefore the failure this apply ${dryRun ? "would have" : "had"} done: ${done}`, { cause: e });
+  }
+  return result;
+}
+
+// The host's answer to a ship while another runs (host.sh's refuse_if_busy).
+const SHIP_BUSY = /a job for ship is still running/;
+
+async function converge(cs: Changeset, linear: LinearClient, dryRun: boolean, toolbox: Toolbox | undefined, result: ApplyResult) {
   const cache = new Map<string, LinearIssue | null>();
   const get = async (id: string) => {
     if (!cache.has(id)) cache.set(id, await linear.issue(id));
@@ -374,6 +408,14 @@ export async function apply(
   // 6. Ship finished environments, each once. The ship's own note is the
   // record, so it is not a drift check: an issue the agent touched while it
   // worked is still shipped.
+  //
+  // The host runs one ship job at a time, and agent_ship returns as soon as
+  // it starts, so two ships in one apply always collided (CIT-523). So the
+  // job is read first. One already running for this environment was started
+  // before its note was written: it is noted and left to finish, never
+  // started twice. One running for anything else defers the ship to the next
+  // apply; nothing running is cancelled to make room.
+  let job: ShipJob | undefined;
   for (const s of cs.ship ?? []) {
     const issue = await get(s.issue);
     const op: Op = { op: "ship", target: s.issue, detail: `${s.env} to ${issue?.branch ?? "its branch"}` };
@@ -382,11 +424,31 @@ export async function apply(
       continue;
     }
     if (issue.shipped.includes(s.env)) continue;
-    if (!dryRun) {
-      await host();
-      await toolbox!.ship(s.env, issue.branch);
-      await linear.comment(s.issue, `Shipping \`${s.env}\` to \`${issue.branch}\` (agent_ship). ${shipMarker(s.env)}`);
+    if (dryRun) {
+      result.applied.push(op);
+      continue;
     }
+    await host();
+    job ??= await toolbox!.shipStatus();
+    if (job.running && job.env === s.env) {
+      await linear.comment(s.issue, `Shipping \`${s.env}\` to \`${issue.branch}\` (agent_ship, already running on the host). ${shipMarker(s.env)}`);
+      result.pending.push({ ...op, state: "in-flight", why: "its ship job was already running on the host; noted, not started again" });
+      continue;
+    }
+    if (job.running) {
+      result.pending.push({ ...op, state: "deferred", why: `the host is still shipping ${job.env ?? "an environment it does not name"}; the next apply ships this one` });
+      continue;
+    }
+    try {
+      await toolbox!.ship(s.env, issue.branch);
+    } catch (e) {
+      if (!SHIP_BUSY.test((e as Error).message)) throw e;
+      job = { running: true, exit: null };
+      result.pending.push({ ...op, state: "deferred", why: "a ship job started on the host meanwhile; the next apply ships this one" });
+      continue;
+    }
+    job = { running: true, exit: null, env: s.env };
+    await linear.comment(s.issue, `Shipping \`${s.env}\` to \`${issue.branch}\` (agent_ship). ${shipMarker(s.env)}`);
     result.applied.push(op);
   }
 
@@ -407,5 +469,4 @@ export async function apply(
     }
     result.applied.push(op);
   }
-  return result;
 }
