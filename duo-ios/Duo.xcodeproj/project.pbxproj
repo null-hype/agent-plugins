@@ -15,6 +15,7 @@
 
 /* Begin PBXFileReference section */
 		1C1ECD7CDDDB39E2677846B9 /* Duo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Duo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		43B70DB03F2053F7D0A316A0 /* cards.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = cards.json; path = "../tutorial-app/src/stories/duo/cards.json"; sourceTree = "<group>"; };
 		5F03537D64D779F499BD3D83 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A033D0B89038A1713B51D0DF /* DuoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoApp.swift; sourceTree = "<group>"; };
 		A49E895FC2F2EF707E6979D5 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
