@@ -7,7 +7,7 @@ public enum JSONValue: Encodable, Sendable, Equatable {
     case integer(Int64)
     /// An integer literal above Int64.max that fits UInt64, kept exact.
     case unsignedInteger(UInt64)
-    /// Any other number; integral values are only accepted here up to 2^53.
+    /// A non-integral number, accepted only while its integer part is below 2^53.
     case number(Double)
     case string(String)
     case array([JSONValue])
