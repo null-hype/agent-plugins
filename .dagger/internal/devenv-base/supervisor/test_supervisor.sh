@@ -348,6 +348,8 @@ export APPLY_CHANGESET=$BIN/apply-changeset
 
 chmod +x "$BIN/apply-changeset" "$BIN/pass-cli" "$BIN/restic" "$BIN/claude" "$BIN/render" "$BIN/curl" "$BIN/npm" "$BIN/node" "$BIN/gh"
 
+# The agent sessions server runs on the real node, not the stub.
+REAL_NODE=$(command -v node)
 export PATH="$BIN:$PATH"
 export HOME=$WORK/home
 mkdir -p "$HOME"
@@ -599,6 +601,29 @@ if grep -qiE 'SESSION_ID|ZONE|_TZ' "$PASS_ENVFILE_LOG"; then
   fail "the env file handed to pass-cli should hold no session id, zone or timezone"
 fi
 
+# --- the agent sessions server ---------------------------------------------
+
+# Over stdio, with Linear's API answered by a stubbed fetch: the issue's
+# sessions come back newest first, its replies in order, narration only on
+# request.
+sessions_out=$(printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"agent_sessions","arguments":{"issue":"CIT-524"}}}' \
+  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"agent_sessions","arguments":{"issue":"CIT-524","narration":true}}}' |
+  LINEAR_API_KEY=k "$REAL_NODE" --import "data:text/javascript,globalThis.fetch=async(u,o)=>{if(!o.body.includes('issue(id'))throw new Error('wrong query');const a=(t,c)=>({createdAt:t,content:c});return new Response(JSON.stringify({data:{issue:{agentSessions:{nodes:[{status:'complete',createdAt:'2026-10-22T01:00:00Z',updatedAt:'2026-10-22T02:00:00Z',activities:{nodes:[a('2026-10-22T02:00:00Z',{__typename:'AgentActivityResponseContent',body:'Blocked on Bash'})]}},{status:'complete',createdAt:'2026-10-23T06:00:00Z',updatedAt:'2026-10-23T07:00:00Z',activities:{nodes:[a('2026-10-23T07:00:00Z',{__typename:'AgentActivityResponseContent',body:'Done, env amazed-bluebird'}),a('2026-10-23T06:30:00Z',{__typename:'AgentActivityThoughtContent',body:'thinking'}),a('2026-10-23T06:00:00Z',{__typename:'AgentActivityPromptContent',body:'Ship it'})]}}]}}}}))}" \
+  "$DIR/agent-sessions-mcp.mjs")
+jq -e 'select(.id == 2) | .result.tools[0].name == "agent_sessions"' <<< "$sessions_out" > /dev/null ||
+  fail "the sessions server should list agent_sessions: $sessions_out"
+jq -e 'select(.id == 3) | .result.content[0].text | fromjson
+  | (.[0].updatedAt == "2026-10-23T07:00:00Z") and ([.[0].activities[] | .body] == ["Ship it", "Done, env amazed-bluebird"]) and (.[1].activities[0].body == "Blocked on Bash")' \
+  <<< "$sessions_out" > /dev/null ||
+  fail "agent_sessions should give the issue's sessions newest first, replies in order, without narration: $sessions_out"
+jq -e 'select(.id == 4) | .result.content[0].text | fromjson | [.[0].activities[] | .type] == ["prompt", "thought", "response"]' \
+  <<< "$sessions_out" > /dev/null ||
+  fail "agent_sessions should include the narration when asked: $sessions_out"
+
 # --- the prompt --------------------------------------------------------------
 
 grep -q 'You are the supervisor of the agent-plugins project' "$CLAUDE_ARGV" ||
@@ -638,6 +663,8 @@ grep -q 'Bearer resolved-TOOLBOX_TOKEN' "$CLAUDE_MCP" ||
   fail "the MCP config should carry the toolbox bearer token, resolved from pass"
 grep -q 'resolved-LINEAR_API_KEY' "$CLAUDE_MCP" ||
   fail "the MCP config should carry the Linear key"
+[ "$(jq -r '.mcpServers.sessions | "\(.command) \(.args[0]) \(.env.LINEAR_API_KEY)"' "$CLAUDE_MCP")" = "node $DIR/agent-sessions-mcp.mjs resolved-LINEAR_API_KEY" ] ||
+  fail "the agent sessions server should be in the MCP config, with the Linear key"
 [ "$(jq -r '.mcpServers.linear.url' "$CLAUDE_MCP")" = "https://mcp.linear.app/mcp" ] ||
   fail "Linear should be an explicit MCP server: --strict-mcp-config leaves no connector to rely on"
 [ "$(cat "$CLAUDE_MCP_MODE")" = 600 ] ||
@@ -679,7 +706,7 @@ if section --allowedTools | grep -qx mcp__linear; then
   fail "the run must not allow the Linear server as a whole"
 fi
 for tool in mcp__toolbox__host_status mcp__toolbox__workspace_list mcp__toolbox__workspace_status \
-  mcp__toolbox__agent_ship_status mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments \
+  mcp__toolbox__agent_ship_status mcp__sessions__agent_sessions mcp__linear__list_issues mcp__linear__get_issue mcp__linear__list_comments \
   mcp__linear__list_initiatives mcp__linear__get_initiative mcp__linear__get_status_updates; do
   section --allowedTools | grep -qx "$tool" || fail "$tool should be allowed"
 done
