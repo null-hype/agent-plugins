@@ -33,18 +33,47 @@ interface RpcResponse {
   error?: { code: number; message: string };
 }
 
+// What a failed request says about whether the toolbox ran it:
+// - "missing-session": it answered 404 to a request that carried a session
+//   id. The Go MCP SDK does that before it runs any tool, so nothing ran.
+// - "ambiguous": no answer, a 5xx, or an answer cut off. The tool may have run.
+// - "definitive": the toolbox answered and refused.
+type Outcome = "missing-session" | "ambiguous" | "definitive";
+
+class ToolboxError extends Error {
+  outcome: Outcome;
+  constructor(message: string, outcome: Outcome) {
+    super(message);
+    this.outcome = outcome;
+  }
+}
+
 // A response is JSON, or an event stream whose data lines carry the JSON.
-async function readRpc(res: Response): Promise<RpcResponse> {
-  const body = await res.text();
-  if (!res.ok) throw new Error(`toolbox answered ${res.status}: ${body.slice(0, 500)}`);
-  if (!(res.headers.get("content-type") ?? "").includes("text/event-stream")) return JSON.parse(body) as RpcResponse;
-  const data = body
-    .split("\n")
-    .filter((l) => l.startsWith("data:"))
-    .map((l) => l.slice(5).trim())
-    .filter(Boolean);
-  if (!data.length) throw new Error("toolbox sent an empty event stream");
-  return JSON.parse(data[data.length - 1]!) as RpcResponse;
+async function readRpc(res: Response, sentSession: boolean): Promise<RpcResponse> {
+  let body: string;
+  try {
+    body = await res.text();
+  } catch (e) {
+    throw new ToolboxError(`toolbox answer was cut off: ${(e as Error).message}`, "ambiguous");
+  }
+  if (!res.ok) {
+    const outcome: Outcome = res.status === 404 && sentSession ? "missing-session" : res.status >= 500 ? "ambiguous" : "definitive";
+    throw new ToolboxError(`toolbox answered ${res.status}: ${body.slice(0, 500)}`, outcome);
+  }
+  const isStream = (res.headers.get("content-type") ?? "").includes("text/event-stream");
+  const data = isStream
+    ? body
+        .split("\n")
+        .filter((l) => l.startsWith("data:"))
+        .map((l) => l.slice(5).trim())
+        .filter(Boolean)
+    : [body];
+  if (!data.length) throw new ToolboxError("toolbox sent an empty event stream", "ambiguous");
+  try {
+    return JSON.parse(data[data.length - 1]!) as RpcResponse;
+  } catch {
+    throw new ToolboxError(`toolbox sent an answer that is not JSON: ${body.slice(0, 200)}`, "ambiguous");
+  }
 }
 
 export interface ToolResult {
@@ -52,45 +81,105 @@ export interface ToolResult {
   structured?: unknown;
 }
 
+// A session the toolbox no longer knows (it was redeployed, CIT-524) is
+// opened again, this many times per call at most.
+export const MAX_REOPENS = 2;
+
+// Tools that read, or step the host toward a state (host_wake). Every other
+// tool has an effect: when its answer never arrives the error says its outcome
+// is unknown, and nothing sends it again. After a lost session (a 404, so the
+// tool never ran) the effect tools are sent again; the host refuses a second
+// codex_review while one runs and skips a head it reviewed, and agent_ship is
+// checked against agent_ship_status first.
+const NO_EFFECT: readonly TaskTool[] = ["host_status", "host_wake", "workspace_list", "workspace_status", "agent_ship_status", "codex_review_status"];
+
 export function toolboxClient(token: string, url = TOOLBOX_URL, fetcher = fetch) {
   let session: string | undefined;
   let id = 0;
   const post = async (message: Record<string, unknown>) => {
-    const res = await fetcher(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-        Authorization: `Bearer ${token}`,
-        ...(session ? { "Mcp-Session-Id": session } : {}),
-      },
-      body: JSON.stringify({ jsonrpc: "2.0", ...message }),
-    });
+    const sent = session;
+    let res: Response;
+    try {
+      res = await fetcher(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          Authorization: `Bearer ${token}`,
+          ...(sent ? { "Mcp-Session-Id": sent } : {}),
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", ...message }),
+      });
+    } catch (e) {
+      throw new ToolboxError(`toolbox did not answer: ${(e as Error).message}`, "ambiguous");
+    }
     session ??= res.headers.get("mcp-session-id") ?? undefined;
-    return res;
+    return { res, sent: sent !== undefined };
+  };
+  const rpc = async (message: Record<string, unknown>) => {
+    const { res, sent } = await post(message);
+    return readRpc(res, sent);
   };
   const open = async () => {
-    const init = await readRpc(
-      await post({
-        id: ++id,
-        method: "initialize",
-        params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "supervisor-workflow", version: "0" } },
-      }),
-    );
-    if (init.error) throw new Error(`toolbox initialize failed: ${init.error.message}`);
+    const init = await rpc({
+      id: ++id,
+      method: "initialize",
+      params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "supervisor-workflow", version: "0" } },
+    });
+    if (init.error) throw new ToolboxError(`toolbox initialize failed: ${init.error.message}`, "definitive");
     // A notification has no id, and its answer has no body.
-    await post({ method: "notifications/initialized" });
+    const { res, sent } = await post({ method: "notifications/initialized" });
+    if (!res.ok) await readRpc(res, sent);
+  };
+  const invoke = async (tool: TaskTool, args: Record<string, unknown>): Promise<ToolResult> => {
+    let r: RpcResponse;
+    try {
+      r = await rpc({ id: ++id, method: "tools/call", params: { name: tool, arguments: args } });
+    } catch (e) {
+      if (e instanceof ToolboxError && e.outcome === "ambiguous" && !NO_EFFECT.includes(tool)) {
+        throw new Error(`toolbox ${tool}: outcome unknown, not called again (${e.message}); check what it did before repeating it`);
+      }
+      throw e;
+    }
+    if (r.error) throw new Error(`toolbox ${tool} failed: ${r.error.message}`);
+    const text = (r.result?.content ?? []).map((c) => c.text ?? "").join("\n");
+    if (r.result?.isError) throw new Error(`toolbox ${tool}: ${text}`);
+    return { text, ...(r.result?.structuredContent !== undefined ? { structured: r.result.structuredContent } : {}) };
+  };
+  // Before agent_ship is sent again in a new session, the host says whether
+  // a ship job for this environment is already running. The host runs one
+  // ship at a time, so that job is this call's work, done by an earlier call.
+  const shipHeld = async (args: Record<string, unknown>): Promise<ToolResult | undefined> => {
+    const status = await invoke("agent_ship_status", {});
+    const job = shipJob(status.text);
+    if (!job.running || job.env !== args.env) return undefined;
+    return {
+      text: `agent_ship not sent again: the host's ship job for ${String(args.env)} is already running. ${status.text}`,
+      ...(status.structured !== undefined ? { structured: status.structured } : {}),
+    };
   };
 
   return {
     async call(tool: TaskTool, args: Record<string, unknown> = {}): Promise<ToolResult> {
       if (!(TASK_TOOLS as readonly string[]).includes(tool)) throw new Error(`a workflow task may not call toolbox tool ${tool}`);
-      if (!session) await open();
-      const r = await readRpc(await post({ id: ++id, method: "tools/call", params: { name: tool, arguments: args } }));
-      if (r.error) throw new Error(`toolbox ${tool} failed: ${r.error.message}`);
-      const text = (r.result?.content ?? []).map((c) => c.text ?? "").join("\n");
-      if (r.result?.isError) throw new Error(`toolbox ${tool}: ${text}`);
-      return { text, ...(r.result?.structuredContent !== undefined ? { structured: r.result.structuredContent } : {}) };
+      let reopened = 0;
+      for (;;) {
+        try {
+          if (!session) await open();
+          if (reopened && tool === "agent_ship") {
+            const held = await shipHeld(args);
+            if (held) return held;
+          }
+          return await invoke(tool, args);
+        } catch (e) {
+          if (!(e instanceof ToolboxError) || e.outcome !== "missing-session") throw e;
+          if (reopened >= MAX_REOPENS) {
+            throw new Error(`toolbox ${tool}: the session was lost again after ${MAX_REOPENS} reopenings, giving up (${e.message})`);
+          }
+          reopened++;
+          session = undefined;
+        }
+      }
     },
   };
 }
