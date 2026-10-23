@@ -1,8 +1,14 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@49a094d9f5ec49ca044e22cd9092193d6bc334ab. Merging it is applying it; render with
+// main@e9a849fc48ec12bbf19804c12ac876ebbe133ec0. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-501"] = "2026-10-23T12:17:19.669Z"
+  ["CIT-524"] = "2026-10-23T08:17:57.483Z"
+  ["CIT-525"] = "2026-10-23T11:20:58.647Z"
 }
 
+delegate { new { issue = "CIT-525"; agent = "Claude"; ask = "Your last session ended without a change because host Write, Edit and Bash are denied on purpose. That is not a question for anyone, so do not wait for permission. Create a container-use environment with environment_create and carry out the plan you wrote there: the strict number parser (JSONParser.swift with JSONValue(parsing:)), the EvidenceLog.records change, and the new tests for 9007199254740993.1, 90071992547409931e-1, 18446744073709551615e0, 1.5e3, 1e400, 1e-400 and negative zero. Run swift test in that environment, commit, and reply here with the environment id." } }
+ship { new { issue = "CIT-524"; env = "prime-flounder" } }
+review { new { issue = "CIT-501"; pr = 366 } }
