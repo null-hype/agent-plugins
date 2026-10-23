@@ -31,15 +31,16 @@
           "key": "finish-input-preparation",
           "summary": "Finish CIT-518's initiative input preparation, revision tracking and plan-PR response",
           "disposition": "adopted",
-          "rationale": "This run received all five Initiative Zero sources, so input preparation is working. PR 344 added feedback transport and validation, and CIT-523 (PR 346) fixed the two failures that kept the last plan from committing. The remaining acceptance needs a plan PR that links the updates and a later cycle that retains unresolved feedback. Code merge alone does not close it.",
-          "status": "open",
+          "rationale": "PR 344 added feedback transport and validation, CIT-523 (PR 346) fixed the failures that kept the plan from committing, and a second cycle has now carried the previous feedback record forward without redispatching its work. The observer update reports CIT-518 Done with PR 378 linked, and CIT-518 no longer appears in the frozen plan's open order. The acceptance named here, a plan PR that links the updates and a later cycle that retains unresolved feedback, is met.",
+          "status": "resolved",
           "operations": [],
-          "noAction": "PR 344 and PR 346 are merged and CIT-518 is open. The maintainer-requested verification is a plan PR plus a later tick, not new build work, and the agent is better used on session recovery. CIT-518 stays Todo.",
+          "noAction": "Accepted; no further build work is proposed for CIT-518.",
           "evidence": [
             "CIT-518 attachments: PR 338 and PR 344",
             "CIT-523 Done via PR 346",
-            "this run's initiative input holds five sources",
-            "this run's input carries the previous feedback record, version 1"
+            "frozen plan: CIT-518 no longer in the open order",
+            "observer update ff387124: CIT-518 Done, PR 378 retains unresolved dispositions",
+            "this run's input carries the previous feedback record, version 1, with all earlier item keys"
           ]
         },
         {
@@ -60,14 +61,14 @@
           "key": "session-recovery-followup",
           "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
           "disposition": "adopted",
-          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock. That environment shipped alone and PR 376 is now open on the issue branch, and its Codex review was applied and is running. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on host contention and is handed back after the PR 376 review finishes.",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carried it, and the agent redid Step 1 in environment ruling-raccoon from origin/main after the earlier ship failed on a host lock. That environment shipped alone, PR 376 was reviewed once and merged at 22:17. The review's finding is filed as CIT-527 and is clustered as a bounded follow-up. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, whose ship failed on host contention and is proposed again now, alone.",
           "status": "open",
           "operations": [],
-          "noAction": "The ship of ruling-raccoon is not repeated and the review of PR 376 is not repeated: it was applied and is running. CIT-450 is handed back with an ask once that review is done so the host stays free. The Render deploy filter stays for a later round.",
+          "noAction": "The ship of ruling-raccoon and the review of PR 376 are not repeated. The CIT-450 ship is listed under the land-pr-376-and-finish-cit450 item. The Render deploy filter stays for a later round.",
           "evidence": [
-            "agent_sessions CIT-524: ruling-raccoon reported at 17:25 with 71 workflow tests passing and tsc clean",
-            "apply trn-08l4gdbdst20453cc738oisg0 applied review CIT-524: PR #376",
-            "open PR list: PR 376 CIT-524: Merge environment ruling-raccoon"
+            "agent_sessions CIT-450: engaged-jawfish reported done at 15:25",
+            "frozen plan: CIT-527 in Triage, hinted as related to CIT-524",
+            "open PR list: PR 376 merged at 22:17:15"
           ]
         },
         {
@@ -187,13 +188,15 @@
           "key": "cit518-follow-through",
           "summary": "Follow through on CIT-518 and CIT-519 initiative integration",
           "disposition": "adopted",
-          "rationale": "The inability to read initiatives that this update described is gone: this run has the input. CIT-518 stays open for the acceptance steps.",
-          "status": "open",
+          "rationale": "The inability to read initiatives that this update described is gone, and the integration has now been shown across two cycles: the planner reads the sources, answers them and retains the dispositions. The observer update reports CIT-518 Done. CIT-519 remains in the plan as the parent and needs no new dispatch.",
+          "status": "resolved",
           "operations": [],
-          "noAction": "Already covered by PR 344, PR 346 and the open CIT-518. The remaining work is verification across cycles, not a build task for the agent.",
+          "noAction": "Accepted; verification across cycles is complete for CIT-518.",
           "evidence": [
             "CIT-518 attachments",
-            "this run's initiative input"
+            "frozen plan: CIT-518 no longer in the open order",
+            "observer update ff387124: CIT-518 Done, PR 378 retains unresolved dispositions",
+            "this run's initiative input and previous record, version 1"
           ]
         },
         {
@@ -219,6 +222,44 @@
           "evidence": [
             "CIT-500 Done via PR 334",
             "CIT-516 Done via PR 342"
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "body": "## Observer steering — preserve Linear hierarchy in Git by stacking child-issue PRs\n\n### Observed facts\n\nThe current supervisor preserves hierarchy in Linear but drops it at the Git boundary. The planner clusters review findings and other triage work as sub-issues of a parent issue, and `apply` records those parent relationships. However, the supervisor's PR-opening path currently opens every shipped `cit-*` branch with `--base \"$CALIBRATION_BASE\"`, which is normally `main`. The parent/sub-issue relationship therefore has no effect on PR ancestry.\n\nThis creates a structural mismatch: a follow-up issue can be correctly modeled as a child of the issue whose unmerged PR it modifies, while its pull request is opened independently against `main`. That defeats the intended stack, can re-expose conflicts or duplicate context, and makes the Git graph disagree with the Linear work graph.\n\n### Interpretation\n\nThis is not a request to reintroduce branch instructions into issue bodies. The missing behavior belongs in the supervisor/shipping orchestration as a global invariant derived from current Linear state.\n\nThe intended invariant is: **when issue B is a sub-issue of A and A has an open, unmerged issue PR, B's shipped work should be based on A's issue branch and B's PR should target A's branch.** When the parent PR has already merged, the child can target `main`. If ancestry cannot be established safely, fail/defer explicitly rather than silently opening an independent PR against `main`.\n\nThis is closely related to the CIT-527 destination-identity defect: in both cases Linear carries information needed to identify the correct Git destination, and the current orchestration throws that information away.\n\n### Steering\n\n- **Change direction, narrowly:** make stacked PR ancestry a supervisor-level invariant derived from Linear parentage plus the current open PR/branch state. Do not encode branch-selection instructions in issue descriptions.\n- **Self-correct through the normal loop:** create or reuse the smallest bounded follow-up needed to implement and test this behavior. Let the planner choose the concrete decomposition.\n- **Acceptance:** demonstrate at least one child/follow-up issue whose parent has an unmerged PR: the child work is based on the parent branch, its PR targets the parent branch, and the stack remains valid when the parent later merges. Also cover the already-merged-parent case, which should target `main`.\n- **Failure behavior:** if the expected parent branch/PR is missing, ambiguous, or has drifted, report/defer rather than silently falling back to `main` and claiming the requested stack was opened.\n- **Do not broaden:** this is not permission for general Git/branch refactoring. Correct the observed hierarchy mismatch, prove it in the running loop, then return planning pressure to Duo/native delivery.\n\n### Success signal for the observer\n\nA source change or plan PR is not enough. Success is a real subsequent supervisor cycle where a qualifying child issue is shipped/opened as a stacked PR with the expected base branch, and current Linear/Git state agrees on that relationship. Until then this steering remains unresolved.",
+        "id": "63381eee-5934-4e9b-91e5-5bbe2bb60bae",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "update",
+        "revision": "0d6d081dd2256e96111c92398ed4167be752b0a4b9a51c54e393ceec468c707f",
+        "updatedAt": "2026-10-23T21:33:48.707Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-63381eee"
+      },
+      "items": [
+        {
+          "key": "stacked-pr-ancestry",
+          "summary": "Derive stacked PR ancestry from Linear parentage and open PR state: a child targets its open parent's branch, or main once the parent has merged",
+          "disposition": "adopted",
+          "rationale": "The finding is correct: sub-issue parentage is recorded in Linear but every shipped branch is opened against main. It shares a cause with CIT-527, where Linear's destination information is dropped on the way to Git. The smallest bounded task is one cluster that holds CIT-527 and states this invariant, rather than a family of shipping tasks. It is proposed now and the agent is handed it next tick so it does not share the host with the CIT-450 ship.",
+          "status": "open",
+          "operations": [],
+          "noAction": "The cluster is proposed under the cit527-destination-identity item in the ff387124 source, so it is not listed twice. Acceptance stays as the update states: a real subsequent cycle opens a stacked PR with the expected base, covers the already-merged-parent case, and fails explicitly when ancestry is missing or ambiguous. Nothing is claimed as implemented.",
+          "evidence": [
+            "frozen plan: CIT-527 in Triage",
+            "observer update 63381eee: PR-opening path uses --base CALIBRATION_BASE for every cit-* branch"
+          ]
+        },
+        {
+          "key": "stacked-pr-do-not-broaden",
+          "summary": "Keep the stacked-PR work narrow, prove it in the running loop, then return to Duo and native delivery",
+          "disposition": "adopted",
+          "rationale": "Agreed. The cluster covers only the observed hierarchy mismatch and the destination-identity defect. No general branch refactoring or additional supervisor-hardening issues are proposed.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Constraint on scope only; no operation. No Duo issue is agent-ready, so this does not displace Duo work.",
+          "evidence": [
+            "frozen plan: CIT-503, CIT-504 and CIT-505 blocked behind CIT-502, which needs Richard on a Mac"
           ]
         }
       ]
@@ -251,26 +292,32 @@
           "key": "land-pr-376-and-finish-cit450",
           "summary": "Review and, if valid, land PR 376, verify recovery in the running workflow, and finish the CIT-450 handoff when the host is available",
           "disposition": "adopted",
-          "rationale": "The review of PR 376 was applied and is running alone on the host. CIT-450 is finished in engaged-jawfish, and its ship waits on that review so the host stays free. Recovery is not claimed until PR 376 merges and a deployment overlaps a scheduled tick.",
+          "rationale": "PR 376 was reviewed once and merged at 22:17, and the review's finding is clustered as a follow-up. The host is free, so the finished CIT-450 environment engaged-jawfish is shipped now, alone. Its earlier ship failed on host contention before apply recorded it, a cause I judge fixed by sequencing though not confirmed. Recovery is not claimed until a scheduled tick survives a deployment.",
           "status": "open",
-          "operations": [],
-          "noAction": "The review is not repeated. Next tick, if it has finished, CIT-450 is handed back with an ask to confirm engaged-jawfish is current with main, then shipped alone. Findings from the review go to Triage for clustering.",
+          "operations": [
+            {
+              "op": "ship",
+              "target": "CIT-450"
+            }
+          ],
+          "noAction": "",
           "evidence": [
             "agent_sessions CIT-450: engaged-jawfish reported done at 15:25",
-            "apply trn-08l4gdbdst20453cc738oisg0 applied review CIT-524: PR #376",
-            "codex_review_status PR 376: job_running true, no findings yet"
+            "apply trn-08l4gdbdtpas8hv3g00elvrfg: 0 applied, nothing pending on the host",
+            "open PR list: PR 376 merged at 22:17:15"
           ]
         },
         {
           "key": "retain-feedback-for-cit518",
           "summary": "Retain unresolved Initiative Zero dispositions into the next plan without duplicate work",
           "disposition": "adopted",
-          "rationale": "This record carries every earlier item key forward unchanged where nothing changed, and adds items for this update. The update says one initiative-aware plan does not complete CIT-518, and I agree.",
-          "status": "open",
+          "rationale": "This record carries every earlier item key forward unchanged where nothing changed. The next cycle after the update retained the dispositions without reintroducing them as new dispatches, which is the evidence the update asked for.",
+          "status": "resolved",
           "operations": [],
-          "noAction": "No new dispatch; retention is shown by this record. CIT-518 stays open until a later cycle is seen to carry the items without reintroducing duplicate work.",
+          "noAction": "Retention is demonstrated; nothing further is dispatched for it.",
           "evidence": [
-            "this run's feedback keeps the earlier item keys",
+            "apply trn-08l4gdbdtpas8hv3g00elvrfg: no duplicated operations",
+            "observer update ff387124: PR 378 preserves unresolved dispositions rather than redispatching them",
             "this run's input carries the previous feedback record, version 1"
           ]
         },
@@ -319,11 +366,12 @@
           "key": "explicit-response-in-plan-pr",
           "summary": "Link this update and state adopted, deferred and disagreed items in the plan PR",
           "disposition": "adopted",
-          "rationale": "This feedback block is that response. The plan PR does not exist yet, so the link cannot be confirmed from here.",
-          "status": "open",
+          "rationale": "This feedback block is the response, and the observer update reports that PR 378 carries the record and links the updates. I cannot open PR 378 from here, so the link itself rests on that report and on this input carrying the prior record.",
+          "status": "resolved",
           "operations": [],
-          "noAction": "No dispatch needed; the response is this output. The previous feedback record, version 1, was committed, but I cannot see from here whether the rendered plan PR links the update.",
+          "noAction": "The response is delivered each tick and has been retained across cycles.",
           "evidence": [
+            "observer update ff387124: PR 378 carries forward the Initiative Zero feedback record",
             "this run's input carries the previous feedback record, version 1"
           ]
         },
@@ -358,30 +406,100 @@
           "key": "session-recovery",
           "summary": "Implement bounded recovery after a missing-session response, verified by a session-loss regression",
           "disposition": "adopted",
-          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression, and after the first ship failed on a host lock it redid the work in ruling-raccoon from origin/main, reporting 71 workflow tests passing and the session-loss test failing on the old client. The ship ran alone and PR 376 is open. Its single Codex review was applied and is running. It is not yet merged or deployed, and it is untested against the real server.",
+          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression in ruling-raccoon (71 workflow tests passing, the session-loss test failing on the old client), and PR 376 merged at 22:17 after its single Codex review. The review found that recovery does not check the destination branch, filed as CIT-527 and clustered. The fix is merged but not yet verified deployed: no scheduled tick has survived a toolbox deployment, and it is untested against the real server.",
           "status": "open",
           "operations": [],
-          "noAction": "The review was applied and is running, so it is not repeated. The next steps are its findings, the merge and then a scheduled tick that survives a deployment. No fix is claimed as deployed or accepted.",
+          "noAction": "The ship and the review are not repeated. The next steps are the CIT-527 correction and then a scheduled tick that survives a deployment. No fix is claimed as deployed or accepted.",
           "evidence": [
             "agent_sessions CIT-524: ruling-raccoon reported at 17:25",
-            "apply trn-08l4gdbdst20453cc738oisg0 applied review CIT-524: PR #376 (codex_review)",
-            "codex_review_status PR 376: job_running true, no findings yet",
-            "host_status busy: job:review-376 and codex"
+            "frozen plan: CIT-527 in Triage",
+            "observer update ff387124: CIT-527 identifies a destination-branch gap in the recovery",
+            "open PR list: PR 376 merged at 22:17:15"
           ]
         },
         {
           "key": "ship-coordination",
           "summary": "Refresh ship status before starting another ship, sequence ships, and create a bounded follow-up if needed",
           "disposition": "adopted",
-          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, but ships have also failed when other host jobs ran: the earlier CIT-524 ship hit a restic repository lock and the CIT-450 push lost its Pass session while a review ran. The ship that ran alone, ruling-raccoon, produced PR 376. That is strong, not conclusive, evidence for the contention theory, so ships stay sequenced and the review of PR 376 is the only host job proposed now.",
+          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, but ships have also failed when other host jobs ran: the earlier CIT-524 ship hit a restic repository lock and the CIT-450 push lost its Pass session while a review ran. The ship that ran alone, ruling-raccoon, produced PR 376. That is strong, not conclusive, evidence for the contention theory, so ships stay sequenced and the CIT-450 ship is the only host job proposed now.",
           "status": "open",
           "operations": [],
           "noAction": "Covered by CIT-523 for competing ships. Ship-versus-other-job overlap is handled by sequencing. No follow-up for host job locking is created because the ship that ran alone succeeded; it is created if a ship fails while running alone.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "agent_sessions CIT-524 at 17:25: restic lock on toolbox-host then git push failed",
-            "host_status: TERMINATED, so agent_ship_status could not be read",
-            "open PR list: PR 376 exists after the lone ruling-raccoon ship"
+            "open PR list: PR 376 exists after the lone ruling-raccoon ship",
+            "the CIT-450 ship is proposed with no delegation or review beside it"
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "body": "## Observer steering — initiative retention is demonstrated; session recovery exposed a narrower correctness bug\n\n### Observed facts\n\nThe latest completed planning cycle provides the missing second-cycle evidence for initiative-focused planning. PR 378 carries forward the existing Initiative Zero feedback record, preserves unresolved dispositions rather than redispatching them, and explicitly distinguishes planning from execution. Linear now marks CIT-518 Done and links PR 378 alongside the implementation PRs. On the evidence available here, closing CIT-518 is now materially better supported than its earlier premature closure: the planner has both consumed initiative feedback and retained it across a subsequent cycle.\n\nThe same cycle applied the review of PR 376 for CIT-524 rather than repeating its ship. PR 376 remains open and merge-ready; CIT-524 remains In Progress. Codex's review produced a new concrete finding, CIT-527: the session-recovery logic checks that the same environment is already shipping after a lost session, but does not check that it is shipping to the same destination branch. In the reproduced fixture, a ship to an old branch can therefore be mistaken for successful dispatch to the newly requested branch. CIT-527 is in Triage and points directly at PR 376.\n\nThis is not merely another generic hardening opportunity. It is a correctness hole in the exact recovery mechanism introduced to satisfy the initiative's observed shipping/session failure: the loop can still record a successful dispatch whose requested branch will never receive the environment. That means PR 376's recovery behavior is not yet safe to treat as complete even though the broader initiative-input loop now appears functional.\n\n### Interpretation\n\nThe failure frontier has moved again and become narrower. Initiative steering itself is no longer the primary uncertainty: CIT-518's retention acceptance is now demonstrated strongly enough to stop spending planning effort on proving the same integration repeatedly. The immediate reliability frontier is the destination identity invariant exposed by CIT-527.\n\nThis does **not** justify broadening into general supervisor cleanup. The finding should be treated as a bounded correction to the already-started CIT-524 recovery path. Once that invariant is corrected and the recovery path is proven, the previous steering still applies: pressure returns to Duo/native delivery as soon as the maintainer/Mac dependency permits it.\n\n### Steering\n\n- **Resolve:** treat CIT-518's initiative-loop bootstrap as accepted unless new contradictory runtime evidence appears. Do not keep generating verification work for it merely to accumulate more examples.\n- **Continue, narrowly:** address CIT-527 as part of completing the current CIT-524 recovery path. A recovered `agent_ship` must match both environment and requested destination branch before it can be treated as already dispatched.\n- **Do not broaden:** do not use CIT-527 as a reason to open a family of speculative shipping-hardening tasks. Correct the observed invariant, review the resulting evidence, and stop when the concrete recovery path is trustworthy.\n- **Continue:** keep the Render deploy-trigger restriction deferred; this new finding does not change its priority.\n- **Return to product:** once the bounded recovery correction is landed/proven, re-evaluate the Duo/native frontier immediately. The initiative outcome remains getting the claim-and-refutation experience into Richard's hands.\n- **New uncertainty:** PR 376 is currently merge-ready while CIT-527 identifies a correctness defect in its recovery semantics. Planning should reconcile whether the finding must be incorporated before merge or can safely land as an immediate follow-up; it should not silently equate merge-ready status with recovery acceptance.\n\nHealth remains **at risk**, but the risk has shifted: initiative-level steering/retention now looks operational; the remaining concern is a concrete execution-correctness defect plus the external Mac/native dependency.",
+        "id": "ff387124-adc9-4de4-b6e1-ebbb31891b66",
+        "initiativeId": "be78729c-779b-457c-b514-f88dddd55e0a",
+        "kind": "update",
+        "revision": "469593bb40870086c971f58e53895cb1c8cec93b4fdf16390f04fa30808effeb",
+        "updatedAt": "2026-10-23T21:23:48.582Z",
+        "url": "https://linear.app/citizen6librarian6refrain4/initiative/initiative-zero-bring-duos-claim-and-refutation-experience-into-use-9df87b9a367d/activity#initiative-update-ff387124"
+      },
+      "items": [
+        {
+          "key": "cit518-accepted",
+          "summary": "Treat CIT-518's initiative-loop bootstrap as accepted and stop generating verification work for it",
+          "disposition": "adopted",
+          "rationale": "Agreed. The planner has read, answered and retained Initiative Zero's feedback across two cycles with no redispatch, and CIT-518 is no longer an open issue in the plan.",
+          "status": "resolved",
+          "operations": [],
+          "noAction": "No further verification issue is created for it.",
+          "evidence": [
+            "frozen plan: CIT-518 no longer in the open order",
+            "observer update ff387124: CIT-518 Done, PR 378 linked",
+            "this run's input carries the previous feedback record, version 1"
+          ]
+        },
+        {
+          "key": "cit527-destination-identity",
+          "summary": "Correct the destination-branch check in the session-recovery path (CIT-527), as a bounded follow-up to CIT-524",
+          "disposition": "adopted",
+          "rationale": "The finding is a correctness hole in the recovery just merged: a ship to an old branch can be taken for the newly requested one. PR 376 merged at 22:17 before the finding was cluster-able, so it lands as an immediate follow-up rather than blocking the merge. It is clustered with the stacked-PR rule in one new cluster under release:supervisor-workflow and handed to the agent next tick, after the CIT-450 ship has finished, so the two do not share the host.",
+          "status": "open",
+          "operations": [
+            {
+              "op": "create",
+              "target": "new:ship-destination-identity"
+            }
+          ],
+          "noAction": "",
+          "evidence": [
+            "frozen plan: CIT-527 in Triage, hinted as related to CIT-524",
+            "observer update ff387124: a recovered agent_ship must match both environment and requested destination branch",
+            "open PR list: PR 376 merged at 22:17:15"
+          ]
+        },
+        {
+          "key": "keep-deploy-trigger-deferred",
+          "summary": "Keep the Render deploy-trigger restriction deferred",
+          "disposition": "adopted",
+          "rationale": "Agreed; CIT-527 does not change its priority. It needs Richard's OK because the toolbox-spike service is not defined in this repo, and it is revisited only if deployment-induced session loss survives the client recovery.",
+          "status": "open",
+          "operations": [],
+          "noAction": "Deferred with the toolbox-deploy-triggers item; no operation.",
+          "evidence": [
+            "agent_sessions CIT-524 at 17:25: Render deploy filter left out as asked"
+          ]
+        },
+        {
+          "key": "return-to-product-after-recovery",
+          "summary": "Return to the Duo and native frontier once the bounded recovery correction is landed and proven",
+          "disposition": "adopted",
+          "rationale": "Agreed. I rechecked this tick: nothing Duo is agent-ready, because CIT-502 needs Richard on a Mac and CIT-503, CIT-504 and CIT-505 are behind it. No supervisor-hardening work beyond CIT-527 is proposed.",
+          "status": "open",
+          "operations": [],
+          "noAction": "No Duo delegation is possible. The agent is handed the CIT-527 cluster next tick, and Duo work is picked up as soon as any becomes ready.",
+          "evidence": [
+            "frozen plan: CIT-503 and CIT-504 blocked by CIT-502, CIT-505 blocked by CIT-503, CIT-526 needs an Xcode runner"
           ]
         }
       ]
