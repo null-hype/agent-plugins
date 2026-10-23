@@ -31,6 +31,8 @@ export interface LinearIssue {
   // The container-use environments apply has shipped for it, read back from
   // the note each ship leaves since the last ask handed it back.
   shipped: string[];
+  // Those whose ship apply found failed on the host, from the note it left.
+  shipFailed?: string[];
   // The pull requests apply has had reviewed for it, from each review's note.
   reviewed: number[];
   // The asks apply has handed it with, by askId, from each ask's note.
@@ -48,6 +50,9 @@ export interface ShipJob {
   running: boolean;
   exit: number | null;
   env?: string;
+  branch?: string;
+  // The end of the job's log, for a failure's note.
+  log?: string;
 }
 
 // The toolbox, for the ops that reach the host. apply never calls it in
@@ -118,6 +123,10 @@ export interface ApplyResult {
   // start, or deferred behind other work there. The next apply takes them
   // up again, so a run with any is not fully applied.
   pending: (Op & { state: "in-flight" | "deferred"; why: string })[];
+  // Ships an earlier apply started that the host says failed. Starting the
+  // next ship overwrites the host's record of the last, so apply reads it
+  // first and notes a failure on its issue for planning to hand back.
+  failed?: (Op & { why: string })[];
   // The issue each cluster key resolved to; a cluster that does not exist
   // yet resolves to its own key in a dry run.
   clusters: Record<string, string>;
@@ -129,6 +138,9 @@ export const ESCALATE_LABEL = "needs-maintainer";
 export const marker = (key: string) => `<!-- supervisor-changeset ${key.replaceAll(":", "/")} -->`;
 // The note a ship leaves on its issue, which is how a rerun knows it shipped.
 export const shipMarker = (env: string) => `<!-- supervisor-ship ${env} -->`;
+export const shipFailedMarker = (env: string) => `<!-- supervisor-ship-failed ${env} -->`;
+// The issue a branch belongs to, as Linear names branches: cit-501-… is CIT-501.
+const branchIssue = (branch: string) => branch.match(/^([a-z][a-z0-9]*)-([0-9]+)-/)?.slice(1, 3).join("-").toUpperCase();
 // The note a review leaves on its issue, the same way.
 export const reviewMarker = (pr: number) => `<!-- supervisor-review ${pr} -->`;
 // The note an ask leaves, by a short hash of the ask: one ask is posted once.
@@ -416,6 +428,17 @@ async function converge(cs: Changeset, linear: LinearClient, dryRun: boolean, to
   // started twice. One running for anything else defers the ship to the next
   // apply; nothing running is cancelled to make room.
   let job: ShipJob | undefined;
+  // How the last ship ended, before anything can overwrite it: a failure is
+  // noted once on its issue, with the end of its log.
+  const outcome = async (j: ShipJob) => {
+    if (j.running || j.exit === null || j.exit === 0 || !j.env || !j.branch) return;
+    const id = branchIssue(j.branch);
+    const issue = id ? await get(id) : null;
+    if (!issue || !issue.shipped.includes(j.env) || (issue.shipFailed ?? []).includes(j.env)) return;
+    const why = `the ship of ${j.env} to ${j.branch} exited ${j.exit}`;
+    await linear.comment(issue.identifier, `Ship failed: \`${j.env}\` to \`${j.branch}\` exited ${j.exit}, so the branch does not have it.\n\n\`\`\`\n${(j.log ?? "").slice(-1500)}\n\`\`\`\n\n${shipFailedMarker(j.env)}`);
+    (result.failed ??= []).push({ op: "ship", target: issue.identifier, detail: `${j.env} to ${j.branch}`, why });
+  };
   for (const s of cs.ship ?? []) {
     const issue = await get(s.issue);
     const op: Op = { op: "ship", target: s.issue, detail: `${s.env} to ${issue?.branch ?? "its branch"}` };
@@ -423,13 +446,13 @@ async function converge(cs: Changeset, linear: LinearClient, dryRun: boolean, to
       result.skipped.push({ ...op, why: `${s.issue} does not exist` });
       continue;
     }
-    if (issue.shipped.includes(s.env)) continue;
+    if (issue.shipped.includes(s.env) && !(issue.shipFailed ?? []).includes(s.env)) continue;
     if (dryRun) {
       result.applied.push(op);
       continue;
     }
     await host();
-    job ??= await toolbox!.shipStatus();
+    if (!job) await outcome((job = await toolbox!.shipStatus()));
     if (job.running && job.env === s.env) {
       await linear.comment(s.issue, `Shipping \`${s.env}\` to \`${issue.branch}\` (agent_ship, already running on the host). ${shipMarker(s.env)}`);
       result.pending.push({ ...op, state: "in-flight", why: "its ship job was already running on the host; noted, not started again" });
@@ -451,6 +474,10 @@ async function converge(cs: Changeset, linear: LinearClient, dryRun: boolean, to
     await linear.comment(s.issue, `Shipping \`${s.env}\` to \`${issue.branch}\` (agent_ship). ${shipMarker(s.env)}`);
     result.applied.push(op);
   }
+
+  // A run that woke the host for anything else still reads how the last
+  // ship ended, so a failure does not wait for the next ship to surface.
+  if (!dryRun && awake && !job) await outcome(await toolbox!.shipStatus());
 
   // 7. Review pull requests with Codex, each once, noted the same way. Its
   // findings land in Triage for the next run.
