@@ -1,8 +1,10 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@9f8d52dc8cefd739c4527d47bb6e9cf34223b463. Merging it is applying it; render with
+// main@a2c1bcb4992e5c234a372593a6414c5038513c75. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-524"] = "2026-10-23T20:17:11.246Z"
 }
 
+review { new { issue = "CIT-524"; pr = 376 } }
