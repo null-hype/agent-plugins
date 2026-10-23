@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03FD2CD3F87A35EE6125926F /* cards.json in Resources */ = {isa = PBXBuildFile; fileRef = 43B70DB03F2053F7D0A316A0 /* cards.json */; };
 		36911AD3C8D522D94190689D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49E895FC2F2EF707E6979D5 /* ContentView.swift */; };
 		779C9AEA0EFE64B294D2E7B3 /* DuoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A033D0B89038A1713B51D0DF /* DuoApp.swift */; };
 		D3FE17D891B102F4BBE7910C /* DuoCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5CED61C7E4765064B96FF1F /* DuoCore */; };
@@ -14,6 +15,7 @@
 
 /* Begin PBXFileReference section */
 		1C1ECD7CDDDB39E2677846B9 /* Duo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Duo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		43B70DB03F2053F7D0A316A0 /* cards.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = cards.json; path = "../tutorial-app/src/stories/duo/cards.json"; sourceTree = "<group>"; };
 		5F03537D64D779F499BD3D83 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A033D0B89038A1713B51D0DF /* DuoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoApp.swift; sourceTree = "<group>"; };
 		A49E895FC2F2EF707E6979D5 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -63,8 +65,17 @@
 			children = (
 				23A866E7553E79073BD601BA /* Duo */,
 				3D5FB1AED12BFE5313999CA0 /* Packages */,
+				A874B97478FEE1D412225EFF /* Resources */,
 				61DCA01656FC01FDFFFC8DA7 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A874B97478FEE1D412225EFF /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				43B70DB03F2053F7D0A316A0 /* cards.json */,
+			);
+			name = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -75,6 +86,7 @@
 			buildConfigurationList = 4838555FAB8D4D33DE45F860 /* Build configuration list for PBXNativeTarget "Duo" */;
 			buildPhases = (
 				FFA0ABBCC4C831DB5EA50D14 /* Sources */,
+				41AF9F4B8B1D0E82128016E4 /* Resources */,
 				FBEA171E3B11EB8ECAEB2113 /* Frameworks */,
 			);
 			buildRules = (
@@ -124,6 +136,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		41AF9F4B8B1D0E82128016E4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03FD2CD3F87A35EE6125926F /* cards.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		FFA0ABBCC4C831DB5EA50D14 /* Sources */ = {
