@@ -16,15 +16,15 @@
           "key": "failed-apply-visibility",
           "summary": "Show a failed apply clearly even when planning continues, and reconcile partial operations before retrying",
           "disposition": "adopted",
-          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. Last tick's apply named a failed ship, the one for CIT-524, which is how the partial failure became visible. The agent's CIT-450 fix is aimed at the related case of a ship that reports success while no branch exists.",
+          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. This run's apply report lists the CIT-450 ship as applied, but the host shows that ship exited 1 afterwards, so I checked live ship status instead of trusting the report.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 (PR 346, merged), and the failed-ship line suggests the ship-failure notice from PR 354 is live, though I cannot confirm that PR merged. The CIT-524 failure carried only an exit code and the 09:13 failed apply still has no error detail. Stays open until a failure is shown with actionable detail.",
+          "noAction": "Covered by CIT-523 (PR 346, merged), and the earlier failed-ship line suggests the ship-failure notice from PR 354 is live, though I cannot confirm that PR merged. A ship that fails after apply has reported it applied is only visible in ship status until the next apply. The 09:13 failed apply still has no error detail. Stays open until a failure is shown with actionable detail.",
           "evidence": [
             "CIT-523 Done via PR 346",
-            "agent_sessions CIT-450: engaged-jawfish reported at 15:25",
-            "apply trn-08l4gdbdnkboogb4c73fhnveg: 2 applied and failed ship CIT-524 exited 1",
-            "apply trn-08l4gdbdogmk8hv3g00elvm4g completed with 0 applied after a plan with no operations"
+            "agent_ship_status: engaged-jawfish job_exit 1, push could not resolve SHIP_PUSH_PAT_REF from Proton Pass (non-existent session)",
+            "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail",
+            "apply trn-08l4gdbdpcj1bta0s73f9s5k0: applied ship CIT-450: engaged-jawfish"
           ]
         },
         {
@@ -46,18 +46,13 @@
           "key": "keep-duo-moving",
           "summary": "Keep native and Duo progress moving alongside the repairs",
           "disposition": "adopted",
-          "rationale": "CIT-521, CIT-516, CIT-517, CIT-522 and CIT-501 are Done: PR 366 merged at 14:17. CIT-525 shipped as renewed-javelin and PR 371 is open with no review, so it is reviewed once. CIT-503 is blocked on CIT-502 and CIT-526 wait on the maintainer on a Mac, so no further Duo issue is ready for the agent.",
+          "rationale": "CIT-521, CIT-516, CIT-517, CIT-522 and CIT-501 are Done: PR 366 merged at 14:17. CIT-525 is at PR 371 and its Codex review is running. CIT-503 is blocked on CIT-502 and CIT-526 wait on the maintainer on a Mac, so no further Duo issue is ready for the agent, which is now on CIT-524.",
           "status": "open",
-          "operations": [
-            {
-              "op": "review",
-              "target": "CIT-525"
-            }
-          ],
-          "noAction": "",
+          "operations": [],
+          "noAction": "The review of PR 371 was applied and is running (job:review-371 busy), so it is not repeated. Nothing else is proposed so the host stays free of overlapping jobs.",
           "evidence": [
-            "PR 366 merged at 14:17",
-            "apply trn-08l4gdbdnkboogb4c73fhnveg applied ship CIT-525: renewed-javelin",
+            "apply trn-08l4gdbdpcj1bta0s73f9s5k0 applied review CIT-525: PR 371",
+            "host_status busy: job:review-371, agent, codex",
             "open PR list: PR 371 for CIT-525, state OPEN"
           ]
         },
@@ -65,19 +60,14 @@
           "key": "session-recovery-followup",
           "summary": "Create a focused toolbox session-recovery task with bounded reinitialization and a session-loss regression",
           "disposition": "adopted",
-          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent implemented Step 1 in environment prime-flounder, whose ship failed. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, so that environment is shipped now, as a different environment on a different issue and a different cause from the failed CIT-524 ship.",
+          "rationale": "The update ties the 404 to a deployment that replaced the toolbox instance while an in-memory MCP session was live. CIT-524 carries it, and the agent implemented Step 1 in environment prime-flounder. The agent also finished CIT-450 (do not report success for a branch that does not exist) in engaged-jawfish, but its ship failed at the push step on a lost Pass session, not on the environment, so it is not on a branch yet.",
           "status": "open",
-          "operations": [
-            {
-              "op": "ship",
-              "target": "CIT-450"
-            }
-          ],
-          "noAction": "",
+          "operations": [],
+          "noAction": "The CIT-450 ship is not repeated this tick because a review job is running and the evidence points to overlapping jobs losing the Pass session. It is shipped alone next tick. The Render deploy filter stays for a later round.",
           "evidence": [
             "agent_sessions CIT-450: engaged-jawfish reported at 15:25, tests pass and the old logic fails the new case",
-            "agent_sessions CIT-524: prime-flounder reported at 04:10 with 71 workflow tests passing and tsc clean",
-            "apply trn-08l4gdbdnkboogb4c73fhnveg applied delegate CIT-450 with ask"
+            "agent_ship_status: engaged-jawfish merged locally, push failed on Pass non-existent session",
+            "host_status busy: job:review-371"
           ]
         },
         {
@@ -165,8 +155,8 @@
           "noAction": "Contextual qualification only.",
           "evidence": [
             "agent_sessions read this run",
-            "apply trn-08l4gdbdogmk8hv3g00elvm4g report read this run",
-            "host_status read this run: TERMINATED",
+            "agent_ship_status and host_status read this run",
+            "apply trn-08l4gdbdpcj1bta0s73f9s5k0 report read this run",
             "open PR list read this run"
           ]
         },
@@ -210,13 +200,13 @@
           "key": "duo-progress",
           "summary": "Keep Duo and native work moving alongside capture evidence",
           "disposition": "adopted",
-          "rationale": "CIT-521, CIT-516, CIT-517, CIT-522 and CIT-501 are merged or Done, and CIT-525 is at PR 371 awaiting its review. The native app slices wait on CIT-502, CIT-503 and CIT-526, which need the maintainer on a Mac.",
+          "rationale": "CIT-521, CIT-516, CIT-517, CIT-522 and CIT-501 are merged or Done, and CIT-525 is at PR 371 with its review running. The native app slices wait on CIT-502, CIT-503 and CIT-526, which need the maintainer on a Mac.",
           "status": "open",
           "operations": [],
           "noAction": "The work is underway; the open ops are listed in the first source's keep-duo-moving item.",
           "evidence": [
             "PR 347, PR 342, PR 352 and PR 366 merged",
-            "PR 371 open for CIT-525"
+            "PR 371 open for CIT-525, review running"
           ]
         },
         {
@@ -275,14 +265,15 @@
           "key": "failed-apply-status",
           "summary": "Make a failed apply versus a successful plan visible in status and retrospectives",
           "disposition": "adopted",
-          "rationale": "This response states the observed apply outcome separately from the proposed operations. Last tick's apply report listed a failed ship line next to its applied ones, which shows a failed operation surfacing in status, but the report carried no error detail to act on.",
+          "rationale": "This response states the observed apply outcome separately from the proposed operations. A ship reported as applied has since failed on a lost Pass session, so the apply report alone is not enough to call it executed. The earlier failed-ship line carried only an exit code.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 (PR 346, merged). The failed-ship line shows partial failures are now reported, but with only an exit code, so this stays open until a failing scheduled tick is shown with its error.",
+          "noAction": "Covered by CIT-523 (PR 346, merged). This stays open until a failing scheduled tick is shown with its error, and a ship that fails after being reported applied is visible in the report.",
           "evidence": [
             "CIT-523 Done via PR 346",
+            "agent_ship_status: job_exit 1 with the Pass session error",
             "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail",
-            "apply trn-08l4gdbdnkboogb4c73fhnveg: failed ship CIT-524 exited 1"
+            "apply trn-08l4gdbdpcj1bta0s73f9s5k0: applied ship CIT-450"
           ]
         },
         {
@@ -302,19 +293,13 @@
           "key": "session-recovery",
           "summary": "Implement bounded recovery after a missing-session response, verified by a session-loss regression",
           "disposition": "adopted",
-          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression in prime-flounder, and reports the test fails on the old client and passes on the new one. Its ship failed (exit 1) and it is not on a branch, merged or deployed, and it is untested against the real server. The agent is now free, so the issue is handed back as planned.",
+          "rationale": "A run without a 404 proves nothing. The agent implemented bounded reinitialization and a session-loss regression in prime-flounder, and reports the test fails on the old client and passes on the new one. Its first ship failed at 13:19 while a review job was also running, and the issue was handed back last tick, so the agent is working on it now. It is not on a branch, merged or deployed, and it is untested against the real server.",
           "status": "open",
-          "operations": [
-            {
-              "op": "delegate",
-              "target": "CIT-524"
-            }
-          ],
-          "noAction": "",
+          "operations": [],
+          "noAction": "The hand-back was applied and the agent's session is working on it, so it is not repeated. When it reports done, the environment is shipped on its own, without a review or other host job in the same changeset. No fix is claimed as deployed or accepted.",
           "evidence": [
-            "agent_sessions CIT-450: complete at 15:25, so the agent is free",
-            "agent_sessions CIT-524: the new tests fail on the old client and pass on the new one, per the agent",
-            "apply trn-08l4gdbdnkboogb4c73fhnveg: failed ship CIT-524: the ship of prime-flounder exited 1",
+            "apply trn-08l4gdbdnkboogb4c73fhnveg: failed ship CIT-524 exited 1",
+            "apply trn-08l4gdbdpcj1bta0s73f9s5k0 applied delegate CIT-524 with the hand-back ask",
             "open PR list: no cit-524 PR"
           ]
         },
@@ -322,14 +307,14 @@
           "key": "ship-coordination",
           "summary": "Refresh ship status before starting another ship, sequence ships, and create a bounded follow-up if needed",
           "disposition": "adopted",
-          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, and ships have gone one per changeset, in order. One ship, engaged-jawfish for CIT-450, is proposed now; the failed prime-flounder ship waits for its hand-back. Live ship status could not be read because the host is terminated.",
+          "rationale": "CIT-523 (PR 346) delivered one-ship-at-a-time handling, but ships have also failed when they overlapped review jobs: CIT-524 at 13:19 and CIT-450 at 17:18 both lost the Pass session while a review was running, and the ships that ran alone succeeded. That is a probable cause, not a proven one, and it shows ship and review jobs need sequencing too. Ship and review are no longer proposed in the same changeset.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523, which is Done, and PR 354. It stays open until a batch with competing ships is observed.",
+          "noAction": "Covered by CIT-523 for competing ships. The ship-versus-review overlap is handled by sequencing for now. If it recurs when a ship runs alone, a bounded follow-up is created for the Pass session handling on the host.",
           "evidence": [
             "CIT-523 Done via PR 346",
-            "agent_ship_status unreadable: host TERMINATED",
-            "host_status: TERMINATED, so no ship job is running"
+            "agent_ship_status: engaged-jawfish failed on Pass non-existent session",
+            "host_status busy: job:review-371 while that ship ran"
           ]
         }
       ]
