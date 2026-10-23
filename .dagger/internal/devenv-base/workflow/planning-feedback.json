@@ -16,14 +16,14 @@
           "key": "failed-apply-visibility",
           "summary": "Show a failed apply clearly even when planning continues, and reconcile partial operations before retrying",
           "disposition": "adopted",
-          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. A proposed CIT-501 ship has now twice been missing from the applied report without a skip or failure being shown, and PR 354 targets that kind of silent ship failure.",
+          "rationale": "CIT-523 requirement 5 keeps apply outcomes separate from planning outcomes, and this answer reports the observed apply separately from the proposed operations. A green outer cron is not treated as success. This run's apply failed with no operations listed and no error detail, which is stated as a failure and not as recovered execution.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 (PR 346, merged), with PR 354 aimed at ships that fail after apply starts them; it is no longer in the open PR list but I cannot confirm it merged. Stays open until a scheduled tick shows a failed apply surfaced in status.",
+          "noAction": "Covered by CIT-523 (PR 346, merged), with PR 354 aimed at ships that fail after apply starts them; it is no longer in the open PR list but I cannot confirm it merged. The failed apply carries no error detail, so no retry or partial-operation reconciliation is possible from here. Stays open until a scheduled tick shows a failed apply surfaced with actionable detail.",
           "evidence": [
             "CIT-523 Done via PR 346",
             "PR 354 absent from this run's open PR list",
-            "apply trn-08l4gdbdhfd1utons73avneeg reported 1 applied (delegate CIT-524) with no ship line, 0 skipped and 0 pending"
+            "apply trn-08l4gdbdibmgce30c73antmgg status failed: Task exited with non-zero exit code, after a plan with no operations"
           ]
         },
         {
@@ -148,7 +148,7 @@
           "operations": [],
           "noAction": "Contextual qualification only.",
           "evidence": [
-            "apply trn-08l4gdbdhfd1utons73avneeg report read this run",
+            "apply trn-08l4gdbdibmgce30c73antmgg report read this run",
             "open PR list read this run"
           ]
         },
@@ -256,26 +256,27 @@
           "key": "failed-apply-status",
           "summary": "Make a failed apply versus a successful plan visible in status and retrospectives",
           "disposition": "adopted",
-          "rationale": "This response states the observed apply outcome separately from the proposed operations. CIT-523 keeps the two outcomes separate in the code.",
+          "rationale": "This response states the observed apply outcome separately from the proposed operations, and the failed apply this run is reported as a failure. CIT-523 keeps the two outcomes separate in the code, but the report carries no error detail to act on.",
           "status": "open",
           "operations": [],
-          "noAction": "Covered by CIT-523 (PR 346, merged). Open until a failing scheduled tick is shown surfaced.",
+          "noAction": "Covered by CIT-523 (PR 346, merged). The failed apply this run shows the failure is surfaced but without actionable detail, so this stays open until a failing scheduled tick is shown with its error.",
           "evidence": [
-            "CIT-523 Done via PR 346"
+            "CIT-523 Done via PR 346",
+            "apply trn-08l4gdbdibmgce30c73antmgg status failed with no error detail"
           ]
         },
         {
           "key": "retry-one-ship",
           "summary": "Do not blindly rerun the failed batch; reconcile what completed",
           "disposition": "adopted",
-          "rationale": "The earlier batch was reconciled: only the unfinished CIT-501 ship and PR 342 review were re-proposed. The review applied, but the CIT-501 ship left no branch, and the second attempt did not show up in the applied report either, so it is not blindly retried a third time.",
+          "rationale": "The earlier batch was reconciled: only the unfinished CIT-501 ship and PR 342 review were re-proposed. The review applied, but the CIT-501 ship left no branch, and the second attempt did not show up in the applied report either, so it is not blindly retried a third time. The agent session that would say what happened could not be read this run.",
           "status": "open",
           "operations": [],
-          "noAction": "The CIT-501 ship is not repeated. Next tick, if CIT-501 still has no branch, it is handed back to the agent with an ask once the agent is free. This stays open until a ship produces a PR.",
+          "noAction": "The CIT-501 ship is not repeated. It is handed back to the agent with an ask once the agent is free and its session can be read. This stays open until a ship produces a PR.",
           "evidence": [
             "CIT-501 has no PR or attachment",
             "PR 354 absent from this run's open PR list",
-            "apply trn-08l4gdbdhfd1utons73avneeg reported delegate CIT-524 only, with no ship line"
+            "agent_sessions for CIT-501 returned Query too complex (62830 against a limit of 10000)"
           ]
         },
         {
@@ -285,8 +286,9 @@
           "rationale": "A run without a 404 proves nothing. The new issue requires a controlled session-loss regression.",
           "status": "open",
           "operations": [],
-          "noAction": "CIT-524 was re-delegated with a new-wording ask in the last applied changeset and the agent has had no time to answer. Implementation, tests and deployment have not happened, so no recovery fix is claimed.",
+          "noAction": "CIT-524 was re-delegated with a new-wording ask in the last applied changeset and the agent has had about an hour to answer. Its session could not be read this run, so no reply is confirmed. Implementation, tests and deployment have not happened, so no recovery fix is claimed.",
           "evidence": [
+            "agent_sessions for CIT-524 returned Query too complex (62830 against a limit of 10000)",
             "apply trn-08l4gdbdhfd1utons73avneeg applied delegate CIT-524 with the new-wording ask"
           ]
         },
