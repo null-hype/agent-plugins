@@ -22,6 +22,11 @@ targets:
     platform: iOS
     sources:
       - Duo
+      # Cards.pkl's output, committed and drift-checked by cards.spec.ts. The app never runs Pkl: pkl-swift
+      # spawns the pkl CLI and stops with a fatalError on iOS (CIT-501).
+      - path: ../tutorial-app/src/stories/duo/cards.json
+        buildPhase: resources
+        group: Resources
     dependencies:
       - package: DuoCore
     info:

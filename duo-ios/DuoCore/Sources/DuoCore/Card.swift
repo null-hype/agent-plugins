@@ -30,4 +30,12 @@ extension Card {
     public static func loadAll(contentsOf url: URL) throws -> [Card] {
         try decodeAll(from: Data(contentsOf: url))
     }
+
+    /// The cards the build copied into the app bundle as `cards.json` (the Duo target's resources).
+    public static func loadBundled(in bundle: Bundle = .main) throws -> [Card] {
+        guard let url = bundle.url(forResource: "cards", withExtension: "json") else {
+            throw CocoaError(.fileNoSuchFile, userInfo: [NSLocalizedDescriptionKey: "cards.json is not in the bundle \(bundle.bundlePath)"])
+        }
+        return try loadAll(contentsOf: url)
+    }
 }
