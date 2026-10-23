@@ -1,8 +1,26 @@
 // Planning's changeset (CIT-472), written by calibration against
-// main@ee9788fb6651f92c99c29a0c8e3639c6aaa84a86. Merging it is applying it; render with
+// main@c04c8aec67c411fa984ca40b34170ccb71f4104a. Merging it is applying it; render with
 // `pkl eval -f json -o changeset.json changeset.pkl`.
 amends "pkl/Changeset.pkl"
 
 seen {
+  ["CIT-450"] = "2026-10-23T19:18:49.080Z"
+  ["CIT-527"] = "2026-10-23T21:21:31.278Z"
 }
 
+releases {
+  new {
+    name = "supervisor-workflow"
+    description = "The supervisor and its toolbox shipping loop run reliably."
+  }
+}
+clusters {
+  new {
+    key = "new:ship-destination-identity"
+    title = "Ship destination identity and stacked PR ancestry"
+    description = "Bounded correction to the session-recovery path (CIT-527): a recovered agent_ship must match the environment and the requested destination branch. The same cluster states the stacked-PR rule: a child issue's PR targets its open parent's branch, targets main once the parent has merged, and fails explicitly when ancestry is missing or ambiguous."
+    serves = "release:supervisor-workflow"
+    issues { "CIT-527" }
+  }
+}
+ship { new { issue = "CIT-450"; env = "engaged-jawfish" } }
