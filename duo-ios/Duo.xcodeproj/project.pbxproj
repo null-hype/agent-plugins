@@ -65,8 +65,17 @@
 			children = (
 				23A866E7553E79073BD601BA /* Duo */,
 				3D5FB1AED12BFE5313999CA0 /* Packages */,
+				A874B97478FEE1D412225EFF /* Resources */,
 				61DCA01656FC01FDFFFC8DA7 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A874B97478FEE1D412225EFF /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				43B70DB03F2053F7D0A316A0 /* cards.json */,
+			);
+			name = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
