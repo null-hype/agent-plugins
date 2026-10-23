@@ -1,7 +1,9 @@
 /// CIT-465: the demo claim's question cards for the Duo left page, defined once.
 /// `pkl eval Cards.pkl` renders the array the page's `showCards` takes; the
 /// result is committed as `cards.json`, which `cards.ts` imports and
-/// `cards.spec.ts` checks against a fresh evaluation.
+/// `cards.spec.ts` checks against a fresh evaluation. The iPhone app does not
+/// run Pkl: duo-ios/project.yml copies `cards.json` into the app bundle and
+/// DuoCore's `Card.loadBundled` decodes it (CIT-501).
 ///
 ///   pkl eval Cards.pkl > cards.json
 ///   pkl test Cards.test.pkl
