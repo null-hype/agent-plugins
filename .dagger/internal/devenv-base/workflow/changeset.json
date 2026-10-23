@@ -1,12 +1,40 @@
 {
-  "seen": {},
-  "releases": [],
-  "clusters": [],
+  "seen": {
+    "CIT-450": "2026-10-23T19:18:49.080Z",
+    "CIT-527": "2026-10-23T21:21:31.278Z"
+  },
+  "releases": [
+    {
+      "name": "supervisor-workflow",
+      "description": "The supervisor and its toolbox shipping loop run reliably.",
+      "pipeline": "supervisor"
+    }
+  ],
+  "clusters": [
+    {
+      "key": "new:ship-destination-identity",
+      "title": "Ship destination identity and stacked PR ancestry",
+      "description": "Bounded correction to the session-recovery path (CIT-527): a recovered agent_ship must match the environment and the requested destination branch. The same cluster states the stacked-PR rule: a child issue's PR targets its open parent's branch, targets main once the parent has merged, and fails explicitly when ancestry is missing or ambiguous.",
+      "hat": "infra",
+      "model": "sonnet",
+      "effort": "medium",
+      "serves": "release:supervisor-workflow",
+      "blockedBy": [],
+      "issues": [
+        "CIT-527"
+      ]
+    }
+  ],
   "decline": [],
   "done": [],
   "duplicate": [],
   "escalate": [],
   "delegate": [],
-  "ship": [],
+  "ship": [
+    {
+      "issue": "CIT-450",
+      "env": "engaged-jawfish"
+    }
+  ],
   "review": []
 }
