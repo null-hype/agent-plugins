@@ -186,8 +186,13 @@ cd "$root"
 git fetch -q origin
 git fetch -q container-use
 tip=$(git rev-parse --verify -q "refs/remotes/container-use/$env") || { echo "no container-use environment $env in $root" >&2; exit 3; }
-if git rev-parse --verify -q "refs/remotes/origin/$branch" >/dev/null; then start=refs/remotes/origin/$branch; else start=refs/remotes/origin/main; fi
-if git merge-base --is-ancestor "$tip" "$start"; then echo "SHIP_ALREADY $(git rev-parse "$start")"; exit 0; fi
+if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+  git fetch -q origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+  start=refs/remotes/origin/$branch
+  if git merge-base --is-ancestor "$tip" "$start"; then echo "SHIP_ALREADY $(git rev-parse "$start")"; exit 0; fi
+else
+  start=refs/remotes/origin/main
+fi
 git worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
 git worktree prune
 git worktree add -q --detach "$wt" "$start"
