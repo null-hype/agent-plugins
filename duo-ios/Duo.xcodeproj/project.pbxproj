@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03FD2CD3F87A35EE6125926F /* cards.json in Resources */ = {isa = PBXBuildFile; fileRef = 43B70DB03F2053F7D0A316A0 /* cards.json */; };
 		36911AD3C8D522D94190689D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49E895FC2F2EF707E6979D5 /* ContentView.swift */; };
 		779C9AEA0EFE64B294D2E7B3 /* DuoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A033D0B89038A1713B51D0DF /* DuoApp.swift */; };
 		D3FE17D891B102F4BBE7910C /* DuoCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5CED61C7E4765064B96FF1F /* DuoCore */; };
