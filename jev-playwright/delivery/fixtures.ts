@@ -2,6 +2,7 @@ import { test as base, expect } from '@playwright/test';
 import { jules } from '@google/jules-sdk';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { appendFileSync } from 'node:fs';
 
 // The delivery plan: each test is a Question about the product, and each
 // `dispatch` asks Jules for the work that should make it true. A session is
@@ -10,8 +11,12 @@ import { createHash } from 'node:crypto';
 export type Work = { title: string; prompt: string };
 export type GeneratedFile = { path: string; changeType: string; content: string };
 
-/** The Jules key, fetched for one purpose: one Proton Pass access, with that purpose as its reason. */
+/** The Jules key, fetched for one purpose: one Proton Pass access, with that
+ * purpose as its reason. The ledger is the run's own list of the reasons it
+ * gave, for retro to find in the Pass monitor log. */
 function key(reason: string) {
+  appendFileSync(process.env.DELIVERY_LEDGER!, JSON.stringify({ reason, at: new Date().toISOString(),
+    via: process.env.JULES_API_KEY ? 'environment' : 'pass-cli' }) + '\n');
   if (process.env.JULES_API_KEY) return process.env.JULES_API_KEY;
   const ref = process.env.JULES_KEY_REF ?? 'pass://infra/jules.google.com/JULES_API_KEY';
   return execFileSync('pass-cli', ['item', 'view', ref], {
