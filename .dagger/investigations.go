@@ -26,11 +26,10 @@ import (
 
 const (
 	nodeImage = "node:22.16.0-bookworm-slim"
-	// The rails probes' pinned checker prints its summary in the format this
-	// version uses (the committed reproduction records Pkl 0.32.1).
-	railsProbesPklVersion = "0.32.1"
-	// jev-playwright's own Dagger module pins this one; keep them the same.
-	jevPklVersion = "0.26.3"
+	// One Pkl for every investigation: the version the jev feature installs,
+	// jev-playwright's own Dagger module pins, and the rails probes' pinned
+	// checker prints its summary in (the committed reproduction records it).
+	pklVersion = "0.32.1"
 )
 
 // InvestigationReport is what an investigation left behind, failures included.
@@ -78,7 +77,7 @@ func (m *AgentPlugins) RailsProbes(
 	source *dagger.Directory,
 ) *InvestigationReport {
 	app := source.Directory("tutorial-app")
-	c := pkl(dag.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).From(nodeImage), railsProbesPklVersion).
+	c := pkl(dag.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).From(nodeImage), pklVersion).
 		WithWorkdir("/workspace/tutorial-app").
 		WithFile("package.json", app.File("package.json")).
 		WithFile("package-lock.json", app.File("package-lock.json")).
@@ -150,7 +149,7 @@ func (m *AgentPlugins) JevQuestions(
 	harness := source.Directory("jev-playwright")
 	client := source.Directory("src/jev")
 	reason := "goal=jev-playwright-v0; action=playwright-run; run=" + runId
-	c := pkl(dag.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).From(nodeImage), jevPklVersion).
+	c := pkl(dag.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).From(nodeImage), pklVersion).
 		WithExec([]string{"sh", "-c", "apt-get update && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates && rm -rf /var/lib/apt/lists/*"}).
 		WithExec([]string{"python3", "-m", "venv", "/opt/jev"}).
 		WithExec([]string{"/opt/jev/bin/pip", "install", "--no-cache-dir", "pkl-python==0.1.19", "requests==2.32.3"}).

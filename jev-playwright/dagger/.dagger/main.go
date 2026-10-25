@@ -51,7 +51,7 @@ func (m *JevPlaywright) Run(
 	c := dag.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).
 		From("node:22.16.0-bookworm-slim").
 		WithExec([]string{"sh", "-c", "apt-get update && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates && rm -rf /var/lib/apt/lists/*"}).
-		WithFile("/usr/local/bin/pkl", dag.HTTP("https://github.com/apple/pkl/releases/download/0.26.3/pkl-linux-amd64"), dagger.ContainerWithFileOpts{Permissions: 0755}).
+		WithFile("/usr/local/bin/pkl", dag.HTTP("https://github.com/apple/pkl/releases/download/0.32.1/pkl-linux-amd64"), dagger.ContainerWithFileOpts{Permissions: 0755}).
 		WithExec([]string{"python3", "-m", "venv", "/opt/jev"}).
 		WithExec([]string{"/opt/jev/bin/pip", "install", "--no-cache-dir", "pkl-python==0.1.19", "requests==2.32.3"}).
 		WithWorkdir("/workspace/jev-playwright").
