@@ -565,7 +565,7 @@ func withRenderCli(c *dagger.Container) *dagger.Container {
 
 // pklVersion pins the Pkl CLI the supervisor and its checks render
 // changesets with (CIT-472).
-const pklVersion = "0.29.1"
+const pklVersion = "0.32.1"
 
 // withPkl puts the Pkl CLI's native amd64 binary on c's PATH.
 func withPkl(c *dagger.Container) *dagger.Container {

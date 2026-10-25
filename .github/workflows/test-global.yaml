@@ -28,8 +28,8 @@ jobs:
       - name: "Install latest devcontainer CLI"
         run: npm install -g @devcontainers/cli
 
-      # This repo's own root mise.toml declares `pkl = "latest"` (not a
-      # pinned version) and `hk = "latest"`; installing via jdx/mise-action
+      # This repo's own root mise.toml pins `pkl` (the one Pkl version every
+      # feature, Dagger module and devcontainer here uses); installing via jdx/mise-action
       # (rather than a separately-pinned curl/download step) keeps this
       # runner on that same single source of truth as every
       # devcontainer/sandbox in this repo, instead of a second, separately
