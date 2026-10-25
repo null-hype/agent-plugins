@@ -1,0 +1,13 @@
+amends "node_modules/jev-lsp/pkl/Questions.pkl"
+
+questions {
+  ["moon"] {
+    ask = "Is the moon made of cheese?"
+    judge {
+      type = "noul"
+      instructions = "Is the moon made of cheese? Judge only the supplied observation."
+    }
+    requiredEvidence { "observation" }
+    expected { min = 0; max = 0.2 }
+  }
+}

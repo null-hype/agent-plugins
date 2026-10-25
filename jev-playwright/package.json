@@ -10,6 +10,7 @@
     "watchmen": "playwright test --config playwright.watchmen.config.ts"
   },
   "devDependencies": {
+    "@google/jules-sdk": "^0.2.0",
     "@playwright/test": "1.59.1"
   }
 }
