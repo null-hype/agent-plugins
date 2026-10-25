@@ -1,0 +1,72 @@
+name: delivery
+
+# The plan's loop: ask dispatches a repoless Jules session under a reason Pass
+# records, and retro finds that reason in the Pass monitor log and asks Jev
+# whether it serves the goal. A session still working fails as not yet; run
+# the workflow again once it completes.
+
+on:
+  pull_request:
+    paths:
+      - 'jev-playwright/delivery/**'
+      - '.github/workflows/delivery.yml'
+  workflow_dispatch:
+    inputs:
+      jules-key-ref:
+        description: Where the Jules API key is in Proton Pass
+        default: pass://infra/jules.google.com/JULES_API_KEY
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jev-playwright
+    env:
+      JULES_KEY_REF: ${{ inputs.jules-key-ref || 'pass://infra/jules.google.com/JULES_API_KEY' }}
+      PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+      PROTON_PASS_KEY_PROVIDER: fs
+      PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: jev-playwright/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.8.22'
+      - name: Install Pkl
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSL -o "$RUNNER_TEMP/bin/pkl" https://github.com/apple/pkl/releases/download/0.32.1/pkl-linux-amd64
+          chmod +x "$RUNNER_TEMP/bin/pkl"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: npm ci
+      - run: |
+          uv venv .venv
+          uv pip install --python .venv/bin/python pkl-python==0.1.19 requests==2.32.3
+      - name: Log in to Proton Pass
+        run: |
+          curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          pass-cli login
+      - name: Run the loop
+        run: npx playwright test -c delivery
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delivery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: jev-playwright/delivery/test-results/
+          if-no-files-found: warn
+          retention-days: 30
+      - if: always()
+        run: pass-cli logout >/dev/null 2>&1 || true
