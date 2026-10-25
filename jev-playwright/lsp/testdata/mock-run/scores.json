@@ -1,0 +1,34 @@
+{
+  "runId": "d9d6e08f-9fa6-4543-88c2-c5c2b799aee3",
+  "contractDigest": "e3beeb0fec482ec8dc207ad4550921e39860f1f06d2785bf2651f1be774e2b7e",
+  "scores": {
+    "baseline-bob-reads": {
+      "backend": "mock",
+      "model": "jev-latest",
+      "probability": 0.95,
+      "reason": "goal=jev-playwright-v0; action=jev-score; run=d9d6e08f-9fa6-4543-88c2-c5c2b799aee3; question=baseline-bob-reads",
+      "error": null
+    },
+    "baseline-alice-reads": {
+      "backend": "mock",
+      "model": "jev-latest",
+      "probability": 0.95,
+      "reason": "goal=jev-playwright-v0; action=jev-score; run=d9d6e08f-9fa6-4543-88c2-c5c2b799aee3; question=baseline-alice-reads",
+      "error": null
+    },
+    "patched-alice-reads": {
+      "backend": "mock",
+      "model": "jev-latest",
+      "probability": 0.05,
+      "reason": "goal=jev-playwright-v0; action=jev-score; run=d9d6e08f-9fa6-4543-88c2-c5c2b799aee3; question=patched-alice-reads",
+      "error": null
+    },
+    "patched-bob-reads": {
+      "backend": "mock",
+      "model": "jev-latest",
+      "probability": 0.95,
+      "reason": "goal=jev-playwright-v0; action=jev-score; run=d9d6e08f-9fa6-4543-88c2-c5c2b799aee3; question=patched-bob-reads",
+      "error": null
+    }
+  }
+}

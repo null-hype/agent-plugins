@@ -43,6 +43,7 @@ func TestServerProjectsRunOntoPcf(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.WriteFile(filepath.Join(run, "comparison.json"), []byte(comparison), 0o644)
+	os.WriteFile(filepath.Join(run, "scores.json"), []byte(`{"scores":{"baseline-alice-reads":{"backend":"mock"}}}`), 0o644)
 	for _, f := range evidenceFiles {
 		os.WriteFile(filepath.Join(qdir, f), []byte("{}"), 0o644)
 	}
@@ -85,7 +86,7 @@ func TestServerProjectsRunOntoPcf(t *testing.T) {
 	if len(diags) != 2 {
 		t.Fatalf("want 2 diagnostics, got %d: %+v", len(diags), diags)
 	}
-	if d := got[1]; d.Severity != severityWarning || d.Range.Start.Character != 2 || !strings.Contains(d.Message, "0.95") {
+	if d := got[1]; d.Severity != severityWarning || d.Range.Start.Character != 2 || d.Message != "Mock answer 0.95, outside expected [0, 0.2]" {
 		t.Errorf("baseline-alice-reads: %+v", d)
 	}
 	if _, ok := got[2]; ok {
