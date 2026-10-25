@@ -13,6 +13,9 @@ import (
 type Comparison struct {
 	RunID     string                `json:"runId"`
 	Questions map[string]Reconciled `json:"questions"`
+	// Backend per question, from the run's scores.json: a canned answer is
+	// labelled as one, never presented as a Jev judgement.
+	Backends map[string]string `json:"-"`
 }
 
 type Reconciled struct {
@@ -90,7 +93,33 @@ func loadComparison(runDir string) (Comparison, error) {
 	if err != nil {
 		return c, err
 	}
-	return c, json.Unmarshal(b, &c)
+	if err := json.Unmarshal(b, &c); err != nil {
+		return c, err
+	}
+	c.Backends = map[string]string{}
+	var scores struct {
+		Scores map[string]struct {
+			Backend string `json:"backend"`
+		} `json:"scores"`
+	}
+	if b, err := os.ReadFile(filepath.Join(runDir, "scores.json")); err == nil && json.Unmarshal(b, &scores) == nil {
+		for id, s := range scores.Scores {
+			c.Backends[id] = s.Backend
+		}
+	}
+	return c, nil
+}
+
+// answerer names who gave the answer, as the run recorded it.
+func answerer(backend string) string {
+	switch backend {
+	case "real":
+		return "Jev answered"
+	case "mock":
+		return "Mock answer"
+	default:
+		return "Answer"
+	}
 }
 
 // questionRange finds the `["id"]` key that declares the question in the .pcf.
@@ -129,7 +158,7 @@ func diagnostics(text string, c Comparison) []Diagnostic {
 		switch q.Outcome {
 		case "out-of-range":
 			d.Severity = severityWarning
-			d.Message = fmt.Sprintf("Jev %s outside expected [%g, %g]", score(q.Probability), q.Expected.Min, q.Expected.Max)
+			d.Message = fmt.Sprintf("%s %s, outside expected [%g, %g]", answerer(c.Backends[id]), score(q.Probability), q.Expected.Min, q.Expected.Max)
 		case "execution-failed":
 			d.Severity = severityError
 			d.Message = "answer could not be collected"
