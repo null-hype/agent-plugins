@@ -3,7 +3,8 @@
 // skipped, and go-to-definition from that test to the evidence Jev judged.
 //
 // It reads JEV_RUN_DIR, or the newest run under the nearest runs/ directory
-// above the open file, and publishes again when a newer run lands.
+// above the open file that was asked of the code on disk, and publishes again
+// when a newer run lands. With no such run it shows the newest, marked stale.
 package main
 
 import (
@@ -34,12 +35,41 @@ type server struct {
 	sendMu sync.Mutex
 	mu     sync.Mutex
 	docs   map[string]string
-	// What each open document was last published against: run dir and mtime.
+	// What each open document was last published against: run, staleness, mtime.
 	shown map[string]string
+	// The code hash of each harness, refreshed when a file is opened or saved.
+	codes map[string]string
 }
 
 func newServer(out io.Writer) *server {
-	return &server{out: out, docs: map[string]string{}, shown: map[string]string{}}
+	return &server{out: out, docs: map[string]string{}, shown: map[string]string{}, codes: map[string]string{}}
+}
+
+// runFor picks the run a document is shown against. refresh recomputes the
+// harness's code hash, which only changes when files do.
+func (s *server) runFor(uri string, refresh bool) (string, chosenRun, error) {
+	path, err := uriToPath(uri)
+	if err != nil {
+		return "", chosenRun{}, err
+	}
+	if dir := os.Getenv("JEV_RUN_DIR"); dir != "" {
+		return path, chosenRun{Dir: dir}, nil
+	}
+	root, err := harnessRoot(path)
+	if err != nil {
+		return path, chosenRun{}, err
+	}
+	s.mu.Lock()
+	code, known := s.codes[root]
+	s.mu.Unlock()
+	if refresh || !known {
+		code = currentCode(root)
+		s.mu.Lock()
+		s.codes[root] = code
+		s.mu.Unlock()
+	}
+	run, err := chooseRun(root, code)
+	return path, run, err
 }
 
 func main() {
@@ -135,13 +165,13 @@ func (s *server) handle(m message) {
 		s.reply(m.ID, nil)
 	case "textDocument/didOpen":
 		s.setDoc(uri, p.TextDocument.Text)
-		s.publish(uri)
+		s.publish(uri, true)
 	case "textDocument/didChange":
 		if n := len(p.ContentChanges); n > 0 {
 			s.setDoc(uri, p.ContentChanges[n-1].Text)
 		}
 	case "textDocument/didSave":
-		s.publish(uri)
+		s.publish(uri, true)
 	case "textDocument/didClose":
 		s.mu.Lock()
 		delete(s.docs, uri)
@@ -149,11 +179,9 @@ func (s *server) handle(m message) {
 		s.mu.Unlock()
 	case "textDocument/definition":
 		var locs []Location
-		if path, err := uriToPath(uri); err == nil {
-			if dir, err := findRun(path); err == nil {
-				if c, err := loadComparison(dir); err == nil {
-					locs = definition(path, p.Position.Line, c, dir)
-				}
+		if path, run, err := s.runFor(uri, false); err == nil {
+			if c, err := loadComparison(run.Dir); err == nil {
+				locs = definition(path, p.Position.Line, c, run.Dir)
 			}
 		}
 		s.reply(m.ID, locs)
@@ -171,7 +199,7 @@ func (s *server) setDoc(uri, text string) {
 }
 
 // publish sends this document's diagnostics for the run it is shown against.
-func (s *server) publish(uri string) {
+func (s *server) publish(uri string, refresh bool) {
 	s.mu.Lock()
 	text, open := s.docs[uri]
 	s.mu.Unlock()
@@ -180,12 +208,10 @@ func (s *server) publish(uri string) {
 	}
 	diags := []Diagnostic{}
 	key := ""
-	if path, err := uriToPath(uri); err == nil {
-		if dir, err := findRun(path); err == nil {
-			key = runKey(dir)
-			if c, err := loadComparison(dir); err == nil {
-				diags = diagnostics(path, text, c)
-			}
+	if path, run, err := s.runFor(uri, refresh); err == nil {
+		key = runKey(run)
+		if c, err := loadComparison(run.Dir); err == nil {
+			diags = diagnostics(path, text, c, run.Stale)
 		}
 	}
 	s.mu.Lock()
@@ -199,27 +225,25 @@ func (s *server) publish(uri string) {
 func (s *server) watch(every time.Duration) {
 	for range time.Tick(every) {
 		s.mu.Lock()
-		var stale []string
+		shown := make(map[string]string, len(s.shown))
 		for uri, key := range s.shown {
-			if path, err := uriToPath(uri); err == nil {
-				if dir, err := findRun(path); err == nil && runKey(dir) != key {
-					stale = append(stale, uri)
-				}
-			}
+			shown[uri] = key
 		}
 		s.mu.Unlock()
-		for _, uri := range stale {
-			s.publish(uri)
+		for uri, key := range shown {
+			if _, run, err := s.runFor(uri, false); err == nil && runKey(run) != key {
+				s.publish(uri, false)
+			}
 		}
 	}
 }
 
-func runKey(dir string) string {
-	info, err := os.Stat(filepath.Join(dir, "comparison.json"))
+func runKey(run chosenRun) string {
+	info, err := os.Stat(filepath.Join(run.Dir, "comparison.json"))
 	if err != nil {
-		return dir
+		return run.Dir
 	}
-	return fmt.Sprintf("%s@%d", dir, info.ModTime().UnixNano())
+	return fmt.Sprintf("%s stale=%t @%d", run.Dir, run.Stale, info.ModTime().UnixNano())
 }
 
 func uriToPath(uri string) (string, error) {

@@ -168,3 +168,43 @@ func TestServerPublishesANewerRun(t *testing.T) {
 		t.Fatal("the newer run was not published")
 	}
 }
+
+func publishOnce(t *testing.T, uri string) []Diagnostic {
+	t.Helper()
+	in := frame("textDocument/didOpen", 0, map[string]any{"textDocument": map[string]any{"uri": uri, "text": spec}}) + frame("exit", 0, nil)
+	var out bytes.Buffer
+	if err := newServer(&out).serve(strings.NewReader(in)); err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range messages(&out) {
+		if m.Method == "textDocument/publishDiagnostics" {
+			var p struct{ Diagnostics []Diagnostic }
+			json.Unmarshal(m.Params, &p)
+			return p.Diagnostics
+		}
+	}
+	t.Fatal("nothing published")
+	return nil
+}
+
+// The run shown is the newest one asked of the code on disk, even if a newer
+// run exists for other code; with none, the newest run is shown and marked.
+func TestServerPrefersTheRunForTheCodeOnDisk(t *testing.T) {
+	dir, uri := harness(t)
+	os.WriteFile(filepath.Join(dir, "inputs.mjs"), []byte("console.log('current-code')\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "runs", "r1", "inputs.json"), []byte(`{"code":"other-code"}`), 0o644)
+
+	if d := publishOnce(t, uri); len(d) != 2 || !strings.HasPrefix(d[0].Message, "stale run (asked of other code): baseline-alice-reads") {
+		t.Fatalf("only a run for other code: %+v", d)
+	}
+
+	// An older run, for the current code, where Alice's answer was in range.
+	writeRun(t, dir, "r0", `"outcome":"in-range","probability":0.1`)
+	os.WriteFile(filepath.Join(dir, "runs", "r0", "inputs.json"), []byte(`{"code":"current-code"}`), 0o644)
+	old := time.Now().Add(-time.Hour)
+	os.Chtimes(filepath.Join(dir, "runs", "r0", "comparison.json"), old, old)
+
+	if d := publishOnce(t, uri); len(d) != 1 || strings.HasPrefix(d[0].Message, "stale") || d[0].Range.Start.Line != 6 {
+		t.Fatalf("a run for the current code: %+v", d)
+	}
+}
