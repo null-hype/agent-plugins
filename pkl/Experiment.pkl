@@ -21,7 +21,11 @@ class Revision {
 /// revision; `judge` puts the same words to Jev.
 class Asked extends Question.Question {
   revision: String(!isEmpty)
+  /// The title of the test in `tests/` that asks it, word for word. That test
+  /// gathers the evidence, so it is the collector. A question no test asks, or a
+  /// test no question asks, fails the run.
   ask: String(!isEmpty)
+  collector = ask
 }
 
 revisions: Mapping<String, Revision>

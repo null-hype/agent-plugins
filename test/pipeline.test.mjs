@@ -76,18 +76,43 @@ test('a valid low score is an out-of-range answer: recorded, and its dependents 
   assert.deepEqual(result.comparison.questions[third].blockedBy, []);
 });
 
-test('adding a question only in Pkl registers and scores another test', () => {
-  const temp = mkdtempSync(path.join(tmpdir(), 'jev-two-questions-'));
+function withContract(name, source, answers = good) {
+  const temp = mkdtempSync(path.join(tmpdir(), `jev-${name}-`));
   try {
-    const contract = path.join(temp, 'two.pcf');
+    const contract = path.join(temp, `${name}.pcf`);
     const base = pathToFileURL(path.join(here, 'report-expected.pcf')).href;
-    writeFileSync(contract, `amends "${base}"\nimport "${base}" as Base\nquestions { ["another-question"] = Base.questions["${id}"] }`);
-    const result = run({ ...good, 'another-question': 0.85 }, ['--contract', contract]);
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.deepEqual(Object.keys(result.comparison.questions).sort(), ['another-question', ...Object.keys(good)].sort());
-    assert.equal(result.comparison.questions['another-question'].probability, 0.85);
+    writeFileSync(contract, `amends "${base}"\nimport "${base}" as Base\n${source}`);
+    return run(answers, ['--contract', contract]);
   } finally {
     rmSync(temp, { recursive: true, force: true });
+  }
+}
+
+test('a question no test asks fails the run', () => {
+  const result = withContract('unasked-question',
+    `questions { ["moon"] = (Base.questions["${id}"]) { ask = "Is the moon made of cheese?" } }`);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.equal(result.comparison.executionComplete, false);
+  assert.equal(result.comparison.questions.moon.status, 'missing');
+  assert.equal(result.comparison.questions.moon.outcome, 'execution-failed');
+});
+
+test('a test no question asks fails the run', () => {
+  // Drop both of Bob's Questions: "Can Bob read it?" is still a test.
+  const result = withContract('unasked-test',
+    'questions = Base.questions.toMap().filter((k, _) -> !k.contains("bob")).toMapping()');
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.equal(result.comparison.executionComplete, false);
+  assert.match(result.stdout, /No question in the contract asks "Can Bob read it\?"/);
+});
+
+test('each answer records the line of the test that asked it', () => {
+  const result = run(good);
+  const spec = readFileSync(path.join(here, 'tests/questions.spec.ts'), 'utf8').split('\n');
+  for (const [key, q] of Object.entries(expected.questions)) {
+    const { file, line } = result.comparison.questions[key].location;
+    assert.equal(file, 'tests/questions.spec.ts');
+    assert.ok(spec[line - 1].includes(JSON.stringify(q.ask).slice(1, -1)), `${key}: line ${line} is ${spec[line - 1]}`);
   }
 });
 
@@ -108,7 +133,8 @@ function compare(change) {
     scores: Object.fromEntries(Object.keys(expected.questions).map(key => [key,
       { backend: 'mock', model: 'jev-latest', probability: 0.95, error: null }])),
     executions: Object.entries(expected.questions).map(([key, q], index) => ({
-      questionId: key, testTitle: key, status: 'passed', evidenceId: key,
+      questionId: key, testTitle: q.ask, status: 'passed', evidenceId: key,
+      location: { file: 'tests/questions.spec.ts', line: 1, column: 1 },
       evidenceKeys: q.requiredEvidence, attachmentCount: 1,
       startedAt: index * 100, finishedAt: index * 100 + 50,
     })),

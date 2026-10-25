@@ -31,7 +31,11 @@ export function reconcile(runDir) {
           evidenceKeys = Object.keys(evidence.state);
         }
         const startedAt = result ? Date.parse(result.startTime) : null;
+        // Where the test is, relative to this directory, so a finding can be
+        // shown on the line that asked it.
+        const file = path.relative(here, path.resolve(report.config.rootDir, spec.file));
         executions.push({ questionId: test.projectName, testTitle: spec.title,
+          location: { file, line: spec.line, column: spec.column },
           status: result?.status ?? (test.status === 'skipped' ? 'skipped' : 'missing'),
           startedAt, finishedAt: result ? startedAt + result.duration : null,
           evidenceId, evidenceKeys, attachmentCount: attachments.length });
