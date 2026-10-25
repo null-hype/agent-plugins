@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
 // Comparison is the part of a run's comparison.json the server reads.
-// Reconcile.pkl writes it; the server only projects it onto the .pcf.
+// Reconcile.pkl writes it; the server only places it on the test that asked.
 type Comparison struct {
 	RunID     string                `json:"runId"`
 	Questions map[string]Reconciled `json:"questions"`
@@ -27,6 +28,13 @@ type Reconciled struct {
 	} `json:"expected"`
 	BlockedBy []string `json:"blockedBy"`
 	Error     *string  `json:"error"`
+	// The test that asked it, as Playwright reported it: a file relative to the
+	// harness, and a 1-based line and column.
+	Location *struct {
+		File   string `json:"file"`
+		Line   int    `json:"line"`
+		Column int    `json:"column"`
+	} `json:"location"`
 }
 
 type Position struct {
@@ -87,6 +95,22 @@ func latestRun(runsDir string) (string, error) {
 	return best, nil
 }
 
+// findRun picks the run a file is shown against: JEV_RUN_DIR, or the newest
+// run under the nearest runs/ directory above the file.
+func findRun(path string) (string, error) {
+	if dir := os.Getenv("JEV_RUN_DIR"); dir != "" {
+		return dir, nil
+	}
+	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
+		if run, err := latestRun(filepath.Join(dir, "runs")); err == nil {
+			return run, nil
+		}
+		if parent := filepath.Dir(dir); parent == dir {
+			return "", fmt.Errorf("no run found above %s", path)
+		}
+	}
+}
+
 func loadComparison(runDir string) (Comparison, error) {
 	var c Comparison
 	b, err := os.ReadFile(filepath.Join(runDir, "comparison.json"))
@@ -122,70 +146,79 @@ func answerer(backend string) string {
 	}
 }
 
-// questionRange finds the `["id"]` key that declares the question in the .pcf.
-func questionRange(lines []string, id string) (Range, bool) {
-	key := `["` + id + `"]`
-	for i, line := range lines {
-		if col := strings.Index(line, key); col >= 0 {
-			return Range{Position{i, col}, Position{i, col + len(key)}}, true
-		}
-	}
-	return Range{}, false
-}
-
-// questionAt returns the question whose key is on the given line.
-func questionAt(lines []string, line int, c Comparison) (string, bool) {
-	if line < 0 || line >= len(lines) {
-		return "", false
-	}
-	for id := range c.Questions {
-		if strings.Contains(lines[line], `["`+id+`"]`) {
-			return id, true
-		}
-	}
-	return "", false
-}
-
-func diagnostics(text string, c Comparison) []Diagnostic {
-	lines := strings.Split(text, "\n")
-	out := []Diagnostic{}
+// asked returns, by 0-based line, the questions whose test is in this file.
+// One test asks its question of every revision, so a line can hold several.
+func asked(path string, c Comparison) map[int][]string {
+	out := map[int][]string{}
+	slashed := filepath.ToSlash(path)
 	for id, q := range c.Questions {
-		r, ok := questionRange(lines, id)
-		if !ok {
+		if q.Location == nil || q.Location.Line < 1 {
 			continue
 		}
-		d := Diagnostic{Range: r, Source: "jev", Code: q.Outcome}
-		switch q.Outcome {
-		case "out-of-range":
-			d.Severity = severityWarning
-			d.Message = fmt.Sprintf("%s %s, outside expected [%g, %g]", answerer(c.Backends[id]), score(q.Probability), q.Expected.Min, q.Expected.Max)
-		case "execution-failed":
-			d.Severity = severityError
-			d.Message = "answer could not be collected"
-			if q.Error != nil && *q.Error != "" {
-				d.Message += ": " + firstLine(*q.Error)
-			}
-		case "dependency-skipped":
-			d.Severity = severityInformation
-			d.Message = "skipped: blocked by " + strings.Join(q.BlockedBy, ", ")
-		default:
-			continue
+		if slashed == q.Location.File || strings.HasSuffix(slashed, "/"+q.Location.File) {
+			out[q.Location.Line-1] = append(out[q.Location.Line-1], id)
 		}
-		out = append(out, d)
+	}
+	for _, ids := range out {
+		sort.Strings(ids)
 	}
 	return out
 }
 
-func definition(text string, line int, c Comparison, runDir string) []Location {
-	id, ok := questionAt(strings.Split(text, "\n"), line, c)
-	if !ok {
-		return nil
+func diagnostics(path, text string, c Comparison) []Diagnostic {
+	lines := strings.Split(text, "\n")
+	out := []Diagnostic{}
+	byLine := asked(path, c)
+	sorted := make([]int, 0, len(byLine))
+	for line := range byLine {
+		sorted = append(sorted, line)
 	}
+	sort.Ints(sorted)
+	for _, line := range sorted {
+		if line >= len(lines) {
+			continue
+		}
+		for _, id := range byLine[line] {
+			q := c.Questions[id]
+			start := q.Location.Column - 1
+			if start < 0 || start > len(lines[line]) {
+				start = 0
+			}
+			d := Diagnostic{
+				Range:  Range{Position{line, start}, Position{line, len(strings.TrimRight(lines[line], "\r"))}},
+				Source: "jev", Code: q.Outcome,
+			}
+			switch q.Outcome {
+			case "out-of-range":
+				d.Severity = severityWarning
+				d.Message = fmt.Sprintf("%s: %s %s, outside expected [%g, %g]", id, answerer(c.Backends[id]), score(q.Probability), q.Expected.Min, q.Expected.Max)
+			case "execution-failed":
+				d.Severity = severityError
+				d.Message = id + ": answer could not be collected"
+				if q.Error != nil && *q.Error != "" {
+					d.Message += ": " + firstLine(*q.Error)
+				}
+			case "dependency-skipped":
+				d.Severity = severityInformation
+				d.Message = id + ": skipped, blocked by " + strings.Join(q.BlockedBy, ", ")
+			default:
+				continue
+			}
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// definition returns the evidence behind every question the test on this line asked.
+func definition(path string, line int, c Comparison, runDir string) []Location {
 	out := []Location{}
-	for _, name := range evidenceFiles {
-		p := filepath.Join(runDir, "questions", id, name)
-		if _, err := os.Stat(p); err == nil {
-			out = append(out, Location{URI: pathToURI(p)})
+	for _, id := range asked(path, c)[line] {
+		for _, name := range evidenceFiles {
+			p := filepath.Join(runDir, "questions", id, name)
+			if _, err := os.Stat(p); err == nil {
+				out = append(out, Location{URI: pathToURI(p)})
+			}
 		}
 	}
 	return out

@@ -1,7 +1,8 @@
 // Draws the jev-lsp lesson's two figures from what the language server actually
-// returns. It starts jev-playwright/lsp, opens the real report-expected.pcf
+// returns. It starts jev-playwright/lsp, opens the real tests/questions.spec.ts
 // against the recorded mock run, and draws the diagnostics it publishes and the
-// evidence its go-to-definition opens. Nothing in a figure is typed by hand.
+// evidence its go-to-definition opens. The run markers are the lines Playwright
+// reported a test on. Nothing in a figure is typed by hand.
 //
 //   npm run jev-lsp:render     redraw after an intentional change
 //   npm run jev-lsp:check      fail if a committed figure differs from a fresh run
@@ -15,7 +16,8 @@ import rough from 'roughjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const harness = path.resolve(here, '../../jev-playwright');
-const pcfPath = path.join(harness, 'report-expected.pcf');
+const specPath = path.join(harness, 'tests/questions.spec.ts');
+const SPEC_LABEL = 'tests/questions.spec.ts';
 const runDir = path.join(harness, 'lsp/testdata/mock-run');
 const outDir = path.resolve(here, '../public/sketches/jev-lsp');
 const QUESTION = 'baseline-alice-reads';
@@ -25,10 +27,13 @@ type Diagnostic = { range: Range; severity: number; code: string; message: strin
 
 // --- ask the server ---------------------------------------------------------
 
-const text = readFileSync(pcfPath, 'utf8');
-const lines = text.split('\n');
-const uri = pathToFileURL(pcfPath).href;
-const keyLine = lines.findIndex((l) => l.includes(`["${QUESTION}"]`));
+const text = readFileSync(specPath, 'utf8');
+const lines = text.replace(/\n$/, '').split('\n');
+const uri = pathToFileURL(specPath).href;
+// Where Playwright reported each Question's test, from the recorded run.
+const recorded = JSON.parse(readFileSync(path.join(runDir, 'comparison.json'), 'utf8')).questions;
+const testLines = new Set(Object.values(recorded).map((q: any) => q.location.line - 1));
+const keyLine = recorded[QUESTION].location.line - 1;
 
 const frame = (m: object) => {
   const body = Buffer.from(JSON.stringify({ jsonrpc: '2.0', ...m }));
@@ -90,21 +95,22 @@ const svg = (h: number, label: string, body: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${h}" width="${W}" height="${h}" role="img" aria-label="${esc(label)}">` +
   `<rect width="100%" height="100%" fill="#fff"/>${body}</svg>\n`;
 
-// Figure 1: the .pcf, with the published diagnostic under its question.
+// Figure 1: the spec, with the published diagnostic under the test that asked.
 function editor(): string {
   const d = diagnostics[0];
-  const first = lines.findIndex((l) => l.startsWith('questions {'));
-  const shown = lines.slice(first, first + 15);
-  const gutter = 34, x0 = 14 + gutter, cols = Math.floor((W - x0 - 18) / CHAR), lh = 19;
+  const first = 0;
+  const shown = lines;
+  const gutter = 40, x0 = 14 + gutter, cols = Math.floor((W - x0 - 18) / CHAR), lh = 19;
   let y = 54, body = '';
-  body += hand(16, 26, 'report-expected.pcf', 15, ' font-weight="bold"');
+  body += hand(16, 26, SPEC_LABEL, 15, ' font-weight="bold"');
   body += hand(W - 16, 26, `${diagnostics.length} problem`, 13, ' text-anchor="end"');
   for (const [i, src] of shown.entries()) {
     const n = first + i;
-    body += code(16, y, String(n + 1).padStart(3), ' fill="#777"');
+    body += code(16, y, String(n + 1).padStart(2), ' fill="#777"');
+    if (testLines.has(n)) body += hand(16 + 19, y, '▶', 11);
     body += code(x0, y, clip(src, cols));
     if (n === d.range.start.line) {
-      body += hand(16 + 26, y, '!', 14, ' font-weight="bold"');
+      body += hand(16 + 30, y, '!', 14, ' font-weight="bold"');
       // squiggle under the exact range the server published
       const a = x0 + d.range.start.character * CHAR, b = x0 + Math.min(d.range.end.character, cols) * CHAR;
       const pts: [number, number][] = [];
@@ -123,17 +129,17 @@ function editor(): string {
   }
   body += box(6, 6, W - 12, y - 6 - lh + 12, { roughness: 1.4 });
   body += rule(14, 38, W - 14, 38, { roughness: 0.8 });
-  return svg(y - lh + 24, 'Editor showing report-expected.pcf with one warning, on baseline-alice-reads', body);
+  return svg(y - lh + 24, `Editor showing ${SPEC_LABEL} with one warning, under the test that asked ${QUESTION}`, body);
 }
 
 // Figure 2: peek on that question, opened on the first evidence file.
 function peek(): string {
-  const files = definition.map((l) => path.basename(fileURLToPath(l.uri)));
+  const files = definition.map((l) => path.relative(path.join(runDir, 'questions'), fileURLToPath(l.uri)));
   const evidence = JSON.parse(readFileSync(fileURLToPath(definition[0].uri), 'utf8')).state;
   const excerpt = JSON.stringify({ policy: evidence.authorizationPolicy, http: evidence.http }, null, 2).split('\n');
   const cols = Math.floor((W - 44) / CHAR);
   let body = '', y = 30;
-  body += hand(16, y, `peek · ${QUESTION}`, 15, ' font-weight="bold"');
+  body += hand(16, y, `peek · line ${keyLine + 1}`, 15, ' font-weight="bold"');
   y += 26;
   files.forEach((f, i) => {
     body += hand(28, y, `${i === 0 ? '▸ ' : '  '}${f}`, 14, i === 0 ? ' font-weight="bold"' : '');
@@ -143,7 +149,7 @@ function peek(): string {
   y += 14;
   for (const l of excerpt) { body += code(26, y, clip(l, cols)); y += 17; }
   body += box(6, 6, W - 12, y - 6, { roughness: 1.4 });
-  return svg(y + 8, `Peek on ${QUESTION}, listing ${files.join(', ')}, showing ${files[0]}`, body);
+  return svg(y + 8, `Peek on line ${keyLine + 1}, listing ${files.join(', ')}, showing ${files[0]}`, body);
 }
 
 const figures = { 'diagnostic.svg': editor(), 'peek.svg': peek() };
@@ -155,4 +161,4 @@ for (const [name, content] of Object.entries(figures)) {
   } else writeFileSync(target, content);
 }
 console.log(`${diagnostics[0].range.start.line + 1}: ${diagnostics[0].message}`);
-console.log(`peek: ${definition.map((l) => path.basename(l.uri)).join(', ')}`);
+console.log(`peek: ${definition.map((l) => path.relative(path.join(runDir, 'questions'), fileURLToPath(l.uri))).join(', ')}`);

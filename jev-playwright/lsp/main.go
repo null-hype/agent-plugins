@@ -1,8 +1,9 @@
-// jev-lsp projects a jev-playwright run onto the .pcf that declared it:
-// one diagnostic per question whose answer was out of range, not collected or
-// skipped, and go-to-definition from a question to the evidence Jev judged.
+// jev-lsp shows a jev-playwright run on the tests that asked its Questions:
+// a diagnostic on each test whose answer was out of range, not collected or
+// skipped, and go-to-definition from that test to the evidence Jev judged.
 //
-// It reads the newest run under runs/ next to the .pcf, or JEV_RUN_DIR.
+// It reads JEV_RUN_DIR, or the newest run under the nearest runs/ directory
+// above the open file, and publishes again when a newer run lands.
 package main
 
 import (
@@ -17,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type message struct {
@@ -28,14 +30,22 @@ type message struct {
 }
 
 type server struct {
-	out  io.Writer
-	mu   sync.Mutex
-	docs map[string]string
+	out    io.Writer
+	sendMu sync.Mutex
+	mu     sync.Mutex
+	docs   map[string]string
+	// What each open document was last published against: run dir and mtime.
+	shown map[string]string
+}
+
+func newServer(out io.Writer) *server {
+	return &server{out: out, docs: map[string]string{}, shown: map[string]string{}}
 }
 
 func main() {
 	log.SetOutput(os.Stderr)
-	s := &server{out: os.Stdout, docs: map[string]string{}}
+	s := newServer(os.Stdout)
+	go s.watch(2 * time.Second)
 	if err := s.serve(os.Stdin); err != nil && err != io.EOF {
 		log.Fatal(err)
 	}
@@ -84,8 +94,8 @@ func read(r *bufio.Reader) (message, error) {
 func (s *server) send(m message) {
 	m.JSONRPC = "2.0"
 	b, _ := json.Marshal(m)
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.sendMu.Lock()
+	defer s.sendMu.Unlock()
 	fmt.Fprintf(s.out, "Content-Length: %d\r\n\r\n%s", len(b), b)
 }
 
@@ -124,20 +134,27 @@ func (s *server) handle(m message) {
 	case "shutdown":
 		s.reply(m.ID, nil)
 	case "textDocument/didOpen":
-		s.docs[uri] = p.TextDocument.Text
+		s.setDoc(uri, p.TextDocument.Text)
 		s.publish(uri)
 	case "textDocument/didChange":
 		if n := len(p.ContentChanges); n > 0 {
-			s.docs[uri] = p.ContentChanges[n-1].Text
+			s.setDoc(uri, p.ContentChanges[n-1].Text)
 		}
 	case "textDocument/didSave":
 		s.publish(uri)
 	case "textDocument/didClose":
+		s.mu.Lock()
 		delete(s.docs, uri)
+		delete(s.shown, uri)
+		s.mu.Unlock()
 	case "textDocument/definition":
 		var locs []Location
-		if c, dir, err := runFor(uri); err == nil {
-			locs = definition(s.docs[uri], p.Position.Line, c, dir)
+		if path, err := uriToPath(uri); err == nil {
+			if dir, err := findRun(path); err == nil {
+				if c, err := loadComparison(dir); err == nil {
+					locs = definition(path, p.Position.Line, c, dir)
+				}
+			}
 		}
 		s.reply(m.ID, locs)
 	default:
@@ -147,34 +164,62 @@ func (s *server) handle(m message) {
 	}
 }
 
+func (s *server) setDoc(uri, text string) {
+	s.mu.Lock()
+	s.docs[uri] = text
+	s.mu.Unlock()
+}
+
+// publish sends this document's diagnostics for the run it is shown against.
 func (s *server) publish(uri string) {
-	if !strings.HasSuffix(uri, ".pcf") {
+	s.mu.Lock()
+	text, open := s.docs[uri]
+	s.mu.Unlock()
+	if !open {
 		return
 	}
 	diags := []Diagnostic{}
-	if c, _, err := runFor(uri); err == nil {
-		diags = diagnostics(s.docs[uri], c)
-	} else {
-		log.Print(err)
+	key := ""
+	if path, err := uriToPath(uri); err == nil {
+		if dir, err := findRun(path); err == nil {
+			key = runKey(dir)
+			if c, err := loadComparison(dir); err == nil {
+				diags = diagnostics(path, text, c)
+			}
+		}
 	}
+	s.mu.Lock()
+	s.shown[uri] = key
+	s.mu.Unlock()
 	params, _ := json.Marshal(map[string]any{"uri": uri, "diagnostics": diags})
 	s.send(message{Method: "textDocument/publishDiagnostics", Params: params})
 }
 
-// runFor picks the run a .pcf is shown against.
-func runFor(uri string) (Comparison, string, error) {
-	dir := os.Getenv("JEV_RUN_DIR")
-	if dir == "" {
-		path, err := uriToPath(uri)
-		if err != nil {
-			return Comparison{}, "", err
+// watch publishes again whenever a document's run is replaced by a newer one.
+func (s *server) watch(every time.Duration) {
+	for range time.Tick(every) {
+		s.mu.Lock()
+		var stale []string
+		for uri, key := range s.shown {
+			if path, err := uriToPath(uri); err == nil {
+				if dir, err := findRun(path); err == nil && runKey(dir) != key {
+					stale = append(stale, uri)
+				}
+			}
 		}
-		if dir, err = latestRun(filepath.Join(filepath.Dir(path), "runs")); err != nil {
-			return Comparison{}, "", err
+		s.mu.Unlock()
+		for _, uri := range stale {
+			s.publish(uri)
 		}
 	}
-	c, err := loadComparison(dir)
-	return c, dir, err
+}
+
+func runKey(dir string) string {
+	info, err := os.Stat(filepath.Join(dir, "comparison.json"))
+	if err != nil {
+		return dir
+	}
+	return fmt.Sprintf("%s@%d", dir, info.ModTime().UnixNano())
 }
 
 func uriToPath(uri string) (string, error) {
