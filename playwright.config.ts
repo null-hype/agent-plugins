@@ -1,21 +1,33 @@
 import { defineConfig } from '@playwright/test';
-import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as pkl from './pkl.mjs';
 
-// run.mjs creates a fresh directory for every execution. Workers inherit the
-// snapshot path and never re-evaluate the source contract during the run.
-const runDir = process.env.JEV_RUN_DIR;
-if (!runDir) throw new Error('Run via npm test or npm run score -- <options>.');
-const snapshot = path.join(runDir, 'report-expected.json');
+// `playwright test` runs the Question graph on its own, so an editor's run
+// button works: a fresh run directory and mock answers unless told otherwise.
+// run.mjs sets the same variables for live runs and fixed output directories.
+// Workers inherit these and never re-evaluate the source contract.
+const here = path.dirname(fileURLToPath(import.meta.url));
+const env = process.env;
+env.JEV_RUN_ID ||= randomUUID();
+env.JEV_RUN_DIR ||= path.join(here, 'runs', env.JEV_RUN_ID);
+env.JEV_BACKEND ||= 'mock';
+env.JEV_CREDENTIALS ||= 'pass';
+env.JEV_CONTRACT ||= path.join(here, 'report-expected.pcf');
+env.JEV_MOCK_ANSWERS ||= path.join(here, 'fixtures/answers.json');
+env.JEV_SECRET_REF ||= '';
+const runDir = env.JEV_RUN_DIR;
+
 let experiment;
-if (process.env.JEV_CONTRACT_SNAPSHOT) {
-  experiment = JSON.parse(readFileSync(process.env.JEV_CONTRACT_SNAPSHOT, 'utf8'));
+if (env.JEV_CONTRACT_SNAPSHOT) {
+  experiment = JSON.parse(readFileSync(env.JEV_CONTRACT_SNAPSHOT, 'utf8'));
 } else {
-  experiment = pkl.load(process.env.JEV_CONTRACT || path.resolve('report-expected.pcf'));
-  writeFileSync(snapshot, JSON.stringify(experiment, null, 2) + '\n');
-  process.env.JEV_CONTRACT_SNAPSHOT = snapshot;
+  // global-setup.ts writes the snapshot when a run starts, so listing tests
+  // (as an editor does to find them) leaves no run directory behind.
+  experiment = pkl.load(env.JEV_CONTRACT);
+  env.JEV_CONTRACT_SNAPSHOT = path.join(runDir, 'report-expected.json');
 }
 const contractDigest = createHash('sha256').update(JSON.stringify(experiment)).digest('hex');
 const titled = (ask: string) => new RegExp(`(?:^|\\s)${ask.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
@@ -23,6 +35,7 @@ const titled = (ask: string) => new RegExp(`(?:^|\\s)${ask.replace(/[.*+?^${}()|
 export default defineConfig({
   testDir: './tests',
   outputDir: path.join(runDir, 'test-results'),
+  globalSetup: './global-setup.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -40,8 +53,12 @@ export default defineConfig({
     { name: 'unasked', grepInvert: Object.values(experiment.questions).map((q: any) => titled(q.ask)) },
   ],
   timeout: 150_000,
-  metadata: { experiment, contractDigest, runId: process.env.JEV_RUN_ID },
-  reporter: [
+  metadata: { experiment, contractDigest, runId: env.JEV_RUN_ID },
+  // Order matters: the jev reporter reconciles in its onEnd, after the JSON
+  // reporter's onEnd has written the native report (Playwright awaits each
+  // reporter's onEnd in this order).
+  // Listing tests (as an editor does to find them) runs no reporters of ours.
+  reporter: process.argv.includes('--list') ? [['list']] : [
     ['list'],
     ['json', { outputFile: path.join(runDir, 'playwright-report.json') }],
     ['./reporter.ts', { experiment, contractDigest, runDir }],
