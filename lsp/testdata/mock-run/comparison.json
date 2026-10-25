@@ -1,14 +1,19 @@
 {
-  "runId": "d9d6e08f-9fa6-4543-88c2-c5c2b799aee3",
-  "contractDigest": "e3beeb0fec482ec8dc207ad4550921e39860f1f06d2785bf2651f1be774e2b7e",
+  "runId": "a2b0a13e-4dd2-4db2-a146-bddabacb115e",
+  "contractDigest": "271de261763cbadcc63483e0298800e3c686a304aac18e426b1031f710acc6ad",
   "executionComplete": true,
   "questions": {
     "baseline-alice-reads": {
       "dependencies": [],
       "blockedBy": [],
       "status": "passed",
-      "startedAt": 1792902765861,
-      "finishedAt": 1792902766188,
+      "startedAt": 1792962192601,
+      "finishedAt": 1792962192989,
+      "location": {
+        "file": "tests/questions.spec.ts",
+        "line": 8,
+        "column": 1
+      },
       "executionPassed": true,
       "probability": 0.95,
       "expected": {
@@ -25,8 +30,13 @@
       "dependencies": [],
       "blockedBy": [],
       "status": "passed",
-      "startedAt": 1792902764495,
-      "finishedAt": 1792902765117,
+      "startedAt": 1792962191263,
+      "finishedAt": 1792962191816,
+      "location": {
+        "file": "tests/questions.spec.ts",
+        "line": 14,
+        "column": 1
+      },
       "executionPassed": true,
       "probability": 0.95,
       "expected": {
@@ -45,8 +55,13 @@
       ],
       "blockedBy": [],
       "status": "passed",
-      "startedAt": 1792902766915,
-      "finishedAt": 1792902767286,
+      "startedAt": 1792962193731,
+      "finishedAt": 1792962194161,
+      "location": {
+        "file": "tests/questions.spec.ts",
+        "line": 8,
+        "column": 1
+      },
       "executionPassed": true,
       "probability": 0.05,
       "expected": {
@@ -65,8 +80,13 @@
       ],
       "blockedBy": [],
       "status": "passed",
-      "startedAt": 1792902767927,
-      "finishedAt": 1792902768265,
+      "startedAt": 1792962194918,
+      "finishedAt": 1792962195307,
+      "location": {
+        "file": "tests/questions.spec.ts",
+        "line": 14,
+        "column": 1
+      },
       "executionPassed": true,
       "probability": 0.95,
       "expected": {
