@@ -1,7 +1,11 @@
 // Host entry point: Dagger owns Playwright, scoring, and reconciliation.
+//
+// A run is named by what it depends on (inputs.mjs): the same code and choices
+// give the same run ID, so Dagger reuses the result and an existing run under
+// runs/<id> is not repeated. Asking again on purpose takes --seed.
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { runHash } from './inputs.mjs';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -12,13 +16,19 @@ const { values } = parseArgs({ options: {
   backend: { type: 'string', default: 'mock' },
   'secret-ref': { type: 'string' },
   'mock-answers': { type: 'string', default: 'fixtures/answers.json' },
+  seed: { type: 'string', default: '' },
 } });
 if (!['mock', 'real'].includes(values.backend)) throw new Error('--backend must be mock or real');
 if (values.backend === 'real' && !values['secret-ref']?.startsWith('pass://')) {
   throw new Error('Live runs require --secret-ref pass://vault/item/field');
 }
-const runId = randomUUID();
+const runId = runHash({ backend: values.backend, answers: path.resolve(here, values['mock-answers']), seed: values.seed });
 const output = path.join(here, 'runs', runId);
+if (existsSync(path.join(output, 'exit-code.json')) && existsSync(path.join(output, 'comparison.json'))) {
+  const code = JSON.parse(readFileSync(path.join(output, 'exit-code.json'), 'utf8'));
+  console.log(`${code === 0 ? 'PASS' : 'FAIL'} (unchanged, not run again) — artifacts: ${output}`);
+  process.exit(code);
+}
 const base = ['--silent', '--mod', moduleDir, 'call'];
 const execute = (command, args, env, capture = false) => new Promise((resolve, reject) => {
   const child = spawn(command, args, { cwd: moduleDir, env, stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' });

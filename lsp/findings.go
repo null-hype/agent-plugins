@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -69,14 +70,24 @@ const (
 // Evidence a peek opens, in this order, when the run recorded it.
 var evidenceFiles = []string{"state.json", "request.json", "response.json"}
 
-// latestRun returns the newest run under runsDir that has a comparison.json.
-func latestRun(runsDir string) (string, error) {
+// A run the server can show: its directory, and whether it was asked of other
+// code than is on disk now.
+type chosenRun struct {
+	Dir   string
+	Stale bool
+}
+
+// runs returns the runs under runsDir that have a comparison.json, newest first.
+func runs(runsDir string) []string {
 	entries, err := os.ReadDir(runsDir)
 	if err != nil {
-		return "", err
+		return nil
 	}
-	var best string
-	var bestTime int64
+	type run struct {
+		dir string
+		at  int64
+	}
+	var found []run
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -85,30 +96,74 @@ func latestRun(runsDir string) (string, error) {
 		if err != nil {
 			continue
 		}
-		if t := info.ModTime().UnixNano(); best == "" || t > bestTime {
-			best, bestTime = filepath.Join(runsDir, e.Name()), t
-		}
+		found = append(found, run{filepath.Join(runsDir, e.Name()), info.ModTime().UnixNano()})
 	}
-	if best == "" {
-		return "", fmt.Errorf("no run with comparison.json under %s", runsDir)
+	sort.Slice(found, func(i, j int) bool { return found[i].at > found[j].at })
+	out := make([]string, len(found))
+	for i, r := range found {
+		out[i] = r.dir
 	}
-	return best, nil
+	return out
 }
 
-// findRun picks the run a file is shown against: JEV_RUN_DIR, or the newest
-// run under the nearest runs/ directory above the file.
-func findRun(path string) (string, error) {
-	if dir := os.Getenv("JEV_RUN_DIR"); dir != "" {
-		return dir, nil
+// recordedCode is the code hash a run recorded in inputs.json, if any.
+func recordedCode(runDir string) string {
+	var inputs struct {
+		Code string `json:"code"`
 	}
+	b, err := os.ReadFile(filepath.Join(runDir, "inputs.json"))
+	if err != nil || json.Unmarshal(b, &inputs) != nil {
+		return ""
+	}
+	return inputs.Code
+}
+
+// harnessRoot is the nearest directory above path with a runs/ directory.
+func harnessRoot(path string) (string, error) {
 	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
-		if run, err := latestRun(filepath.Join(dir, "runs")); err == nil {
-			return run, nil
+		if info, err := os.Stat(filepath.Join(dir, "runs")); err == nil && info.IsDir() {
+			return dir, nil
 		}
 		if parent := filepath.Dir(dir); parent == dir {
-			return "", fmt.Errorf("no run found above %s", path)
+			return "", fmt.Errorf("no runs/ directory above %s", path)
 		}
 	}
+}
+
+// chooseRun picks the run to show: JEV_RUN_DIR; else the newest run asked of
+// the code on disk (code, from inputs.mjs); else the newest run, marked stale.
+// An empty code means the current code is unknown: the newest run, unmarked.
+func chooseRun(root, code string) (chosenRun, error) {
+	if dir := os.Getenv("JEV_RUN_DIR"); dir != "" {
+		return chosenRun{Dir: dir}, nil
+	}
+	all := runs(filepath.Join(root, "runs"))
+	if len(all) == 0 {
+		return chosenRun{}, fmt.Errorf("no run with comparison.json under %s", root)
+	}
+	if code == "" {
+		return chosenRun{Dir: all[0]}, nil
+	}
+	for _, dir := range all {
+		if recordedCode(dir) == code {
+			return chosenRun{Dir: dir}, nil
+		}
+	}
+	return chosenRun{Dir: all[0], Stale: true}, nil
+}
+
+// currentCode asks the harness for the code hash of the files on disk.
+func currentCode(root string) string {
+	if _, err := os.Stat(filepath.Join(root, "inputs.mjs")); err != nil {
+		return ""
+	}
+	cmd := exec.Command("node", "inputs.mjs")
+	cmd.Dir = root
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func loadComparison(runDir string) (Comparison, error) {
@@ -165,7 +220,7 @@ func asked(path string, c Comparison) map[int][]string {
 	return out
 }
 
-func diagnostics(path, text string, c Comparison) []Diagnostic {
+func diagnostics(path, text string, c Comparison, stale bool) []Diagnostic {
 	lines := strings.Split(text, "\n")
 	out := []Diagnostic{}
 	byLine := asked(path, c)
@@ -203,6 +258,9 @@ func diagnostics(path, text string, c Comparison) []Diagnostic {
 				d.Message = id + ": skipped, blocked by " + strings.Join(q.BlockedBy, ", ")
 			default:
 				continue
+			}
+			if stale {
+				d.Message = "stale run (asked of other code): " + d.Message
 			}
 			out = append(out, d)
 		}
