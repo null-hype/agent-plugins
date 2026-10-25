@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - '.dagger/internal/devenv-base/**'
+  # The supervisor applies what merges, so its checks run before the merge too.
+  pull_request:
+    paths:
+      - '.dagger/internal/devenv-base/**'
+      - '.github/workflows/devenv-base-checks.yml'
 
 concurrency:
   # Only PR runs share a group; every other run gets its own (run_id), so
