@@ -13,9 +13,15 @@ class Score {
   probability: Number(isFinite, isBetween(0, 1))?
   error: String?
 }
+class Location {
+  file: String(!isEmpty)
+  line: Int(isPositive)
+  column: Int(isPositive)
+}
 class Execution {
   questionId: Experiment.Id
   testTitle: String
+  location: Location
   status: "passed"|"failed"|"timedOut"|"skipped"|"interrupted"|"missing"
   startedAt: Number?
   finishedAt: Number?
@@ -31,6 +37,7 @@ local executions: Listing<Execution> = new Listing {
     new Execution {
       questionId = value.questionId
       testTitle = value.testTitle
+      location = value.location.toTyped(Location)
       status = value.status
       startedAt = value.startedAt
       finishedAt = value.finishedAt
@@ -64,7 +71,9 @@ questions = new Mapping {
       status = execution?.status ?? "missing"
       startedAt = execution?.startedAt
       finishedAt = execution?.finishedAt
-      executionPassed = execution != null && execution.testTitle == id &&
+      // The test that ran is the one titled with the Question's words.
+      location = execution?.location
+      executionPassed = execution != null && execution.testTitle == question.ask &&
         (status == "passed" || status == "failed") && execution.attachmentCount == 1 &&
         execution.evidenceId == id &&
         question.requiredEvidence.toList().every((key) -> execution.evidenceKeys.toList().contains(key)) &&
