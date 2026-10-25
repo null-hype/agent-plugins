@@ -47,7 +47,7 @@ jobs:
       - name: Install Pkl and Neovim
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
-          curl -fsSL -o "$RUNNER_TEMP/bin/pkl" https://github.com/apple/pkl/releases/download/0.26.3/pkl-linux-amd64
+          curl -fsSL -o "$RUNNER_TEMP/bin/pkl" https://github.com/apple/pkl/releases/download/0.32.1/pkl-linux-amd64
           chmod +x "$RUNNER_TEMP/bin/pkl"
           curl -fsSL https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-x86_64.tar.gz | tar xz -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"

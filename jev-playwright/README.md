@@ -60,7 +60,7 @@ collectors and the scorer here still run on their own.
 
 ## Run
 
-Requires Node 18+, Python 3.10+, and `pkl` on PATH. Verified with Pkl 0.26.3.
+Requires Node 18+, Python 3.10+, and `pkl` on PATH. Verified with Pkl 0.32.1, the version the `jev` feature installs.
 From this directory:
 
 ```sh
