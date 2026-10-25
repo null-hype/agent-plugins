@@ -34,7 +34,6 @@ run against the `.pcf`.
 
 ## Reasons
 
-Set `PROTON_PASS_AGENT_REASON` before a secret is resolved, in the form
-`score.mjs` uses: `goal=…; action=…; run=…; question=…`. A Jules dispatch uses
-`action=jules-dispatch` and ends with `; ask=` and what you are asking Jules to
-do, in plain words.
+Set `PROTON_PASS_AGENT_REASON` before a secret is resolved, as one plain
+sentence saying what the access is for, e.g. "ask Jules to add an owner check to
+the document route".
