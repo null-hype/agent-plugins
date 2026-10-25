@@ -13,10 +13,13 @@ Questions.
   revision it asked.
 
 It places each finding with the `location` Playwright reported for the test,
-recorded in the run's `comparison.json`. It reads `JEV_RUN_DIR`, or the newest
-run under the nearest `runs/` directory above the open file, and publishes
-again when a newer run lands. It does not run anything itself. It runs
-alongside your TypeScript language server, not instead of it.
+recorded in the run's `comparison.json`. It shows the newest run under the
+nearest `runs/` directory that was asked of the code on disk (each run records
+its code hash in `inputs.json`; `node inputs.mjs` prints the current one). If
+there is none, it shows the newest run and marks each finding `stale run`.
+`JEV_RUN_DIR` overrides the choice. It publishes again when a newer run lands,
+and does not run anything itself. It runs alongside your TypeScript language
+server, not instead of it.
 
 ```sh
 go build -o jev-lsp .
@@ -32,18 +35,19 @@ Needs Neovim 0.11 or later. Put `jev-lsp` on your `PATH`, then load
 dofile('/path/to/jev-playwright/lsp/nvim/jev.lua')
 ```
 
-Or set `vim.g.jev_lsp_cmd = '/path/to/jev-lsp'` before loading it. It starts for
-TypeScript files under a directory with a `playwright.config.ts`.
+It starts the server for TypeScript files under a directory with a
+`playwright.config.ts`, and runs the Questions when you save a file in the
+harness: `npm run -s dagger` by default, which reuses a run whose inputs have
+not changed instead of repeating it. After a save that changes the code, the
+findings are marked stale until that run lands. Set before loading:
 
-Then, from `jev-playwright`:
+- `vim.g.jev_lsp_cmd`: the server binary, if not `jev-lsp` on `PATH`
+- `vim.g.jev_run_cmd`: what a save runs, e.g. `{ 'node', 'run.mjs' }` without Dagger
+- `vim.g.jev_run_on_save = false`: only show runs, never start them
 
-```sh
-npm test                           # a mock run: one warning, on line 8
-nvim tests/questions.spec.ts
-```
+From `jev-playwright`, with a run in place (`npm test` or `npm run dagger`),
+open `tests/questions.spec.ts`: the warning is on the Alice test, line 8. On
+that line, `:lua vim.lsp.buf.definition()` lists the evidence.
 
-The warning is on the Alice test. On that line, `:lua vim.lsp.buf.definition()`
-lists the evidence. Run
-`npm run score -- --mock-answers fixtures/prerequisite-fails.json` in another
-terminal: within a couple of seconds line 8 shows an error, and an information
-note for the patched question it skipped.
+[`nvim/check.lua`](nvim/check.lua) checks all of this headless, and CI runs it
+(`.github/workflows/jev-playwright.yml`).

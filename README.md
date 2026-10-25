@@ -160,8 +160,12 @@ Replace `artifacts export --path /tmp/jev-report` with `check` to make the
 Dagger call fail when the experiment fails. Export deliberately remains
 available for failed experiments; `exit-code.json` records their status.
 The npm launcher exports first, then exits with that recorded status.
-Use a fresh run ID for a new experiment: it is a Dagger cache input, so an
-identical invocation may reuse the earlier result.
+The run ID is a Dagger cache input. `npm run dagger` names each run by what it
+depends on (`inputs.mjs`): the code it copies into the container, plus the
+backend, canned answers, contract and an optional `--seed`. The same inputs give
+the same ID, so an unchanged run is reused, and an existing `runs/<id>` is not
+repeated at all. A cached live answer is a record: to ask Jev again on purpose,
+pass a new `--seed`.
 
 ## Artifacts
 
