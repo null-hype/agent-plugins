@@ -18,6 +18,7 @@ if (process.env.JEV_CONTRACT_SNAPSHOT) {
   process.env.JEV_CONTRACT_SNAPSHOT = snapshot;
 }
 const contractDigest = createHash('sha256').update(JSON.stringify(experiment)).digest('hex');
+const titled = (ask: string) => new RegExp(`(?:^|\\s)${ask.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 
 export default defineConfig({
   testDir: './tests',
@@ -26,11 +27,18 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: true,
-  projects: Object.entries(experiment.questions).map(([id, question]: [string, any]) => ({
-    name: id,
-    dependencies: question.dependencies,
-    grep: new RegExp(`(?:^|\\s)${id}$`),
-  })),
+  // One project per Question: the test titled with its words, at its revision.
+  // `unasked` runs every test no Question asks, and fails it, so a test and the
+  // contract cannot drift apart unnoticed.
+  projects: [
+    ...Object.entries(experiment.questions).map(([id, question]: [string, any]) => ({
+      name: id,
+      dependencies: question.dependencies,
+      grep: titled(question.ask),
+      use: { revision: question.revision },
+    })),
+    { name: 'unasked', grepInvert: Object.values(experiment.questions).map((q: any) => titled(q.ask)) },
+  ],
   timeout: 150_000,
   metadata: { experiment, contractDigest, runId: process.env.JEV_RUN_ID },
   reporter: [
