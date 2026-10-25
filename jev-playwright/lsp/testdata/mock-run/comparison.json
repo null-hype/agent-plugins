@@ -1,0 +1,85 @@
+{
+  "runId": "d9d6e08f-9fa6-4543-88c2-c5c2b799aee3",
+  "contractDigest": "e3beeb0fec482ec8dc207ad4550921e39860f1f06d2785bf2651f1be774e2b7e",
+  "executionComplete": true,
+  "questions": {
+    "baseline-alice-reads": {
+      "dependencies": [],
+      "blockedBy": [],
+      "status": "passed",
+      "startedAt": 1792902765861,
+      "finishedAt": 1792902766188,
+      "executionPassed": true,
+      "probability": 0.95,
+      "expected": {
+        "min": 0,
+        "max": 0.2
+      },
+      "expectationPassed": false,
+      "dependencyOrderValid": true,
+      "accepted": true,
+      "outcome": "out-of-range",
+      "error": null
+    },
+    "baseline-bob-reads": {
+      "dependencies": [],
+      "blockedBy": [],
+      "status": "passed",
+      "startedAt": 1792902764495,
+      "finishedAt": 1792902765117,
+      "executionPassed": true,
+      "probability": 0.95,
+      "expected": {
+        "min": 0.8,
+        "max": 1
+      },
+      "expectationPassed": true,
+      "dependencyOrderValid": true,
+      "accepted": true,
+      "outcome": "in-range",
+      "error": null
+    },
+    "patched-alice-reads": {
+      "dependencies": [
+        "baseline-alice-reads"
+      ],
+      "blockedBy": [],
+      "status": "passed",
+      "startedAt": 1792902766915,
+      "finishedAt": 1792902767286,
+      "executionPassed": true,
+      "probability": 0.05,
+      "expected": {
+        "min": 0,
+        "max": 0.2
+      },
+      "expectationPassed": true,
+      "dependencyOrderValid": true,
+      "accepted": true,
+      "outcome": "in-range",
+      "error": null
+    },
+    "patched-bob-reads": {
+      "dependencies": [
+        "baseline-bob-reads"
+      ],
+      "blockedBy": [],
+      "status": "passed",
+      "startedAt": 1792902767927,
+      "finishedAt": 1792902768265,
+      "executionPassed": true,
+      "probability": 0.95,
+      "expected": {
+        "min": 0.8,
+        "max": 1
+      },
+      "expectationPassed": true,
+      "dependencyOrderValid": true,
+      "accepted": true,
+      "outcome": "in-range",
+      "error": null
+    }
+  },
+  "graphConsistent": true,
+  "passed": true
+}
