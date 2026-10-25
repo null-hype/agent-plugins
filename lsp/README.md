@@ -1,28 +1,49 @@
 # jev-lsp
 
-A language server that shows a jev-playwright run as diagnostics on the
-`.pcf` that declared its questions.
+A language server that shows a jev-playwright run on the tests that asked its
+Questions.
 
-- A question Jev answered out of its expected range is a **warning** on its
-  `["id"]` key, with the score and the range.
-- A question whose answer could not be collected is an **error**.
-- A question skipped because a prerequisite failed is **information**.
+- A Question answered out of its expected range is a **warning** on the test
+  that asked it, naming the Question, the answer and the range.
+- A Question whose answer could not be collected is an **error**.
+- A Question skipped because a prerequisite failed is **information**.
 - An answer in range shows nothing.
-- Go to definition (or peek) on a question opens the evidence Jev judged:
-  `state.json`, `request.json`, `response.json`.
+- Go to definition (or peek) on a test opens the evidence its answers were
+  given on: `state.json`, `request.json` and `response.json`, for every
+  revision it asked.
 
-It reads the newest run under `runs/` next to the `.pcf`, or the run in
-`JEV_RUN_DIR`. It runs alongside `pkl-lsp`, not instead of it.
+It places each finding with the `location` Playwright reported for the test,
+recorded in the run's `comparison.json`. It reads `JEV_RUN_DIR`, or the newest
+run under the nearest `runs/` directory above the open file, and publishes
+again when a newer run lands. It does not run anything itself. It runs
+alongside your TypeScript language server, not instead of it.
 
 ```sh
 go build -o jev-lsp .
 go test ./...
 ```
 
-Neovim:
+## Neovim
+
+Needs Neovim 0.11 or later. Put `jev-lsp` on your `PATH`, then load
+[`nvim/jev.lua`](nvim/jev.lua) from your config:
 
 ```lua
-vim.filetype.add({ extension = { pcf = 'pkl' } })
-vim.lsp.start({ name = 'jev-lsp', cmd = { '/path/to/jev-lsp' },
-  root_dir = vim.fn.getcwd() })
+dofile('/path/to/jev-playwright/lsp/nvim/jev.lua')
 ```
+
+Or set `vim.g.jev_lsp_cmd = '/path/to/jev-lsp'` before loading it. It starts for
+TypeScript files under a directory with a `playwright.config.ts`.
+
+Then, from `jev-playwright`:
+
+```sh
+npm test                           # a mock run: one warning, on line 8
+nvim tests/questions.spec.ts
+```
+
+The warning is on the Alice test. On that line, `:lua vim.lsp.buf.definition()`
+lists the evidence. Run
+`npm run score -- --mock-answers fixtures/prerequisite-fails.json` in another
+terminal: within a couple of seconds line 8 shows an error, and an information
+note for the patched question it skipped.
