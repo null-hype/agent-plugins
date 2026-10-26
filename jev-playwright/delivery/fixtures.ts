@@ -2,7 +2,7 @@ import { test as base, expect } from '@playwright/test';
 import { jules, type SessionClient } from '@google/jules-sdk';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { noul } from './jev';
 
@@ -63,6 +63,9 @@ type Fixtures = {
   build: (goal: string, plan: Plan) => Promise<{ patch: string; files: string[] }>;
   /** The judge asks Jev one Noul question; the key is fetched once per test, for `purpose`. */
   judge: (purpose: string) => (state: unknown, instructions: string) => Promise<number>;
+  /** One hunk: one file, written by one small repoless Jules session from `ask`,
+   * then judged by Jev against `ask`. Returns the file's content. */
+  hunk: (file: string, ask: string) => Promise<string>;
 };
 
 /** Jules's last word to us, when it stops to ask: the test fails with it. */
@@ -135,6 +138,45 @@ export const test = base.extend<Fixtures>({
         await sleep(30_000);
       }
       throw new Error(`Jules has not finished yet: ${plan.url}. Run again later.`);
+    });
+  },
+  hunk: async ({ judge }, use, testInfo) => {
+    const client = jules.with({ apiKey: secret('planner', JULES_KEY, `have Jules write one file of ${testInfo.title}`) });
+    const verdict = judge(`ask Jev whether Jules's file does what was asked: ${testInfo.title}`);
+    await use(async (file, ask) => {
+      const prompt = `${ask.trim()}\n\nWrite it as the one file ${file}.`;
+      const title = `hunk · ${file} · ${createHash('sha256').update(prompt).digest('hex').slice(0, 12)}`;
+      // The same ask is the same session: running again collects it instead of asking again.
+      let id: string | undefined;
+      let seen = 0;
+      for await (const s of client.sessions()) {
+        if (s.title === title && s.state !== 'failed') { id = s.id; break; }
+        if (++seen >= 200) break;
+      }
+      if (!id) id = (await client.run({ prompt, title })).id;
+      const session = client.session(id);
+      const url = (await session.info()).url;
+      testInfo.annotations.push({ type: 'jules', description: `${file}  ${url}` });
+
+      for (const until = Date.now() + 20 * 60_000; Date.now() < until; ) {
+        const { state } = await session.info();
+        if (state === 'awaitingUserFeedback') throw await blocked(session, url, testInfo.annotations);
+        if (state === 'failed') throw new Error(`Jules failed: ${url}`);
+        if (state === 'completed') {
+          const files = (await session.result()).generatedFiles().all().filter((f) => f.changeType !== 'deleted');
+          const written = files.find((f) => f.path.endsWith(file)) ?? (files.length === 1 ? files[0] : undefined);
+          if (!written) throw new Error(`Jules wrote no ${file}: ${url} (${files.map((f) => f.path).join(', ') || 'no files'})`);
+          const out = path.join(testInfo.outputDir, file);
+          mkdirSync(path.dirname(out), { recursive: true });
+          writeFileSync(out, written.content);
+          await testInfo.attach(file, { path: out, contentType: 'text/plain' });
+          const p = await verdict({ ask, file: written.content }, 'Does the file do what was asked? Judge only the supplied ask and file.');
+          testInfo.annotations.push({ type: 'does-what-was-asked', description: `${p}  ${file}` });
+          return written.content;
+        }
+        await sleep(20_000);
+      }
+      throw new Error(`Jules has not written ${file} yet: ${url}. Run again later.`);
     });
   },
   judge: async ({}, use) => {
