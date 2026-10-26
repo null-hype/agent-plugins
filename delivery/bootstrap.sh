@@ -95,20 +95,25 @@ grant() { # token role scope...
   cat "$err" >&2; rm -f "$err"; return 1
 }
 
+# The token is shown nowhere else, so one gh cannot set is kept in the owner's
+# vault, which no agent can read, to be set by hand from there.
 ci_secret() { # name value
   if [[ -z "$2" ]]; then return; fi
-  # The token is shown nowhere else, so if gh cannot set it, it is printed for you to set.
   if command -v gh >/dev/null 2>&1 && printf '%s' "$2" | gh secret set "$1" --repo "$REPO"; then
     echo "CI secret set: $1"
+  elif item_exists "$owner" "$1"; then
+    die "$owner/$1 exists but its token was just created: delete that item and run again"
   else
-    echo "could not set the CI secret $1: set it by hand to $2"
+    create_item "$owner" "$1" hidden "$1=$2"
+    echo "could not set the CI secret $1: stored in $owner/$1 for you to set"
   fi
 }
 
 root="$(vault root)" planner="$(vault planner)" worker="$(vault worker)" judge="$(vault judge)"
+owner="$(vault owner)"
 
-# 1. One vault per agent.
-for v in "$root" "$planner" "$worker" "$judge"; do ensure_vault "$v"; done
+# 1. One vault per agent, and the owner's.
+for v in "$root" "$planner" "$worker" "$judge" "$owner"; do ensure_vault "$v"; done
 
 # 2. Each vault's starting credential.
 ensure_credential "$root" claude-code CLAUDE_CODE_OAUTH_TOKEN "Claude Code OAuth token (claude setup-token)"

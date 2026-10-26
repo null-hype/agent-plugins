@@ -38,8 +38,10 @@ bash delivery/bootstrap.sh
 
 It asks for each starting credential (never echoed), creates the vaults,
 journals and tokens, grants each token editor on its own vault, and sets the
-`JEV_ROOT_PASS_TOKEN` and `JEV_JUDGE_PASS_TOKEN` CI secrets with `gh`. The
-planner's token goes into `jev-root/planner-token`. Re-running reuses what exists.
+`JEV_ROOT_PASS_TOKEN` and `JEV_JUDGE_PASS_TOKEN` CI secrets with `gh`. A secret
+`gh` cannot set is kept in `jev-owner`, which no agent can read, for you to set.
+The planner's token goes into `jev-root/planner-token`. Re-running reuses what
+exists.
 
 One step is yours: copy `jev-worker/typesafe/TYPESAFE_API_KEY` into Jules's
 settings. Jules cannot use `pass-cli`, so that hop is outside Pass.
