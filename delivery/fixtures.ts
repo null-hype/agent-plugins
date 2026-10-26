@@ -192,10 +192,12 @@ export const test = base.extend<Fixtures>({
     });
   },
   hunk: async ({ judge }, use, testInfo) => {
-    const client = jules.with({ apiKey: secret('planner', JULES_KEY, `have Jules write one file of ${testInfo.title}`) });
+    // The key is read when the first file is asked for, so a run that writes none gives no reason.
+    let client: ReturnType<typeof jules.with> | undefined;
     const verdict = judge(`ask Jev whether Jules's file does what was asked: ${testInfo.title}`);
     await use(async (file, ask) => {
       const prompt = `${ask.trim()}\n\nWrite it as the one file ${file}.`;
+      client ??= jules.with({ apiKey: secret('planner', JULES_KEY, `have Jules write one file of ${testInfo.title}`) });
       const title = `hunk · ${file} · ${createHash('sha256').update(prompt).digest('hex').slice(0, 12)}`;
       // The same ask is the same session: running again collects it instead of asking again.
       let id: string | undefined;
