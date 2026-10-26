@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect, ownerMonitor } from './fixtures';
@@ -25,7 +25,8 @@ test('Is anything this run asked for still urgent?', async ({}, testInfo) => {
   const read = (f: string) => readFileSync(path.join(run!, f), 'utf8');
   const started = Date.parse(JSON.parse(read('started.json')).at) - 60_000;
   const ledger: { role: string; reason: string }[] = read('reasons.jsonl').split('\n').filter(Boolean).map((l) => JSON.parse(l));
-  const evidence = { plans: JSON.parse(read('plans.json')), report: JSON.parse(read('report.json')).suites };
+  // Jules's plans are steps in the report; plans.json is there only after the plan project.
+  const evidence = { plans: existsSync(path.join(run!, 'plans.json')) ? JSON.parse(read('plans.json')) : undefined, report: JSON.parse(read('report.json')).suites };
   const key = process.env.AUDIT_KEY_REF ?? 'pass://infra/typesafe.ai/TYPESAFE_API_KEY';
   const jev = await import('./fixtures').then((f) => f.ownerSecret(key, `audit the delivery run: is anything still urgent toward ${goal}`));
 
