@@ -44,10 +44,19 @@ jobs:
         run: |
           curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
           export PROTON_PASS_KEY_PROVIDER=fs
-          login() { PROTON_PASS_PERSONAL_ACCESS_TOKEN="$2" PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-$1" pass-cli login; }
+          # A failed login says which agent, as an annotation (the log is not always readable).
+          login() {
+            local err; err="$(mktemp)"
+            PROTON_PASS_PERSONAL_ACCESS_TOKEN="$2" PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-$1" pass-cli login 2>"$err" && return
+            echo "::error title=Pass login as $1 failed::$(tr '\n' ' ' < "$err" | head -c 500)"; exit 1
+          }
+          [[ -n "$ROOT_TOKEN" ]] || { echo "::error::JEV_ROOT_PASS_TOKEN is empty"; exit 1; }
+          [[ -n "$JUDGE_TOKEN" ]] || { echo "::error::JEV_JUDGE_PASS_TOKEN is empty"; exit 1; }
           login root "$ROOT_TOKEN"
+          err="$(mktemp)"
           planner="$(PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-root" PROTON_PASS_AGENT_REASON="start the planner" \
-            pass-cli item view pass://jev-root/planner-token/PROTON_PASS_PERSONAL_ACCESS_TOKEN)"
+            pass-cli item view pass://jev-root/planner-token/PROTON_PASS_PERSONAL_ACCESS_TOKEN 2>"$err")" ||
+            { echo "::error title=Root could not read the planner token::$(tr '\n' ' ' < "$err" | head -c 500)"; exit 1; }
           echo "::add-mask::$planner"
           login planner "$planner"
           login judge "$JUDGE_TOKEN"
