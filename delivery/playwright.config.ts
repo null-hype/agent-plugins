@@ -26,6 +26,8 @@ export default defineConfig({
     { name: 'plan', testMatch: 'plan.spec.ts' },
     { name: 'judge', testMatch: 'judge.spec.ts', dependencies: ['plan'] },
     { name: 'build', testMatch: 'build.spec.ts', dependencies: ['judge'] },
+    // Nodes of our plan, each a project of hunks.
+    { name: 'feature', testMatch: 'feature.spec.ts' },
     { name: 'audit', testMatch: 'audit.spec.ts' },
   ],
   // In CI, failures also become check annotations.
