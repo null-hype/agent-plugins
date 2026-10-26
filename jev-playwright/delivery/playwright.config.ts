@@ -1,24 +1,18 @@
 import { defineConfig } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The plan's loop, smallest version: `ask` dispatches one repoless Jules
-// session, under a reason Pass records; `retro` finds that reason in the Pass
-// monitor log and asks Jev whether it serves the goal (goal.md).
+// The first test of the plan: Jules plans the goal (goal.md) without writing
+// anything, and Jev judges each step of that plan against the goal and against
+// ours. retro then finds every reason the run gave Pass in the Pass monitor
+// log, and asks Jev whether each serves the goal.
 //
 //   npx playwright test -c delivery
 //
-// Needs pass-cli logged in (or JULES_API_KEY), and the harness's .venv for
-// Jev. Jev is mock (answers.json) unless JEV_BACKEND=real and JEV_SECRET_REF.
-// A session still working fails as not yet: run the plan again later.
+// Needs pass-cli logged in, with the Jules and TypeSafe keys (JULES_KEY_REF,
+// TYPESAFE_KEY_REF). A plan not ready yet fails as not yet: run again later.
 const here = path.dirname(fileURLToPath(import.meta.url));
-const env = process.env;
-env.DELIVERY_LEDGER ||= path.join(here, 'test-results', 'reasons.jsonl');
-env.JEV_RUN_ID ||= randomUUID();
-env.JEV_BACKEND ||= 'mock';
-env.JEV_CREDENTIALS ||= 'pass';
-env.JEV_MOCK_ANSWERS ||= path.join(here, 'answers.json');
+process.env.DELIVERY_LEDGER ||= path.join(here, 'test-results', 'reasons.jsonl');
 
 export default defineConfig({
   testDir: '.',
@@ -27,10 +21,9 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: true,
-  timeout: 5 * 60_000,
   projects: [
-    { name: 'ask', testMatch: 'ask.spec.ts' },
-    { name: 'retro', testMatch: 'retro.spec.ts', dependencies: ['ask'] },
+    { name: 'plan', testMatch: 'plan.spec.ts' },
+    { name: 'retro', testMatch: 'retro.spec.ts', dependencies: ['plan'] },
   ],
   reporter: [['list'], ['json', { outputFile: './test-results/report.json' }]],
 });
