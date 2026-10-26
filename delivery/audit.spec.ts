@@ -39,7 +39,7 @@ test('Is anything this run asked for still urgent?', async ({}, testInfo) => {
         const reason = r.payload.reason ?? '(no reason)';
         seen.add(reason);
         await test.step(reason, async () => {
-          const p = await noul(jev, { goal, agent, reason, access: r, evidence }, 'The message conveys urgency or time-sensitivity');
+          const p = await noul(jev, { goal, agent, reason, access: r, evidence }, 'The evidence does not yet show done what this reason asked for');
           testInfo.annotations.push({ type: 'is-urgent', description: `${p}  ${agent}: ${reason}` });
         });
       }
