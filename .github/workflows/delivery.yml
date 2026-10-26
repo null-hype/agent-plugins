@@ -2,8 +2,9 @@ name: delivery
 
 # The plan's first test: the planner has Jules plan the goal without writing
 # anything; the judge, under its own key, has Jev judge that plan against the
-# goal and against ours, and checks the reasons Pass recorded. Our plan must be fixed before Jules's is seen, so this runs
-# only on a pull request labelled `dispatch`.
+# goal and against ours. The owner audits the reasons afterwards, outside CI.
+# Our plan must be fixed before Jules's is seen, so this runs only on a pull
+# request labelled `dispatch`.
 
 on:
   pull_request:
@@ -53,7 +54,7 @@ jobs:
           echo "PASS_SESSION_PLANNER=$RUNNER_TEMP/pass-planner" >> "$GITHUB_ENV"
           echo "PASS_SESSION_JUDGE=$RUNNER_TEMP/pass-judge" >> "$GITHUB_ENV"
       - name: Run the loop
-        run: npx playwright test -c delivery
+        run: npx playwright test -c delivery --project plan --project judge
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v4
