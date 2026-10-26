@@ -26,11 +26,19 @@ export function secret(role: Role, ref: string, reason: string) {
   }).trim();
 }
 
-/** The Pass monitor log as one agent sees it. monitor may stream: what it
- * printed in 30s is the log. */
-export function passMonitor(role: Role) {
-  const run = spawnSync('pass-cli', ['agent', 'monitor', '--output', 'json'], { encoding: 'utf8', timeout: 30_000, env: session(role) });
-  return { log: run.stdout ?? '', error: run.stderr || run.error?.message || '' };
+/** The owner's own Pass access, for the audit: no agent session. */
+export function ownerSecret(ref: string, reason: string) {
+  return execFileSync('pass-cli', ['item', 'view', ref], {
+    encoding: 'utf8', env: { ...process.env, PROTON_PASS_AGENT_REASON: reason },
+  }).trim();
+}
+
+/** One agent's accesses, as JSON, from the owner's session: an agent's own
+ * session sees only its own. */
+export function ownerMonitor(agent: string) {
+  const run = spawnSync('pass-cli', ['agent', 'monitor', agent, '--output', 'json'], { encoding: 'utf8', timeout: 30_000 });
+  if (run.status !== 0 && !run.stdout) throw new Error(run.stderr || run.error?.message || `agent monitor ${agent} failed`);
+  return run.stdout;
 }
 
 /** Where the plan project leaves Jules's plan, and ours, for the judge. */
