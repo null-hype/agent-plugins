@@ -10,7 +10,8 @@
 #   judge    jev-judge     typesafe      TYPESAFE_API_KEY          a different key: the final verdict
 #                          journal       verdict
 #
-# Each token is editor on its own vault. The judge can also view the planner's
+# Each token is a Pass agent, so `pass-cli agent monitor` shows what it read,
+# and is editor on its own vault. The judge can also view the planner's
 # journal, and nothing else of anyone's. Run it logged in as yourself; re-running
 # reuses what exists.
 #
@@ -26,7 +27,7 @@ command -v pass-cli >/dev/null 2>&1 || die "pass-cli is required"
 command -v jq >/dev/null 2>&1 || die "jq is required"
 
 # `personal-access-token list` is refused in a token session, so it doubles as the owner check.
-pats_json="$(pass-cli personal-access-token list --output json 2>/dev/null)" ||
+pass-cli personal-access-token list --output json >/dev/null 2>&1 ||
   die "run it logged in as yourself, not as a token: pass-cli login"
 export PROTON_PASS_AGENT_REASON="bootstrap the $PREFIX delivery agents"
 
@@ -39,8 +40,8 @@ item_exists() {
   pass-cli item list "$1" --output json |
     jq -e --arg t "$2" '.. | objects | select((.title? == $t) or (.content?.title? == $t))' >/dev/null
 }
-pat_exists() {
-  jq -e --arg n "$1" '.. | objects | select(.name? == $n)' <<<"$pats_json" >/dev/null
+agent_exists() {
+  pass-cli agent list --output json | jq -e --arg n "$1" '.. | objects | select(.name? == $n)' >/dev/null
 }
 
 ensure_vault() {
@@ -48,10 +49,10 @@ ensure_vault() {
 }
 
 # A custom item with fixed fields: `item update` edits a field but cannot add one.
-create_item() { # vault title field=value...
-  local vault="$1" title="$2"; shift 2
+create_item() { # vault title type field=value...
+  local vault="$1" title="$2" type="$3"; shift 3
   printf '%s\n' "$@" |
-    jq -R 'capture("^(?<field_name>[^=]+)=(?<value>.*)$") + {field_type: "text"}' |
+    jq -R --arg type "$type" 'capture("^(?<field_name>[^=]+)=(?<value>.*)$") + {field_type: $type}' |
     jq -s --arg title "$title" '{title: $title, note: "", sections: [{section_name: $title, fields: .}]}' |
     pass-cli item create custom --vault-name "$vault" --from-template - >/dev/null
 }
@@ -62,34 +63,32 @@ ensure_credential() { # vault title field prompt
   local value
   read -rsp "$4: " value; echo
   [[ -n "$value" ]] || die "no value for $1/$2"
-  create_item "$1" "$2" "$3=$value"
+  create_item "$1" "$2" hidden "$3=$value"
   echo "stored: $1/$2/$3"
 }
 
 ensure_journal() { # vault field...
   local vault="$1"; shift
   if item_exists "$vault" journal; then echo "journal exists: $vault/journal"; return; fi
-  create_item "$vault" journal "${@/%/=}"
+  create_item "$vault" journal text "${@/%/=}"
   echo "created journal: $vault/journal"
 }
 
-# A token is printed once by pass-cli: paste it back so it can be stored.
+# An agent's token is printed once, by `agent create`, so it is kept as it is made.
 token="" # set by ensure_token when it creates one
 ensure_token() { # name
   token=""
-  if pat_exists "$1"; then echo "token exists: $1"; return; fi
+  if agent_exists "$1"; then echo "token exists: $1"; return; fi
   echo "creating token: $1"
-  pass-cli personal-access-token create --name "$1" --expiration "$EXPIRATION"
-  read -rsp "Paste the $1 token printed above: " token; echo
-  [[ -n "$token" ]] || die "no token pasted for $1"
-  pats_json="$(pass-cli personal-access-token list --output json)"
+  token="$(pass-cli agent create "$1" --expiration "$EXPIRATION" | jq -r '.token // empty')"
+  [[ -n "$token" ]] || die "agent create printed no token for $1"
 }
 
-# Grants are idempotent: "already granted" is not an error.
+# Granting again sets the role, and "already granted" is not an error.
 grant() { # token role scope...
   local name="$1" role="$2" err; shift 2
   err="$(mktemp)"
-  if pass-cli personal-access-token access grant --personal-access-token-name "$name" "$@" --role "$role" 2>"$err" ||
+  if pass-cli agent access grant "$name" "$@" --role "$role" 2>"$err" ||
     grep -Eqi 'already|duplicate' "$err"; then
     rm -f "$err"; echo "granted: $name $role $*"; return 0
   fi
@@ -98,10 +97,11 @@ grant() { # token role scope...
 
 ci_secret() { # name value
   if [[ -z "$2" ]]; then return; fi
-  if command -v gh >/dev/null 2>&1; then
-    printf '%s' "$2" | gh secret set "$1" --repo "$REPO" && echo "CI secret set: $1"
+  # The token is shown nowhere else, so if gh cannot set it, it is printed for you to set.
+  if command -v gh >/dev/null 2>&1 && printf '%s' "$2" | gh secret set "$1" --repo "$REPO"; then
+    echo "CI secret set: $1"
   else
-    echo "gh not found: set the CI secret $1 to that token by hand"
+    echo "could not set the CI secret $1: set it by hand to $2"
   fi
 }
 
@@ -126,7 +126,7 @@ if [[ -n "$token" ]]; then
   if item_exists "$root" planner-token; then
     die "$root/planner-token exists but $planner was just created: delete that item and run again"
   fi
-  create_item "$root" planner-token "PROTON_PASS_PERSONAL_ACCESS_TOKEN=$token"
+  create_item "$root" planner-token hidden "PROTON_PASS_PERSONAL_ACCESS_TOKEN=$token"
   echo "stored: $root/planner-token"
 elif ! item_exists "$root" planner-token; then
   die "$planner exists but its token is not in $root/planner-token: delete the $planner token and run again"
