@@ -1,6 +1,6 @@
 name: jev-playwright
 
-# The Question graph, the language server that shows it, the Neovim setup that
+# The Question graph, the witness run it writes, the Neovim setup that
 # runs it on save, and the Dagger launcher that names runs by their inputs.
 
 on:
@@ -37,10 +37,15 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: jev-playwright/package-lock.json
+      - uses: actions/checkout@v4
+        with:
+          repository: null-hype/witness
+          ref: v0.1.0
+          path: witness
       - uses: actions/setup-go@v5
         with:
-          go-version-file: jev-playwright/lsp/go.mod
-          cache-dependency-path: jev-playwright/lsp/go.mod
+          go-version-file: witness/go.mod
+          cache: false
       - uses: astral-sh/setup-uv@v6
         with:
           version: '0.8.22'
@@ -57,17 +62,15 @@ jobs:
           uv venv .venv
           uv pip install --python .venv/bin/python pkl-python==0.1.19 requests==2.32.3
       - run: npm run test:contracts
-      - run: go test -race ./...
-        working-directory: jev-playwright/lsp
-      - name: Neovim shows the run, marks it stale on save, and shows the next run
+      - name: Neovim shows the witness run, marks it stale on save, and shows the next run
         run: |
-          (cd lsp && go build -o "$RUNNER_TEMP/bin/jev-lsp" .)
-          npm test
+          (cd ../witness && go build -o "$RUNNER_TEMP/bin/witness" .)
+          npx playwright test
           nvim --headless --clean \
-            -c "lua vim.g.jev_run_cmd = { 'node', 'run.mjs' }" \
-            -c "luafile lsp/nvim/jev.lua" \
+            -c "lua vim.g.witness_run_cmd = { 'npx', 'playwright', 'test' }" \
+            -c "luafile ../witness/nvim/witness.lua" \
             -c "edit tests/questions.spec.ts" \
-            -c "luafile lsp/nvim/check.lua"
+            -c "luafile test/witness-check.lua"
           git diff --exit-code -- tests
 
   dagger:
