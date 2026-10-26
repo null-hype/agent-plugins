@@ -3,34 +3,48 @@ import { jules } from '@google/jules-sdk';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync } from 'node:fs';
+import path from 'node:path';
 import { noul } from './jev';
 
-/** A secret, fetched for one purpose: one Proton Pass access, with that purpose
- * as its reason. The ledger is the run's own list of the reasons it gave, for
- * retro to find in the Pass monitor log. */
-export function secret(ref: string, reason: string) {
-  appendFileSync(process.env.DELIVERY_LEDGER!, JSON.stringify({ reason, at: new Date().toISOString() }) + '\n');
+export type Role = 'planner' | 'judge';
+
+/** The Pass session of an agent: PASS_SESSION_PLANNER or PASS_SESSION_JUDGE, as
+ * CI logs each one in with its own token (bootstrap.sh). Unset, it is yours. */
+function session(role: Role) {
+  const dir = process.env[`PASS_SESSION_${role.toUpperCase()}`];
+  return dir ? { ...process.env, PROTON_PASS_SESSION_DIR: dir, PROTON_PASS_KEY_PROVIDER: 'fs' } : { ...process.env };
+}
+
+/** A secret, fetched by one agent for one purpose: one Proton Pass access, with
+ * that purpose as its reason. The ledger is the run's own list of the reasons it
+ * gave, for retro to find in the Pass monitor log. pass-cli has no SDK, so this
+ * file is the only place it runs. */
+export function secret(role: Role, ref: string, reason: string) {
+  appendFileSync(process.env.DELIVERY_LEDGER!, JSON.stringify({ role, reason, at: new Date().toISOString() }) + '\n');
   return execFileSync('pass-cli', ['item', 'view', ref], {
-    encoding: 'utf8', env: { ...process.env, PROTON_PASS_AGENT_REASON: reason },
+    encoding: 'utf8', env: { ...session(role), PROTON_PASS_AGENT_REASON: reason },
   }).trim();
 }
 
-/** The Pass monitor log, as JSON. pass-cli has no SDK, so this file is the
- * only place it runs. monitor may stream: what it printed in 30s is the log. */
-export function passMonitor() {
-  const run = spawnSync('pass-cli', ['agent', 'monitor', '--output', 'json'], { encoding: 'utf8', timeout: 30_000 });
+/** The Pass monitor log as one agent sees it. monitor may stream: what it
+ * printed in 30s is the log. */
+export function passMonitor(role: Role) {
+  const run = spawnSync('pass-cli', ['agent', 'monitor', '--output', 'json'], { encoding: 'utf8', timeout: 30_000, env: session(role) });
   return { log: run.stdout ?? '', error: run.stderr || run.error?.message || '' };
 }
 
-const JULES_KEY = process.env.JULES_KEY_REF ?? 'pass://infra/jules.google.com/JULES_API_KEY';
-const JEV_KEY = process.env.TYPESAFE_KEY_REF ?? 'pass://infra/typesafe.ai/TYPESAFE_API_KEY';
+/** Where the plan project leaves Jules's plan, and ours, for the judge. */
+export const planFile = () => path.join(path.dirname(process.env.DELIVERY_LEDGER!), 'plans.json');
+
+const JULES_KEY = process.env.JULES_KEY_REF ?? 'pass://jev-planner/jules/JULES_API_KEY';
+const JEV_KEY = process.env.TYPESAFE_KEY_REF ?? 'pass://jev-judge/typesafe/TYPESAFE_API_KEY';
 
 export type PlanStep = { title: string; description?: string };
 
 type Fixtures = {
   /** Jules's plan for a goal: a repoless session that stops at its plan. */
   planFor: (goal: string, prompt: string) => Promise<{ url: string; steps: PlanStep[] }>;
-  /** Ask Jev one Noul question; the key is fetched once per test, for `purpose`. */
+  /** The judge asks Jev one Noul question; the key is fetched once per test, for `purpose`. */
   judge: (purpose: string) => (state: unknown, instructions: string) => Promise<number>;
 };
 
@@ -41,7 +55,7 @@ export const test = base.extend<Fixtures>({
       // instead of asking for another.
       const digest = createHash('sha256').update(prompt).digest('hex').slice(0, 12);
       const title = `plan · ${digest}`;
-      const client = jules.with({ apiKey: secret(JULES_KEY, `ask Jules to plan: ${goal}`) });
+      const client = jules.with({ apiKey: secret('planner', JULES_KEY, `ask Jules to plan: ${goal}`) });
 
       let id: string | undefined;
       let seen = 0;
@@ -69,7 +83,7 @@ export const test = base.extend<Fixtures>({
   },
   judge: async ({}, use) => {
     let key: string | undefined;
-    await use((purpose) => async (state, instructions) => noul(key ??= secret(JEV_KEY, purpose), state, instructions));
+    await use((purpose) => async (state, instructions) => noul(key ??= secret('judge', JEV_KEY, purpose), state, instructions));
   },
 });
 

@@ -1,8 +1,8 @@
 name: delivery
 
-# The plan's first test: Jules plans the goal without writing anything, and Jev
-# judges that plan against the goal and against ours; retro checks the reasons
-# Pass recorded. Our plan must be fixed before Jules's is seen, so this runs
+# The plan's first test: the planner has Jules plan the goal without writing
+# anything; the judge, under its own key, has Jev judge that plan against the
+# goal and against ours, and checks the reasons Pass recorded. Our plan must be fixed before Jules's is seen, so this runs
 # only on a pull request labelled `dispatch`.
 
 on:
@@ -26,12 +26,6 @@ jobs:
     defaults:
       run:
         working-directory: jev-playwright
-    env:
-      JULES_KEY_REF: pass://infra/jules.google.com/JULES_API_KEY
-      TYPESAFE_KEY_REF: pass://infra/typesafe.ai/TYPESAFE_API_KEY
-      PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.JEV_DELIVERY_PASS_TOKEN }}
-      PROTON_PASS_KEY_PROVIDER: fs
-      PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,10 +34,24 @@ jobs:
           cache: npm
           cache-dependency-path: jev-playwright/package-lock.json
       - run: npm ci
-      - name: Log in to Proton Pass
+      # Each agent has its own session (bootstrap.sh). The root holds the
+      # planner's token; the judge has its own.
+      - name: Log in to Proton Pass as each agent
+        env:
+          ROOT_TOKEN: ${{ secrets.JEV_ROOT_PASS_TOKEN }}
+          JUDGE_TOKEN: ${{ secrets.JEV_JUDGE_PASS_TOKEN }}
         run: |
           curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
-          pass-cli login
+          export PROTON_PASS_KEY_PROVIDER=fs
+          login() { PROTON_PASS_PERSONAL_ACCESS_TOKEN="$2" PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-$1" pass-cli login; }
+          login root "$ROOT_TOKEN"
+          planner="$(PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-root" PROTON_PASS_AGENT_REASON="start the planner" \
+            pass-cli item view pass://jev-root/planner-token/PROTON_PASS_PERSONAL_ACCESS_TOKEN)"
+          echo "::add-mask::$planner"
+          login planner "$planner"
+          login judge "$JUDGE_TOKEN"
+          echo "PASS_SESSION_PLANNER=$RUNNER_TEMP/pass-planner" >> "$GITHUB_ENV"
+          echo "PASS_SESSION_JUDGE=$RUNNER_TEMP/pass-judge" >> "$GITHUB_ENV"
       - name: Run the loop
         run: npx playwright test -c delivery
       - name: Keep the report
@@ -55,4 +63,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - if: always()
-        run: pass-cli logout >/dev/null 2>&1 || true
+        run: |
+          for role in root planner judge; do
+            PROTON_PASS_KEY_PROVIDER=fs PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-$role" pass-cli logout >/dev/null 2>&1 || true
+          done
