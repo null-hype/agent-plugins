@@ -184,6 +184,12 @@ Each invocation creates `runs/<uuid>/` containing:
 - `consistency-facts.json`, `consistency.json`: whether the run agrees with
   itself (CIT-320, below).
 
+Each run also replaces `.witness/run/`: every answer that is not simply in range,
+as a finding on the test that asked it, with its state, request and response.
+[witness](https://github.com/null-hype/witness) shows them in the editor. Any
+other test that fails becomes a finding on its deepest failed step; the delivery
+harness writes its own `.witness/run/` the same way.
+
 ## Consistency (CIT-320)
 
 `run.mjs` also checks the run against its own records, independent of whether
