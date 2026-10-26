@@ -13,50 +13,35 @@ npx playwright test -c delivery     # from jev-playwright
 A plan that is not ready yet fails as not yet: run it again later. In CI it
 runs on a pull request labelled `dispatch`.
 
-## Access
+## Agents
 
-The run reads two keys from Pass, each fetch under its own reason:
+Each agent has its own Proton Pass vault and token, and can read only what it is
+meant to call, so the chain of who can start whom is the vault access itself:
 
-- `pass://infra/jules.google.com/JULES_API_KEY` (override with `JULES_KEY_REF`)
-- `pass://infra/typesafe.ai/TYPESAFE_API_KEY` (override with `TYPESAFE_KEY_REF`)
+| Agent | Vault | Starts with | Calls |
+| --- | --- | --- | --- |
+| root | `jev-root` | `claude-code`, `planner-token` | starts the planner |
+| planner | `jev-planner` | `jules` (and its `journal`) | Jules |
+| worker | `jev-worker` | `typesafe` | Jev, from inside Jules |
+| judge | `jev-judge` | `typesafe`, a different key (and its `journal`) | Jev, for the verdict |
 
-Run as yourself (`pass-cli login`), or as an agent token that can read only
-those two items. To set up the token, logged in as yourself:
+The plan project runs as the planner and only plans; retro runs as the judge and
+does all the judging. The judge can read the planner's journal and nothing else
+of anyone's.
+
+Set it up once, logged in as yourself:
 
 ```sh
 pass-cli login
-
-# 1. The Jules key (from Jules's settings) must be in Pass first: in the Pass
-#    app, vault `infra`, an item titled `jules.google.com` with a hidden field
-#    `JULES_API_KEY`. Then check both keys resolve:
-pass-cli item view pass://infra/jules.google.com/JULES_API_KEY >/dev/null && echo jules ok
-pass-cli item view pass://infra/typesafe.ai/TYPESAFE_API_KEY >/dev/null && echo typesafe ok
-
-# 2. The agent's token. pass-cli prints it once: keep it for step 4.
-pass-cli personal-access-token create --name jev-delivery --expiration 3m
-
-# 3. Read access to those two items only.
-for item in jules.google.com typesafe.ai; do
-  pass-cli personal-access-token access grant \
-    --personal-access-token-name jev-delivery \
-    --vault-name infra --item-title "$item" --role viewer
-done
-
-# 4. Give CI the token (paste it when asked).
-gh secret set JEV_DELIVERY_PASS_TOKEN --repo null-hype/agent-plugins
+bash delivery/bootstrap.sh
 ```
 
-To check the token before CI does, in a fresh shell:
+It asks for each starting credential (never echoed), creates the vaults,
+journals and tokens, grants each token editor on its own vault, and sets the
+`JEV_ROOT_PASS_TOKEN` and `JEV_JUDGE_PASS_TOKEN` CI secrets with `gh`. The
+planner's token goes into `jev-root/planner-token`. Re-running reuses what exists.
 
-```sh
-export PROTON_PASS_PERSONAL_ACCESS_TOKEN=<the token>
-export PROTON_PASS_KEY_PROVIDER=fs PROTON_PASS_SESSION_DIR="$(mktemp -d)"
-pass-cli login
-pass-cli item view pass://infra/jules.google.com/JULES_API_KEY >/dev/null && echo jules ok
-pass-cli item view pass://infra/typesafe.ai/TYPESAFE_API_KEY >/dev/null && echo typesafe ok
-pass-cli agent monitor --output json | head -c 400; echo
-pass-cli logout
-```
+One step is yours: copy `jev-worker/typesafe/TYPESAFE_API_KEY` into Jules's
+settings. Jules cannot use `pass-cli`, so that hop is outside Pass.
 
-The last check matters for retro, which reads the monitor log as this token. If
-`agent monitor` refuses a token session, retro needs your own session instead.
+Locally, without CI's sessions, every agent is you.
