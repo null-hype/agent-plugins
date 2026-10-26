@@ -7,7 +7,7 @@
 #   planner  jev-planner   jules         JULES_API_KEY             dispatches to Jules
 #                          journal       goal, plan                written before any work
 #   worker   jev-worker    typesafe      TYPESAFE_API_KEY          Jules's: copied into Jules by hand
-#   judge    jev-judge     typesafe      TYPESAFE_API_KEY          a different key: the final verdict
+#   judge    jev-judge     typesafe      TYPESAFE_API_KEY          the final verdict
 #                          journal       verdict
 #
 # Each token is a Pass agent, so `pass-cli agent monitor` shows what it read,
@@ -119,7 +119,7 @@ for v in "$root" "$planner" "$worker" "$judge" "$owner"; do ensure_vault "$v"; d
 ensure_credential "$root" claude-code CLAUDE_CODE_OAUTH_TOKEN "Claude Code OAuth token (claude setup-token)"
 ensure_credential "$planner" jules JULES_API_KEY "Jules API key"
 ensure_credential "$worker" typesafe TYPESAFE_API_KEY "TypeSafe API key for Jules to use"
-ensure_credential "$judge" typesafe TYPESAFE_API_KEY "TypeSafe API key for the judge (a different key)"
+ensure_credential "$judge" typesafe TYPESAFE_API_KEY "TypeSafe API key for the judge"
 
 # 3. Journals: where the planner preregisters and the judge records.
 ensure_journal "$planner" goal plan
