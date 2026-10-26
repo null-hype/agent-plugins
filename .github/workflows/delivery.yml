@@ -29,7 +29,7 @@ jobs:
     env:
       JULES_KEY_REF: pass://infra/jules.google.com/JULES_API_KEY
       TYPESAFE_KEY_REF: pass://infra/typesafe.ai/TYPESAFE_API_KEY
-      PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+      PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.JEV_DELIVERY_PASS_TOKEN }}
       PROTON_PASS_KEY_PROVIDER: fs
       PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
     steps:
