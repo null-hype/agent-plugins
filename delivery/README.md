@@ -23,7 +23,7 @@ meant to call, so the chain of who can start whom is the vault access itself:
 | root | `jev-root` | `claude-code`, `planner-token` | starts the planner |
 | planner | `jev-planner` | `jules` (and its `journal`) | Jules |
 | worker | `jev-worker` | `typesafe` | Jev, from inside Jules |
-| judge | `jev-judge` | `typesafe`, a different key (and its `journal`) | Jev, for the verdict |
+| judge | `jev-judge` | `typesafe` (and its `journal`) | Jev, for the verdict |
 
 The plan project runs as the planner and only plans; retro runs as the judge and
 does all the judging. The judge can read the planner's journal and nothing else
