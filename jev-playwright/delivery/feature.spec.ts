@@ -6,8 +6,11 @@ import { test } from './fixtures';
 // asks Jev whether the file does what the step asked.
 const MODULE = 'github.com/null-hype/agent-plugins/jev-playwright/lsp';
 
-test('Can one dev container feature install jev-lsp and its Neovim setup?', async ({ hunk }) => {
+test('Can one dev container feature install jev-lsp and its Neovim setup?', async ({ plan, hunk }) => {
   test.setTimeout(60 * 60_000);
+
+  await plan('Write a dev container feature that installs jev-lsp and its Neovim setup');
+  if (test.info().project.metadata.planOnly) return;
 
   await test.step("Write the feature's manifest", () => hunk('src/jev-lsp/devcontainer-feature.json', `
 Write a dev container feature manifest (devcontainer-feature.json) for a feature with id

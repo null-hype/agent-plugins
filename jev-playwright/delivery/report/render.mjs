@@ -13,7 +13,7 @@ function nodes(report) {
   for (const suite of report.suites) for (const spec of suite.specs) for (const t of spec.tests) {
     byProject.set(t.projectName, { spec, test: t, result: t.results.at(-1) });
   }
-  return report.config.projects.map((p) => ({ ...p, ...byProject.get(p.name) })).filter((n) => n.spec);
+  return report.config.projects.map((p) => ({ dependencies: [], ...p, ...byProject.get(p.name) })).filter((n) => n.spec);
 }
 
 function status(n) {
@@ -27,6 +27,19 @@ function hunks(n) {
   const files = new Map(n.result.attachments.map((a) => [a.name, Buffer.from(a.body ?? '', 'base64').toString()]));
   return `<ol class="hunks">${n.result.steps.map((step) => {
     const file = step.file;
+    // A step with no file is Jules's plan for a task: its steps are the plan.
+    if (!file) {
+      const plan = notes.find((a) => a.type === 'jules plan');
+      const asks = step.error ? notes.find((a) => a.type === 'jules asks') : null;
+      return `<li class="${step.error ? 'blocked' : ''}">
+      <div class="row">
+        <span class="change">${esc(step.title)}<span class="where">Jules's plan${step.steps?.length ? `, ${step.steps.length} steps` : ''}</span></span>
+        ${plan ? `<a href="${esc(plan.description)}">Jules</a>` : ''}
+      </div>
+      ${step.steps?.length ? `<ol class="plan">${step.steps.map((s) => `<li>${esc(s.title)}</li>`).join('')}</ol>` : ''}
+      ${asks ? `<p class="asks"><b>Jules replied:</b> ${esc(asks.description)}</p>` : step.error ? `<p class="asks">${esc(step.error.message)}</p>` : ''}
+    </li>`;
+    }
     const session = notes.find((a) => a.type === 'jules' && split(a.description)[0] === file);
     const verdict = notes.find((a) => a.type === 'does-what-was-asked' && split(a.description)[1] === file);
     const p = verdict ? Number(split(verdict.description)[0]) : null;
@@ -75,6 +88,7 @@ main{max-width:860px;margin:0 auto;padding:28px 16px 60px}h1{font-size:22px;marg
 details{margin-top:6px}summary{cursor:pointer;color:var(--mute);font-size:12px}pre{overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:12px}
 table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid var(--line);padding:6px 4px;vertical-align:top}td.p{width:56px;font-variant-numeric:tabular-nums}tr.hot td{color:var(--wait);font-weight:600}
 .dep{color:var(--mute);font-size:12px}
+.plan{margin:6px 0 0;padding-left:22px;font-size:14px}.plan li{border:0;padding:2px 0}
 </style></head><body><main>
 <h1>${esc(report.config.metadata?.goal)}</h1>
 <p class="verdict">${esc(verdict)}</p>
@@ -118,4 +132,10 @@ export function toComparison(report) {
     }
   }
   return { runId: report.stats.startTime, questions };
+}
+
+// node render.mjs report.json out.html
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const { readFileSync, writeFileSync } = await import('node:fs');
+  writeFileSync(process.argv[3], render(JSON.parse(readFileSync(process.argv[2], 'utf8'))));
 }
