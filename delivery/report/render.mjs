@@ -26,14 +26,14 @@ function hunks(n) {
   const notes = n.test.annotations;
   const files = new Map(n.result.attachments.map((a) => [a.name, Buffer.from(a.body ?? '', 'base64').toString()]));
   return `<ol class="hunks">${n.result.steps.map((step) => {
-    const file = step.title;
+    const file = step.file;
     const session = notes.find((a) => a.type === 'jules' && split(a.description)[0] === file);
     const verdict = notes.find((a) => a.type === 'does-what-was-asked' && split(a.description)[1] === file);
     const p = verdict ? Number(split(verdict.description)[0]) : null;
     const asks = step.error ? notes.find((a) => a.type === 'jules asks') : null;
     return `<li class="${step.error ? 'blocked' : ''}">
       <div class="row">
-        <code>${esc(file)}</code>
+        <span class="change">${esc(step.title)}<span class="where"><code>${esc(file)}</code> · line ${step.location?.line ?? '?'}</span></span>
         ${p == null ? '<span class="score none">no answer</span>' : `<span class="score"><span class="bar" style="--p:${p}"></span>${p.toFixed(2)}</span>`}
         ${session ? `<a href="${esc(split(session.description)[1])}">Jules</a>` : ''}
       </div>
@@ -68,7 +68,7 @@ main{max-width:860px;margin:0 auto;padding:28px 16px 60px}h1{font-size:22px;marg
 .dot{width:10px;height:10px;border-radius:50%;flex:none;transform:translateY(-1px)}.passed .dot{background:var(--ok)}.failed .dot{background:var(--wait)}.skipped .dot{border:2px solid var(--mute)}
 .state{font-size:12px;color:var(--mute);margin-left:auto;white-space:nowrap}.failed .state{color:var(--wait)}
 .hunks{list-style:none;padding:0;margin:10px 0 0}.hunks li{border-top:1px solid var(--line);padding:8px 0}
-.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row code{flex:1;min-width:180px;font-size:13px}.row a{font-size:13px;color:var(--bar)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.change{flex:1;min-width:200px}.change .where{display:block;color:var(--mute);font-size:12px}.change code{font-size:12px}.row a{font-size:13px;color:var(--bar)}
 .score{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-size:13px}.score.none{color:var(--mute)}
 .bar{width:70px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--bar) calc(var(--p)*100%),var(--line) 0)}
 .asks{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--wait);background:color-mix(in srgb,var(--wait) 10%,transparent);font-size:14px}
@@ -83,7 +83,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 ${triage.length ? `<h2>Triage</h2><table>${triage.map(([p, what]) => `<tr class="hot"><td class="p">${esc(p)}</td><td>${esc(what.replace(/\s+https:\S+$/, ''))} ${(/https:\S+$/.exec(what) ?? [''])[0] ? `<a href="${esc(/https:\S+$/.exec(what)[0])}">open</a>` : ''}</td></tr>`).join('')}</table>` : ''}
 
 <h2>The plan, in order</h2>
-${work.map((n) => { const [cls, label] = status(n); return `<section class="node ${cls}">
+${work.map((n) => { const [cls, label] = status(n); return `<section class="node ${cls}" id="${esc(n.name)}">
   <h3><span class="dot"></span>${esc(n.spec.title)}<span class="state">${esc(label)}</span></h3>
   <div class="where">${esc(n.spec.file)}:${n.spec.line} · ${esc(n.name)}${n.dependencies.length ? ` <span class="dep">after ${esc(n.dependencies.join(', '))}</span>` : ''}</div>
   ${hunks(n)}
@@ -91,4 +91,31 @@ ${work.map((n) => { const [cls, label] = status(n); return `<section class="node
 
 ${urgency.length ? `<h2>Urgency</h2><table>${urgency.map((u) => `<tr class="${u.p >= URGENT ? 'hot' : ''}"><td class="p">${u.p.toFixed(2)}</td><td><b>${esc(u.who)}</b> ${esc(u.why)}</td></tr>`).join('')}</table>` : ''}
 </main></body></html>`;
+}
+
+// The same run as jev-lsp reads it: one Question per change, at the line of the
+// step that made it, and one per test that did not run. A change whose file Jev
+// judged below EXPECTED.min is out of range; one Jules stopped on, to ask, has
+// no answer.
+export const EXPECTED = { min: 0.7, max: 1 };
+
+export function toComparison(report) {
+  const questions = {};
+  for (const n of nodes(report)) {
+    if (n.name === 'audit') continue;
+    if (!n.result) {
+      questions[n.name] = { location: { file: n.spec.file, line: n.spec.line, column: 1 }, outcome: 'dependency-skipped', blockedBy: n.dependencies, probability: null, expected: EXPECTED, error: null };
+      continue;
+    }
+    for (const step of n.result.steps) {
+      const verdict = n.test.annotations.find((a) => a.type === 'does-what-was-asked' && split(a.description)[1] === step.file);
+      const p = verdict ? Number(split(verdict.description)[0]) : null;
+      questions[`${n.name}: ${step.title}`] = {
+        location: step.location, blockedBy: [], probability: p, expected: EXPECTED,
+        outcome: step.error ? 'execution-failed' : p != null && (p < EXPECTED.min || p > EXPECTED.max) ? 'out-of-range' : 'in-range',
+        error: step.error ? step.error.message.split('\n\n').at(-1) : null,
+      };
+    }
+  }
+  return { runId: report.stats.startTime, questions };
 }

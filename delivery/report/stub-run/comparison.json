@@ -1,0 +1,142 @@
+{
+  "runId": "2026-10-26T06:30:00.000Z",
+  "questions": {
+    "jev-ts: Write the Jev client in TypeScript": {
+      "location": {
+        "file": "delivery/jev-ts.spec.ts",
+        "line": 12,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": 0.91,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "in-range",
+      "error": null
+    },
+    "jev-ts: Have score.mjs ask Jev through it": {
+      "location": {
+        "file": "delivery/jev-ts.spec.ts",
+        "line": 20,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": 0.84,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "in-range",
+      "error": null
+    },
+    "jev-ts: Drop pkl-python from the install": {
+      "location": {
+        "file": "delivery/jev-ts.spec.ts",
+        "line": 28,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": 0.88,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "in-range",
+      "error": null
+    },
+    "dagger: Write a Dagger fixture": {
+      "location": {
+        "file": "delivery/dagger.spec.ts",
+        "line": 12,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": 0.77,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "in-range",
+      "error": null
+    },
+    "package: Export the fixtures and reporter": {
+      "location": {
+        "file": "delivery/package.spec.ts",
+        "line": 12,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": 0.81,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "in-range",
+      "error": null
+    },
+    "package: Document the install": {
+      "location": {
+        "file": "delivery/package.spec.ts",
+        "line": 20,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": 0.69,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "out-of-range",
+      "error": null
+    },
+    "feature: Write the feature's manifest": {
+      "location": {
+        "file": "delivery/feature.spec.ts",
+        "line": 12,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": 0.93,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "in-range",
+      "error": null
+    },
+    "feature: Write the install script": {
+      "location": {
+        "file": "delivery/feature.spec.ts",
+        "line": 19,
+        "column": 3
+      },
+      "blockedBy": [],
+      "probability": null,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "outcome": "execution-failed",
+      "error": "The module is not tagged yet, so \"latest\" will not resolve. Should install.sh build jev-lsp from a branch, from a commit, or should I wait for a tagged release?"
+    },
+    "goal": {
+      "location": {
+        "file": "delivery/goal.spec.ts",
+        "line": 9,
+        "column": 1
+      },
+      "outcome": "dependency-skipped",
+      "blockedBy": [
+        "feature"
+      ],
+      "probability": null,
+      "expected": {
+        "min": 0.7,
+        "max": 1
+      },
+      "error": null
+    }
+  }
+}

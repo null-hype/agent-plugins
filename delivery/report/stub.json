@@ -40,13 +40,13 @@
   },
   "suites": [
     {
-      "title": "jev-ts.spec.ts",
-      "file": "jev-ts.spec.ts",
+      "title": "delivery/jev-ts.spec.ts",
+      "file": "delivery/jev-ts.spec.ts",
       "specs": [
         {
           "title": "Can the harness ask Jev from TypeScript, with no Python?",
-          "file": "jev-ts.spec.ts",
-          "line": 12,
+          "file": "delivery/jev-ts.spec.ts",
+          "line": 9,
           "column": 1,
           "ok": true,
           "tests": [
@@ -85,7 +85,13 @@
                   "duration": 956700,
                   "steps": [
                     {
-                      "title": "jev.ts",
+                      "title": "Write the Jev client in TypeScript",
+                      "file": "jev.ts",
+                      "location": {
+                        "file": "delivery/jev-ts.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
                       "duration": 321900,
                       "steps": [
                         {
@@ -99,7 +105,13 @@
                       ]
                     },
                     {
-                      "title": "score.mjs",
+                      "title": "Have score.mjs ask Jev through it",
+                      "file": "score.mjs",
+                      "location": {
+                        "file": "delivery/jev-ts.spec.ts",
+                        "line": 20,
+                        "column": 3
+                      },
                       "duration": 315600,
                       "steps": [
                         {
@@ -113,7 +125,13 @@
                       ]
                     },
                     {
-                      "title": "package.json",
+                      "title": "Drop pkl-python from the install",
+                      "file": "package.json",
+                      "location": {
+                        "file": "delivery/jev-ts.spec.ts",
+                        "line": 28,
+                        "column": 3
+                      },
                       "duration": 319200,
                       "steps": [
                         {
@@ -153,13 +171,13 @@
       ]
     },
     {
-      "title": "dagger.spec.ts",
-      "file": "dagger.spec.ts",
+      "title": "delivery/dagger.spec.ts",
+      "file": "delivery/dagger.spec.ts",
       "specs": [
         {
           "title": "Do the mechanical steps run in Dagger from a Playwright fixture?",
-          "file": "dagger.spec.ts",
-          "line": 24,
+          "file": "delivery/dagger.spec.ts",
+          "line": 9,
           "column": 1,
           "ok": true,
           "tests": [
@@ -182,7 +200,13 @@
                   "duration": 309300,
                   "steps": [
                     {
-                      "title": "dagger.ts",
+                      "title": "Write a Dagger fixture",
+                      "file": "dagger.ts",
+                      "location": {
+                        "file": "delivery/dagger.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
                       "duration": 309300,
                       "steps": [
                         {
@@ -212,13 +236,13 @@
       ]
     },
     {
-      "title": "package.spec.ts",
-      "file": "package.spec.ts",
+      "title": "delivery/package.spec.ts",
+      "file": "delivery/package.spec.ts",
       "specs": [
         {
           "title": "Can any Playwright project install the fixtures?",
-          "file": "package.spec.ts",
-          "line": 36,
+          "file": "delivery/package.spec.ts",
+          "line": 9,
           "column": 1,
           "ok": true,
           "tests": [
@@ -249,7 +273,13 @@
                   "duration": 615000,
                   "steps": [
                     {
-                      "title": "package.json",
+                      "title": "Export the fixtures and reporter",
+                      "file": "package.json",
+                      "location": {
+                        "file": "delivery/package.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
                       "duration": 312900,
                       "steps": [
                         {
@@ -263,7 +293,13 @@
                       ]
                     },
                     {
-                      "title": "README.md",
+                      "title": "Document the install",
+                      "file": "README.md",
+                      "location": {
+                        "file": "delivery/package.spec.ts",
+                        "line": 20,
+                        "column": 3
+                      },
                       "duration": 302100,
                       "steps": [
                         {
@@ -298,13 +334,13 @@
       ]
     },
     {
-      "title": "feature.spec.ts",
-      "file": "feature.spec.ts",
+      "title": "delivery/feature.spec.ts",
+      "file": "delivery/feature.spec.ts",
       "specs": [
         {
           "title": "Can one dev container feature install jev-lsp and its Neovim setup?",
-          "file": "feature.spec.ts",
-          "line": 48,
+          "file": "delivery/feature.spec.ts",
+          "line": 9,
           "column": 1,
           "ok": false,
           "tests": [
@@ -335,7 +371,13 @@
                   "duration": 563700,
                   "steps": [
                     {
-                      "title": "src/jev-lsp/devcontainer-feature.json",
+                      "title": "Write the feature's manifest",
+                      "file": "src/jev-lsp/devcontainer-feature.json",
+                      "location": {
+                        "file": "delivery/feature.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
                       "duration": 323700,
                       "steps": [
                         {
@@ -349,7 +391,13 @@
                       ]
                     },
                     {
-                      "title": "src/jev-lsp/install.sh",
+                      "title": "Write the install script",
+                      "file": "src/jev-lsp/install.sh",
+                      "location": {
+                        "file": "delivery/feature.spec.ts",
+                        "line": 19,
+                        "column": 3
+                      },
                       "duration": 240000,
                       "steps": [
                         {
@@ -386,13 +434,13 @@
       ]
     },
     {
-      "title": "goal.spec.ts",
-      "file": "goal.spec.ts",
+      "title": "delivery/goal.spec.ts",
+      "file": "delivery/goal.spec.ts",
       "specs": [
         {
           "title": "Can someone install jev-lsp and see each answer on the line of the test that asked it?",
-          "file": "goal.spec.ts",
-          "line": 60,
+          "file": "delivery/goal.spec.ts",
+          "line": 9,
           "column": 1,
           "ok": true,
           "tests": [
@@ -407,13 +455,13 @@
       ]
     },
     {
-      "title": "audit.spec.ts",
-      "file": "audit.spec.ts",
+      "title": "delivery/audit.spec.ts",
+      "file": "delivery/audit.spec.ts",
       "specs": [
         {
           "title": "Is anything this run asked for still urgent?",
-          "file": "audit.spec.ts",
-          "line": 72,
+          "file": "delivery/audit.spec.ts",
+          "line": 22,
           "column": 1,
           "ok": true,
           "tests": [
