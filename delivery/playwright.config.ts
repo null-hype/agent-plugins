@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,11 +12,16 @@ import { fileURLToPath } from 'node:url';
 //
 //   npx playwright test -c delivery --project plan --project judge --project build
 //
+// A node can stop at Jules's plan, for a report in minutes:
+//
+//   npx playwright test -c delivery --project feature-plan
+//
 // A plan or a patch not ready yet fails as not yet: run again later.
 const here = path.dirname(fileURLToPath(import.meta.url));
 process.env.DELIVERY_LEDGER ||= path.join(here, 'test-results', 'reasons.jsonl');
 
 export default defineConfig({
+  metadata: { goal: readFileSync(path.join(here, 'goal.md'), 'utf8').trim() },
   testDir: '.',
   outputDir: './test-results',
   globalSetup: './global-setup.ts',
@@ -28,6 +34,7 @@ export default defineConfig({
     { name: 'build', testMatch: 'build.spec.ts', dependencies: ['judge'] },
     // Nodes of our plan, each a project of hunks.
     { name: 'feature', testMatch: 'feature.spec.ts' },
+    { name: 'feature-plan', testMatch: 'feature.spec.ts', metadata: { planOnly: true } },
     { name: 'audit', testMatch: 'audit.spec.ts' },
   ],
   // In CI, failures also become check annotations.
