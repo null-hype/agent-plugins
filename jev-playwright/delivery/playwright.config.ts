@@ -26,5 +26,6 @@ export default defineConfig({
     { name: 'judge', testMatch: 'judge.spec.ts', dependencies: ['plan'] },
     { name: 'audit', testMatch: 'audit.spec.ts' },
   ],
-  reporter: [['list'], ['json', { outputFile: './test-results/report.json' }]],
+  // In CI, failures also become check annotations.
+  reporter: [['list'], ['json', { outputFile: './test-results/report.json' }], ...(process.env.CI ? [['github'] as const] : [])],
 });

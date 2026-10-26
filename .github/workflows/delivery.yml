@@ -55,6 +55,23 @@ jobs:
           echo "PASS_SESSION_JUDGE=$RUNNER_TEMP/pass-judge" >> "$GITHUB_ENV"
       - name: Run the loop
         run: npx playwright test -c delivery --project plan --project judge
+      # The plan and each answer, as check notices, readable without the artifact.
+      - name: Show the results
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs"), dir = "delivery/test-results";
+            const out = (s) => console.log("::notice::" + s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A"));
+            if (fs.existsSync(dir + "/plans.json")) {
+              const p = JSON.parse(fs.readFileSync(dir + "/plans.json", "utf8"));
+              out("Jules plan (" + p.jules.url + ")\n" + p.jules.steps.map((s, i) => (i + 1) + ". " + s.title).join("\n"));
+            }
+            if (fs.existsSync(dir + "/report.json")) {
+              const walk = (s) => [...(s.specs ?? []).flatMap((x) => x.tests.flatMap((t) => t.annotations ?? [])), ...(s.suites ?? []).flatMap(walk)];
+              const notes = JSON.parse(fs.readFileSync(dir + "/report.json", "utf8")).suites.flatMap(walk);
+              if (notes.length) out(notes.map((a) => a.type + "  " + a.description).join("\n"));
+            }
+          '
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v4
