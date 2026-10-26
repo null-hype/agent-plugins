@@ -1,9 +1,0 @@
-{
-    "jev-with-pass-cli": {
-        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-        "features": {
-            "pass-cli": {},
-            "jev": {}
-        }
-    }
-}

@@ -1,6 +1,0 @@
-{
-  "baseline-alice-reads": 0.95,
-  "baseline-bob-reads": 0.95,
-  "patched-alice-reads": 0.05,
-  "patched-bob-reads": 0.95
-}

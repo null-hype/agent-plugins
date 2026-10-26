@@ -1,7 +1,0 @@
-{
-  "workdir": "/workdir",
-  "base_image": "ubuntu:24.04",
-  "secrets": [
-    "PROTON_PASS_PERSONAL_ACCESS_TOKEN=env://PROTON_PASS_PERSONAL_ACCESS_TOKEN"
-  ]
-}

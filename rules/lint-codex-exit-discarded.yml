@@ -1,9 +1,0 @@
-id: lint-codex-exit-discarded
-language: bash
-severity: error
-message: A broken instrument fails the run. A refuted hypothesis is a result.
-note: "`|| true` after `codex exec` discards the process's exit status, so a crash after a verdict reads as a pass. Keep the status (`|| rc=$?`) and make a nonzero one an error."
-rule:
-  kind: list
-  regex: '\|\|\s*true\s*$'
-  has: { stopBy: end, kind: command, regex: '^codex\s+exec\b' }

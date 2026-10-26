@@ -1,0 +1,31 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -race ./...
+      - name: Build jev-lsp
+        run: go build -o "$RUNNER_TEMP/jev-lsp" .
+      - name: Neovim receives the recorded finding and evidence locations
+        run: |
+          curl -fsSL https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-x86_64.tar.gz | tar xz -C "$RUNNER_TEMP"
+          export PATH="$RUNNER_TEMP/nvim-linux-x86_64/bin:$RUNNER_TEMP:$PATH"
+          nvim --headless --clean \
+            -c "lua vim.g.jev_lsp_cmd = '$RUNNER_TEMP/jev-lsp'" \
+            -c "luafile nvim/jev.lua" \
+            -c "edit example/example.ts" \
+            -c "luafile nvim/check.lua"

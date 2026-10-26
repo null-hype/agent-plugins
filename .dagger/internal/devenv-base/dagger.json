@@ -1,7 +1,0 @@
-{
-  "name": "devenv-base",
-  "engineVersion": "v0.21.7",
-  "sdk": {
-    "source": "go"
-  }
-}

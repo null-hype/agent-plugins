@@ -1,9 +1,0 @@
-{
-  "scenario": "smuggling-v1",
-  "frames": [],
-  "nextTurn": {
-    "actor": "agent",
-    "speaker": "reviewer",
-    "action": "replay hypothetical reviews"
-  }
-}
