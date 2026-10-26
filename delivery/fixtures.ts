@@ -56,6 +56,10 @@ export const patchFile = () => path.join(path.dirname(process.env.DELIVERY_LEDGE
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Fixtures = {
+  /** Jules's plan for one task, as a step titled by the task: a repoless session
+   * asked only the task, and for its plan. Each step of Jules's plan is a step
+   * under it. A reply in place of a plan fails the step with the reply. */
+  plan: (task: string) => Promise<Plan>;
   /** Jules's plan for a goal: a repoless session that waits for approval of its plan. */
   planFor: (goal: string, prompt: string) => Promise<Plan>;
   /** Jules's work on an approved plan: approves it, waits for the session to
@@ -77,6 +81,53 @@ async function blocked(session: SessionClient, url: string, annotations: { type:
 }
 
 export const test = base.extend<Fixtures>({
+  plan: async ({}, use, testInfo) => {
+    let client: ReturnType<typeof jules.with> | undefined;
+    await use((task) => base.step(task, async () => {
+      client ??= jules.with({ apiKey: secret('planner', JULES_KEY, `ask Jules to plan: ${testInfo.title}`) });
+      const prompt = `${task}. Give me your plan.`;
+      // The same task is the same session: running again reads its plan
+      // instead of asking for another.
+      let id: string | undefined;
+      let seen = 0;
+      for await (const s of client.sessions()) {
+        if (s.title === task && s.state !== 'failed') { id = s.id; break; }
+        if (++seen >= 200) break;
+      }
+      if (!id) id = (await client.session({ prompt, title: task, requireApproval: true })).id;
+      const session = client.session(id);
+      const url = (await session.info()).url;
+      testInfo.annotations.push({ type: 'jules plan', description: url });
+
+      // Jules either plans or replies. A session just made has no activities
+      // yet: Jules answers 404 until it does.
+      const read = async () => {
+        try {
+          for await (const a of session.history()) {
+            if (a.type === 'planGenerated') return { steps: a.plan.steps as PlanStep[] };
+            if (a.type === 'agentMessaged') return { reply: a.message as string };
+          }
+        } catch (e: any) {
+          if (!String(e?.message).includes('404')) throw e;
+        }
+        return {};
+      };
+      for (const until = Date.now() + 8 * 60_000; Date.now() < until; await sleep(5_000)) {
+        const { state } = await session.info();
+        if (state === 'failed') throw new Error(`Jules failed: ${url}`);
+        const { steps, reply } = await read();
+        if (reply) {
+          testInfo.annotations.push({ type: 'jules asks', description: reply });
+          throw new Error(`Jules replied instead of planning: ${url}\n\n${reply}`);
+        }
+        if (steps) {
+          for (const s of steps) await base.step(s.title, async () => {});
+          return { id, url, steps: steps.map((s) => ({ title: s.title, description: s.description })) };
+        }
+      }
+      throw new Error(`Jules has no plan yet: ${url}. Run again later.`);
+    }));
+  },
   planFor: async ({}, use, testInfo) => {
     await use(async (goal, prompt) => {
       // The same prompt is the same session: running again reads its plan
