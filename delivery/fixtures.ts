@@ -77,8 +77,13 @@ export const test = base.extend<Fixtures>({
       const url = (await session.info()).url;
       testInfo.annotations.push({ type: 'jules', description: url });
 
+      // A session just made has no activities yet: Jules answers 404 until it does.
       const plan = async () => {
-        for await (const a of session.history()) if (a.type === 'planGenerated') return a.plan.steps;
+        try {
+          for await (const a of session.history()) if (a.type === 'planGenerated') return a.plan.steps;
+        } catch (e: any) {
+          if (!String(e?.message).includes('404')) throw e;
+        }
       };
       let steps = await plan();
       if (!steps) {
