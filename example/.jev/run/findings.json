@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "findings": [
+    {
+      "id": "alice-reads-bob",
+      "location": { "file": "example.ts", "line": 2, "column": 3 },
+      "severity": "warning",
+      "message": "Alice can read Bob's private document",
+      "sourceHash": "sha256:6f9c6be29406d4042cda6e4ee12394fa52062b8ed241f009b78fb1ab604892e9",
+      "evidence": ["evidence/request.json", "evidence/response.json"]
+    }
+  ]
+}

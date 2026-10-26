@@ -1,8 +1,0 @@
-
-> grammar-protocol-tutorial@1.0.0 image-claims
-> node --import tsx scripts/image-claims.ts /var/folders/bz/zbfpwr0508qfk0zn0tnv3k6r0000gn/T/tmp.geoJzi1rz1/image-claims-20261016T050720Z/rails-canary.png /var/folders/bz/zbfpwr0508qfk0zn0tnv3k6r0000gn/T/tmp.geoJzi1rz1/image-claims-20261016T050720Z/excalidraw-export.png /var/folders/bz/zbfpwr0508qfk0zn0tnv3k6r0000gn/T/tmp.geoJzi1rz1/image-claims-20261016T050720Z/control.png
-
-image-claims 0.2.0: 3 file(s), 2 finding(s)
-/var/folders/bz/zbfpwr0508qfk0zn0tnv3k6r0000gn/T/tmp.geoJzi1rz1/image-claims-20261016T050720Z/rails-canary.png:1  conflicting MATLAB headers: libvips selects matload, while matio selects the MAT 7.3/HDF5 reader; inspect loader policy
-/var/folders/bz/zbfpwr0508qfk0zn0tnv3k6r0000gn/T/tmp.geoJzi1rz1/image-claims-20261016T050720Z/rails-canary.png:1  declared .png but the bytes are not a known image type
-No finding is not a safety verdict. These checks do not validate full image contents.
