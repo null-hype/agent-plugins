@@ -85,10 +85,23 @@ export const test = base.extend<Fixtures>({
           if (!String(e?.message).includes('404')) throw e;
         }
       };
+      // Jules's last word to us, when it stops to ask instead of planning.
+      const question = async () => {
+        let last: string | undefined;
+        for await (const a of session.history()) if (a.type === 'agentMessaged') last = a.message;
+        return last;
+      };
       let steps = await plan();
-      if (!steps) {
-        await Promise.race([session.waitFor('awaitingPlanApproval'), new Promise((r) => setTimeout(r, 8 * 60_000))]);
-        steps = await plan();
+      for (const until = Date.now() + 8 * 60_000; !steps && Date.now() < until; ) {
+        const { state } = await session.info();
+        if (state === 'awaitingUserFeedback') {
+          const asked = await question();
+          testInfo.annotations.push({ type: 'jules asks', description: asked ?? '(no message)' });
+          throw new Error(`Jules is waiting for an answer: ${url}\n\n${asked ?? '(no message)'}`);
+        }
+        if (state === 'failed') throw new Error(`Jules failed: ${url}`);
+        if (state === 'awaitingPlanApproval') steps = await plan();
+        if (!steps) await new Promise((r) => setTimeout(r, 15_000));
       }
       if (!steps) throw new Error(`Jules has no plan yet: ${url}. Run again later.`);
       return { url, steps: steps.map((s: any) => ({ title: s.title, description: s.description })) };
