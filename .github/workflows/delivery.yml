@@ -64,7 +64,7 @@ jobs:
             const out = (s) => console.log("::notice::" + s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A"));
             if (fs.existsSync(dir + "/plans.json")) {
               const p = JSON.parse(fs.readFileSync(dir + "/plans.json", "utf8"));
-              out("Jules plan (" + p.jules.url + ")\n" + p.jules.steps.map((s, i) => (i + 1) + ". " + s.title).join("\n"));
+              out("Jules plan (" + p.jules.url + ")\n" + p.jules.steps.map((s, i) => (i + 1) + ". " + s.title + (s.description ? "\n   " + s.description.replace(/\n/g, "\n   ") : "")).join("\n"));
             }
             if (fs.existsSync(dir + "/report.json")) {
               const walk = (s) => [...(s.specs ?? []).flatMap((x) => x.tests.flatMap((t) => t.annotations ?? [])), ...(s.suites ?? []).flatMap(walk)];

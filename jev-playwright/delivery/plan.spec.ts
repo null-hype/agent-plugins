@@ -23,10 +23,11 @@ expected range; reconcile writes each answer, with the line of the test that ask
 to comparison.json. jev-lsp, a Go language server, shows those answers as diagnostics
 on the test lines. The Jev client is Python, and the harness is not yet installable.
 
-Plan the work that achieves the goal.`;
+Make it so.`;
 
-// The planner's part: ask Jules for a plan, and leave it beside ours for the
-// judge. Judging it is retro's, under the judge's own key.
+// The planner's part: give Jules the task, keep the plan it makes before any
+// work (approval is required, so it stops there), and leave it beside ours for
+// the judge. Judging it is retro's, under the judge's own key.
 test('Does Jules plan the work that achieves the goal?', async ({ planFor }, testInfo) => {
   test.setTimeout(15 * 60_000);
   const plan = await test.step('ask Jules for a plan', () => planFor(goal, prompt));
