@@ -1,0 +1,131 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Delivery report</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--mute:#6b6a65;--line:#e4e1d8;--card:#fff;--ok:#2f7d4f;--bad:#b4442c;--wait:#a86a00;--bar:#3a6ea5}
+@media (prefers-color-scheme:dark){:root{--bg:#161614;--fg:#ecebe6;--mute:#9a988f;--line:#2f2e2a;--card:#1e1e1b;--ok:#5fb37f;--bad:#e07a62;--wait:#e0a83a;--bar:#7aa7d6}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 ui-sans-serif,system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:28px 16px 60px}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:32px 0 10px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.verdict{font-size:18px;margin:14px 0 4px}.meta{color:var(--mute);font-size:13px}
+.node{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0}
+.node h3{margin:0;font-size:16px;display:flex;gap:10px;align-items:baseline}.node .where{color:var(--mute);font-size:12px;margin-top:2px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;transform:translateY(-1px)}.passed .dot{background:var(--ok)}.failed .dot{background:var(--wait)}.skipped .dot{border:2px solid var(--mute)}
+.state{font-size:12px;color:var(--mute);margin-left:auto;white-space:nowrap}.failed .state{color:var(--wait)}
+.hunks{list-style:none;padding:0;margin:10px 0 0}.hunks li{border-top:1px solid var(--line);padding:8px 0}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row code{flex:1;min-width:180px;font-size:13px}.row a{font-size:13px;color:var(--bar)}
+.score{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-size:13px}.score.none{color:var(--mute)}
+.bar{width:70px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--bar) calc(var(--p)*100%),var(--line) 0)}
+.asks{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--wait);background:color-mix(in srgb,var(--wait) 10%,transparent);font-size:14px}
+details{margin-top:6px}summary{cursor:pointer;color:var(--mute);font-size:12px}pre{overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid var(--line);padding:6px 4px;vertical-align:top}td.p{width:56px;font-variant-numeric:tabular-nums}tr.hot td{color:var(--wait);font-weight:600}
+.dep{color:var(--mute);font-size:12px}
+</style></head><body><main>
+<h1>People can install jev-lsp and see each answer on the line of the test that asked it.</h1>
+<p class="verdict">Not yet: stopped at feature, waiting on an answer.</p>
+<p class="meta">2026-10-26 06:30 UTC · 31 min · 4 passed, 1 failed, 1 did not run</p>
+
+<h2>Triage</h2><table><tr class="hot"><td class="p">0.88</td><td>Jules asks about src/jev-lsp/install.sh <a href="https://jules.google.com/session/6021448811736512812">open</a></td></tr></table>
+
+<h2>The plan, in order</h2>
+<section class="node passed">
+  <h3><span class="dot"></span>Can the harness ask Jev from TypeScript, with no Python?<span class="state">passed</span></h3>
+  <div class="where">jev-ts.spec.ts:12 · jev-ts</div>
+  <ol class="hunks"><li class="">
+      <div class="row">
+        <code>jev.ts</code>
+        <span class="score"><span class="bar" style="--p:0.91"></span>0.91</span>
+        <a href="https://jules.google.com/session/6021448811736510042">Jules</a>
+      </div>
+      
+      <details><summary>file</summary><pre>export async function noul(apiKey, state, instructions) {
+  // POST /v1/systemone, model jev-latest, one Noul question
+}
+</pre></details>
+    </li><li class="">
+      <div class="row">
+        <code>score.mjs</code>
+        <span class="score"><span class="bar" style="--p:0.84"></span>0.84</span>
+        <a href="https://jules.google.com/session/6021448811736510519">Jules</a>
+      </div>
+      
+      <details><summary>file</summary><pre>import { noul } from './jev.ts';
+// was: spawn .venv/bin/python
+</pre></details>
+    </li><li class="">
+      <div class="row">
+        <code>package.json</code>
+        <span class="score"><span class="bar" style="--p:0.88"></span>0.88</span>
+        <a href="https://jules.google.com/session/6021448811736510733">Jules</a>
+      </div>
+      
+      <details><summary>file</summary><pre>{ &quot;name&quot;: &quot;jev-playwright&quot;, &quot;type&quot;: &quot;module&quot; }
+</pre></details>
+    </li></ol>
+</section>
+<section class="node passed">
+  <h3><span class="dot"></span>Do the mechanical steps run in Dagger from a Playwright fixture?<span class="state">passed</span></h3>
+  <div class="where">dagger.spec.ts:24 · dagger <span class="dep">after jev-ts</span></div>
+  <ol class="hunks"><li class="">
+      <div class="row">
+        <code>dagger.ts</code>
+        <span class="score"><span class="bar" style="--p:0.77"></span>0.77</span>
+        <a href="https://jules.google.com/session/6021448811736511204">Jules</a>
+      </div>
+      
+      <details><summary>file</summary><pre>export const dagger = base.extend({ engine: async ({}, use) =&gt; { /* connect */ } });
+</pre></details>
+    </li></ol>
+</section>
+<section class="node passed">
+  <h3><span class="dot"></span>Can any Playwright project install the fixtures?<span class="state">passed</span></h3>
+  <div class="where">package.spec.ts:36 · package <span class="dep">after dagger</span></div>
+  <ol class="hunks"><li class="">
+      <div class="row">
+        <code>package.json</code>
+        <span class="score"><span class="bar" style="--p:0.81"></span>0.81</span>
+        <a href="https://jules.google.com/session/6021448811736511881">Jules</a>
+      </div>
+      
+      <details><summary>file</summary><pre>{ &quot;exports&quot;: { &quot;./fixtures&quot;: &quot;./ask.ts&quot;, &quot;./reporter&quot;: &quot;./reporter.ts&quot; } }
+</pre></details>
+    </li><li class="">
+      <div class="row">
+        <code>README.md</code>
+        <span class="score"><span class="bar" style="--p:0.69"></span>0.69</span>
+        <a href="https://jules.google.com/session/6021448811736512090">Jules</a>
+      </div>
+      
+      <details><summary>file</summary><pre>## Install
+
+npm i -D jev-playwright
+</pre></details>
+    </li></ol>
+</section>
+<section class="node failed">
+  <h3><span class="dot"></span>Can one dev container feature install jev-lsp and its Neovim setup?<span class="state">waiting on an answer</span></h3>
+  <div class="where">feature.spec.ts:48 · feature <span class="dep">after package</span></div>
+  <ol class="hunks"><li class="">
+      <div class="row">
+        <code>src/jev-lsp/devcontainer-feature.json</code>
+        <span class="score"><span class="bar" style="--p:0.93"></span>0.93</span>
+        <a href="https://jules.google.com/session/6021448811736512577">Jules</a>
+      </div>
+      
+      <details><summary>file</summary><pre>{ &quot;id&quot;: &quot;jev-lsp&quot;, &quot;version&quot;: &quot;0.1.0&quot;, &quot;options&quot;: { &quot;version&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;default&quot;: &quot;latest&quot; } } }
+</pre></details>
+    </li><li class="blocked">
+      <div class="row">
+        <code>src/jev-lsp/install.sh</code>
+        <span class="score none">no answer</span>
+        <a href="https://jules.google.com/session/6021448811736512812">Jules</a>
+      </div>
+      <p class="asks"><b>Jules asks:</b> The module is not tagged yet, so &quot;latest&quot; will not resolve. Should install.sh build jev-lsp from a branch, from a commit, or should I wait for a tagged release?</p>
+      
+    </li></ol>
+</section>
+<section class="node skipped">
+  <h3><span class="dot"></span>Can someone install jev-lsp and see each answer on the line of the test that asked it?<span class="state">did not run</span></h3>
+  <div class="where">goal.spec.ts:60 · goal <span class="dep">after feature</span></div>
+  
+</section>
+
+<h2>Urgency</h2><table><tr class="hot"><td class="p">0.88</td><td><b>jules</b> The module is not tagged yet, so &quot;latest&quot; will not resolve. Should install.sh build jev-lsp from a branch, from a commit, or should I wait for a tagged release?</td></tr><tr class=""><td class="p">0.06</td><td><b>jev-root</b> start the planner</td></tr><tr class=""><td class="p">0.05</td><td><b>jev-planner</b> have Jules write one file of each node</td></tr><tr class=""><td class="p">0.05</td><td><b>jev-judge</b> ask Jev whether each file does what was asked</td></tr></table>
+</main></body></html>
