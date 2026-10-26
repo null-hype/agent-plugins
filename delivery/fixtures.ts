@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test';
-import { jules } from '@google/jules-sdk';
+import { jules, type SessionClient } from '@google/jules-sdk';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync } from 'node:fs';
@@ -48,13 +48,30 @@ const JULES_KEY = process.env.JULES_KEY_REF ?? 'pass://jev-planner/jules/JULES_A
 const JEV_KEY = process.env.TYPESAFE_KEY_REF ?? 'pass://jev-judge/typesafe/TYPESAFE_API_KEY';
 
 export type PlanStep = { title: string; description?: string };
+export type Plan = { id: string; url: string; steps: PlanStep[] };
+
+/** Where the build project leaves Jules's patch. */
+export const patchFile = () => path.join(path.dirname(process.env.DELIVERY_LEDGER!), 'jules.patch');
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Fixtures = {
-  /** Jules's plan for a goal: a repoless session that stops at its plan. */
-  planFor: (goal: string, prompt: string) => Promise<{ url: string; steps: PlanStep[] }>;
+  /** Jules's plan for a goal: a repoless session that waits for approval of its plan. */
+  planFor: (goal: string, prompt: string) => Promise<Plan>;
+  /** Jules's work on an approved plan: approves it, waits for the session to
+   * complete, and returns its patch. */
+  build: (goal: string, plan: Plan) => Promise<{ patch: string; files: string[] }>;
   /** The judge asks Jev one Noul question; the key is fetched once per test, for `purpose`. */
   judge: (purpose: string) => (state: unknown, instructions: string) => Promise<number>;
 };
+
+/** Jules's last word to us, when it stops to ask: the test fails with it. */
+async function blocked(session: SessionClient, url: string, annotations: { type: string; description?: string }[]) {
+  let asked = '(no message)';
+  for await (const a of session.history()) if (a.type === 'agentMessaged') asked = a.message;
+  annotations.push({ type: 'jules asks', description: asked });
+  return new Error(`Jules is waiting for an answer: ${url}\n\n${asked}`);
+}
 
 export const test = base.extend<Fixtures>({
   planFor: async ({}, use, testInfo) => {
@@ -71,7 +88,7 @@ export const test = base.extend<Fixtures>({
         if (s.title === title && s.state !== 'failed') { id = s.id; break; }
         if (++seen >= 200) break;
       }
-      // Approval is required, so Jules stops once it has a plan and writes nothing.
+      // Approval is required, so Jules waits with its plan until the build approves it.
       if (!id) id = (await client.session({ prompt, title, requireApproval: true })).id;
       const session = client.session(id);
       const url = (await session.info()).url;
@@ -85,26 +102,39 @@ export const test = base.extend<Fixtures>({
           if (!String(e?.message).includes('404')) throw e;
         }
       };
-      // Jules's last word to us, when it stops to ask instead of planning.
-      const question = async () => {
-        let last: string | undefined;
-        for await (const a of session.history()) if (a.type === 'agentMessaged') last = a.message;
-        return last;
-      };
       let steps = await plan();
       for (const until = Date.now() + 8 * 60_000; !steps && Date.now() < until; ) {
         const { state } = await session.info();
-        if (state === 'awaitingUserFeedback') {
-          const asked = await question();
-          testInfo.annotations.push({ type: 'jules asks', description: asked ?? '(no message)' });
-          throw new Error(`Jules is waiting for an answer: ${url}\n\n${asked ?? '(no message)'}`);
-        }
+        if (state === 'awaitingUserFeedback') throw await blocked(session, url, testInfo.annotations);
         if (state === 'failed') throw new Error(`Jules failed: ${url}`);
         if (state === 'awaitingPlanApproval') steps = await plan();
-        if (!steps) await new Promise((r) => setTimeout(r, 15_000));
+        if (!steps) await sleep(15_000);
       }
       if (!steps) throw new Error(`Jules has no plan yet: ${url}. Run again later.`);
-      return { url, steps: steps.map((s: any) => ({ title: s.title, description: s.description })) };
+      return { id, url, steps: steps.map((s: any) => ({ title: s.title, description: s.description })) };
+    });
+  },
+  build: async ({}, use, testInfo) => {
+    await use(async (goal, plan) => {
+      const client = jules.with({ apiKey: secret('planner', JULES_KEY, `have Jules carry out its plan: ${goal}`) });
+      const session = client.session(plan.id);
+      testInfo.annotations.push({ type: 'jules', description: plan.url });
+      // Running again picks up where the session is: approved once, then waited on.
+      for (const until = Date.now() + 40 * 60_000; Date.now() < until; ) {
+        const { state } = await session.info();
+        if (state === 'awaitingPlanApproval') await session.approve();
+        else if (state === 'awaitingUserFeedback') throw await blocked(session, plan.url, testInfo.annotations);
+        else if (state === 'failed') throw new Error(`Jules failed: ${plan.url}`);
+        else if (state === 'completed') {
+          const outcome = await session.result();
+          return {
+            patch: outcome.changeSet()?.gitPatch.unidiffPatch ?? '',
+            files: outcome.generatedFiles().all().map((f) => `${f.changeType} ${f.path}`),
+          };
+        }
+        await sleep(30_000);
+      }
+      throw new Error(`Jules has not finished yet: ${plan.url}. Run again later.`);
     });
   },
   judge: async ({}, use) => {

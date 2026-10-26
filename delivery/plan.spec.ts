@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { test, planFile } from './fixtures';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.dirname(here);
 const goal = readFileSync(path.join(here, 'goal.md'), 'utf8').trim();
 
 // Our plan, written before Jules is asked. The judge compares Jules's plan with
@@ -15,19 +16,24 @@ const ours = [
   'Install the language server and its editor setup with one dev container feature',
 ];
 
+// The code as it is. The session is repoless, so its sandbox starts empty: what
+// Jules is to change has to be in the prompt.
+const files = [
+  'README.md', 'package.json', 'playwright.config.ts', 'global-setup.ts', 'ask.ts', 'collectors.ts',
+  'reporter.ts', 'reconcile.mjs', 'consistency.mjs', 'score.mjs', 'pkl.mjs', 'inputs.mjs',
+  'pkl/Experiment.pkl', 'pkl/Reconcile.pkl', 'tests/questions.spec.ts', 'delivery/jev.ts',
+  'lsp/go.mod', 'lsp/main.go', 'lsp/findings.go', 'lsp/README.md', 'lsp/nvim/jev.lua',
+];
+
 const prompt = `${goal}
 
-What exists: jev-playwright, a Playwright harness. Each test asks a Question; the Jev
-API (TypeSafe) answers it with a probability; a Pkl contract holds each Question's
-expected range; reconcile writes each answer, with the line of the test that asked it,
-to comparison.json. jev-lsp, a Go language server, shows those answers as diagnostics
-on the test lines. The Jev client is Python, and the harness is not yet installable.
+Below is jev-playwright, the code as it is, one file per section. Change it, and add to
+it, so the goal holds. Keep the paths: your files will be applied at jev-playwright/.
 
-Make it so.`;
+${files.map((f) => `=== ${f}\n${readFileSync(path.join(root, f), 'utf8')}`).join('\n')}`;
 
-// The planner's part: give Jules the task, keep the plan it makes before any
-// work (approval is required, so it stops there), and leave it beside ours for
-// the judge. Judging it is retro's, under the judge's own key.
+// The planner's part: give Jules the task and keep the plan it makes before any
+// work (approval is required, so it waits there) for the judge, beside ours.
 test('Does Jules plan the work that achieves the goal?', async ({ planFor }, testInfo) => {
   test.setTimeout(15 * 60_000);
   const plan = await test.step('ask Jules for a plan', () => planFor(goal, prompt));
