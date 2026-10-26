@@ -10,7 +10,7 @@ main{max-width:860px;margin:0 auto;padding:28px 16px 60px}h1{font-size:22px;marg
 .dot{width:10px;height:10px;border-radius:50%;flex:none;transform:translateY(-1px)}.passed .dot{background:var(--ok)}.failed .dot{background:var(--wait)}.skipped .dot{border:2px solid var(--mute)}
 .state{font-size:12px;color:var(--mute);margin-left:auto;white-space:nowrap}.failed .state{color:var(--wait)}
 .hunks{list-style:none;padding:0;margin:10px 0 0}.hunks li{border-top:1px solid var(--line);padding:8px 0}
-.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row code{flex:1;min-width:180px;font-size:13px}.row a{font-size:13px;color:var(--bar)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.change{flex:1;min-width:200px}.change .where{display:block;color:var(--mute);font-size:12px}.change code{font-size:12px}.row a{font-size:13px;color:var(--bar)}
 .score{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-size:13px}.score.none{color:var(--mute)}
 .bar{width:70px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--bar) calc(var(--p)*100%),var(--line) 0)}
 .asks{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--wait);background:color-mix(in srgb,var(--wait) 10%,transparent);font-size:14px}
@@ -25,12 +25,12 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 <h2>Triage</h2><table><tr class="hot"><td class="p">0.88</td><td>Jules asks about src/jev-lsp/install.sh <a href="https://jules.google.com/session/6021448811736512812">open</a></td></tr></table>
 
 <h2>The plan, in order</h2>
-<section class="node passed">
+<section class="node passed" id="jev-ts">
   <h3><span class="dot"></span>Can the harness ask Jev from TypeScript, with no Python?<span class="state">passed</span></h3>
-  <div class="where">jev-ts.spec.ts:12 · jev-ts</div>
+  <div class="where">delivery/jev-ts.spec.ts:9 · jev-ts</div>
   <ol class="hunks"><li class="">
       <div class="row">
-        <code>jev.ts</code>
+        <span class="change">Write the Jev client in TypeScript<span class="where"><code>jev.ts</code> · line 12</span></span>
         <span class="score"><span class="bar" style="--p:0.91"></span>0.91</span>
         <a href="https://jules.google.com/session/6021448811736510042">Jules</a>
       </div>
@@ -41,7 +41,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 </pre></details>
     </li><li class="">
       <div class="row">
-        <code>score.mjs</code>
+        <span class="change">Have score.mjs ask Jev through it<span class="where"><code>score.mjs</code> · line 20</span></span>
         <span class="score"><span class="bar" style="--p:0.84"></span>0.84</span>
         <a href="https://jules.google.com/session/6021448811736510519">Jules</a>
       </div>
@@ -51,7 +51,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 </pre></details>
     </li><li class="">
       <div class="row">
-        <code>package.json</code>
+        <span class="change">Drop pkl-python from the install<span class="where"><code>package.json</code> · line 28</span></span>
         <span class="score"><span class="bar" style="--p:0.88"></span>0.88</span>
         <a href="https://jules.google.com/session/6021448811736510733">Jules</a>
       </div>
@@ -60,12 +60,12 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 </pre></details>
     </li></ol>
 </section>
-<section class="node passed">
+<section class="node passed" id="dagger">
   <h3><span class="dot"></span>Do the mechanical steps run in Dagger from a Playwright fixture?<span class="state">passed</span></h3>
-  <div class="where">dagger.spec.ts:24 · dagger <span class="dep">after jev-ts</span></div>
+  <div class="where">delivery/dagger.spec.ts:9 · dagger <span class="dep">after jev-ts</span></div>
   <ol class="hunks"><li class="">
       <div class="row">
-        <code>dagger.ts</code>
+        <span class="change">Write a Dagger fixture<span class="where"><code>dagger.ts</code> · line 12</span></span>
         <span class="score"><span class="bar" style="--p:0.77"></span>0.77</span>
         <a href="https://jules.google.com/session/6021448811736511204">Jules</a>
       </div>
@@ -74,12 +74,12 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 </pre></details>
     </li></ol>
 </section>
-<section class="node passed">
+<section class="node passed" id="package">
   <h3><span class="dot"></span>Can any Playwright project install the fixtures?<span class="state">passed</span></h3>
-  <div class="where">package.spec.ts:36 · package <span class="dep">after dagger</span></div>
+  <div class="where">delivery/package.spec.ts:9 · package <span class="dep">after dagger</span></div>
   <ol class="hunks"><li class="">
       <div class="row">
-        <code>package.json</code>
+        <span class="change">Export the fixtures and reporter<span class="where"><code>package.json</code> · line 12</span></span>
         <span class="score"><span class="bar" style="--p:0.81"></span>0.81</span>
         <a href="https://jules.google.com/session/6021448811736511881">Jules</a>
       </div>
@@ -88,7 +88,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 </pre></details>
     </li><li class="">
       <div class="row">
-        <code>README.md</code>
+        <span class="change">Document the install<span class="where"><code>README.md</code> · line 20</span></span>
         <span class="score"><span class="bar" style="--p:0.69"></span>0.69</span>
         <a href="https://jules.google.com/session/6021448811736512090">Jules</a>
       </div>
@@ -99,12 +99,12 @@ npm i -D jev-playwright
 </pre></details>
     </li></ol>
 </section>
-<section class="node failed">
+<section class="node failed" id="feature">
   <h3><span class="dot"></span>Can one dev container feature install jev-lsp and its Neovim setup?<span class="state">waiting on an answer</span></h3>
-  <div class="where">feature.spec.ts:48 · feature <span class="dep">after package</span></div>
+  <div class="where">delivery/feature.spec.ts:9 · feature <span class="dep">after package</span></div>
   <ol class="hunks"><li class="">
       <div class="row">
-        <code>src/jev-lsp/devcontainer-feature.json</code>
+        <span class="change">Write the feature's manifest<span class="where"><code>src/jev-lsp/devcontainer-feature.json</code> · line 12</span></span>
         <span class="score"><span class="bar" style="--p:0.93"></span>0.93</span>
         <a href="https://jules.google.com/session/6021448811736512577">Jules</a>
       </div>
@@ -113,7 +113,7 @@ npm i -D jev-playwright
 </pre></details>
     </li><li class="blocked">
       <div class="row">
-        <code>src/jev-lsp/install.sh</code>
+        <span class="change">Write the install script<span class="where"><code>src/jev-lsp/install.sh</code> · line 19</span></span>
         <span class="score none">no answer</span>
         <a href="https://jules.google.com/session/6021448811736512812">Jules</a>
       </div>
@@ -121,9 +121,9 @@ npm i -D jev-playwright
       
     </li></ol>
 </section>
-<section class="node skipped">
+<section class="node skipped" id="goal">
   <h3><span class="dot"></span>Can someone install jev-lsp and see each answer on the line of the test that asked it?<span class="state">did not run</span></h3>
-  <div class="where">goal.spec.ts:60 · goal <span class="dep">after feature</span></div>
+  <div class="where">delivery/goal.spec.ts:9 · goal <span class="dep">after feature</span></div>
   
 </section>
 
