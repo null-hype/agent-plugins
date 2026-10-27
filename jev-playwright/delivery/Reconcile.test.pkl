@@ -1,7 +1,8 @@
 /// Reconcile.pkl against what witness showed on the check's first passing run
 /// (feature e4363c2a29e3, after one repair), and against that run with one
 /// steady step warmed, an answer stale, the predictions registered before
-/// Jules planned, or changed after its plan was approved. No I/O.
+/// Jules planned, or changed after its plan was approved; and against run 7,
+/// the counterexample. No I/O.
 amends "pkl:test"
 
 import "Reconcile.pkl"
@@ -71,13 +72,63 @@ local beforePlan = (passed) { predicted = registered("2026-10-27T09:00:00.000Z")
 
 local afterApproval = (passed) { predicted = registered("2026-10-27T10:25:00.000Z") }
 
+// Run 7 (2026-10-27): registered at 07:52:52 for the plan Jules was asked for
+// at 07:47:34. The first feature failed (Go was not installed); repair 1
+// installed witness. The scores are as the check printed them, to the
+// hundredth (the plan's from the work's less the printed movement); the
+// approval and repair times were not kept, so they stand in, after the
+// registration. Its world and protocol held; the two file steps did not cool,
+// though the feature that installed was the work, and the first, broken work
+// had cooled them (0.22, 0.19).
+local run7 = (Reconcile) {
+  predicted = (Predicted) {
+    registered = new Dynamic {
+      item = "jev-planner/journal"
+      role = "Viewer"
+      written = "2026-10-27T07:52:52.000Z"
+      plan {
+        new { title = "Create `src/witness/devcontainer-feature.json`."; after = "cools" }
+        new { title = "Create `src/witness/install.sh`."; after = "cools" }
+        new { title = "Complete pre commit steps."; after = "steady" }
+        new { title = "Submit the change."; after = "steady" }
+      }
+    }
+  }
+  local function run(defn: Float, script: Float, precommit: Float, submit: Float) = new Dynamic {
+    created { "2026-10-27T07:47:34.000Z" }
+    approved {}
+    model = "jev-1.14.0"
+    shown {
+      ["Create `src/witness/devcontainer-feature.json`."] = defn
+      ["Create `src/witness/install.sh`."] = script
+      ["Complete pre commit steps."] = precommit
+      ["Submit the change."] = submit
+    }
+    offLine {}
+    stale {}
+  }
+  observed = new Dynamic {
+    plan = run(0.37, 0.44, 0.45, 0.45)
+    work = (run(0.39, 0.35, 0.51, 0.53)) {
+      created { "2026-10-27T08:00:00.000Z" }
+      approved { "2026-10-27T07:53:00.000Z" }
+    }
+  }
+}
+
 facts {
+  ["run 7: the world and the protocol held, and Jev disagreed with the world"] {
+    run7.installedPass; run7.protocolPass; !run7.measuredPass; !run7.pass
+    !run7.measured["the work cooled Create `src/witness/devcontainer-feature.json`."]
+    !run7.measured["the work cooled Create `src/witness/install.sh`."]
+    run7.verdict.startsWith("Jev disagreed with the world")
+  }
   ["the first passing run passes"] { passed.pass; passed.installedPass }
   ["a steady step that warms fails the experiment, not the install"] {
     !warmed.pass; warmed.installedPass; !warmed.facts["the work left steady Submit the change"]
   }
   ["predictions registered before Jules was asked for the plan fail"] {
-    !beforePlan.pass; !beforePlan.facts["the predictions were last changed after Jules was asked for the plan"]
+    !beforePlan.pass; !beforePlan.protocolPass; !beforePlan.facts["the predictions were last changed after Jules was asked for the plan"]
   }
   ["predictions changed after the plan was approved fail"] {
     !afterApproval.pass; !afterApproval.facts["the predictions were last changed before Jules's plan was approved"]
@@ -87,4 +138,5 @@ facts {
 
 examples {
   ["the first passing run, fact by fact"] { passed.facts; passed.next }
+  ["run 7, layer by layer"] { run7.installed; run7.protocol; run7.measured; run7.movements; run7.verdict }
 }
