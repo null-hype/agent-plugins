@@ -68,21 +68,28 @@ Two checks, the second composing the first:
   names the Pass item and when it was last changed (`pkl test
   Reconcile.test.pkl`).
 
-The verdict keeps three layers apart, and names the first that failed: the
-world (does the feature install, and is every answer fresh and on its line),
-the protocol (were the predictions fixed for this plan before its work, on the
-registered model), and Jev (did each step move as registered). A run whose
-world or protocol failed says nothing of Jev. A run where both held and Jev
-moved otherwise is a finding about Jev, not a broken run: it stays red, and
-the threshold (`moved` in `Delivery.pkl`) is not tuned to it.
+The verdict keeps three layers apart: the world (does the feature install,
+and is every answer fresh and on its line), the protocol (were the
+predictions fixed for this plan before its work, on the registered model),
+and Jev (did each step move as registered). A run whose world or protocol did
+not hold is not valid and says nothing of Jev; the verdict names which. A run
+where both held is valid, and what Jev did is a finding either way: agreement
+turns the experiment green, and disagreement, "valid finding: Jev
+disagreement", turns it red without making the run a failed one. The check
+exits non-zero for both a run that is not valid and a red experiment, and its
+last line says which. The threshold (`moved` in `Delivery.pkl`) is not tuned
+to a red result.
 
-Run 7 is that finding, kept as a test case: the repaired feature installed
+Run 7 is such a finding, kept as a frozen falsification case: the repaired feature installed
 witness, the protocol held, and the two file steps did not cool (+0.02 and
 −0.09, against −0.14), while the first, broken feature had cooled them. So
 what a Jev step score measures, and when successful work should cool it, is
 the open question, not how to make the next run pass. That the world does not
 resolve `dependsOn` is a fidelity gap, not its explanation: the run that
-failed Jev is the one where witness installed.
+disagreed is the one where witness installed. A change that turns run 7 green
+changes what the score means, and has to say how; it is not a fix. Its
+approval and repair times stand in, after the registration: the case tests the
+order the protocol needs, not the run's whole record.
 
 After a deliberate change (another model or question): produce a plan and a
 work run, measure the noise on them, and set it in `Delivery.pkl`.

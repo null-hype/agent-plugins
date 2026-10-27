@@ -37,6 +37,6 @@ examples {
       ["Complete pre commit steps."] = 0.06
       ["Submit the change."] = 0.08000000000000002
     }
-    "Jev disagreed with the world: the run held, and the steps did not move as registered"
+    "valid finding: Jev disagreement; the world and the protocol held, and the steps did not move as registered"
   }
 }
