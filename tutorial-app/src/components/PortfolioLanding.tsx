@@ -3,13 +3,13 @@ import './PortfolioLanding.css';
 /** Rendered as static HTML by Astro; shared with Storybook without hydration. */
 export function PortfolioLanding() {
   return <div className="portfolio">
-    <a className="skip-link" href="#main">Skip to content</a>
+    <a className="skip-link" href="#main" target="_self">Skip to content</a>
     <header className="masthead">
       <a className="identity" href="/" aria-label="Tidelands home">
         <img src="/logo.svg" alt="" width="42" height="42" />
         <span>Tidelands<span className="identity-sub">Richard Anthony / null-hype</span></span>
       </a>
-      <nav aria-label="Main navigation"><a href="#evidence">The work</a><a href="#work">Get in touch <span aria-hidden="true">↗</span></a></nav>
+      <nav aria-label="Main navigation"><a href="#evidence" target="_self">The work</a><a href="#work" target="_self">Get in touch <span aria-hidden="true">↗</span></a></nav>
     </header>
     <main id="main" tabIndex={-1}>
       <section className="hero" aria-labelledby="headline">
