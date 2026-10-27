@@ -11,7 +11,8 @@
 /// each step as predicted. `facts` is all three. Whether Jules did each step
 /// is not among them:
 /// witness shows Jev's answers, not Jules's activity. It decides; the check
-/// only reports and fails unless `installedPass`, or `pass`.
+/// only reports. A run is `valid` when its world and protocol held; then Jev's
+/// agreeing or not is a finding either way, and `pass` is whether it agreed.
 module Reconcile
 
 import "pkl:json"
@@ -108,13 +109,18 @@ protocolPass: Boolean = all(protocol)
 
 measuredPass: Boolean = all(measured)
 
-/// Which layer failed, the first that did: a run whose world or protocol
-/// failed says nothing of Jev, and a Jev that moved otherwise than registered
-/// is a finding about Jev, not about the world.
-verdict: String =
-  if (!installedPass) "the world failed: an answer is stale or off its line"
-  else if (!protocolPass) "the protocol failed: this run cannot judge Jev"
-  else if (!measuredPass) "Jev disagreed with the world: the run held, and the steps did not move as registered"
-  else "Jev moved as registered"
+/// The world and the protocol held, so what Jev did is a finding.
+valid: Boolean = installedPass && protocolPass
 
-pass: Boolean = installedPass && protocolPass && measuredPass
+/// A run whose world or protocol did not hold says nothing of Jev, and names
+/// the first that did not. A valid run where Jev moved otherwise than
+/// registered is a valid finding, a disagreement with the world, not a failed
+/// run.
+verdict: String =
+  if (!installedPass) "not valid, the world: an answer is stale or off its line"
+  else if (!protocolPass) "not valid, the protocol: this run cannot judge Jev"
+  else if (!measuredPass) "valid finding: Jev disagreement; the world and the protocol held, and the steps did not move as registered"
+  else "valid finding: Jev agreement; the steps moved as registered"
+
+/// A valid run on which Jev agreed: the experiment is green.
+pass: Boolean = valid && measuredPass
