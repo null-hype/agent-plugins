@@ -12,7 +12,10 @@
 # a world by label, restores it apart from where it was made, and judges that.
 #
 #   RESTIC_REPOSITORY=... RESTIC_PASSWORD=... bash delivery/world.sh capture <dir> <label> [run]
-#   bash delivery/world.sh judge <label>     # from jev-playwright
+#   bash delivery/world.sh judge <snapshot id | label>     # from jev-playwright
+#
+# capture prints the snapshot's id; judge given that id judges exactly it, and
+# given a label, the newest world with it.
 #
 # Exits 0 when Jev agreed in a valid run, 1 when not (the verdict says which),
 # 2 when no world has the label.
@@ -24,8 +27,12 @@ check=registered-delivery
 # forget --group-by host,paths,tags` sees them.
 host=delivery
 
-# The newest snapshot with the label, by its full id.
+# The snapshot: a full id as it is, or the newest with the label, by its full id.
 snapshot_of() {
+  if [[ $1 =~ ^[0-9a-f]{64}$ ]]; then
+    restic snapshots "$1" --json | jq -r '.[0].id // empty'
+    return
+  fi
   restic snapshots --tag "check=$check,label=$1" --json | jq -r 'sort_by(.time) | last | .id // empty'
 }
 
@@ -43,7 +50,7 @@ capture_world() {
 judge_world() {
   local label=$1 id at world verdict
   id="$(snapshot_of "$label")"
-  [ -n "$id" ] || { echo "no world labelled $label ($check) in $RESTIC_REPOSITORY" >&2; exit 2; }
+  [ -n "$id" ] || { echo "no world $label ($check) in $RESTIC_REPOSITORY" >&2; exit 2; }
   at="$(mktemp -d)"
   restic restore "$id" --target "$at" > /dev/null
   # restic restores under the directories above the world, as many as its version
@@ -71,5 +78,5 @@ judge_world() {
 case "${1:-}" in
   capture) shift; capture_world "$@" ;;
   judge) shift; judge_world "$@" ;;
-  *) echo "usage: world.sh capture <dir> <label> [run] | judge <label>" >&2; exit 64 ;;
+  *) echo "usage: world.sh capture <dir> <label> [run] | judge <id|label>" >&2; exit 64 ;;
 esac
