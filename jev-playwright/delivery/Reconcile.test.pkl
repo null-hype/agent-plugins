@@ -7,70 +7,70 @@ amends "pkl:test"
 
 import "Reconcile.pkl"
 import "Predicted.pkl"
+import "worlds/Scenarios.pkl"
 
 // Jules is asked at 10:01, the plan approved at 10:20 in the work run, after
-// which the work run's repair session is created.
-local function shown(defn: Float, script: Float, precommit: Float, submit: Float) = new Dynamic {
-  created { "2026-10-27T10:01:00.000Z" }
+// which the work run's repair session is created. The scores and times are
+// worlds/Scenarios.pkl's, which worlds/mk.mjs also builds the fixtures from.
+local function plan(s: Scenarios.Scenario) = new Dynamic {
+  created { s.planCreated }
   approved {}
   model = "jev-1.14.0"
   shown {
-    ["Create the dev container feature definition"] = defn
-    ["Create the installation script"] = script
-    ["Complete pre-commit steps"] = precommit
-    ["Submit the change"] = submit
+    for (step in s.steps) { [step.title] = step.plan }
   }
   offLine {}
   stale {}
 }
 
-local function registered(at: String) = (Predicted) {
+local function work(s: Scenarios.Scenario) = (plan(s)) {
+  created { s.workCreated }
+  approved { s.approved }
+  shown {
+    for (step in s.steps) { [step.title] = step.work }
+  }
+}
+
+local function registered(s: Scenarios.Scenario, at: String) = (Predicted) {
   registered = new Dynamic {
     item = "jev-planner/journal"
     role = "Viewer"
     written = at
     plan {
-      new { title = "Create the dev container feature definition"; after = "cools" }
-      new { title = "Create the installation script"; after = "cools" }
-      new { title = "Complete pre-commit steps"; after = "steady" }
-      new { title = "Submit the change"; after = "steady" }
+      for (step in s.steps) { new { title = step.title; after = step.after } }
     }
   }
 }
 
-local function worked(defn: Float, script: Float, precommit: Float, submit: Float) =
-  (shown(defn, script, precommit, submit)) {
-    created { "2026-10-27T10:30:00.000Z" }
-    approved { "2026-10-27T10:20:00.000Z" }
-  }
+local fp = Scenarios.firstPassing
 
-local between = registered("2026-10-27T10:10:00.000Z")
+local between = registered(fp, fp.written)
 
 local passed = (Reconcile) {
   predicted = between
   observed = new Dynamic {
-    plan = shown(0.59, 0.58, 0.52, 0.52)
-    work = worked(0.33, 0.27, 0.49, 0.48)
+    plan = plan(fp)
+    work = work(fp)
   }
 }
 
 local warmed = (passed) {
   observed = new Dynamic {
-    plan = shown(0.59, 0.58, 0.52, 0.52)
-    work = worked(0.33, 0.27, 0.49, 0.70)
+    plan = plan(fp)
+    work = (work(fp)) { shown { ["Submit the change"] = 0.70 } }
   }
 }
 
 local stale = (passed) {
   observed = new Dynamic {
-    plan = shown(0.59, 0.58, 0.52, 0.52)
-    work = (worked(0.33, 0.27, 0.49, 0.48)) { stale { "stale finding (verified against other source): 0.48 still a priority: Submit the change" } }
+    plan = plan(fp)
+    work = (work(fp)) { stale { "stale finding (verified against other source): 0.48 still a priority: Submit the change" } }
   }
 }
 
-local beforePlan = (passed) { predicted = registered("2026-10-27T09:00:00.000Z") }
+local beforePlan = (passed) { predicted = registered(fp, "2026-10-27T09:00:00.000Z") }
 
-local afterApproval = (passed) { predicted = registered("2026-10-27T10:25:00.000Z") }
+local afterApproval = (passed) { predicted = registered(fp, "2026-10-27T10:25:00.000Z") }
 
 // Run 7 (2026-10-27): registered at 07:52:52 for the plan Jules was asked for
 // at 07:47:34. The first feature failed (Go was not installed); repair 1
@@ -85,38 +85,10 @@ local afterApproval = (passed) { predicted = registered("2026-10-27T10:25:00.000
 // It is a frozen falsification case: a change that turns it green changes
 // what a Jev step score means, and has to say how, not pass as a fix.
 local run7 = (Reconcile) {
-  predicted = (Predicted) {
-    registered = new Dynamic {
-      item = "jev-planner/journal"
-      role = "Viewer"
-      written = "2026-10-27T07:52:52.000Z"
-      plan {
-        new { title = "Create `src/witness/devcontainer-feature.json`."; after = "cools" }
-        new { title = "Create `src/witness/install.sh`."; after = "cools" }
-        new { title = "Complete pre commit steps."; after = "steady" }
-        new { title = "Submit the change."; after = "steady" }
-      }
-    }
-  }
-  local function run(defn: Float, script: Float, precommit: Float, submit: Float) = new Dynamic {
-    created { "2026-10-27T07:47:34.000Z" }
-    approved {}
-    model = "jev-1.14.0"
-    shown {
-      ["Create `src/witness/devcontainer-feature.json`."] = defn
-      ["Create `src/witness/install.sh`."] = script
-      ["Complete pre commit steps."] = precommit
-      ["Submit the change."] = submit
-    }
-    offLine {}
-    stale {}
-  }
+  predicted = registered(Scenarios.run7, Scenarios.run7.written)
   observed = new Dynamic {
-    plan = run(0.37, 0.44, 0.45, 0.45)
-    work = (run(0.39, 0.35, 0.51, 0.53)) {
-      created { "2026-10-27T08:00:00.000Z" }
-      approved { "2026-10-27T07:53:00.000Z" }
-    }
+    plan = plan(Scenarios.run7)
+    work = work(Scenarios.run7)
   }
 }
 

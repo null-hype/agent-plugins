@@ -79,14 +79,14 @@ that; the output and verdict name the snapshot id. `REGISTEREDDELIVERY_LABEL=syn
 in `.env` (`dagger check` takes no flags) judges a world made by data instead,
 without running Jules: `dagger call capture-world --world delivery/worlds/run7
 --label synthetic`, then `dagger check registered-delivery`. Run 7 is kept in
-`worlds/run7` (rebuilt from the printed scores, so synthetic) and gives the same
+`worlds/run7` (rebuilt from the printed scores in `worlds/Scenarios.pkl`, so synthetic) and gives the same
 verdict through its snapshot. `bash delivery/world.test.sh` tests capture,
 selection by label, restore and judgement against a disposable repository.
 `observed` runs the delivery and snapshots it; it does not select an earlier
 observed world, so an old one cannot yet be judged again without asking Jules
 anew. The repository is a cache volume, local to the engine, which can prune it:
 a snapshot id is reproducible only while it lasts, and `worlds/` (rebuilt by
-`worlds/mk.mjs` from the numbers in `Reconcile.test.pkl`) is the durable copy of
+`worlds/mk.mjs` from `worlds/Scenarios.pkl`, which `Reconcile.test.pkl` imports) is the durable copy of
 the fixtures. The repo's own convention is the shared repository behind
 `pass://infra/restic`, passed in as a secret, which is the next step.
 
