@@ -1,0 +1,58 @@
+/// The delivery experiment, registered before any Jules or Jev call.
+///
+/// The single source of what the check runs and what it expects, as
+/// typesafe-experiment's TypesafeExperiment.pkl is for its cases: the
+/// Playwright config evaluates it before any test, so feature.spec.ts asks
+/// Jules this `task` and the priority reporter asks Jev this `question`; the
+/// Dagger check evaluates it before any agent call and reads its repairs from
+/// it; Reconcile.pkl judges what witness showed against `plan`. Changing what
+/// is asked, or what it should do, is a change here, made before the run.
+module Delivery
+
+/// The goal, word for word as goal.md says it.
+goal: String(!isEmpty) = read("goal.md").text.trim()
+
+/// The one node the check delivers, asked of Jules word for word.
+task: String(!isEmpty) = "Write a dev container feature that installs witness (https://github.com/null-hype/witness) and its Neovim setup"
+
+/// Asked of Jev for each item of work, the item appended: the noul it answers
+/// is how much it is still a priority.
+question: String(!isEmpty) = "This is still a priority for the goal: the state does not show it done."
+
+/// The resolved model the noise was measured on. Another model fails the
+/// check on purpose: measure again, then re-register.
+model: String(!isEmpty) = "jev-1.14.0"
+
+/// The widest max-min spread capture.mjs measured in Jev's answer for any one
+/// step of one fixed state (noise-observed.json). See `moved`.
+noise: Number(isBetween(0, 1)) = 0.07
+
+/// How far a step's priority must move between the plan and the work to count
+/// as moved: twice the noise, so one noisy answer at each end cannot move it.
+moved: Number = 2 * noise
+
+/// How many times the world's failure goes back to Jules before the check fails.
+repairs: Int(isBetween(0, 5)) = 3
+
+/// How much of the install log goes back to Jules with the feature.
+logLines: Int(isPositive) = 40
+
+typealias Movement = "cools"|"steady"
+
+class Step {
+  /// The step's title, word for word as Jules's approved plan has it.
+  title: String(!isEmpty)
+  /// What the work should do to its priority: cool it by at least `moved`,
+  /// or leave it within `moved`. Nothing the work does should warm a step.
+  after: Movement
+}
+
+/// Jules's plan for `task`, as approved, and what the work should do to each
+/// step. A repoless Jules writes files and cannot submit or run pre-commit,
+/// so its work should cool the writing steps and leave the others.
+plan: Listing<Step>(!isEmpty, isDistinctBy((s) -> s.title)) = new {
+  new { title = "Create the dev container feature definition"; after = "cools" }
+  new { title = "Create the installation script"; after = "cools" }
+  new { title = "Complete pre-commit steps"; after = "steady" }
+  new { title = "Submit the change"; after = "steady" }
+}

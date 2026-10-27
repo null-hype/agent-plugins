@@ -6,7 +6,7 @@ import { test } from './fixtures';
 // and once its plan is approved carries it out; Jev judges each file it writes.
 test('Can one dev container feature install witness and its Neovim setup?', async ({ plan, approve }) => {
   test.setTimeout(60 * 60_000);
-  const task = 'Write a dev container feature that installs witness (https://github.com/null-hype/witness) and its Neovim setup';
+  const { task } = test.info().config.metadata.delivery;
   // planOnly approves the plan and stops there: the run before Jules's work.
   // DELIVERY_FAILED is how the world rejected Jules's work: Jules repairs it.
   const failed = process.env.DELIVERY_FAILED && readFileSync(process.env.DELIVERY_FAILED, 'utf8');
