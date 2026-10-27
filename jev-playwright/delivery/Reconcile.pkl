@@ -1,0 +1,62 @@
+/// What witness showed of a delivery run (facts.mjs, `prop:observed`), judged
+/// against what Delivery.pkl registered before it: the plan Jules carried out
+/// is the registered plan, Jev answered on the registered model, every answer
+/// is fresh and on its test's line, and the work moved each step as
+/// registered. It decides; the check only reports `facts` and fails unless
+/// `pass`.
+module Reconcile
+
+import "pkl:json"
+import "Delivery.pkl"
+
+class Run {
+  model: String
+  shown: Mapping<String, Number>
+  offLine: Listing<String>
+  stale: Listing<String>
+}
+
+/// facts.mjs's output; a test amends it with its own.
+hidden observed: Dynamic = new json.Parser {}.parse(read(read("prop:observed")).text)
+hidden plan: Run = toRun(observed.plan)
+hidden work: Run = toRun(observed.work)
+local function toRun(d: Dynamic): Run = new {
+  model = d.model
+  shown = d.shown.toMap().toMapping()
+  offLine = d.offLine.toList().toListing()
+  stale = d.stale.toList().toListing()
+}
+local registered: Set<String> = Delivery.plan.toList().map((s) -> s.title).toSet()
+
+local function shows(r: Run, step: String): Boolean = r.shown.containsKey(step)
+
+/// How far the work moved each registered step, work minus plan.
+movements: Mapping<String, Number> = new {
+  for (s in Delivery.plan) {
+    when (shows(plan, s.title) && shows(work, s.title)) {
+      [s.title] = work.shown[s.title] - plan.shown[s.title]
+    }
+  }
+}
+
+local function moved(step: Delivery.Step): Boolean =
+  movements.containsKey(step.title) && (
+    if (step.after == "cools") movements[step.title] <= -Delivery.moved
+    else movements[step.title].abs < Delivery.moved)
+
+facts: Mapping<String, Boolean> = new {
+  ["Jules carried out the registered plan, step for step"] =
+    plan.shown.keys == registered && work.shown.keys == registered
+  ["Jev answered on the registered model, \(Delivery.model)"] =
+    plan.model == Delivery.model && work.model == Delivery.model
+  ["every answer is on its test's line"] = plan.offLine.isEmpty && work.offLine.isEmpty
+  ["no answer is stale"] = plan.stale.isEmpty && work.stale.isEmpty
+  for (s in Delivery.plan) {
+    ["the work \(if (s.after == "cools") "cooled" else "left steady") \(s.title)"] = moved(s)
+  }
+}
+
+/// What is still most a priority after the work.
+next: String? = work.shown.toMap().entries.sortWith((a, b) -> a.value > b.value).firstOrNull?.key
+
+pass: Boolean = facts.toMap().values.every((v) -> v)

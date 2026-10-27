@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dagger/agent-plugins/internal/dagger"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -10,17 +11,22 @@ import (
 // PeopleCanInstallWitness: people can install witness and see each answer on
 // the line of the test that asked it (jev-playwright/delivery/goal.md).
 //
+// What the check runs and expects is registered before it, in
+// jev-playwright/delivery/Delivery.pkl, and evaluated before any agent call:
+// Jules's task, Jev's question and model, the measured noise, the approved
+// plan and what the work should do to each of its steps, and how many repairs
+// the world allows.
+//
 // The delivery loop runs twice, as Playwright: once to Jules's approved plan
 // (feature-plan), once to the files Jules wrote (feature). Each run, the
-// priority reporter asks Jev what is still a priority for the goal and leaves
+// priority reporter asks Jev the registered question of each step and leaves
 // each answer as a witness finding on the line of its test. The check installs
 // the dev container feature Jules wrote into a clean dev container; when that
-// fails, Jules is given the failure and repairs its work, and the check
-// installs again, up to three repairs. It then opens the spec, as an editor
-// would, in the witness that feature installed, once on each run. It passes
-// when every answer shows on its test's line, none is stale, and between the
-// plan and the last work the priorities moved forward: some step cooled beyond
-// noise, and none warmed beyond it.
+// fails, Jules is given the feature as installed and its install log, repairs
+// it, and the check installs the repair into a fresh dev container, up to the
+// registered repairs. It then opens the spec, as an editor would, in the
+// witness that feature installed, once on each run, and Reconcile.pkl judges
+// what witness showed against the registration.
 //
 // Each agent logs in to Pass with its own token. The repo's .env gives the
 // tokens as defaults, env:// variables that pass-cli resolves from pass:// refs:
@@ -40,6 +46,20 @@ func (m *AgentPlugins) PeopleCanInstallWitness(
 	// +optional
 	judgeToken *dagger.Secret,
 ) error {
+	out, err := withPkl(dag.Container().From("node:22-bookworm")).
+		WithDirectory("/h", harness).
+		WithExec([]string{"pkl", "eval", "-f", "json", "/h/delivery/Delivery.pkl"}).
+		Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("Delivery.pkl registers no valid delivery: %w", err)
+	}
+	var registered struct {
+		Repairs  int `json:"repairs"`
+		LogLines int `json:"logLines"`
+	}
+	if err := json.Unmarshal([]byte(out), &registered); err != nil {
+		return err
+	}
 	delivered := m.Delivery(harness, plannerToken, judgeToken)
 	var installed *dagger.Container
 	for repairs := 0; ; repairs++ {
@@ -55,16 +75,16 @@ func (m *AgentPlugins) PeopleCanInstallWitness(
 		if code == 0 {
 			break
 		}
-		out, err := installed.Stdout(ctx)
+		out, err = installed.Stdout(ctx)
 		if err != nil {
 			return err
 		}
-		if repairs == 3 {
-			return fmt.Errorf("the feature Jules wrote still fails to install after %d repairs:\n%s", repairs, tail(out, 40))
+		if repairs == registered.Repairs {
+			return fmt.Errorf("the feature Jules wrote still fails to install after %d repairs:\n%s", repairs, tail(out, registered.LogLines))
 		}
 		// The evidence is the world as it was: the feature as installed, and
 		// its install log. Jules's next turn does not have its files.
-		failed, err := evidence(ctx, feature, tail(out, 40))
+		failed, err := evidence(ctx, feature, tail(out, registered.LogLines))
 		if err != nil {
 			return err
 		}
@@ -72,12 +92,17 @@ func (m *AgentPlugins) PeopleCanInstallWitness(
 			WithNewFile("/failed.txt", failed).
 			WithExec([]string{"bash", "/repair.sh"})
 	}
-	_, err := delivered.
+	_, err = delivered.
 		WithFile("/usr/local/bin/witness", installed.File("/witness")).
 		WithExec([]string{"sh", "-c", `set -e
 WITNESS_RUN_DIR=/runs/plan node delivery/diagnostics.mjs delivery/feature.spec.ts > /plan.json
 WITNESS_RUN_DIR=/runs/work node delivery/diagnostics.mjs delivery/feature.spec.ts > /work.json
-node /forward.mjs delivery/feature.spec.ts /plan.json /work.json`}).
+node delivery/facts.mjs delivery/feature.spec.ts /facts.json plan=/plan.json,/runs/plan work=/work.json,/runs/work
+pkl eval -f json -p observed=file:///facts.json delivery/Reconcile.pkl > /verdict.json
+jq -r '.facts | to_entries[] | (if .value then "✓ " else "✗ " end) + .key' /verdict.json
+jq -r '.movements | to_entries[] | "  \(.value * 100 | round / 100)  \(.key)"' /verdict.json
+jq -r '"Next: " + .next' /verdict.json
+jq -e .pass /verdict.json > /dev/null || { echo "the run does not match what Delivery.pkl registered" >&2; exit 1; }`}).
 		Sync(ctx)
 	return err
 }
@@ -122,8 +147,7 @@ func (m *AgentPlugins) Delivery(
 	// +optional
 	judgeToken *dagger.Secret,
 ) *dagger.Container {
-	c := dag.Container().
-		From("node:22-bookworm").
+	c := withPkl(dag.Container().From("node:22-bookworm")).
 		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq && curl -fsSL https://proton.me/download/pass-cli/install.sh | bash"}).
 		WithEnvVariable("PATH", "/root/.local/bin:$PATH", dagger.ContainerWithEnvVariableOpts{Expand: true}).
 		WithWorkdir("/workspace/jev-playwright").
@@ -164,38 +188,12 @@ manifest="$(find delivery/test-results/feature-* -name devcontainer-feature.json
 [ -n "$manifest" ] || { echo "Jules wrote no dev container feature" >&2; exit 1; }
 cp -r "$(dirname "$manifest")" /feature
 `).
-		WithNewFile("/forward.mjs", `import { readFileSync } from 'node:fs';
-// What witness shows on the spec after the plan run, then after the work run.
-// Every answer is on a test's line and none is stale; some step cooled beyond
-// noise and none warmed beyond it. Noise is render.mjs's MOVED, twice the
-// spread typesafe-experiment measured.
-const MOVED = 0.12;
-const [spec, ...runs] = process.argv.slice(2);
-const lines = readFileSync(spec, 'utf8').split('\n');
-const [plan, work] = runs.map((f) => {
-  const shown = new Map();
-  for (const d of JSON.parse(readFileSync(f, 'utf8'))) {
-    const m = /^(\d\.\d\d) still a priority: (.*)$/.exec(d.message);
-    if (!m) continue;
-    if (!/^\s*test\(/.test(lines[d.range.start.line])) throw new Error('not on a test line: line ' + (d.range.start.line + 1) + '  ' + d.message);
-    shown.set(m[2], Number(m[1]));
-  }
-  const stale = JSON.parse(readFileSync(f, 'utf8')).filter((d) => d.message.startsWith('stale'));
-  if (stale.length) throw new Error(f + ': witness shows stale findings: ' + stale.map((d) => d.message).join('; '));
-  if (!shown.size) throw new Error(f + ': witness shows no priorities on ' + spec);
-  console.log(f + ': ' + shown.size + ' priorities shown on ' + spec);
-  return shown;
-});
-const moved = [...work].filter(([s]) => plan.has(s)).map(([s, p]) => ({ step: s, d: p - plan.get(s) }));
-for (const m of moved) console.log((m.d <= -MOVED ? 'cooled ' : m.d >= MOVED ? 'warmed ' : 'steady ') + m.d.toFixed(2) + '  ' + m.step);
-const cooled = moved.filter((m) => m.d <= -MOVED), warmed = moved.filter((m) => m.d >= MOVED);
-console.log('Next: ' + [...work].sort((a, b) => b[1] - a[1])[0][0]);
-if (!cooled.length || warmed.length) {
-  console.error('The priorities did not move forward: ' + cooled.length + ' cooled, ' + warmed.length + ' warmed');
-  process.exit(1);
-}
-`).
 		WithExec([]string{"bash", "/delivery.sh"})
+}
+
+// Pkl, the version the jev feature installs, on the container's PATH.
+func withPkl(c *dagger.Container) *dagger.Container {
+	return c.WithExec([]string{"sh", "-c", `curl -fsSL "https://github.com/apple/pkl/releases/download/0.32.1/pkl-linux-$(dpkg --print-architecture | sed s/arm64/aarch64/)" -o /usr/local/bin/pkl && chmod +x /usr/local/bin/pkl`})
 }
 
 // Install installs a dev container feature into a dev container, as the dev

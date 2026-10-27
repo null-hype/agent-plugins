@@ -112,9 +112,12 @@ async function completed(session: SessionClient, url: string, annotations: { typ
 
 /** Jules's repair of a task's work, given how it failed: a repoless session
  * asked the task and the failure, its own plan approved, waited on. The same
- * failure is the same session: running again waits on it instead of asking again. */
+ * world failing is the same session: running again waits on it instead of
+ * asking again. The world is the failure up to its install log, whose temporary
+ * paths change from run to run. */
 async function repair(client: ReturnType<typeof jules.with>, task: string, failed: string, annotations: { type: string; description?: string }[]) {
-  const title = `${task} · repair ${createHash('sha256').update(failed).digest('hex').slice(0, 12)}`;
+  const world = failed.split('\nIts install log')[0];
+  const title = `${task} · repair ${createHash('sha256').update(world).digest('hex').slice(0, 12)}`;
   let id: string | undefined;
   let seen = 0;
   for await (const s of client.sessions()) {
