@@ -11,6 +11,8 @@ export default defineConfig({
   base: '/',
   integrations: [
     tutorialkit({
+      // Keep lesson URLs; the root is the professional overview.
+      defaultRoutes: 'tutorial-only',
       components: {
         HeadTags: './src/components/HeadTags.astro',
         TopBar: './src/components/TopBar.astro',
