@@ -1,15 +1,22 @@
 /// What witness showed of a delivery run (facts.mjs, `prop:observed`), judged
-/// against what Delivery.pkl registered before it: the plan Jules carried out
-/// is the registered plan, Jev answered on the registered model, every answer
-/// is fresh and on its test's line, and the work moved each step as
-/// registered. It decides; the check only reports `facts` and fails unless
-/// `pass`.
+/// against what the planner predicted in Pass before it (Predicted.pkl,
+/// `prop:registered`) and against Delivery.pkl.
+///
+/// `installed` is the world's: every answer witness showed is fresh and on
+/// its test's line. `facts` adds the registered experiment's: the predictions
+/// were last changed before the plan run began, both runs show exactly the
+/// predicted steps, Jev answered on the registered model, and the work moved
+/// each step as predicted. Whether Jules did each step is not among them:
+/// witness shows Jev's answers, not Jules's activity. It decides; the check
+/// only reports and fails unless `installedPass`, or `pass`.
 module Reconcile
 
 import "pkl:json"
 import "Delivery.pkl"
+import "Predicted.pkl"
 
 class Run {
+  began: String
   model: String
   shown: Mapping<String, Number>
   offLine: Listing<String>
@@ -21,18 +28,22 @@ hidden observed: Dynamic = new json.Parser {}.parse(read(read("prop:observed")).
 hidden plan: Run = toRun(observed.plan)
 hidden work: Run = toRun(observed.work)
 local function toRun(d: Dynamic): Run = new {
+  began = d.began
   model = d.model
   shown = d.shown.toMap().toMapping()
   offLine = d.offLine.toList().toListing()
   stale = d.stale.toList().toListing()
 }
-local registered: Set<String> = Delivery.plan.toList().map((s) -> s.title).toSet()
+
+/// The predictions, as registered; a test amends it with its own.
+hidden predicted: Predicted = Predicted
+local steps: Set<String> = predicted.plan.toList().map((s) -> s.title).toSet()
 
 local function shows(r: Run, step: String): Boolean = r.shown.containsKey(step)
 
-/// How far the work moved each registered step, work minus plan.
+/// How far the work moved each predicted step, work minus plan.
 movements: Mapping<String, Number> = new {
-  for (s in Delivery.plan) {
+  for (s in predicted.plan) {
     when (shows(plan, s.title) && shows(work, s.title)) {
       [s.title] = work.shown[s.title] - plan.shown[s.title]
     }
@@ -44,19 +55,28 @@ local function moved(step: Delivery.Step): Boolean =
     if (step.after == "cools") movements[step.title] <= -Delivery.moved
     else movements[step.title].abs < Delivery.moved)
 
-facts: Mapping<String, Boolean> = new {
-  ["Jules carried out the registered plan, step for step"] =
-    plan.shown.keys == registered && work.shown.keys == registered
-  ["Jev answered on the registered model, \(Delivery.model)"] =
-    plan.model == Delivery.model && work.model == Delivery.model
+/// What this verdict judged against: the Pass item, and when it was last changed.
+registration: String = "\(predicted.item), last changed \(predicted.written)"
+
+installed: Mapping<String, Boolean> = new {
   ["every answer is on its test's line"] = plan.offLine.isEmpty && work.offLine.isEmpty
   ["no answer is stale"] = plan.stale.isEmpty && work.stale.isEmpty
-  for (s in Delivery.plan) {
+}
+
+facts: Mapping<String, Boolean> = (installed) {
+  // ISO times in UTC to the millisecond compare as strings.
+  ["the predictions were last changed before the plan run began"] = predicted.written < plan.began
+  ["both runs show exactly the predicted steps"] = plan.shown.keys == steps && work.shown.keys == steps
+  ["Jev answered on the registered model, \(Delivery.model)"] =
+    plan.model == Delivery.model && work.model == Delivery.model
+  for (s in predicted.plan) {
     ["the work \(if (s.after == "cools") "cooled" else "left steady") \(s.title)"] = moved(s)
   }
 }
 
 /// What is still most a priority after the work.
 next: String? = work.shown.toMap().entries.sortWith((a, b) -> a.value > b.value).firstOrNull?.key
+
+installedPass: Boolean = installed.toMap().values.every((v) -> v)
 
 pass: Boolean = facts.toMap().values.every((v) -> v)

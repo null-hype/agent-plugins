@@ -1,12 +1,12 @@
-/// The delivery experiment, registered before any Jules or Jev call.
+/// The delivery experiment: what is run, and how it is measured.
 ///
-/// The single source of what the check runs and what it expects, as
-/// typesafe-experiment's TypesafeExperiment.pkl is for its cases: the
-/// Playwright config evaluates it before any test, so feature.spec.ts asks
-/// Jules this `task` and the priority reporter asks Jev this `question`; the
-/// Dagger check evaluates it before any agent call and reads its repairs from
-/// it; Reconcile.pkl judges what witness showed against `plan`. Changing what
-/// is asked, or what it should do, is a change here, made before the run.
+/// What the run asks, as typesafe-experiment's TypesafeExperiment.pkl is for
+/// its cases: the Playwright config evaluates it before any test, so
+/// feature.spec.ts asks Jules this `task` and the priority reporter asks Jev
+/// this `question`. What the work should do to each step of Jules's plan is
+/// not here: the planner registers it in Pass before the run, where the judge
+/// can read it and not change it (Predicted.pkl). Reconcile.pkl judges what
+/// witness showed against both.
 module Delivery
 
 /// The goal, word for word as goal.md says it.
@@ -31,12 +31,6 @@ noise: Number(isBetween(0, 1)) = 0.07
 /// as moved: twice the noise, so one noisy answer at each end cannot move it.
 moved: Number = 2 * noise
 
-/// How many times the world's failure goes back to Jules before the check fails.
-repairs: Int(isBetween(0, 5)) = 3
-
-/// How much of the install log goes back to Jules with the feature.
-logLines: Int(isPositive) = 40
-
 typealias Movement = "cools"|"steady"
 
 class Step {
@@ -45,14 +39,4 @@ class Step {
   /// What the work should do to its priority: cool it by at least `moved`,
   /// or leave it within `moved`. Nothing the work does should warm a step.
   after: Movement
-}
-
-/// Jules's plan for `task`, as approved, and what the work should do to each
-/// step. A repoless Jules writes files and cannot submit or run pre-commit,
-/// so its work should cool the writing steps and leave the others.
-plan: Listing<Step>(!isEmpty, isDistinctBy((s) -> s.title)) = new {
-  new { title = "Create the dev container feature definition"; after = "cools" }
-  new { title = "Create the installation script"; after = "cools" }
-  new { title = "Complete pre-commit steps"; after = "steady" }
-  new { title = "Submit the change"; after = "steady" }
 }
