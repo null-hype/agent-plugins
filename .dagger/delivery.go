@@ -108,14 +108,24 @@ func (m *AgentPlugins) RegisteredDelivery(
 	// REGISTEREDDELIVERY_LABEL=synthetic.
 	// +default="observed"
 	label string,
+	// The shared restic repository the worlds are kept in (the references
+	// behind pass://infra/restic); without them, a cache volume local to the engine.
+	// +optional
+	resticRepository *dagger.Secret,
+	// +optional
+	resticPassword *dagger.Secret,
+	// The key of the service account for a gs: repository.
+	// +optional
+	gcpServiceAccountKey *dagger.Secret,
 	// +default=3
 	repairs int,
 	// +default=40
 	logLines int,
 ) error {
 	// A world other than the one this run makes is judged as it was snapshotted.
+	worlds := worldsRepo{resticRepository, resticPassword, gcpServiceAccountKey}
 	if label != observedLabel {
-		return judged(ctx, withWorlds(base(harness)), label)
+		return judged(ctx, worlds.in(base(harness)), label)
 	}
 	planned := m.planned(harness, plannerToken, judgeToken, run)
 	// The work waits for the planner: the predictions as registered now, for this plan.
@@ -141,7 +151,7 @@ func (m *AgentPlugins) RegisteredDelivery(
 	// The completed world, snapshotted: what witness showed of both runs, the
 	// spec, the predictions as read now (whatever the world's cache), and the
 	// feature. The verdict is then judged from the snapshot, not from here.
-	return judged(ctx, withWorlds(world).
+	return judged(ctx, worlds.in(world).
 		WithEnvVariable("RUN", run).
 		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
 		WithExec([]string{"sh", "-c", `set -e
@@ -157,14 +167,30 @@ bash delivery/world.sh capture $w ` + observedLabel + ` "$RUN"`}), label)
 
 const observedLabel = "observed"
 
-// A restic repository for worlds, in a cache volume so snapshots outlast a
-// check. It is local: its password keeps the repository's integrity, not a secret.
-func withWorlds(c *dagger.Container) *dagger.Container {
-	return c.
-		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq restic"}).
-		WithMountedCache("/worlds", dag.CacheVolume("delivery-worlds")).
-		WithEnvVariable("RESTIC_REPOSITORY", "/worlds").
-		WithEnvVariable("RESTIC_PASSWORD", "delivery-worlds")
+// Where the worlds are kept: the shared restic repository when its secrets are
+// given, otherwise a cache volume local to the engine (which can prune it; its
+// password keeps the repository's integrity, not a secret).
+type worldsRepo struct {
+	repository, password, gcpKey *dagger.Secret
+}
+
+func (w worldsRepo) in(c *dagger.Container) *dagger.Container {
+	c = c.WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq restic ca-certificates"})
+	if w.repository == nil || w.password == nil {
+		return c.
+			WithMountedCache("/worlds", dag.CacheVolume("delivery-worlds")).
+			WithEnvVariable("RESTIC_REPOSITORY", "/worlds").
+			WithEnvVariable("RESTIC_PASSWORD", "delivery-worlds")
+	}
+	c = c.
+		WithSecretVariable("RESTIC_REPOSITORY", w.repository).
+		WithSecretVariable("RESTIC_PASSWORD", w.password)
+	if w.gcpKey != nil {
+		c = c.
+			WithMountedSecret("/run/gcp-service-account.json", w.gcpKey).
+			WithEnvVariable("GOOGLE_APPLICATION_CREDENTIALS", "/run/gcp-service-account.json")
+	}
+	return c
 }
 
 // The world labelled `label`, restored apart and judged by Reconcile.pkl: the
@@ -188,8 +214,14 @@ func (m *AgentPlugins) CaptureWorld(
 	label string,
 	// +optional
 	run string,
+	// +optional
+	resticRepository *dagger.Secret,
+	// +optional
+	resticPassword *dagger.Secret,
+	// +optional
+	gcpServiceAccountKey *dagger.Secret,
 ) (string, error) {
-	out, err := withWorlds(dag.Container().From("debian:bookworm-slim")).
+	out, err := worldsRepo{resticRepository, resticPassword, gcpServiceAccountKey}.in(dag.Container().From("debian:bookworm-slim")).
 		WithExec([]string{"sh", "-c", "apt-get install -y -qq jq"}).
 		WithFile("/world.sh", harness.File("delivery/world.sh")).
 		WithDirectory("/world", world).

@@ -84,11 +84,16 @@ verdict through its snapshot. `bash delivery/world.test.sh` tests capture,
 selection by label, restore and judgement against a disposable repository.
 `observed` runs the delivery and snapshots it; it does not select an earlier
 observed world, so an old one cannot yet be judged again without asking Jules
-anew. The repository is a cache volume, local to the engine, which can prune it:
-a snapshot id is reproducible only while it lasts, and `worlds/` (rebuilt by
-`worlds/mk.mjs` from `worlds/Scenarios.pkl`, which `Reconcile.test.pkl` imports) is the durable copy of
-the fixtures. The repo's own convention is the shared repository behind
-`pass://infra/restic`, passed in as a secret, which is the next step.
+anew. The repository is the shared one behind `pass://infra/restic`, which
+`.env` passes to both functions as secrets (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`,
+`GCP_SERVICE_ACCOUNT_KEY`), so a snapshot id outlasts the engine and can be
+judged again from any machine with the same access. Without them the worlds go
+in a cache volume local to the engine, which can prune it; `world.test.sh` and
+the fixtures never touch the shared repository. `worlds/` (rebuilt by
+`worlds/mk.mjs` from `worlds/Scenarios.pkl`, which `Reconcile.test.pkl` imports,) is the durable copy of
+the fixtures. Worlds are tagged `check=`, `label=`, `run=` and kept under host
+`delivery`, so they are told apart from the session transcripts in the same
+repository.
 
 The verdict keeps three layers apart: the world (does the feature install,
 and is every answer fresh and on its line), the protocol (were the
