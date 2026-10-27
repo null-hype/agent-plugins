@@ -2,12 +2,14 @@
 /// against what the planner predicted in Pass between Jules's plan and its
 /// work (Predicted.pkl, `prop:registered`) and against Delivery.pkl.
 ///
-/// `installed` is the world's: every answer witness showed is fresh and on
-/// its test's line. `facts` adds the registered experiment's: the predictions
-/// were last changed after Jules was asked for the plan and before its plan
-/// was approved, so they bind to the plan as presented and were fixed before
-/// any work; both runs show exactly the predicted steps, Jev answered on the
-/// registered model, and the work moved each step as predicted. Whether Jules did each step is not among them:
+/// Three layers, kept apart. `installed` is the world's: every answer witness
+/// showed is fresh and on its test's line. `protocol` is the registration's:
+/// the predictions were last changed after Jules was asked for the plan and
+/// before its plan was approved, so they bind to the plan as presented and
+/// were fixed before any work; both runs show exactly the predicted steps, and
+/// Jev answered on the registered model. `measured` is Jev's: the work moved
+/// each step as predicted. `facts` is all three. Whether Jules did each step
+/// is not among them:
 /// witness shows Jev's answers, not Jules's activity. It decides; the check
 /// only reports and fails unless `installedPass`, or `pass`.
 module Reconcile
@@ -63,12 +65,16 @@ local function moved(step: Delivery.Step): Boolean =
 /// What this verdict judged against: the Pass item, and when it was last changed.
 registration: String = "\(predicted.item), last changed \(predicted.written)"
 
+/// The world's: every answer witness showed is fresh and on its test's line.
 installed: Mapping<String, Boolean> = new {
   ["every answer is on its test's line"] = plan.offLine.isEmpty && work.offLine.isEmpty
   ["no answer is stale"] = plan.stale.isEmpty && work.stale.isEmpty
 }
 
-facts: Mapping<String, Boolean> = (installed) {
+/// The protocol's: the predictions bind to this plan, as presented, and were
+/// fixed before any work, on the registered model. Without it the run cannot
+/// judge Jev at all.
+protocol: Mapping<String, Boolean> = new {
   // ISO times in UTC to the millisecond compare as strings.
   ["the predictions were last changed after Jules was asked for the plan"] =
     !plan.created.isEmpty && plan.created.toList().every((t) -> t < predicted.written)
@@ -77,14 +83,38 @@ facts: Mapping<String, Boolean> = (installed) {
   ["both runs show exactly the predicted steps"] = plan.shown.keys == steps && work.shown.keys == steps
   ["Jev answered on the registered model, \(Delivery.model)"] =
     plan.model == Delivery.model && work.model == Delivery.model
+}
+
+/// Jev's: the work moved each step as predicted.
+measured: Mapping<String, Boolean> = new {
   for (s in predicted.plan) {
     ["the work \(if (s.after == "cools") "cooled" else "left steady") \(s.title)"] = moved(s)
   }
 }
 
+facts: Mapping<String, Boolean> = (installed) {
+  for (k, v in protocol) { [k] = v }
+  for (k, v in measured) { [k] = v }
+}
+
 /// What is still most a priority after the work.
 next: String? = work.shown.toMap().entries.sortWith((a, b) -> a.value > b.value).firstOrNull?.key
 
-installedPass: Boolean = installed.toMap().values.every((v) -> v)
+local function all(m: Mapping<String, Boolean>): Boolean = m.toMap().values.every((v) -> v)
 
-pass: Boolean = facts.toMap().values.every((v) -> v)
+installedPass: Boolean = all(installed)
+
+protocolPass: Boolean = all(protocol)
+
+measuredPass: Boolean = all(measured)
+
+/// Which layer failed, the first that did: a run whose world or protocol
+/// failed says nothing of Jev, and a Jev that moved otherwise than registered
+/// is a finding about Jev, not about the world.
+verdict: String =
+  if (!installedPass) "the world failed: an answer is stale or off its line"
+  else if (!protocolPass) "the protocol failed: this run cannot judge Jev"
+  else if (!measuredPass) "Jev disagreed with the world: the run held, and the steps did not move as registered"
+  else "Jev moved as registered"
+
+pass: Boolean = installedPass && protocolPass && measuredPass

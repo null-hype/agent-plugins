@@ -130,8 +130,12 @@ func (m *AgentPlugins) RegisteredDelivery(
 node delivery/registered.mjs > /registered.json
 pkl eval -f json -p observed=file:///facts.json -p registered=file:///registered.json delivery/Reconcile.pkl > /verdict.json
 jq -r '"Registered: " + .registration' /verdict.json
-jq -r '.facts | to_entries[] | (if .value then "✓ " else "✗ " end) + .key' /verdict.json
+for layer in "installed the world" "protocol the protocol" "measured Jev"; do
+  echo "${layer#* }:"
+  jq -r --arg k "${layer%% *}" '.[$k] | to_entries[] | "  " + (if .value then "✓ " else "✗ " end) + .key' /verdict.json
+done
 jq -r '.movements | to_entries[] | "  \(.value * 100 | round / 100)  \(.key)"' /verdict.json
+jq -r '"Verdict: " + .verdict' /verdict.json
 jq -r '"Next: " + .next' /verdict.json
 jq -e .pass /verdict.json > /dev/null || { echo "the run does not match what was registered" >&2; exit 1; }`}).
 		Sync(ctx)
