@@ -29,6 +29,7 @@ export default class PriorityReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
+    if (!this.items.has(test.title)) return;
     const item: Item = { test: test.title, status: result.status };
     for (const s of result.steps) {
       if (s.title === "Approve Jules's plan") item.wrote = s.steps.flatMap((f) => wrote(f, result));
