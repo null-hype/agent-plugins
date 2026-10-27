@@ -41,10 +41,13 @@ Two checks, the second composing the first:
   repair into a fresh one; reads both runs through the witness it installed;
   and `Reconcile.pkl`'s `installed` judges that every answer is fresh and on
   its test's line.
-- `dagger check registered-delivery`: the experiment. The same world, then the
-  judge reads the predictions fresh from Pass (`registered.mjs`) and
-  `Reconcile.pkl`'s `facts` add: the predictions were last changed before the
-  plan run began, both runs show exactly the predicted steps, Jev answered on
+- `dagger check registered-delivery`: the experiment. The judge reads the
+  predictions from Pass (`registered.mjs`) before the world, and the world is
+  keyed to them: Jules's sessions are titled with the registration, so a new
+  registration asks Jules anew instead of reusing sessions older than it. After
+  the run the judge reads them again, and `Reconcile.pkl`'s `facts` add: the
+  predictions were last changed before the plan run began and before Jules was
+  first asked, both runs show exactly the predicted steps, Jev answered on
   the registered model, and each step moved as predicted. The verdict names the
   Pass item and when it was last changed (`pkl test Reconcile.test.pkl`).
 

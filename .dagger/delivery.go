@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dagger/agent-plugins/internal/dagger"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -48,7 +49,7 @@ func (m *AgentPlugins) PeopleCanInstallWitness(
 	// +default=40
 	logLines int,
 ) error {
-	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, repairs, logLines)
+	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, "", repairs, logLines)
 	if err != nil {
 		return err
 	}
@@ -65,9 +66,11 @@ jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show
 // PeopleCanInstallWitness's world, judged also against what the planner
 // predicted in Pass before the run (jev-playwright/delivery/Predicted.pkl):
 // what the work should do to each step of Jules's approved plan. The judge
-// reads the predictions after the run, fresh, from the planner's journal,
-// which it can view and not change, and Reconcile.pkl's `facts` judge: the
-// world's facts, the predictions last changed before the plan run began, both
+// reads them from the planner's journal, which it can view and not change,
+// before the world, which is keyed to them, Jules's sessions with it; and
+// again after it, and Reconcile.pkl's `facts` judge: the world's facts, the
+// predictions last changed before the plan run began and before Jules was
+// first asked in any session either run used, both
 // runs show exactly the predicted steps, Jev answered on Delivery.pkl's model,
 // and the work moved each step as predicted, by Delivery.pkl's `moved`.
 //
@@ -76,7 +79,10 @@ jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show
 //	node delivery/register.mjs <predictions.json>
 //	pass-cli run --env-file .env -- dagger check registered-delivery
 //
+// Never cached as a call, so the predictions are read each time it is checked.
+//
 // +check
+// +cache="never"
 func (m *AgentPlugins) RegisteredDelivery(
 	ctx context.Context,
 	// +defaultPath="/jev-playwright"
@@ -91,12 +97,28 @@ func (m *AgentPlugins) RegisteredDelivery(
 	// +default=40
 	logLines int,
 ) error {
-	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, repairs, logLines)
+	// The predictions as registered now, before the world: a new registration
+	// is a new world, Jules's sessions keyed to it, so no session the run uses
+	// is older than the predictions. The same registration reuses the world.
+	out, err := withLogins(base(harness), plannerToken, judgeToken).
+		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithExec([]string{"sh", "-c", "set -eu; . /logins.sh; node delivery/registered.mjs"}).
+		Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("the planner registered no valid predictions: %w", err)
+	}
+	var registered struct {
+		Written string `json:"written"`
+	}
+	if err := json.Unmarshal([]byte(out), &registered); err != nil {
+		return err
+	}
+	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, "registered "+registered.Written, repairs, logLines)
 	if err != nil {
 		return err
 	}
 	_, err = world.
-		// The predictions are read now, whatever the world's cache.
+		// The predictions are read again after the run, whatever the world's cache.
 		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
 		WithExec([]string{"sh", "-c", observe + `
 node delivery/registered.mjs > /registered.json
@@ -118,8 +140,8 @@ node delivery/facts.mjs delivery/feature.spec.ts /facts.json plan=/plan.json,/ru
 
 // The delivery, its feature installed into a clean dev container, repaired
 // up to `repairs` times, and the witness it installed on the delivery's PATH.
-func (m *AgentPlugins) installedWitness(ctx context.Context, harness *dagger.Directory, plannerToken, judgeToken *dagger.Secret, repairs, logLines int) (*dagger.Container, error) {
-	delivered := m.Delivery(harness, plannerToken, judgeToken)
+func (m *AgentPlugins) installedWitness(ctx context.Context, harness *dagger.Directory, plannerToken, judgeToken *dagger.Secret, sessions string, repairs, logLines int) (*dagger.Container, error) {
+	delivered := m.Delivery(harness, plannerToken, judgeToken, sessions)
 	for repair := 0; ; repair++ {
 		feature := delivered.Directory("/feature")
 		installed := devcontainer(feature).
@@ -191,31 +213,18 @@ func (m *AgentPlugins) Delivery(
 	plannerToken *dagger.Secret,
 	// +optional
 	judgeToken *dagger.Secret,
+	// Keys Jules's sessions: under the same key, or none, running again
+	// reuses them; under another, Jules is asked anew.
+	// +optional
+	sessions string,
 ) *dagger.Container {
-	c := withPkl(dag.Container().From("node:22-bookworm")).
-		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq && curl -fsSL https://proton.me/download/pass-cli/install.sh | bash"}).
-		WithEnvVariable("PATH", "/root/.local/bin:$PATH", dagger.ContainerWithEnvVariableOpts{Expand: true}).
-		WithWorkdir("/workspace/jev-playwright").
-		WithFile("package.json", harness.File("package.json")).
-		WithFile("package-lock.json", harness.File("package-lock.json")).
-		WithExec([]string{"npm", "ci", "--no-audit", "--no-fund"}).
-		WithDirectory(".", harness).
-		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
-		WithEnvVariable("PASS_SESSION_PLANNER", "/pass/planner").
-		WithEnvVariable("PASS_SESSION_JUDGE", "/pass/judge")
-	if plannerToken != nil {
-		c = c.WithSecretVariable("PLANNER_TOKEN", plannerToken)
-	}
-	if judgeToken != nil {
-		c = c.WithSecretVariable("JUDGE_TOKEN", judgeToken)
+	c := withLogins(base(harness), plannerToken, judgeToken)
+	if sessions != "" {
+		c = c.WithEnvVariable("DELIVERY_SESSIONS", sessions)
 	}
 	return c.
 		WithNewFile("/delivery.sh", `set -eu
-for role in planner judge; do
-  token="$(printenv "$(echo "$role" | tr a-z A-Z)_TOKEN" || true)"
-  [ -n "$token" ] || { echo "the $role's Pass token is missing (--$role-token)" >&2; exit 1; }
-  PROTON_PASS_PERSONAL_ACCESS_TOKEN="$token" PROTON_PASS_SESSION_DIR="/pass/$role" pass-cli login >&2
-done
+. /logins.sh
 npx playwright test -c delivery --project feature-plan
 mkdir -p /runs && cp -r delivery/.witness/run /runs/plan
 npx playwright test -c delivery --project feature
@@ -234,6 +243,38 @@ manifest="$(find delivery/test-results/feature-* -name devcontainer-feature.json
 cp -r "$(dirname "$manifest")" /feature
 `).
 		WithExec([]string{"bash", "/delivery.sh"})
+}
+
+// The harness, its dependencies installed, with pass-cli and Pkl.
+func base(harness *dagger.Directory) *dagger.Container {
+	return withPkl(dag.Container().From("node:22-bookworm")).
+		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq && curl -fsSL https://proton.me/download/pass-cli/install.sh | bash"}).
+		WithEnvVariable("PATH", "/root/.local/bin:$PATH", dagger.ContainerWithEnvVariableOpts{Expand: true}).
+		WithWorkdir("/workspace/jev-playwright").
+		WithFile("package.json", harness.File("package.json")).
+		WithFile("package-lock.json", harness.File("package-lock.json")).
+		WithExec([]string{"npm", "ci", "--no-audit", "--no-fund"}).
+		WithDirectory(".", harness)
+}
+
+// The agents' Pass tokens, and /logins.sh, which logs each in to its own session.
+func withLogins(c *dagger.Container, plannerToken, judgeToken *dagger.Secret) *dagger.Container {
+	c = c.
+		WithEnvVariable("PROTON_PASS_KEY_PROVIDER", "fs").
+		WithEnvVariable("PASS_SESSION_PLANNER", "/pass/planner").
+		WithEnvVariable("PASS_SESSION_JUDGE", "/pass/judge")
+	if plannerToken != nil {
+		c = c.WithSecretVariable("PLANNER_TOKEN", plannerToken)
+	}
+	if judgeToken != nil {
+		c = c.WithSecretVariable("JUDGE_TOKEN", judgeToken)
+	}
+	return c.WithNewFile("/logins.sh", `for role in planner judge; do
+  token="$(printenv "$(echo "$role" | tr a-z A-Z)_TOKEN" || true)"
+  [ -n "$token" ] || { echo "the $role's Pass token is missing (--$role-token)" >&2; exit 1; }
+  PROTON_PASS_PERSONAL_ACCESS_TOKEN="$token" PROTON_PASS_SESSION_DIR="/pass/$role" pass-cli login >&2
+done
+`)
 }
 
 // Pkl, the version the jev feature installs, on the container's PATH.
