@@ -27,5 +27,10 @@
   {
     "tutorialURL": "http://127.0.0.1:4321/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/",
     "tutorialTitle": "Agent decisions, checked against evidence"
+  },
+  {
+    "storybook": "portfolio-landing--front-door",
+    "interactionPanel": "Pass",
+    "navigation": "same-frame anchors and keyboard skip link"
   }
 ]
