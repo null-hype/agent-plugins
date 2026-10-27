@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 //   judge  the judge, under its own key, has Jev judge that plan
 //   build  the planner approves the plan and keeps the patch Jules makes
 //   audit  the owner, afterwards, in their own session: every agent's reasons,
-//          and whether each is still urgent (see audit.spec.ts)
+//          and whether each is still a priority (see audit.spec.ts)
 //
 //   npx playwright test -c delivery --project plan --project judge --project build
 //

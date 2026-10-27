@@ -1,14 +1,14 @@
 // The finish report: a delivery run's Playwright JSON report as one HTML page.
 // It reads only what Playwright records: projects and their dependencies, each
 // test's steps (a hunk each), attachments (the files Jules wrote) and
-// annotations (Jules sessions, Jev's answers, urgency). Beside it, the history the
+// annotations (Jules sessions, Jev's answers, priority). Beside it, the history the
 // priority reporter keeps: each run's work ranked by Jev, so the page shows
 // what is next and how each item moved as work landed.
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const split = (d) => { const m = /^(\S+)\s+(.*)$/s.exec(d ?? ''); return m ? [m[1], m[2]] : ['', d ?? '']; };
 const mins = (ms) => (ms >= 60_000 ? `${Math.round(ms / 60_000)} min` : `${Math.round(ms / 1000)} s`);
-const URGENT = 0.5;
+const PRIORITY = 0.5;
 // A move smaller than this is noise: one capture's runs spread up to ~0.06
 // (null-hype/typesafe-experiment), so only twice that counts as movement.
 const MOVED = 0.12;
@@ -122,7 +122,7 @@ export function render(report, history = []) {
   const all = nodes(report);
   const audit = all.find((n) => n.name === 'audit');
   const work = all.filter((n) => n.name !== 'audit');
-  const urgency = (audit?.test.annotations ?? []).filter((a) => a.type === 'is-urgent')
+  const reasons = (audit?.test.annotations ?? []).filter((a) => a.type === 'is-priority')
     .map((a) => { const [p, rest] = split(a.description); const [who, why] = split(rest); return { p: Number(p), who, why }; })
     .sort((a, b) => b.p - a.p);
   const triage = (audit?.test.annotations ?? []).filter((a) => a.type === 'triage').map((a) => split(a.description));
@@ -175,7 +175,7 @@ ${work.map((n) => { const [cls, label] = status(n); return `<section class="node
   ${hunks(n)}
 </section>`; }).join('\n')}
 
-${urgency.length ? `<h2>Urgency</h2><table>${urgency.map((u) => `<tr class="${u.p >= URGENT ? 'hot' : ''}"><td class="p">${u.p.toFixed(2)}</td><td><b>${esc(u.who)}</b> ${esc(u.why)}</td></tr>`).join('')}</table>` : ''}
+${reasons.length ? `<h2>Still a priority</h2><table>${reasons.map((u) => `<tr class="${u.p >= PRIORITY ? 'hot' : ''}"><td class="p">${u.p.toFixed(2)}</td><td><b>${esc(u.who)}</b> ${esc(u.why)}</td></tr>`).join('')}</table>` : ''}
 </main></body></html>`;
 }
 
