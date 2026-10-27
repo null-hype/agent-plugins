@@ -3,30 +3,26 @@ package main
 import (
 	"context"
 	"dagger/agent-plugins/internal/dagger"
-	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // PeopleCanInstallWitness: people can install witness and see each answer on
-// the line of the test that asked it (jev-playwright/delivery/goal.md).
+// the line of the test that asked it (jev-playwright/delivery/goal.md). The
+// world's postcondition, nothing predicted: RegisteredDelivery adds that.
 //
-// What the check runs and expects is registered before it, in
-// jev-playwright/delivery/Delivery.pkl, and evaluated before any agent call:
-// Jules's task, Jev's question and model, the measured noise, the approved
-// plan and what the work should do to each of its steps, and how many repairs
-// the world allows.
-//
-// The delivery loop runs twice, as Playwright: once to Jules's approved plan
-// (feature-plan), once to the files Jules wrote (feature). Each run, the
-// priority reporter asks Jev the registered question of each step and leaves
-// each answer as a witness finding on the line of its test. The check installs
-// the dev container feature Jules wrote into a clean dev container; when that
-// fails, Jules is given the feature as installed and its install log, repairs
-// it, and the check installs the repair into a fresh dev container, up to the
-// registered repairs. It then opens the spec, as an editor would, in the
-// witness that feature installed, once on each run, and Reconcile.pkl judges
-// what witness showed against the registration.
+// The delivery loop runs twice, as Playwright, asking what
+// jev-playwright/delivery/Delivery.pkl says to ask: once to Jules's approved
+// plan (feature-plan), once to the files Jules wrote (feature). Each run, the
+// priority reporter asks Jev of each step and leaves each answer as a witness
+// finding on the line of its test. The check installs the dev container
+// feature Jules wrote into a clean dev container; when that fails, Jules is
+// given the feature as installed and its install log, repairs it, and the
+// check installs the repair into a fresh dev container, up to `repairs`. It
+// then opens the spec, as an editor would, in the witness that feature
+// installed, once on each run, and Reconcile.pkl's `installed` judges what it
+// showed: every answer fresh and on its test's line.
 //
 // Each agent logs in to Pass with its own token. The repo's .env gives the
 // tokens as defaults, env:// variables that pass-cli resolves from pass:// refs:
@@ -45,66 +41,115 @@ func (m *AgentPlugins) PeopleCanInstallWitness(
 	// The judge's Pass token: it reads the Jev key.
 	// +optional
 	judgeToken *dagger.Secret,
+	// How many times the world's failure goes back to Jules before the check fails.
+	// +default=3
+	repairs int,
+	// How much of the install log goes back to Jules with the feature.
+	// +default=40
+	logLines int,
 ) error {
-	out, err := withPkl(dag.Container().From("node:22-bookworm")).
-		WithDirectory("/h", harness).
-		WithExec([]string{"pkl", "eval", "-f", "json", "/h/delivery/Delivery.pkl"}).
-		Stdout(ctx)
+	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, repairs, logLines)
 	if err != nil {
-		return fmt.Errorf("Delivery.pkl registers no valid delivery: %w", err)
-	}
-	var registered struct {
-		Repairs  int `json:"repairs"`
-		LogLines int `json:"logLines"`
-	}
-	if err := json.Unmarshal([]byte(out), &registered); err != nil {
 		return err
 	}
+	_, err = world.
+		WithExec([]string{"sh", "-c", observe + `
+pkl eval -f json -x installed -p observed=file:///facts.json delivery/Reconcile.pkl > /installed.json
+jq -r 'to_entries[] | (if .value then "✓ " else "✗ " end) + .key' /installed.json
+jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show every answer fresh on its test's line" >&2; exit 1; }`}).
+		Sync(ctx)
+	return err
+}
+
+// RegisteredDelivery: the delivery experiment came out as registered. It is
+// PeopleCanInstallWitness's world, judged also against what the planner
+// predicted in Pass before the run (jev-playwright/delivery/Predicted.pkl):
+// what the work should do to each step of Jules's approved plan. The judge
+// reads the predictions after the run, fresh, from the planner's journal,
+// which it can view and not change, and Reconcile.pkl's `facts` judge: the
+// world's facts, the predictions last changed before the plan run began, both
+// runs show exactly the predicted steps, Jev answered on Delivery.pkl's model,
+// and the work moved each step as predicted, by Delivery.pkl's `moved`.
+//
+// The planner registers before the run (jev-playwright/delivery/README.md):
+//
+//	node delivery/register.mjs <predictions.json>
+//	pass-cli run --env-file .env -- dagger check registered-delivery
+//
+// +check
+func (m *AgentPlugins) RegisteredDelivery(
+	ctx context.Context,
+	// +defaultPath="/jev-playwright"
+	// +ignore=["node_modules", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
+	harness *dagger.Directory,
+	// +optional
+	plannerToken *dagger.Secret,
+	// +optional
+	judgeToken *dagger.Secret,
+	// +default=3
+	repairs int,
+	// +default=40
+	logLines int,
+) error {
+	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, repairs, logLines)
+	if err != nil {
+		return err
+	}
+	_, err = world.
+		// The predictions are read now, whatever the world's cache.
+		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
+		WithExec([]string{"sh", "-c", observe + `
+node delivery/registered.mjs > /registered.json
+pkl eval -f json -p observed=file:///facts.json -p registered=file:///registered.json delivery/Reconcile.pkl > /verdict.json
+jq -r '"Registered: " + .registration' /verdict.json
+jq -r '.facts | to_entries[] | (if .value then "✓ " else "✗ " end) + .key' /verdict.json
+jq -r '.movements | to_entries[] | "  \(.value * 100 | round / 100)  \(.key)"' /verdict.json
+jq -r '"Next: " + .next' /verdict.json
+jq -e .pass /verdict.json > /dev/null || { echo "the run does not match what was registered" >&2; exit 1; }`}).
+		Sync(ctx)
+	return err
+}
+
+// What witness showed of both runs, as data for Reconcile.pkl: facts.json.
+const observe = `set -e
+WITNESS_RUN_DIR=/runs/plan node delivery/diagnostics.mjs delivery/feature.spec.ts > /plan.json
+WITNESS_RUN_DIR=/runs/work node delivery/diagnostics.mjs delivery/feature.spec.ts > /work.json
+node delivery/facts.mjs delivery/feature.spec.ts /facts.json plan=/plan.json,/runs/plan work=/work.json,/runs/work`
+
+// The delivery, its feature installed into a clean dev container, repaired
+// up to `repairs` times, and the witness it installed on the delivery's PATH.
+func (m *AgentPlugins) installedWitness(ctx context.Context, harness *dagger.Directory, plannerToken, judgeToken *dagger.Secret, repairs, logLines int) (*dagger.Container, error) {
 	delivered := m.Delivery(harness, plannerToken, judgeToken)
-	var installed *dagger.Container
-	for repairs := 0; ; repairs++ {
+	for repair := 0; ; repair++ {
 		feature := delivered.Directory("/feature")
-		installed = devcontainer(feature).
-			WithEnvVariable("REPAIRS", fmt.Sprint(repairs)).
+		installed := devcontainer(feature).
+			WithEnvVariable("REPAIRS", fmt.Sprint(repair)).
 			WithExec([]string{"bash", "-c", "exec 2>&1; echo \"installing the feature $(cat * | sha256sum | cut -c1-12), repair $REPAIRS\"; " + installFeature + ` && { w="$(command -v witness)" || { echo "the feature installed no witness on PATH"; exit 1; }; cp "$w" /witness; }`},
 				dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
 		code, err := installed.ExitCode(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if code == 0 {
-			break
+			return delivered.WithFile("/usr/local/bin/witness", installed.File("/witness")), nil
 		}
-		out, err = installed.Stdout(ctx)
+		out, err := installed.Stdout(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if repairs == registered.Repairs {
-			return fmt.Errorf("the feature Jules wrote still fails to install after %d repairs:\n%s", repairs, tail(out, registered.LogLines))
+		if repair == repairs {
+			return nil, fmt.Errorf("the feature Jules wrote still fails to install after %d repairs:\n%s", repair, tail(out, logLines))
 		}
 		// The evidence is the world as it was: the feature as installed, and
 		// its install log. Jules's next turn does not have its files.
-		failed, err := evidence(ctx, feature, tail(out, registered.LogLines))
+		failed, err := evidence(ctx, feature, tail(out, logLines))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		delivered = delivered.
 			WithNewFile("/failed.txt", failed).
 			WithExec([]string{"bash", "/repair.sh"})
 	}
-	_, err = delivered.
-		WithFile("/usr/local/bin/witness", installed.File("/witness")).
-		WithExec([]string{"sh", "-c", `set -e
-WITNESS_RUN_DIR=/runs/plan node delivery/diagnostics.mjs delivery/feature.spec.ts > /plan.json
-WITNESS_RUN_DIR=/runs/work node delivery/diagnostics.mjs delivery/feature.spec.ts > /work.json
-node delivery/facts.mjs delivery/feature.spec.ts /facts.json plan=/plan.json,/runs/plan work=/work.json,/runs/work
-pkl eval -f json -p observed=file:///facts.json delivery/Reconcile.pkl > /verdict.json
-jq -r '.facts | to_entries[] | (if .value then "✓ " else "✗ " end) + .key' /verdict.json
-jq -r '.movements | to_entries[] | "  \(.value * 100 | round / 100)  \(.key)"' /verdict.json
-jq -r '"Next: " + .next' /verdict.json
-jq -e .pass /verdict.json > /dev/null || { echo "the run does not match what Delivery.pkl registered" >&2; exit 1; }`}).
-		Sync(ctx)
-	return err
 }
 
 // The feature's files, then its install log: the log last, ending on how it failed.

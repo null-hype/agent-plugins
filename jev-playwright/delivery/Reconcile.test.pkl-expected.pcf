@@ -1,10 +1,11 @@
 examples {
   ["the first passing run, fact by fact"] {
     new {
-      ["Jules carried out the registered plan, step for step"] = true
-      ["Jev answered on the registered model, jev-1.14.0"] = true
       ["every answer is on its test's line"] = true
       ["no answer is stale"] = true
+      ["the predictions were last changed before the plan run began"] = true
+      ["both runs show exactly the predicted steps"] = true
+      ["Jev answered on the registered model, jev-1.14.0"] = true
       ["the work cooled Create the dev container feature definition"] = true
       ["the work cooled Create the installation script"] = true
       ["the work left steady Complete pre-commit steps"] = true

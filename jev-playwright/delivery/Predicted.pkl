@@ -1,0 +1,30 @@
+/// What the planner registered before the run, in Pass: the `plan` field of
+/// its journal, jev-planner/journal, as JSON, a step for each step of Jules's
+/// approved plan and what the work should do to it. The judge can read that
+/// journal and not change it; registered.mjs reads it as the judge, with when
+/// Pass last saw it changed, and this types it. register.mjs writes it.
+module Predicted
+
+import "pkl:json"
+import "Delivery.pkl"
+
+/// registered.mjs's output; a test amends it with its own.
+hidden registered: Dynamic = new json.Parser {}.parse(read(read("prop:registered")).text)
+
+/// Where in Pass it is registered.
+item: String(!isEmpty) = registered.item
+
+/// The judge's role on it, as Pass gives it: one that cannot change it.
+role: "Viewer" = registered.role
+
+/// When Pass last saw it changed, UTC.
+written: String(matches(Regex(#"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z"#))) = registered.written
+
+/// Jules's plan for `Delivery.task`, as approved, and what the work should do
+/// to each step. A repoless Jules writes files and cannot submit or run
+/// pre-commit, so its work should cool the writing steps and leave the others.
+plan: Listing<Delivery.Step>(!isEmpty, isDistinctBy((s) -> s.title)) = new {
+  for (s in registered.plan) {
+    new { title = s.title; after = s.after }
+  }
+}
