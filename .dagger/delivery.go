@@ -137,7 +137,7 @@ done
 jq -r '.movements | to_entries[] | "  \(.value * 100 | round / 100)  \(.key)"' /verdict.json
 jq -r '"Verdict: " + .verdict' /verdict.json
 jq -r '"Next: " + .next' /verdict.json
-jq -e .pass /verdict.json > /dev/null || { echo "the run does not match what was registered" >&2; exit 1; }`}).
+jq -e .pass /verdict.json > /dev/null || { jq -r .verdict /verdict.json >&2; exit 1; }`}).
 		Sync(ctx)
 	return err
 }
