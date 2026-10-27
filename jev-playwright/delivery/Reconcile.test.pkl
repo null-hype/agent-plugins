@@ -1,0 +1,49 @@
+/// Reconcile.pkl against what witness showed on the check's first passing run
+/// (feature e4363c2a29e3, after one repair), and against that run with one
+/// steady step warmed. No I/O.
+amends "pkl:test"
+
+import "Reconcile.pkl"
+
+local function shown(defn: Float, script: Float, precommit: Float, submit: Float) = new Dynamic {
+  model = "jev-1.14.0"
+  shown {
+    ["Create the dev container feature definition"] = defn
+    ["Create the installation script"] = script
+    ["Complete pre-commit steps"] = precommit
+    ["Submit the change"] = submit
+  }
+  offLine {}
+  stale {}
+}
+
+local passed = (Reconcile) {
+  observed = new Dynamic {
+    plan = shown(0.59, 0.58, 0.52, 0.52)
+    work = shown(0.33, 0.27, 0.49, 0.48)
+  }
+}
+
+local warmed = (Reconcile) {
+  observed = new Dynamic {
+    plan = shown(0.59, 0.58, 0.52, 0.52)
+    work = shown(0.33, 0.27, 0.49, 0.70)
+  }
+}
+
+local stale = (Reconcile) {
+  observed = new Dynamic {
+    plan = shown(0.59, 0.58, 0.52, 0.52)
+    work = (shown(0.33, 0.27, 0.49, 0.48)) { stale { "stale finding (verified against other source): 0.48 still a priority: Submit the change" } }
+  }
+}
+
+facts {
+  ["the first passing run passes"] { passed.pass }
+  ["a steady step that warms fails"] { !warmed.pass; !warmed.facts["the work left steady Submit the change"] }
+  ["a stale answer fails"] { !stale.pass; !stale.facts["no answer is stale"] }
+}
+
+examples {
+  ["the first passing run, fact by fact"] { passed.facts; passed.next }
+}

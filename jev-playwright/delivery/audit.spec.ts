@@ -20,6 +20,7 @@ const agents = ['jev-root', 'jev-planner', 'jev-judge'];
 type Record = { action: string; action_time: string; payload: { reason?: string; vault_name?: string; item_name?: string } };
 
 test('Is anything this run asked for still a priority?', async ({}, testInfo) => {
+  const { question } = testInfo.config.metadata.delivery;
   const run = process.env.DELIVERY_RUN;
   test.skip(!run, 'set DELIVERY_RUN to the downloaded test-results of a run');
   const read = (f: string) => readFileSync(path.join(run!, f), 'utf8');
@@ -39,7 +40,7 @@ test('Is anything this run asked for still a priority?', async ({}, testInfo) =>
         const reason = r.payload.reason ?? '(no reason)';
         seen.add(reason);
         await test.step(reason, async () => {
-          const p = await noul(jev, { goal, agent, reason, access: r, evidence }, `This is still a priority for the goal: the state does not show it done. ${reason}`);
+          const p = await noul(jev, { goal, agent, reason, access: r, evidence }, `${question} ${reason}`);
           testInfo.annotations.push({ type: 'is-priority', description: `${p}  ${agent}: ${reason}` });
         });
       }

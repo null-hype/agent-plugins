@@ -1,7 +1,10 @@
 {
   "config": {
     "metadata": {
-      "goal": "People can install jev-lsp and see each answer on the line of the test that asked it."
+      "goal": "People can install jev-lsp and see each answer on the line of the test that asked it.",
+      "delivery": {
+        "moved": 0.14
+      }
     },
     "projects": [
       {
