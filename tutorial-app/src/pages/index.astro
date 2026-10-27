@@ -1,4 +1,5 @@
 ---
+import { PortfolioLanding } from '../components/PortfolioLanding';
 const title = 'Richard Anthony — verification infrastructure for agent-produced software';
 const description = 'Capture the world, run the check, preserve the evidence. Richard Anthony builds verification infrastructure and developer tools. Based in Sydney; available for senior engineering roles and selected consulting.';
 const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
@@ -17,85 +18,17 @@ const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical.href} />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content={new URL('/portfolio-social.png', canonical).href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Richard Anthony / null-hype. Verification infrastructure for agent-produced software. A log of evidence." />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
-    <header>
-      <a class="identity" href="/" aria-label="Tidelands home"><img src="/logo.svg" alt="" width="32" height="32" /> Tidelands <span>/ Null Hype</span></a>
-      <a href="https://github.com/null-hype">GitHub ↗</a>
-    </header>
-    <main>
-      <p class="eyebrow">Richard Anthony · Software engineer · Sydney</p>
-      <h1>Verification infrastructure for agent-produced software.</h1>
-      <p class="intro">A green check should lead to evidence you can inspect.</p>
-      <p>When an agent changes software, the patch is only part of the story. I build tools to preserve what the check actually saw, judge the claim against that exact world, and put the finding back on the source.</p>
-      <div class="actions">
-        <a class="primary" href="https://github.com/null-hype/worlds#start-here-one-exact-world-proof">Inspect the Worlds proof ↗</a>
-        <a href="mailto:public.rant@pm.me">Talk about working together</a>
-      </div>
-
-      <section aria-labelledby="evidence">
-        <h2 id="evidence">Start with the evidence</h2>
-        <article>
-          <h3><a href="https://github.com/null-hype/worlds">Worlds ↗</a></h3>
-          <p>Capture delivery evidence, restore an exact snapshot, judge a registered claim. The smallest runnable example preserves a disagreement even after a newer passing world replaces its label.</p>
-          <p class="note">Synthetic replay, real store and judge. No API keys. Source, commands, limits and CI artifacts live on GitHub.</p>
-        </article>
-        <article>
-          <h3><a href="https://github.com/null-hype/witness">Witness ↗</a></h3>
-          <p>Inspect durable findings on the source in the editor, navigate to the evidence, and detect when the source has changed. A separate presentation boundary, with its own runnable example.</p>
-        </article>
-        <article>
-          <h3><a href="/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one/">Explore an interactive demonstration →</a></h3>
-          <p>Inspect a private-file check and the review that challenges it with forged evidence. The tutorial is one demonstration of the research; its scenarios are not a production security guarantee.</p>
-        </article>
-      </section>
-
-      <section aria-labelledby="work">
-        <h2 id="work">Work with me</h2>
-        <p>My background spans production web applications at Bloomberg and XO Group, test automation and platform engineering. I’m interested in senior software, security and AI infrastructure roles, and selected consulting work around verification and agent workflows.</p>
-        <p><a href="mailto:public.rant@pm.me">public.rant@pm.me</a> · <a href="https://www.linkedin.com/in/richardanthonydev/">LinkedIn ↗</a></p>
-      </section>
-    </main>
-    <footer>
-      <span>A log of evidence.</span>
-      <a href="https://github.com/null-hype/agent-plugins">Research monorepo ↗</a>
-    </footer>
+    <PortfolioLanding />
   </body>
 </html>
 
-<style>
-  :global(*) { box-sizing: border-box; }
-  :global(html) { background: #fafaf8; color: #202725; font-family: system-ui, sans-serif; }
-  :global(body) { margin: 0; }
-  header, main, footer { max-width: 880px; margin: 0 auto; padding: 24px; }
-  header, footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 0.9rem; }
-  header { border-bottom: 1px solid #d9dfdb; }
-  a { color: #185742; text-underline-offset: 4px; }
-  a:hover { color: #0d3024; }
-  a:focus-visible { outline: 3px solid #185742; outline-offset: 5px; }
-  .identity { display: flex; align-items: center; gap: 10px; font-weight: 650; color: inherit; text-decoration: none; }
-  .identity span, .eyebrow, .note, footer { color: #58635e; }
-  main { padding-top: 64px; padding-bottom: 48px; }
-  .eyebrow { font-size: 0.9rem; margin-top: 0; }
-  h1 { max-width: 800px; font-size: clamp(2.2rem, 5.7vw, 3.5rem); line-height: 1.1; letter-spacing: -0.035em; margin: 20px 0 24px; font-weight: 650; }
-  p { max-width: 690px; line-height: 1.65; }
-  .intro { font-size: 1.3rem; margin-bottom: 12px; }
-  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin: 28px 0 52px; }
-  .primary { display: inline-block; border-radius: 5px; padding: 13px 18px; background: #185742; color: #fff; font-weight: 600; text-decoration: none; }
-  .primary:hover { background: #0d3024; color: #fff; }
-  section { margin-top: 42px; }
-  h2 { font-size: 1.25rem; margin-bottom: 24px; }
-  article { padding: 20px 0; border-top: 1px solid #d9dfdb; }
-  h3 { font-size: 1.1rem; margin: 0; }
-  article p { margin-bottom: 0; }
-  .note { font-size: 0.9rem; }
-  footer { border-top: 1px solid #d9dfdb; padding-bottom: 32px; }
-  @media (max-width: 520px) {
-    header, main, footer { padding-left: 20px; padding-right: 20px; }
-    main { padding-top: 40px; }
-    .identity span { display: none; }
-    .actions { align-items: flex-start; flex-direction: column; gap: 20px; }
-    footer { flex-wrap: wrap; }
-  }
+<style is:global>
+  body { margin: 0; background: #f4f0e7; }
 </style>
