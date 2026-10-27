@@ -186,7 +186,9 @@ func evidence(ctx context.Context, feature *dagger.Directory, log string) (strin
 		return "", err
 	}
 	var b strings.Builder
-	b.WriteString("The feature, as installed:\n")
+	// How the world installs it is part of how it failed: this world does
+	// not resolve dependsOn or installsAfter, as the dev container CLI would.
+	b.WriteString("The feature, as installed: alone, into a clean " + cleanImage + ", as root, its options' defaults in the environment, by running its install.sh. Nothing is installed before it: dependsOn and installsAfter are not resolved.\n")
 	for _, name := range names {
 		// The files Jules wrote: a run's directory beside them, as its attachments, is not.
 		if strings.HasSuffix(name, "/") {
@@ -303,14 +305,17 @@ func withPkl(c *dagger.Container) *dagger.Container {
 
 // Install installs a dev container feature into a dev container, as the dev
 // container CLI does: as root, its options' defaults in the environment.
+// Unlike the CLI, it installs no feature the feature depends on.
 func (m *AgentPlugins) Install(feature *dagger.Directory) *dagger.Container {
 	return devcontainer(feature).WithExec([]string{"bash", "-c", installFeature})
 }
 
+const cleanImage = "mcr.microsoft.com/devcontainers/base:bookworm"
+
 // A clean dev container, the feature in it, not yet installed.
 func devcontainer(feature *dagger.Directory) *dagger.Container {
 	return dag.Container().
-		From("mcr.microsoft.com/devcontainers/base:bookworm").
+		From(cleanImage).
 		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq"}).
 		WithDirectory("/tmp/feature", feature).
 		WithWorkdir("/tmp/feature").
