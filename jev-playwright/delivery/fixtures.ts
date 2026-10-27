@@ -62,8 +62,10 @@ type Fixtures = {
   plan: (task: string) => Promise<Plan>;
   /** Approves Jules's plan, as a step. Waiting, it collects the files Jules
    * wrote, each a step in which Jev judges the file against the task and plan;
-   * not waiting, the plan is approved and nothing is yet written. */
-  approve: (task: string, plan: Plan, opts?: { wait?: boolean }) => Promise<{ path: string; content: string }[]>;
+   * not waiting, the plan is approved and nothing is yet written. Given how what
+   * Jules wrote failed in the world, it has Jules repair it, and collects the
+   * repair. */
+  approve: (task: string, plan: Plan, opts?: { wait?: boolean; failed?: string }) => Promise<{ path: string; content: string }[]>;
   /** Jules's plan for a goal: a repoless session that waits for approval of its plan. */
   planFor: (goal: string, prompt: string) => Promise<Plan>;
   /** Jules's work on an approved plan: approves it, waits for the session to
@@ -93,6 +95,59 @@ async function activities(session: SessionClient) {
     token = page.nextPageToken ?? '';
   } while (token);
   return all;
+}
+
+/** The completion of a session's work on its approved plan, waited for. */
+async function completed(session: SessionClient, url: string, annotations: { type: string; description?: string }[]) {
+  for (const until = Date.now() + 30 * 60_000; Date.now() < until; await sleep(15_000)) {
+    const { state } = await fresh(session);
+    if (state === 'failed') throw new Error(`Jules failed: ${url}`);
+    if (state === 'awaitingUserFeedback') throw await blocked(session, url, annotations);
+    const acts = await activities(session);
+    const done = acts.slice(acts.findIndex((a) => a.planApproved)).find((a) => a.sessionCompleted);
+    if (done) return done;
+  }
+  throw new Error(`Jules has not finished its plan yet: ${url}. Run again later.`);
+}
+
+/** Jules's repair of a task's work, given how it failed: a repoless session
+ * asked the task and the failure, its own plan approved, waited on. The same
+ * failure is the same session: running again waits on it instead of asking again. */
+async function repair(client: ReturnType<typeof jules.with>, task: string, failed: string, annotations: { type: string; description?: string }[]) {
+  const title = `${task} · repair ${createHash('sha256').update(failed).digest('hex').slice(0, 12)}`;
+  let id: string | undefined;
+  let seen = 0;
+  for await (const s of client.sessions()) {
+    if (s.title === title && s.state !== 'failed' && !s.archived) { id = s.id; break; }
+    if (++seen >= 200) break;
+  }
+  const prompt = `${task}. What was written for it, installed in a clean dev container, fails:\n\n${failed.trim()}\n\nRepair it, writing each of its files in full.`;
+  if (!id) id = (await client.session({ prompt, title, requireApproval: true })).id;
+  const session = client.session(id);
+  const url = (await session.info()).url;
+  annotations.push({ type: 'jules repair', description: url });
+  for (const until = Date.now() + 8 * 60_000; ; await sleep(5_000)) {
+    if (Date.now() > until) throw new Error(`Jules has no repair plan yet: ${url}. Run again later.`);
+    const acts = await activities(session).catch((e) => { if (String(e?.message).includes('404')) return []; throw e; });
+    const planned = acts.find((a) => a.planGenerated);
+    if (acts.some((a) => a.agentMessaged) && !planned) throw await blocked(session, url, annotations);
+    if (!planned) continue;
+    if (!acts.some((a) => a.planApproved)) await session.approve();
+    return { done: await completed(session, url, annotations), plan: { id, url, steps: planned.planGenerated.plan.steps.map((s: PlanStep) => ({ title: s.title, description: s.description })) } };
+  }
+}
+
+/** The files a turn of Jules wrote, from its completion's changeSet. */
+function turnFiles(completed: any) {
+  const patch: string = completed.artifacts?.find((x: any) => x.changeSet)?.changeSet.gitPatch?.unidiffPatch ?? '';
+  return patch.split(/^diff --git /m).filter(Boolean).flatMap((section) => {
+    const lines = section.split('\n');
+    const to = lines.find((l) => l.startsWith('+++ '))?.slice(4);
+    if (!to || to === '/dev/null') return [];
+    const content = lines.slice(lines.findIndex((l) => l.startsWith('@@')))
+      .filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1)).join('\n');
+    return [{ path: to.replace(/^b\//, ''), content }];
+  });
 }
 
 /** Jules's last word to us, when it stops to ask: the test fails with it. */
@@ -154,34 +209,33 @@ export const test = base.extend<Fixtures>({
   approve: async ({ judge }, use, testInfo) => {
     let client: ReturnType<typeof jules.with> | undefined;
     const verdict = judge(`ask Jev whether Jules's files do what its plan said: ${testInfo.title}`);
-    await use((task, plan, { wait = true } = {}) => base.step("Approve Jules's plan", async () => {
+    await use((task, plan, { wait = true, failed } = {}) => base.step("Approve Jules's plan", async () => {
       client ??= jules.with({ apiKey: secret('planner', JULES_KEY, `have Jules carry out its plan: ${testInfo.title}`) });
       const session = client.session(plan.id);
       // A repoless session completes with its plan; approving sets it working again.
       if (!(await activities(session)).some((a) => a.planApproved)) await session.approve();
       if (!wait) return [];
-      for (const until = Date.now() + 30 * 60_000; Date.now() < until; await sleep(15_000)) {
-        const { state } = await fresh(session);
-        if (state === 'failed') throw new Error(`Jules failed: ${plan.url}`);
-        if (state === 'awaitingUserFeedback') throw await blocked(session, plan.url, testInfo.annotations);
-        const acts = await activities(session);
-        const approved = acts.findIndex((a) => a.planApproved);
-        if (!acts.slice(approved).some((a) => a.sessionCompleted)) continue;
-        const files = (await session.result()).generatedFiles().all().filter((f) => f.changeType !== 'deleted');
-        if (!files.length) throw new Error(`Jules finished its plan but wrote no files: ${plan.url}`);
-        for (const f of files) {
-          await base.step(`Jev: does ${f.path} do what the plan said?`, async () => {
-            const out = path.join(testInfo.outputDir, f.path);
-            mkdirSync(path.dirname(out), { recursive: true });
-            writeFileSync(out, f.content);
-            await testInfo.attach(f.path, { path: out, contentType: 'text/plain' });
-            const p = await verdict({ task, plan: plan.steps, path: f.path, file: f.content }, 'Does the file do what the task and plan asked? Judge only the supplied task, plan and file.');
-            testInfo.annotations.push({ type: 'does-what-was-asked', description: `${p}  ${f.path}` });
-          });
-        }
-        return files.map((f) => ({ path: f.path, content: f.content }));
+      let done = await completed(session, plan.url, testInfo.annotations);
+      if (failed) {
+        // A repoless session's later turns write no patch, so a repair is a
+        // session of its own: the task, and how the world rejected the work.
+        const last = failed.trim().split('\n').at(-1)!;
+        testInfo.annotations.push({ type: 'jules repairs', description: last });
+        ({ done, plan } = await base.step(`Repair: ${last}`, () => repair(client!, task, failed, testInfo.annotations)));
       }
-      throw new Error(`Jules has not finished its plan yet: ${plan.url}. Run again later.`);
+      const files = turnFiles(done);
+      if (!files.length) throw new Error(`Jules finished its ${failed ? 'repair' : 'plan'} but wrote no files: ${plan.url}`);
+      for (const f of files) {
+        await base.step(`Jev: does ${f.path} do what the plan said?`, async () => {
+          const out = path.join(testInfo.outputDir, f.path);
+          mkdirSync(path.dirname(out), { recursive: true });
+          writeFileSync(out, f.content);
+          await testInfo.attach(f.path, { path: out, contentType: 'text/plain' });
+          const p = await verdict({ task, plan: plan.steps, path: f.path, file: f.content }, 'Does the file do what the task and plan asked? Judge only the supplied task, plan and file.');
+          testInfo.annotations.push({ type: 'does-what-was-asked', description: `${p}  ${f.path}` });
+        });
+      }
+      return files.map((f) => ({ path: f.path, content: f.content }));
     }));
   },
   planFor: async ({}, use, testInfo) => {
