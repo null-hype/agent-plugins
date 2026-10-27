@@ -7,13 +7,13 @@ The plan, as Playwright projects:
 - `judge`: the judge, under its own key, has Jev judge Jules's plan against the
   goal and against ours.
 - `build`: the planner approves the plan and keeps the patch Jules makes
-  (`jules.patch`, to apply at `jev-playwright/`).
+  (`jules.patch`, to apply at the harness root).
 - `audit`: afterwards, in the owner's own Pass session (the only one that sees
   every agent's accesses), each agent's reasons, and whether each is still
   a priority given what the run produced. A finished run should score low.
 
 ```sh
-npx playwright test -c delivery --project plan --project judge --project build   # from jev-playwright
+npx playwright test -c delivery --project plan --project judge --project build   # from the repo root
 DELIVERY_RUN=<a run's test-results> npx playwright test -c delivery --project audit
 ```
 
@@ -70,7 +70,7 @@ Two checks, the second composing the first:
 
 A snapshot is a complete experimental world. Labels describe its provenance.
 `registered-delivery` evaluates the same registered claim against whichever
-world is selected. The world is a restic snapshot (`world.sh`) of what the
+world is selected. The world is a restic snapshot (`world/world.sh`) of what the
 check judges: witness's answers on both runs, the spec they are on the lines
 of, the predictions as read, and the feature. After a run the check captures it
 as `label=observed` (tags `check=registered-delivery`, `label=`, `run=`), then
@@ -80,7 +80,7 @@ in `.env` (`dagger check` takes no flags) judges a world made by data instead,
 without running Jules: `dagger call capture-world --world delivery/worlds/run7
 --label synthetic`, then `dagger check registered-delivery`. Run 7 is kept in
 `worlds/run7` (rebuilt from the printed scores in `worlds/Scenarios.pkl`, so synthetic) and gives the same
-verdict through its snapshot. `bash delivery/world.test.sh` tests capture,
+verdict through its snapshot. `bash delivery/judge.test.sh` tests capture,
 selection by label, restore and judgement against a disposable repository.
 `observed` runs the delivery and snapshots it; it does not select an earlier
 observed world, so an old one cannot yet be judged again without asking Jules
@@ -88,7 +88,7 @@ anew. The repository is the shared one behind `pass://infra/restic`, which
 `.env` passes to both functions as secrets (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`,
 `GCP_SERVICE_ACCOUNT_KEY`), so a snapshot id outlasts the engine and can be
 judged again from any machine with the same access. Without them the worlds go
-in a cache volume local to the engine, which can prune it; `world.test.sh` and
+in a cache volume local to the engine, which can prune it; `world/world.test.sh`, `judge.test.sh` and
 the fixtures never touch the shared repository. `worlds/` (rebuilt by
 `worlds/mk.mjs` from `worlds/Scenarios.pkl`, which `Reconcile.test.pkl` imports,) is the durable copy of
 the fixtures. Worlds are tagged `check=`, `label=`, `run=` and kept under host

@@ -1,13 +1,9 @@
 {
-  "name": "jev-playwright",
+  "name": "worlds",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node run.mjs --backend mock",
-    "test:contracts": "node --test test/*.test.mjs",
-    "score": "node run.mjs",
-    "dagger": "node dagger-run.mjs",
-    "watchmen": "playwright test --config playwright.watchmen.config.ts"
+    "test": "bash world/world.test.sh && bash delivery/judge.test.sh && pkl test delivery/Reconcile.test.pkl"
   },
   "devDependencies": {
     "@google/jules-sdk": "^0.2.0",

@@ -4,3 +4,4 @@ runs/
 playwright-report/
 .witness/
 .priorities/
+.jules/
