@@ -470,19 +470,19 @@
               "status": "expected",
               "annotations": [
                 {
-                  "type": "is_urgent",
+                  "type": "is-urgent",
                   "description": "0.06  jev-root  start the planner"
                 },
                 {
-                  "type": "is_urgent",
+                  "type": "is-urgent",
                   "description": "0.05  jev-planner  have Jules write one file of each node"
                 },
                 {
-                  "type": "is_urgent",
+                  "type": "is-urgent",
                   "description": "0.05  jev-judge  ask Jev whether each file does what was asked"
                 },
                 {
-                  "type": "is_urgent",
+                  "type": "is-urgent",
                   "description": "0.88  jules  The module is not tagged yet, so \"latest\" will not resolve. Should install.sh build jev-lsp from a branch, from a commit, or should I wait for a tagged release?"
                 },
                 {
