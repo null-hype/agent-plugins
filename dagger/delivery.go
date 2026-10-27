@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
-	"dagger/agent-plugins/internal/dagger"
+	"dagger/worlds/internal/dagger"
 	"fmt"
 	"strings"
 	"time"
 )
 
 // PeopleCanInstallWitness: people can install witness and see each answer on
-// the line of the test that asked it (jev-playwright/delivery/goal.md). The
+// the line of the test that asked it (delivery/goal.md). The
 // world's postcondition, nothing predicted: RegisteredDelivery adds that.
 //
 // The delivery loop runs twice, as Playwright, asking what
-// jev-playwright/delivery/Delivery.pkl says to ask: once to Jules's approved
+// delivery/Delivery.pkl says to ask: once to Jules's approved
 // plan (feature-plan), once to the files Jules wrote (feature). Each run, the
 // priority reporter asks Jev of each step and leaves each answer as a witness
 // finding on the line of its test. The check installs the dev container
@@ -30,10 +30,10 @@ import (
 //	pass-cli run --env-file .env -- dagger check people-can-install-witness
 //
 // +check
-func (m *AgentPlugins) PeopleCanInstallWitness(
+func (m *Worlds) PeopleCanInstallWitness(
 	ctx context.Context,
-	// +defaultPath="/jev-playwright"
-	// +ignore=["node_modules", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
+	// +defaultPath="/"
+	// +ignore=["node_modules", ".git", "dagger", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
 	harness *dagger.Directory,
 	// The planner's Pass token: it reads the Jules key.
 	// +optional
@@ -63,7 +63,7 @@ jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show
 
 // RegisteredDelivery: the delivery experiment came out as registered. It is
 // PeopleCanInstallWitness's world, judged also against what the planner
-// predicted in Pass (jev-playwright/delivery/Predicted.pkl): what the work
+// predicted in Pass (delivery/Predicted.pkl): what the work
 // should do to each step of Jules's plan. The planner registers once Jules has
 // presented its plan and before the plan is approved, so the predictions bind
 // to the plan as presented and are fixed before any work: the check runs the
@@ -76,7 +76,7 @@ jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show
 // predicted steps, Jev answered on Delivery.pkl's model, and the work moved
 // each step as predicted, by Delivery.pkl's `moved`.
 //
-// The world is a restic snapshot (delivery/world.sh): the check captures the
+// The world is a restic snapshot (world/world.sh): the check captures the
 // completed run labelled observed, then judges the snapshot it selects by
 // `label`, restored apart. REGISTEREDDELIVERY_LABEL=synthetic judges a world
 // CaptureWorld made instead, without running Jules.
@@ -89,10 +89,10 @@ jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show
 //
 // +check
 // +cache="never"
-func (m *AgentPlugins) RegisteredDelivery(
+func (m *Worlds) RegisteredDelivery(
 	ctx context.Context,
-	// +defaultPath="/jev-playwright"
-	// +ignore=["node_modules", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
+	// +defaultPath="/"
+	// +ignore=["node_modules", ".git", "dagger", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
 	harness *dagger.Directory,
 	// +optional
 	plannerToken *dagger.Secret,
@@ -122,10 +122,10 @@ func (m *AgentPlugins) RegisteredDelivery(
 	// +default=40
 	logLines int,
 ) error {
-	worlds := Worlds{resticRepository, resticPassword, gcpServiceAccountKey}
+	store := Store{resticRepository, resticPassword, gcpServiceAccountKey}
 	// A world other than the one this run makes is judged as it was snapshotted.
 	if label != observedLabel {
-		return worlds.Judge(ctx, base(harness), label)
+		return judged(ctx, store, base(harness), label)
 	}
 	planned := m.planned(harness, plannerToken, judgeToken, run)
 	// The work waits for the planner: the predictions as registered now, for this plan.
@@ -154,22 +154,38 @@ func (m *AgentPlugins) RegisteredDelivery(
 		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
 		WithExec([]string{"sh", "-c", "node delivery/registered.mjs > " + worldDir + "/registered.json"})
 	// The verdict is judged from the snapshot, by its exact id, not from here.
-	id, err := worlds.Capture(ctx, produced, observedLabel, run)
+	id, err := store.Capture(ctx, produced, checkName, observedLabel, run)
 	if err != nil {
 		return err
 	}
-	return worlds.Judge(ctx, produced, id)
+	return judged(ctx, store, produced, id)
 }
 
-const observedLabel = "observed"
+const (
+	observedLabel = "observed"
+	// What judges these worlds: the store tags them with it.
+	checkName = "registered-delivery"
+)
 
-// CaptureWorld snapshots a world (a directory as delivery/world.sh describes,
-// e.g. jev-playwright/delivery/worlds/run7) under a label, for RegisteredDelivery
+// The judge: restores the world (a snapshot id, or a label for the newest with
+// it) from the store, apart from where it was made, and judges it with
+// Reconcile.pkl (delivery/judge.sh); the output names the snapshot. An error
+// is a verdict that is not green.
+func judged(ctx context.Context, store Store, judge *dagger.Container, snapshot string) error {
+	_, err := store.in(judge).
+		WithEnvVariable("WORLD_CHECK", checkName).
+		WithExec([]string{"bash", "delivery/judge.sh", snapshot}).
+		Sync(ctx)
+	return err
+}
+
+// CaptureWorld snapshots a world (a directory as the judge reads,
+// e.g. delivery/worlds/run7) under a label, for RegisteredDelivery
 // to judge by that label; it returns the snapshot's id.
-func (m *AgentPlugins) CaptureWorld(
+func (m *Worlds) CaptureWorld(
 	ctx context.Context,
-	// +defaultPath="/jev-playwright"
-	// +ignore=["node_modules", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
+	// +defaultPath="/"
+	// +ignore=["node_modules", ".git", "dagger", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
 	harness *dagger.Directory,
 	// The world: its registered.json, plan.json, work.json, spec.txt, plan-run and work-run.
 	world *dagger.Directory,
@@ -186,10 +202,10 @@ func (m *AgentPlugins) CaptureWorld(
 ) (string, error) {
 	c := dag.Container().From("debian:bookworm-slim").
 		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq"}).
-		WithDirectory("/harness/delivery", harness.Directory("delivery")).
+		WithDirectory("/harness/world", harness.Directory("world")).
 		WithWorkdir("/harness").
 		WithDirectory(worldDir, world)
-	return Worlds{resticRepository, resticPassword, gcpServiceAccountKey}.Capture(ctx, c, label, run)
+	return Store{resticRepository, resticPassword, gcpServiceAccountKey}.Capture(ctx, c, checkName, label, run)
 }
 
 // What witness showed of both runs, as data for Reconcile.pkl: facts.json.
@@ -200,7 +216,7 @@ node delivery/facts.mjs delivery/feature.spec.ts /facts.json plan=/plan.json,/ru
 
 // The delivery, its feature installed into a clean dev container, repaired
 // up to `repairs` times, and the witness it installed on the delivery's PATH.
-func (m *AgentPlugins) installedWitness(ctx context.Context, delivered *dagger.Container, repairs, logLines int) (*dagger.Container, error) {
+func (m *Worlds) installedWitness(ctx context.Context, delivered *dagger.Container, repairs, logLines int) (*dagger.Container, error) {
 	for repair := 0; ; repair++ {
 		feature := delivered.Directory("/feature")
 		installed := devcontainer(feature).
@@ -268,11 +284,11 @@ func tail(s string, n int) string {
 }
 
 // Delivery runs the delivery loop for the goal and leaves its reports in
-// jev-playwright/delivery/test-results, each run's witness run in /runs, and
+// delivery/test-results, each run's witness run in /runs, and
 // the dev container feature Jules wrote in /feature.
-func (m *AgentPlugins) Delivery(
-	// +defaultPath="/jev-playwright"
-	// +ignore=["node_modules", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
+func (m *Worlds) Delivery(
+	// +defaultPath="/"
+	// +ignore=["node_modules", ".git", "dagger", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
 	harness *dagger.Directory,
 	// +optional
 	plannerToken *dagger.Secret,
@@ -288,7 +304,7 @@ func (m *AgentPlugins) Delivery(
 
 // The delivery loop to Jules's plan, not yet approved: the plan run, its
 // witness run in /runs/plan.
-func (m *AgentPlugins) planned(harness *dagger.Directory, plannerToken, judgeToken *dagger.Secret, sessions string) *dagger.Container {
+func (m *Worlds) planned(harness *dagger.Directory, plannerToken, judgeToken *dagger.Secret, sessions string) *dagger.Container {
 	c := withLogins(base(harness), plannerToken, judgeToken)
 	if sessions != "" {
 		c = c.WithEnvVariable("DELIVERY_SESSIONS", sessions)
@@ -325,7 +341,7 @@ func base(harness *dagger.Directory) *dagger.Container {
 	return withPkl(dag.Container().From("node:22-bookworm")).
 		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq && curl -fsSL https://proton.me/download/pass-cli/install.sh | bash"}).
 		WithEnvVariable("PATH", "/root/.local/bin:$PATH", dagger.ContainerWithEnvVariableOpts{Expand: true}).
-		WithWorkdir("/workspace/jev-playwright").
+		WithWorkdir("/workspace/worlds").
 		WithFile("package.json", harness.File("package.json")).
 		WithFile("package-lock.json", harness.File("package-lock.json")).
 		WithExec([]string{"npm", "ci", "--no-audit", "--no-fund"}).
@@ -360,7 +376,7 @@ func withPkl(c *dagger.Container) *dagger.Container {
 // Install installs a dev container feature into a dev container, as the dev
 // container CLI does: as root, its options' defaults in the environment.
 // Unlike the CLI, it installs no feature the feature depends on.
-func (m *AgentPlugins) Install(feature *dagger.Directory) *dagger.Container {
+func (m *Worlds) Install(feature *dagger.Directory) *dagger.Container {
 	return devcontainer(feature).WithExec([]string{"bash", "-c", installFeature})
 }
 

@@ -16,8 +16,9 @@ const ours = [
   'Install the language server and its editor setup with one dev container feature',
 ];
 
-// The code as it is. The session is repoless, so its sandbox starts empty: what
-// Jules is to change has to be in the prompt.
+// The code as it is: the subject of the plan, frozen in subject/ (the harness
+// this experiment came from). The session is repoless, so its sandbox starts
+// empty: what Jules is to change has to be in the prompt.
 const files = [
   'README.md', 'package.json', 'playwright.config.ts', 'global-setup.ts', 'ask.ts', 'collectors.ts',
   'reporter.ts', 'reconcile.mjs', 'consistency.mjs', 'score.mjs', 'pkl.mjs', 'inputs.mjs',
@@ -30,7 +31,7 @@ const prompt = `${goal}
 Below is jev-playwright, the code as it is, one file per section. Change it, and add to
 it, so the goal holds. Keep the paths: your files will be applied at jev-playwright/.
 
-${files.map((f) => `=== ${f}\n${readFileSync(path.join(root, f), 'utf8')}`).join('\n')}`;
+${files.map((f) => `=== ${f}\n${readFileSync(path.join(f.startsWith('delivery/') ? root : path.join(here, 'subject'), f), 'utf8')}`).join('\n')}`;
 
 // The planner's part: give Jules the task and keep the plan it makes before any
 // work (approval is required, so it waits there) for the judge, beside ours.
