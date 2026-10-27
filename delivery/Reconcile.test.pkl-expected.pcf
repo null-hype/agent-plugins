@@ -1,0 +1,15 @@
+examples {
+  ["the first passing run, fact by fact"] {
+    new {
+      ["Jules carried out the registered plan, step for step"] = true
+      ["Jev answered on the registered model, jev-1.14.0"] = true
+      ["every answer is on its test's line"] = true
+      ["no answer is stale"] = true
+      ["the work cooled Create the dev container feature definition"] = true
+      ["the work cooled Create the installation script"] = true
+      ["the work left steady Complete pre-commit steps"] = true
+      ["the work left steady Submit the change"] = true
+    }
+    "Complete pre-commit steps"
+  }
+}

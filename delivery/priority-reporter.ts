@@ -47,13 +47,13 @@ export default class PriorityReporter implements Reporter {
 
   async onEnd() {
     if (!this.items.size) return;
-    const goal = this.config.metadata.goal as string;
+    const { goal, question } = this.config.metadata.delivery as { goal: string; question: string };
     const state = { goal, tests: [...this.items.values()] };
     const work = state.tests.flatMap((t) => t.plan?.map((s) => ({ test: t.test, step: s, work: `${t.test} — ${s}` })) ?? [{ test: t.test, work: t.test }]);
     const client = new TypeSafeClient({ apiKey: secret('judge', JEV_KEY, `ask Jev what is still a priority toward ${goal}`) });
     const { answers, model } = await client.systemOne({
       state,
-      questions: Object.fromEntries(work.map((w, i) => [`is_priority_${i}`, noul(`This is still a priority for the goal: the state does not show it done. ${w.work}`)])),
+      questions: Object.fromEntries(work.map((w, i) => [`is_priority_${i}`, noul(`${question} ${w.work}`)])),
     });
     const ranked = work.map((w, i) => ({ p: answers[`is_priority_${i}`].noul, work: w.work })).sort((a, b) => b.p - a.p);
     const out = path.join(this.config.rootDir, 'test-results', 'priorities.json');
@@ -73,7 +73,9 @@ export default class PriorityReporter implements Reporter {
     const root = path.dirname(this.config.configFile ?? this.config.rootDir);
     const run = path.join(root, '.witness', 'run');
     const before = existsSync(path.join(run, 'findings.json')) ? JSON.parse(readFileSync(path.join(run, 'findings.json'), 'utf8')).findings : [];
-    const kept = before.map((f: { evidence?: string[] }) => ({ ...f, evidence: (f.evidence ?? []).map((e) => ({ name: e, from: path.join(run, e) })) }));
+    // A run's own answers replace any an earlier run left there.
+    const kept = before.filter((f: { id: string }) => !f.id.startsWith('priority: '))
+      .map((f: { evidence?: string[] }) => ({ ...f, evidence: (f.evidence ?? []).map((e) => ({ name: e, from: path.join(run, e) })) }));
     writeWitnessRun(root, [...kept, ...answers.map((a) => {
       const at = this.at.get(a.test)!;
       return {

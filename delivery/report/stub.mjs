@@ -75,7 +75,7 @@ const specs = [
 
 const deps = { dagger: ['jev-ts'], package: ['dagger'], feature: ['package'], goal: ['feature'] };
 writeFileSync(new URL('stub.json', import.meta.url), JSON.stringify({
-  config: { metadata: { goal: 'People can install jev-lsp and see each answer on the line of the test that asked it.' },
+  config: { metadata: { goal: 'People can install jev-lsp and see each answer on the line of the test that asked it.', delivery: { moved: 0.14 } },
     projects: ['jev-ts', 'dagger', 'package', 'feature', 'goal', 'audit'].map((name) => ({ name, dependencies: deps[name] ?? [] })) },
   suites: specs.map(({ file, title, line, tests }) => ({ title: file, file, specs: [{ title, file, line, column: 1, ok: tests[0].status !== 'unexpected', tests }] })),
   stats: { startTime: '2026-10-26T06:30:00.000Z', duration: 1_874_000, expected: 4, unexpected: 1, skipped: 1, flaky: 0 },

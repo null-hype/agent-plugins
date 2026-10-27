@@ -9,9 +9,6 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const split = (d) => { const m = /^(\S+)\s+(.*)$/s.exec(d ?? ''); return m ? [m[1], m[2]] : ['', d ?? '']; };
 const mins = (ms) => (ms >= 60_000 ? `${Math.round(ms / 60_000)} min` : `${Math.round(ms / 1000)} s`);
 const PRIORITY = 0.5;
-// A move smaller than this is noise: one capture's runs spread up to ~0.06
-// (null-hype/typesafe-experiment), so only twice that counts as movement.
-const MOVED = 0.12;
 
 // A line of one item's priority across the runs of the history, oldest first.
 function spark(points) {
@@ -25,7 +22,9 @@ function spark(points) {
 
 // Where the work stands: this run's ranking, each item's line across earlier
 // runs, and its move since the last run that had it.
-function priorities(history) {
+// A move smaller than `moved` is noise: Delivery.pkl's, twice the noise
+// capture.mjs measured, as the run's config recorded it.
+function priorities(history, moved) {
   if (!history.length) return '';
   const now = history.at(-1), before = history.slice(0, -1);
   const last = (work) => before.findLast((r) => r.ranked.some((x) => x.work === work))?.ranked.find((x) => x.work === work)?.p;
@@ -34,7 +33,7 @@ function priorities(history) {
     const [test, step] = r.work.includes(' — ') ? r.work.split(' — ') : [null, r.work];
     return { ...r, i, was, d, test, step, line: history.map((h) => h.ranked.find((x) => x.work === r.work)?.p ?? null) };
   });
-  const cooled = rows.filter((r) => r.d != null && r.d <= -MOVED), warmed = rows.filter((r) => r.d != null && r.d >= MOVED);
+  const cooled = rows.filter((r) => r.d != null && r.d <= -moved), warmed = rows.filter((r) => r.d != null && r.d >= moved);
   // A test Jules has since planned is no longer an item: its steps are.
   const planned = (before.at(-1)?.ranked ?? []).filter((x) => !now.ranked.some((y) => y.work === x.work) && now.ranked.some((y) => y.work.startsWith(`${x.work} — `)));
   const headline = !before.length ? `First ranking: ${rows.length} items, nothing to compare yet.`
@@ -42,12 +41,12 @@ function priorities(history) {
     : planned.length ? `Planned: ${planned.length === 1 ? 'one test is' : `${planned.length} tests are`} now ${rows.length} steps of Jules's plan.`
     : 'No item moved beyond noise since the last run.';
   const move = (r) => r.d == null ? '<span class="mv new">new</span>'
-    : r.d <= -MOVED ? `<span class="mv down">▼ ${Math.abs(r.d).toFixed(2)}</span>`
-    : r.d >= MOVED ? `<span class="mv up">▲ ${r.d.toFixed(2)}</span>` : '<span class="mv flat">steady</span>';
+    : r.d <= -moved ? `<span class="mv down">▼ ${Math.abs(r.d).toFixed(2)}</span>`
+    : r.d >= moved ? `<span class="mv up">▲ ${r.d.toFixed(2)}</span>` : '<span class="mv flat">steady</span>';
   return `<h2>Priorities</h2>
 <p class="headline">${esc(headline)} <b>Next:</b> ${esc(rows[0].step)}</p>
 <p class="meta">${history.length} runs · ${history.map((h) => esc(h.level)).join(' → ')} · ${esc(now.model)} · each line is one item across those runs; ▼ is work landing</p>
-<ol class="prio">${rows.map((r) => `<li class="${r.i === 0 ? 'next' : ''} ${r.d != null && r.d <= -MOVED ? 'cooled' : ''}">
+<ol class="prio">${rows.map((r) => `<li class="${r.i === 0 ? 'next' : ''} ${r.d != null && r.d <= -moved ? 'cooled' : ''}">
   <span class="rank">${r.i + 1}</span>
   <span class="change">${esc(r.step)}${r.test ? `<span class="where">${esc(r.test)}</span>` : ''}</span>
   ${spark(r.line)}
@@ -164,7 +163,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td{border-top:1px solid
 <p class="verdict">${esc(verdict)}</p>
 <p class="meta">${esc(new Date(report.stats.startTime).toISOString().slice(0, 16).replace('T', ' '))} UTC · ${mins(report.stats.duration)} · ${report.stats.expected} passed, ${report.stats.unexpected} failed, ${report.stats.skipped} did not run</p>
 
-${priorities(history)}
+${priorities(history, report.config.metadata.delivery.moved)}
 
 ${triage.length ? `<h2>Triage</h2><table>${triage.map(([p, what]) => `<tr class="hot"><td class="p">${esc(p)}</td><td>${esc(what.replace(/\s+https:\S+$/, ''))} ${(/https:\S+$/.exec(what) ?? [''])[0] ? `<a href="${esc(/https:\S+$/.exec(what)[0])}">open</a>` : ''}</td></tr>`).join('')}</table>` : ''}
 

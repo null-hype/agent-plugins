@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as pkl from '../pkl.mjs';
 
 // The plan, as Playwright projects:
 //   plan   the planner has Jules plan the goal (goal.md), writing nothing
@@ -19,9 +19,11 @@ import { fileURLToPath } from 'node:url';
 // A plan or a patch not ready yet fails as not yet: run again later.
 const here = path.dirname(fileURLToPath(import.meta.url));
 process.env.DELIVERY_LEDGER ||= path.join(here, 'test-results', 'reasons.jsonl');
+// What the run asks and expects, registered before it (Delivery.pkl).
+const delivery = pkl.load(path.join(here, 'Delivery.pkl'));
 
 export default defineConfig({
-  metadata: { goal: readFileSync(path.join(here, 'goal.md'), 'utf8').trim() },
+  metadata: { goal: delivery.goal, delivery },
   testDir: '.',
   outputDir: './test-results',
   globalSetup: './global-setup.ts',

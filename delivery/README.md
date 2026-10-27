@@ -17,6 +17,24 @@ npx playwright test -c delivery --project plan --project judge --project build  
 DELIVERY_RUN=<a run's test-results> npx playwright test -c delivery --project audit
 ```
 
+## The registered delivery
+
+`Delivery.pkl` registers the `feature` node before it runs: Jules's task,
+Jev's question and model, the noise in Jev's answer, Jules's approved plan with
+what the work should do to each step, and how many repairs the world allows.
+The config evaluates it before any test; `dagger check
+people-can-install-witness` evaluates it before any agent call, installs the
+feature Jules wrote in a clean dev container (handing failures back for repair),
+reads both runs through the witness it installed, and `Reconcile.pkl` judges
+what witness showed against the registration (`pkl test Reconcile.test.pkl`).
+
+To re-register after a deliberate change (another model, plan or question):
+produce a plan and a work run, measure the noise on them, and register it.
+
+```sh
+node delivery/capture.mjs <plan run>/priorities.json <work run>/priorities.json   # writes noise-observed.json
+```
+
 A plan or patch that is not ready yet fails as not yet: run it again later. In CI, `plan`,
 `judge` and `build` run on a pull request labelled `dispatch`, and the run's
 `test-results` are kept as an artifact for the audit.
