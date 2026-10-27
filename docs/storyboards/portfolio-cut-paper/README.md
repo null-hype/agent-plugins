@@ -55,3 +55,21 @@ script was read; it defaults to an unrelated project. A future Stitch comparison
 needs securely injected `STITCH_API_KEY` and an explicit new portfolio project
 ID. `scripts/stitch/portfolio-cut-paper.prompt.md` captures the proposed brief.
 No existing Stitch metadata or project was changed.
+
+## Validation and environment limits
+
+- Production build passes on Node 22; Storybook static build passes.
+- Axe WCAG A/AA: zero violations at 320, 390, 768 and 1440px; no horizontal overflow.
+- Reduced-motion, keyboard skip link and contact-anchor checks pass.
+- Portfolio Storybook interaction panel reports Pass, including same-frame anchors.
+- Existing pre-registered-question story passes Peek on load and reload.
+- Tutorial URL loads locally and on the Netlify draft preview. WebContainer startup
+  in the cloud browser remains environment-dependent; a complete live execution
+  of the tutorial was not asserted.
+- `playwright-cli` was attempted but its daemon uses prohibited Unix sockets here.
+  Validation used Playwright with Chrome Headless Shell instead. Local `tsx` was
+  invoked through `node --import tsx` to avoid the same IPC limit. Those local
+  compatibility settings are not repository changes.
+- Storybook dev server/review publishing hits denied network-interface enumeration
+  in this sandbox. CLI docs/discovery and the static build were used; the live
+  curated-review endpoint was unavailable. No generated review URL is claimed.
