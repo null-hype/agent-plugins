@@ -61,7 +61,9 @@ jobs:
         id: deploy
         working-directory: tutorial-app
         env:
-          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+          # Dedicated viewer token for infra/netlify only; other CI vaults
+          # are deliberately outside this preview job's access.
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.STORYBOOK_PROTON_PASS_TOKEN }}
           PROTON_PASS_KEY_PROVIDER: fs
           PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
           PROTON_PASS_AGENT_REASON: "GitHub Actions Storybook PR preview: resolve Netlify deployment credentials"
