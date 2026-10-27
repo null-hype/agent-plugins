@@ -53,7 +53,8 @@ Two checks, the second composing the first:
 
 - `dagger check people-can-install-witness`: the world. It installs the feature
   Jules wrote in a clean dev container, handing failures back for repair, each
-  repair into a fresh one; reads both runs through the witness it installed;
+  repair into a fresh one (the feature alone: unlike the dev container CLI, the
+  check installs nothing it `dependsOn`, and the evidence tells Jules so); reads both runs through the witness it installed;
   and `Reconcile.pkl`'s `installed` judges that every answer is fresh and on
   its test's line.
 - `dagger check registered-delivery`: the experiment. Jules's sessions are keyed
