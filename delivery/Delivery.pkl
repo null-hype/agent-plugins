@@ -4,8 +4,9 @@
 /// its cases: the Playwright config evaluates it before any test, so
 /// feature.spec.ts asks Jules this `task` and the priority reporter asks Jev
 /// this `question`. What the work should do to each step of Jules's plan is
-/// not here: the planner registers it in Pass before the run, where the judge
-/// can read it and not change it (Predicted.pkl). Reconcile.pkl judges what
+/// not here: the planner registers it in Pass once Jules has planned and before
+/// its plan is approved, where the judge can read it and not change it
+/// (Predicted.pkl). Reconcile.pkl judges what
 /// witness showed against both.
 module Delivery
 
@@ -34,7 +35,7 @@ moved: Number = 2 * noise
 typealias Movement = "cools"|"steady"
 
 class Step {
-  /// The step's title, word for word as Jules's approved plan has it.
+  /// The step's title, word for word as Jules's plan in this run has it.
   title: String(!isEmpty)
   /// What the work should do to its priority: cool it by at least `moved`,
   /// or leave it within `moved`. Nothing the work does should warm a step.

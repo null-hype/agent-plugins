@@ -60,12 +60,11 @@ type Fixtures = {
    * asked only the task, and for its plan. Each step of Jules's plan is a step
    * under it. A reply in place of a plan fails the step with the reply. */
   plan: (task: string) => Promise<Plan>;
-  /** Approves Jules's plan, as a step. Waiting, it collects the files Jules
-   * wrote, each a step in which Jev judges the file against the task and plan;
-   * not waiting, the plan is approved and nothing is yet written. Given how what
-   * Jules wrote failed in the world, it has Jules repair it, and collects the
-   * repair. */
-  approve: (task: string, plan: Plan, opts?: { wait?: boolean; failed?: string }) => Promise<{ path: string; content: string }[]>;
+  /** Approves Jules's plan, as a step, noting when Jules recorded the
+   * approval, and collects the files Jules wrote, each a step in which Jev
+   * judges the file against the task and plan. Given how what Jules wrote
+   * failed in the world, it has Jules repair it, and collects the repair. */
+  approve: (task: string, plan: Plan, opts?: { failed?: string }) => Promise<{ path: string; content: string }[]>;
   /** Jules's plan for a goal: a repoless session that waits for approval of its plan. */
   planFor: (goal: string, prompt: string) => Promise<Plan>;
   /** Jules's work on an approved plan: approves it, waits for the session to
@@ -217,12 +216,19 @@ export const test = base.extend<Fixtures>({
   approve: async ({ judge }, use, testInfo) => {
     let client: ReturnType<typeof jules.with> | undefined;
     const verdict = judge(`ask Jev whether Jules's files do what its plan said: ${testInfo.title}`);
-    await use((task, plan, { wait = true, failed } = {}) => base.step("Approve Jules's plan", async () => {
+    await use((task, plan, { failed } = {}) => base.step("Approve Jules's plan", async () => {
       client ??= jules.with({ apiKey: secret('planner', JULES_KEY, `have Jules carry out its plan: ${testInfo.title}`) });
       const session = client.session(plan.id);
       // A repoless session completes with its plan; approving sets it working again.
       if (!(await activities(session)).some((a) => a.planApproved)) await session.approve();
-      if (!wait) return [];
+      // When the plan was approved, as Jules recorded it, even if an earlier run did.
+      let approved: string | undefined;
+      for (const until = Date.now() + 2 * 60_000; !approved && Date.now() < until; ) {
+        approved = (await activities(session)).find((a) => a.planApproved)?.createTime;
+        if (!approved) await sleep(5_000);
+      }
+      if (!approved) throw new Error(`Jules has not recorded the plan approved: ${plan.url}`);
+      testInfo.annotations.push({ type: 'jules plan approved', description: approved });
       let done = await completed(session, plan.url, testInfo.annotations);
       if (failed) {
         // A repoless session's later turns write no patch, so a repair is a

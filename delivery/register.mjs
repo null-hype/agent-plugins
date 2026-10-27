@@ -5,8 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // The planner registers what the work should do to each step of Jules's
-// approved plan, before the run, in its journal: jev-planner/journal, field
-// `plan`. Predicted.pkl checks the shape first, so a registration that would
+// plan, once Jules has presented it and before it is approved, in its
+// journal: jev-planner/journal, field `plan`. ready.mjs prints the steps. Predicted.pkl checks the shape first, so a registration that would
 // not type is never written.
 //
 //   node delivery/register.mjs <predictions.json>   # [{ "title": ..., "after": "cools" | "steady" }, ...]
@@ -18,6 +18,6 @@ execFileSync('pkl', ['eval', '-p', `registered=file://${check}`, path.join(here,
 const dir = process.env.PASS_SESSION_PLANNER;
 execFileSync('pass-cli', ['item', 'update', '--vault-name', 'jev-planner', '--item-title', 'journal', '--field', `plan=${JSON.stringify(plan)}`], {
   stdio: 'inherit',
-  env: { ...process.env, PROTON_PASS_AGENT_REASON: 'register what the work should do to each step of the plan, before the run', ...(dir && { PROTON_PASS_SESSION_DIR: dir, PROTON_PASS_KEY_PROVIDER: 'fs' }) },
+  env: { ...process.env, PROTON_PASS_AGENT_REASON: 'register what the work should do to each step of the plan, before it is approved', ...(dir && { PROTON_PASS_SESSION_DIR: dir, PROTON_PASS_KEY_PROVIDER: 'fs' }) },
 });
 console.log(`registered ${plan.length} steps in jev-planner/journal`);

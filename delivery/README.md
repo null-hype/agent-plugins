@@ -23,15 +23,30 @@ DELIVERY_RUN=<a run's test-results> npx playwright test -c delivery --project au
 Jules's task, Jev's question and model, and the noise in Jev's answer. The
 config evaluates it before any test.
 
-What the work should do to each step of Jules's approved plan is the
-prediction, and the planner registers it in Pass before the run, in its
-journal (`jev-planner/journal`, field `plan`). The judge can view that journal
-and not change it, so the prediction is fixed by who can write it, not by
-what is in the repo. `register.mjs` checks the shape with `Predicted.pkl`
-before writing:
+What the work should do to each step of Jules's plan is the prediction. The
+planner registers it in Pass in its journal (`jev-planner/journal`, field
+`plan`) at the turn from planning to execution: once Jules has presented its
+plan, and before the plan is approved. The judge can view that journal and not
+change it, so the prediction is fixed by who can write it, not by what is in
+the repo.
+
+So the experiment does not ask whether the planner can foresee how Jules will
+word a plan it has not made: a fresh Jules words its steps differently each
+time, and predictions written against an earlier plan's titles can match
+nothing. It asks: given the plan Jules presented, can the planner commit, before
+any work, to what carrying out each step should do, and does the work bear that
+out? The plan is the program under test; the predictions are the expectations
+committed before it runs. Whether separate Jules runs plan alike is another
+question, not tested here.
+
+The check stops at the plan until the planner has registered for exactly its
+steps, after Jules was asked for it, and prints them (`ready.mjs`).
+`register.mjs` checks the shape with `Predicted.pkl` before writing:
 
 ```sh
+pass-cli run --env-file .env -- dagger check registered-delivery   # stops at the plan, printing its steps
 node delivery/register.mjs predictions.json   # [{ "title": ..., "after": "cools" | "steady" }, ...]
+pass-cli run --env-file .env -- dagger check registered-delivery   # the same plan, approved and worked
 ```
 
 Two checks, the second composing the first:
@@ -41,19 +56,19 @@ Two checks, the second composing the first:
   repair into a fresh one; reads both runs through the witness it installed;
   and `Reconcile.pkl`'s `installed` judges that every answer is fresh and on
   its test's line.
-- `dagger check registered-delivery`: the experiment. The judge reads the
-  predictions from Pass (`registered.mjs`) before the world, and the world is
-  keyed to them: Jules's sessions are titled with the registration, so a new
-  registration asks Jules anew instead of reusing sessions older than it. After
-  the run the judge reads them again, and `Reconcile.pkl`'s `facts` add: the
-  predictions were last changed before the plan run began and before Jules was
-  first asked, both runs show exactly the predicted steps, Jev answered on
-  the registered model, and each step moved as predicted. The verdict names the
-  Pass item and when it was last changed (`pkl test Reconcile.test.pkl`).
+- `dagger check registered-delivery`: the experiment. Jules's sessions are keyed
+  by its `run` (default `registered`; `REGISTEREDDELIVERY_RUN` in `.env`
+  changes it): the same key resumes the same plan, so the planner registers
+  for it between two checks; another asks Jules anew. After the run the judge
+  reads the predictions again, and `Reconcile.pkl`'s `facts` add: they were
+  last changed after Jules was asked for the plan and before Jules recorded
+  the plan approved, both runs show exactly the predicted steps, Jev answered
+  on the registered model, and each step moved as predicted. The verdict
+  names the Pass item and when it was last changed (`pkl test
+  Reconcile.test.pkl`).
 
-To re-register after a deliberate change (another model, plan or question):
-produce a plan and a work run, measure the noise on them, set it in
-`Delivery.pkl`, and register the predictions again.
+After a deliberate change (another model or question): produce a plan and a
+work run, measure the noise on them, and set it in `Delivery.pkl`.
 
 ```sh
 node delivery/capture.mjs <plan run>/priorities.json <work run>/priorities.json   # writes noise-observed.json
