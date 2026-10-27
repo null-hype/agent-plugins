@@ -10,7 +10,7 @@ The plan, as Playwright projects:
   (`jules.patch`, to apply at `jev-playwright/`).
 - `audit`: afterwards, in the owner's own Pass session (the only one that sees
   every agent's accesses), each agent's reasons, and whether each is still
-  urgent given what the run produced. A finished run should score low.
+  a priority given what the run produced. A finished run should score low.
 
 ```sh
 npx playwright test -c delivery --project plan --project judge --project build   # from jev-playwright
