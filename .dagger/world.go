@@ -16,6 +16,13 @@ import (
 //
 // Identity is the snapshot: Capture returns its exact id and Judge takes that
 // id, or a label to select the newest world with it.
+//
+// Two layers are kept here. The reusable one is the restic-backed store and
+// the snapshot identity above. The registered-delivery experiment is not: the
+// world schema, check=registered-delivery and the judge (Reconcile.pkl) are
+// delivery/world.sh's, which Capture and Judge shell out to. A second
+// experiment should split those two layers rather than add behaviour to
+// Worlds that only the delivery experiment needs.
 const worldDir = "/world"
 
 // Where worlds are kept: the shared restic repository when its secrets are

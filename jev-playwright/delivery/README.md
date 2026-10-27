@@ -90,10 +90,16 @@ anew. The repository is the shared one behind `pass://infra/restic`, which
 judged again from any machine with the same access. Without them the worlds go
 in a cache volume local to the engine, which can prune it; `world.test.sh` and
 the fixtures never touch the shared repository. `worlds/` (rebuilt by
-`worlds/mk.mjs` from `worlds/Scenarios.pkl`, which `Reconcile.test.pkl` imports,) is the durable copy of
+`worlds/mk.mjs` from `worlds/Scenarios.pkl`, which `Reconcile.test.pkl` imports) is the durable copy of
 the fixtures. Worlds are tagged `check=`, `label=`, `run=` and kept under host
 `delivery`, so they are told apart from the session transcripts in the same
 repository.
+
+`Worlds` (`.dagger/world.go`) is two layers, and only the first is reusable:
+the restic-backed world store and snapshot identity. The world schema,
+`check=registered-delivery` and the judge (`Reconcile.pkl`) are this
+experiment's, in `world.sh`, which `Capture` and `Judge` call. Another
+experiment should split the layers, not push its behaviour through `Worlds`.
 
 The verdict keeps three layers apart: the world (does the feature install,
 and is every answer fresh and on its line), the protocol (were the
