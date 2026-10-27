@@ -26,9 +26,11 @@ export default class PriorityReporter implements Reporter {
   private config!: FullConfig;
   private items = new Map<string, Item>();
   private at = new Map<string, At>();
+  private began = new Date().toISOString();
 
   onBegin(config: FullConfig, suite: Suite) {
     this.config = config;
+    this.began = new Date().toISOString();
     for (const t of suite.allTests()) if (t.location.file.endsWith('.spec.ts') && !t.location.file.endsWith('audit.spec.ts')) {
       this.items.set(t.title, { test: t.title, status: 'not run' });
       this.at.set(t.title, t.location);
@@ -59,7 +61,7 @@ export default class PriorityReporter implements Reporter {
     const out = path.join(this.config.rootDir, 'test-results', 'priorities.json');
     mkdirSync(path.dirname(out), { recursive: true });
     const level = state.tests.some((t) => t.wrote?.length) ? 'work' : state.tests.some((t) => t.plan) ? 'plan' : 'list';
-    const run = { at: new Date().toISOString(), level, model, ranked };
+    const run = { began: this.began, at: new Date().toISOString(), level, model, ranked };
     writeFileSync(out, JSON.stringify({ ...run, state }, null, 2) + '\n');
     const history = path.join(this.config.rootDir, '.priorities', 'history.jsonl');
     mkdirSync(path.dirname(history), { recursive: true });

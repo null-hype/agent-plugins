@@ -19,17 +19,38 @@ DELIVERY_RUN=<a run's test-results> npx playwright test -c delivery --project au
 
 ## The registered delivery
 
-`Delivery.pkl` registers the `feature` node before it runs: Jules's task,
-Jev's question and model, the noise in Jev's answer, Jules's approved plan with
-what the work should do to each step, and how many repairs the world allows.
-The config evaluates it before any test; `dagger check
-people-can-install-witness` evaluates it before any agent call, installs the
-feature Jules wrote in a clean dev container (handing failures back for repair),
-reads both runs through the witness it installed, and `Reconcile.pkl` judges
-what witness showed against the registration (`pkl test Reconcile.test.pkl`).
+`Delivery.pkl` says what the `feature` node runs and how it is measured:
+Jules's task, Jev's question and model, and the noise in Jev's answer. The
+config evaluates it before any test.
+
+What the work should do to each step of Jules's approved plan is the
+prediction, and the planner registers it in Pass before the run, in its
+journal (`jev-planner/journal`, field `plan`). The judge can view that journal
+and not change it, so the prediction is fixed by who can write it, not by
+what is in the repo. `register.mjs` checks the shape with `Predicted.pkl`
+before writing:
+
+```sh
+node delivery/register.mjs predictions.json   # [{ "title": ..., "after": "cools" | "steady" }, ...]
+```
+
+Two checks, the second composing the first:
+
+- `dagger check people-can-install-witness`: the world. It installs the feature
+  Jules wrote in a clean dev container, handing failures back for repair, each
+  repair into a fresh one; reads both runs through the witness it installed;
+  and `Reconcile.pkl`'s `installed` judges that every answer is fresh and on
+  its test's line.
+- `dagger check registered-delivery`: the experiment. The same world, then the
+  judge reads the predictions fresh from Pass (`registered.mjs`) and
+  `Reconcile.pkl`'s `facts` add: the predictions were last changed before the
+  plan run began, both runs show exactly the predicted steps, Jev answered on
+  the registered model, and each step moved as predicted. The verdict names the
+  Pass item and when it was last changed (`pkl test Reconcile.test.pkl`).
 
 To re-register after a deliberate change (another model, plan or question):
-produce a plan and a work run, measure the noise on them, and register it.
+produce a plan and a work run, measure the noise on them, set it in
+`Delivery.pkl`, and register the predictions again.
 
 ```sh
 node delivery/capture.mjs <plan run>/priorities.json <work run>/priorities.json   # writes noise-observed.json
