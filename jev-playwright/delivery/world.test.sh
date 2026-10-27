@@ -35,6 +35,11 @@ ok "its movements are run 7's" 'grep -q "  0.02  Create .src/witness/devcontaine
 out="$($world judge agreeing 2>&1)"; code=$?
 ok "the first passing run through its snapshot is a valid finding: Jev agreement" 'grep -q "^Verdict: valid finding: Jev agreement" <<< "$out" && [ "$code" = 0 ]'
 
+# An exact id judges exactly that world, whatever is newer under its label.
+idn="$($world capture delivery/worlds/first-passing synthetic)"
+out="$($world judge "$id7" 2>&1)"
+ok "an id judges that snapshot, not the newest with its label" 'grep -q "^World: $id7 " <<< "$out" && grep -q "^Verdict: valid finding: Jev disagreement" <<< "$out"'
+
 # The snapshot is the world: what it was made from can change.
 cp -r delivery/worlds/run7 "$RESTIC_REPOSITORY.src" && $world capture "$RESTIC_REPOSITORY.src" mutable > /dev/null
 rm -rf "$RESTIC_REPOSITORY.src"

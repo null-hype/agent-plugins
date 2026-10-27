@@ -122,10 +122,10 @@ func (m *AgentPlugins) RegisteredDelivery(
 	// +default=40
 	logLines int,
 ) error {
+	worlds := Worlds{resticRepository, resticPassword, gcpServiceAccountKey}
 	// A world other than the one this run makes is judged as it was snapshotted.
-	worlds := worldsRepo{resticRepository, resticPassword, gcpServiceAccountKey}
 	if label != observedLabel {
-		return judged(ctx, worlds.in(base(harness)), label)
+		return worlds.Judge(ctx, base(harness), label)
 	}
 	planned := m.planned(harness, plannerToken, judgeToken, run)
 	// The work waits for the planner: the predictions as registered now, for this plan.
@@ -144,61 +144,24 @@ func (m *AgentPlugins) RegisteredDelivery(
 		}
 		return fmt.Errorf("%s", waiting)
 	}
-	world, err := m.installedWitness(ctx, worked(planned), repairs, logLines)
+	delivered, err := m.installedWitness(ctx, worked(planned), repairs, logLines)
 	if err != nil {
 		return err
 	}
-	// The completed world, snapshotted: what witness showed of both runs, the
-	// spec, the predictions as read now (whatever the world's cache), and the
-	// feature. The verdict is then judged from the snapshot, not from here.
-	return judged(ctx, worlds.in(world).
-		WithEnvVariable("RUN", run).
+	// The predictions as read now (whatever the world's cache) are this
+	// experiment's part of the world; the rest is what Playwright showed.
+	produced := playwrightEvidence(delivered).
 		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
-		WithExec([]string{"sh", "-c", `set -e
-w=/world; rm -rf $w; mkdir -p $w
-cp -r /runs/plan $w/plan-run; cp -r /runs/work $w/work-run; cp -r /feature $w/feature
-cp -r delivery/test-results $w/test-results; [ ! -f /failed.txt ] || cp /failed.txt $w/
-cp delivery/feature.spec.ts $w/spec.txt
-WITNESS_RUN_DIR=/runs/plan node delivery/diagnostics.mjs delivery/feature.spec.ts > $w/plan.json
-WITNESS_RUN_DIR=/runs/work node delivery/diagnostics.mjs delivery/feature.spec.ts > $w/work.json
-node delivery/registered.mjs > $w/registered.json
-bash delivery/world.sh capture $w ` + observedLabel + ` "$RUN"`}), label)
+		WithExec([]string{"sh", "-c", "node delivery/registered.mjs > " + worldDir + "/registered.json"})
+	// The verdict is judged from the snapshot, by its exact id, not from here.
+	id, err := worlds.Capture(ctx, produced, observedLabel, run)
+	if err != nil {
+		return err
+	}
+	return worlds.Judge(ctx, produced, id)
 }
 
 const observedLabel = "observed"
-
-// Where the worlds are kept: the shared restic repository when its secrets are
-// given, otherwise a cache volume local to the engine (which can prune it; its
-// password keeps the repository's integrity, not a secret).
-type worldsRepo struct {
-	repository, password, gcpKey *dagger.Secret
-}
-
-func (w worldsRepo) in(c *dagger.Container) *dagger.Container {
-	c = c.WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq restic ca-certificates"})
-	if w.repository == nil || w.password == nil {
-		return c.
-			WithMountedCache("/worlds", dag.CacheVolume("delivery-worlds")).
-			WithEnvVariable("RESTIC_REPOSITORY", "/worlds").
-			WithEnvVariable("RESTIC_PASSWORD", "delivery-worlds")
-	}
-	c = c.
-		WithSecretVariable("RESTIC_REPOSITORY", w.repository).
-		WithSecretVariable("RESTIC_PASSWORD", w.password)
-	if w.gcpKey != nil {
-		c = c.
-			WithMountedSecret("/run/gcp-service-account.json", w.gcpKey).
-			WithEnvVariable("GOOGLE_APPLICATION_CREDENTIALS", "/run/gcp-service-account.json")
-	}
-	return c
-}
-
-// The world labelled `label`, restored apart and judged by Reconcile.pkl: the
-// same check on whichever world is selected. Its output names the snapshot.
-func judged(ctx context.Context, c *dagger.Container, label string) error {
-	_, err := c.WithExec([]string{"bash", "delivery/world.sh", "judge", label}).Sync(ctx)
-	return err
-}
 
 // CaptureWorld snapshots a world (a directory as delivery/world.sh describes,
 // e.g. jev-playwright/delivery/worlds/run7) under a label, for RegisteredDelivery
@@ -221,13 +184,12 @@ func (m *AgentPlugins) CaptureWorld(
 	// +optional
 	gcpServiceAccountKey *dagger.Secret,
 ) (string, error) {
-	out, err := worldsRepo{resticRepository, resticPassword, gcpServiceAccountKey}.in(dag.Container().From("debian:bookworm-slim")).
-		WithExec([]string{"sh", "-c", "apt-get install -y -qq jq"}).
-		WithFile("/world.sh", harness.File("delivery/world.sh")).
-		WithDirectory("/world", world).
-		WithExec([]string{"bash", "/world.sh", "capture", "/world", label, run}).
-		Stdout(ctx)
-	return strings.TrimSpace(out), err
+	c := dag.Container().From("debian:bookworm-slim").
+		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq"}).
+		WithDirectory("/harness/delivery", harness.Directory("delivery")).
+		WithWorkdir("/harness").
+		WithDirectory(worldDir, world)
+	return Worlds{resticRepository, resticPassword, gcpServiceAccountKey}.Capture(ctx, c, label, run)
 }
 
 // What witness showed of both runs, as data for Reconcile.pkl: facts.json.
