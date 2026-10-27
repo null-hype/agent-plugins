@@ -68,6 +68,22 @@ Two checks, the second composing the first:
   names the Pass item and when it was last changed (`pkl test
   Reconcile.test.pkl`).
 
+A snapshot is a complete experimental world. Labels describe its provenance.
+`registered-delivery` evaluates the same registered claim against whichever
+world is selected. The world is a restic snapshot (`world.sh`) of what the
+check judges: witness's answers on both runs, the spec they are on the lines
+of, the predictions as read, and the feature. After a run the check captures it
+as `label=observed` (tags `check=registered-delivery`, `label=`, `run=`), then
+restores the newest snapshot with the label into a fresh directory and judges
+that; the output and verdict name the snapshot id. `REGISTEREDDELIVERY_LABEL=synthetic`
+in `.env` (`dagger check` takes no flags) judges a world made by data instead,
+without running Jules: `dagger call capture-world --world delivery/worlds/run7
+--label synthetic`, then `dagger check registered-delivery`. Run 7 is kept in
+`worlds/run7` (rebuilt from the printed scores, so synthetic) and gives the same
+verdict through its snapshot. `bash delivery/world.test.sh` tests capture,
+selection by label, restore and judgement against a disposable repository. The
+repository is a cache volume, local to the engine.
+
 The verdict keeps three layers apart: the world (does the feature install,
 and is every answer fresh and on its line), the protocol (were the
 predictions fixed for this plan before its work, on the registered model),
