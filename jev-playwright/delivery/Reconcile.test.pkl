@@ -79,7 +79,11 @@ local afterApproval = (passed) { predicted = registered("2026-10-27T10:25:00.000
 // approval and repair times were not kept, so they stand in, after the
 // registration. Its world and protocol held; the two file steps did not cool,
 // though the feature that installed was the work, and the first, broken work
-// had cooled them (0.22, 0.19).
+// had cooled them (0.22, 0.19). The times test the order the protocol
+// needs, not the run's whole record.
+//
+// It is a frozen falsification case: a change that turns it green changes
+// what a Jev step score means, and has to say how, not pass as a fix.
 local run7 = (Reconcile) {
   predicted = (Predicted) {
     registered = new Dynamic {
@@ -117,23 +121,23 @@ local run7 = (Reconcile) {
 }
 
 facts {
-  ["run 7: the world and the protocol held, and Jev disagreed with the world"] {
-    run7.installedPass; run7.protocolPass; !run7.measuredPass; !run7.pass
+  ["run 7 is a valid finding: Jev disagreement"] {
+    run7.installedPass; run7.protocolPass; run7.valid; !run7.measuredPass; !run7.pass
     !run7.measured["the work cooled Create `src/witness/devcontainer-feature.json`."]
     !run7.measured["the work cooled Create `src/witness/install.sh`."]
-    run7.verdict.startsWith("Jev disagreed with the world")
+    run7.verdict.startsWith("valid finding: Jev disagreement")
   }
-  ["the first passing run passes"] { passed.pass; passed.installedPass }
-  ["a steady step that warms fails the experiment, not the install"] {
-    !warmed.pass; warmed.installedPass; !warmed.facts["the work left steady Submit the change"]
+  ["the first passing run is valid, and Jev agreed"] { passed.valid; passed.pass }
+  ["a steady step that warms is a valid disagreement"] {
+    warmed.valid; !warmed.pass; !warmed.facts["the work left steady Submit the change"]
   }
-  ["predictions registered before Jules was asked for the plan fail"] {
-    !beforePlan.pass; !beforePlan.protocolPass; !beforePlan.facts["the predictions were last changed after Jules was asked for the plan"]
+  ["predictions registered before Jules was asked for the plan are not valid"] {
+    !beforePlan.valid; !beforePlan.protocolPass; !beforePlan.facts["the predictions were last changed after Jules was asked for the plan"]
   }
-  ["predictions changed after the plan was approved fail"] {
-    !afterApproval.pass; !afterApproval.facts["the predictions were last changed before Jules's plan was approved"]
+  ["predictions changed after the plan was approved are not valid"] {
+    !afterApproval.valid; !afterApproval.facts["the predictions were last changed before Jules's plan was approved"]
   }
-  ["a stale answer fails both"] { !stale.pass; !stale.installedPass }
+  ["a stale answer is not valid"] { !stale.valid; !stale.installedPass }
 }
 
 examples {
