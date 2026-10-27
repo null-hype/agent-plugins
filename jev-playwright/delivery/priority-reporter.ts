@@ -11,7 +11,7 @@ import { JEV_KEY, secret } from './fixtures';
 // come back in that order. The same reporter answers at three levels:
 //
 //   --list                  every test, nothing run
-//   --project feature-plan  Jules's plan, approved, nothing written
+//   --project feature-plan  Jules's plan, not yet approved, nothing written
 //   --project feature       Jules's plan, and the files it wrote
 //
 // so as work lands the list shifts. It writes priorities.json in test-results,
@@ -28,6 +28,7 @@ export default class PriorityReporter implements Reporter {
   private at = new Map<string, At>();
   private began = new Date().toISOString();
   private created = new Set<string>();
+  private approved = new Set<string>();
 
   onBegin(config: FullConfig, suite: Suite) {
     this.config = config;
@@ -40,7 +41,10 @@ export default class PriorityReporter implements Reporter {
 
   onTestEnd(test: TestCase, result: TestResult) {
     if (!this.items.has(test.title)) return;
-    for (const a of [...test.annotations, ...result.annotations]) if (a.type === 'jules session created' && a.description) this.created.add(a.description);
+    for (const a of [...test.annotations, ...result.annotations]) {
+      if (a.type === 'jules session created' && a.description) this.created.add(a.description);
+      if (a.type === 'jules plan approved' && a.description) this.approved.add(a.description);
+    }
     const item: Item = { test: test.title, status: result.status };
     for (const s of result.steps) {
       if (s.title === "Approve Jules's plan") item.wrote = s.steps.flatMap((f) => wrote(f, result));
@@ -63,7 +67,7 @@ export default class PriorityReporter implements Reporter {
     const out = path.join(this.config.rootDir, 'test-results', 'priorities.json');
     mkdirSync(path.dirname(out), { recursive: true });
     const level = state.tests.some((t) => t.wrote?.length) ? 'work' : state.tests.some((t) => t.plan) ? 'plan' : 'list';
-    const run = { began: this.began, julesSessionsCreated: [...this.created].sort(), at: new Date().toISOString(), level, model, ranked };
+    const run = { began: this.began, julesSessionsCreated: [...this.created].sort(), julesPlansApproved: [...this.approved].sort(), at: new Date().toISOString(), level, model, ranked };
     writeFileSync(out, JSON.stringify({ ...run, state }, null, 2) + '\n');
     const history = path.join(this.config.rootDir, '.priorities', 'history.jsonl');
     mkdirSync(path.dirname(history), { recursive: true });
