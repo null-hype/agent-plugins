@@ -147,6 +147,7 @@ func (m *AgentPlugins) RegisteredDelivery(
 		WithExec([]string{"sh", "-c", `set -e
 w=/world; rm -rf $w; mkdir -p $w
 cp -r /runs/plan $w/plan-run; cp -r /runs/work $w/work-run; cp -r /feature $w/feature
+cp -r delivery/test-results $w/test-results; [ ! -f /failed.txt ] || cp /failed.txt $w/
 cp delivery/feature.spec.ts $w/spec.txt
 WITNESS_RUN_DIR=/runs/plan node delivery/diagnostics.mjs delivery/feature.spec.ts > $w/plan.json
 WITNESS_RUN_DIR=/runs/work node delivery/diagnostics.mjs delivery/feature.spec.ts > $w/work.json
