@@ -4,6 +4,7 @@ examples {
       ["every answer is on its test's line"] = true
       ["no answer is stale"] = true
       ["the predictions were last changed before the plan run began"] = true
+      ["the predictions were last changed before Jules was first asked"] = true
       ["both runs show exactly the predicted steps"] = true
       ["Jev answered on the registered model, jev-1.14.0"] = true
       ["the work cooled Create the dev container feature definition"] = true

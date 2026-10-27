@@ -110,6 +110,10 @@ async function completed(session: SessionClient, url: string, annotations: { typ
   throw new Error(`Jules has not finished its plan yet: ${url}. Run again later.`);
 }
 
+/** A task's session title. DELIVERY_SESSIONS keys it: under the same key, or
+ * none, running again reuses the session; under another, Jules is asked anew. */
+const sessions = (task: string) => (process.env.DELIVERY_SESSIONS ? `${task} · ${process.env.DELIVERY_SESSIONS}` : task);
+
 /** Jules's repair of a task's work, given how it failed: a repoless session
  * asked the task and the failure, its own plan approved, waited on. The same
  * world failing is the same session: running again waits on it instead of
@@ -117,7 +121,7 @@ async function completed(session: SessionClient, url: string, annotations: { typ
  * paths change from run to run. */
 async function repair(client: ReturnType<typeof jules.with>, task: string, failed: string, annotations: { type: string; description?: string }[]) {
   const world = failed.split('\nIts install log')[0];
-  const title = `${task} · repair ${createHash('sha256').update(world).digest('hex').slice(0, 12)}`;
+  const title = `${sessions(task)} · repair ${createHash('sha256').update(world).digest('hex').slice(0, 12)}`;
   let id: string | undefined;
   let seen = 0;
   for await (const s of client.sessions()) {
@@ -127,8 +131,8 @@ async function repair(client: ReturnType<typeof jules.with>, task: string, faile
   const prompt = `${task}. What was written for it, installed in a clean dev container, fails:\n\n${failed.trim()}\n\nRepair it, writing each of its files in full.`;
   if (!id) id = (await client.session({ prompt, title, requireApproval: true })).id;
   const session = client.session(id);
-  const url = (await session.info()).url;
-  annotations.push({ type: 'jules repair', description: url });
+  const { url, createTime } = await session.info();
+  annotations.push({ type: 'jules repair', description: url }, { type: 'jules session created', description: createTime });
   for (const until = Date.now() + 8 * 60_000; ; await sleep(5_000)) {
     if (Date.now() > until) throw new Error(`Jules has no repair plan yet: ${url}. Run again later.`);
     const acts = await activities(session).catch((e) => { if (String(e?.message).includes('404')) return []; throw e; });
@@ -169,16 +173,17 @@ export const test = base.extend<Fixtures>({
       const prompt = `${task}. Give me your plan.`;
       // The same task is the same session: running again reads its plan
       // instead of asking for another.
+      const title = sessions(task);
       let id: string | undefined;
       let seen = 0;
       for await (const s of client.sessions()) {
-        if (s.title === task && s.state !== 'failed' && !s.archived) { id = s.id; break; }
+        if (s.title === title && s.state !== 'failed' && !s.archived) { id = s.id; break; }
         if (++seen >= 200) break;
       }
-      if (!id) id = (await client.session({ prompt, title: task, requireApproval: true })).id;
+      if (!id) id = (await client.session({ prompt, title, requireApproval: true })).id;
       const session = client.session(id);
-      const url = (await session.info()).url;
-      testInfo.annotations.push({ type: 'jules plan', description: url });
+      const { url, createTime } = await session.info();
+      testInfo.annotations.push({ type: 'jules plan', description: url }, { type: 'jules session created', description: createTime });
 
       // Jules either plans or replies. A session just made has no activities
       // yet: Jules answers 404 until it does.

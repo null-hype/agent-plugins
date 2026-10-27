@@ -4,7 +4,9 @@
 ///
 /// `installed` is the world's: every answer witness showed is fresh and on
 /// its test's line. `facts` adds the registered experiment's: the predictions
-/// were last changed before the plan run began, both runs show exactly the
+/// were last changed before the plan run began and before Jules was first
+/// asked, in any session either run used (a reused session can be older than
+/// the run), both runs show exactly the
 /// predicted steps, Jev answered on the registered model, and the work moved
 /// each step as predicted. Whether Jules did each step is not among them:
 /// witness shows Jev's answers, not Jules's activity. It decides; the check
@@ -17,6 +19,7 @@ import "Predicted.pkl"
 
 class Run {
   began: String
+  created: Listing<String>
   model: String
   shown: Mapping<String, Number>
   offLine: Listing<String>
@@ -29,6 +32,7 @@ hidden plan: Run = toRun(observed.plan)
 hidden work: Run = toRun(observed.work)
 local function toRun(d: Dynamic): Run = new {
   began = d.began
+  created = d.created.toList().toListing()
   model = d.model
   shown = d.shown.toMap().toMapping()
   offLine = d.offLine.toList().toListing()
@@ -66,6 +70,8 @@ installed: Mapping<String, Boolean> = new {
 facts: Mapping<String, Boolean> = (installed) {
   // ISO times in UTC to the millisecond compare as strings.
   ["the predictions were last changed before the plan run began"] = predicted.written < plan.began
+  ["the predictions were last changed before Jules was first asked"] =
+    !plan.created.isEmpty && (plan.created.toList() + work.created.toList()).every((t) -> predicted.written < t)
   ["both runs show exactly the predicted steps"] = plan.shown.keys == steps && work.shown.keys == steps
   ["Jev answered on the registered model, \(Delivery.model)"] =
     plan.model == Delivery.model && work.model == Delivery.model
