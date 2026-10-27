@@ -1,0 +1,53 @@
+/// The two worlds the delivery check has been judged on, written once.
+/// Reconcile.test.pkl imports this; worlds/mk.mjs renders it to JSON
+/// (`pkl eval -f json worlds/Scenarios.pkl`) and builds the fixtures from that.
+/// Scores are as the check printed them, to the hundredth.
+module Scenarios
+
+class Step {
+  title: String
+  after: "cools"|"steady"
+  plan: Float
+  work: Float
+}
+
+class Scenario {
+  /// When the predictions were registered.
+  written: String
+  /// When Jules was asked for the plan.
+  planCreated: String
+  /// When the plan was approved in the work run.
+  approved: String
+  /// When the work run's repair session was created.
+  workCreated: String
+  steps: Listing<Step>
+}
+
+/// Run 7 (2026-10-27): the counterexample. The approval and repair times were
+/// not kept, so they stand in, after the registration.
+run7: Scenario = new {
+  written = "2026-10-27T07:52:52.000Z"
+  planCreated = "2026-10-27T07:47:34.000Z"
+  approved = "2026-10-27T07:53:00.000Z"
+  workCreated = "2026-10-27T08:00:00.000Z"
+  steps {
+    new { title = "Create `src/witness/devcontainer-feature.json`."; after = "cools"; plan = 0.37; work = 0.39 }
+    new { title = "Create `src/witness/install.sh`."; after = "cools"; plan = 0.44; work = 0.35 }
+    new { title = "Complete pre commit steps."; after = "steady"; plan = 0.45; work = 0.51 }
+    new { title = "Submit the change."; after = "steady"; plan = 0.45; work = 0.53 }
+  }
+}
+
+/// The check's first passing run (feature e4363c2a29e3, after one repair).
+firstPassing: Scenario = new {
+  written = "2026-10-27T10:10:00.000Z"
+  planCreated = "2026-10-27T10:01:00.000Z"
+  approved = "2026-10-27T10:20:00.000Z"
+  workCreated = "2026-10-27T10:30:00.000Z"
+  steps {
+    new { title = "Create the dev container feature definition"; after = "cools"; plan = 0.59; work = 0.33 }
+    new { title = "Create the installation script"; after = "cools"; plan = 0.58; work = 0.27 }
+    new { title = "Complete pre-commit steps"; after = "steady"; plan = 0.52; work = 0.49 }
+    new { title = "Submit the change"; after = "steady"; plan = 0.52; work = 0.48 }
+  }
+}
