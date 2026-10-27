@@ -61,7 +61,11 @@ jobs:
         id: deploy
         working-directory: tutorial-app
         env:
-          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+          # Dedicated viewer token for infra/netlify only; other CI vaults
+          # are deliberately outside this preview job's access.
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.STORYBOOK_PROTON_PASS_TOKEN }}
+          # Item-only grants resolve by their share/item IDs, not vault name.
+          NETLIFY_SECRET_REF: ${{ vars.STORYBOOK_NETLIFY_SECRET_REF }}
           PROTON_PASS_KEY_PROVIDER: fs
           PROTON_PASS_SESSION_DIR: /tmp/pass-agent-ci
           PROTON_PASS_AGENT_REASON: "GitHub Actions Storybook PR preview: resolve Netlify deployment credentials"
@@ -76,9 +80,8 @@ jobs:
           pass-cli login
           trap 'pass-cli logout >/dev/null 2>&1 || true' EXIT
 
-          cat > /tmp/netlify.env <<'EOF'
-          NETLIFY_PERSONAL_ACCESS_TOKEN=pass://infra/netlify/NETLIFY_PERSONAL_ACCESS_TOKEN
-          EOF
+          : "${NETLIFY_SECRET_REF:?Set STORYBOOK_NETLIFY_SECRET_REF to the item-scoped pass:// reference}"
+          printf 'NETLIFY_PERSONAL_ACCESS_TOKEN=%s\n' "$NETLIFY_SECRET_REF" > /tmp/netlify.env
 
           pass-cli run --env-file /tmp/netlify.env -- bash -euo pipefail -c '
             export NETLIFY_AUTH_TOKEN="$NETLIFY_PERSONAL_ACCESS_TOKEN"
