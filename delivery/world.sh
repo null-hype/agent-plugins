@@ -3,7 +3,7 @@
 #
 #   plan-run/ work-run/   each run's witness run (priorities.json)
 #   plan.json work.json   what witness showed on the spec, for each run
-#   feature.spec.ts       the spec those answers are on the lines of
+#   spec.txt         the spec those answers are on the lines of
 #   registered.json       the predictions as the judge read them
 #   feature/              the dev container feature Jules wrote, when there is one
 #
@@ -31,7 +31,7 @@ snapshot_of() {
 
 capture_world() {
   local dir=$1 label=$2 run=${3:-} tags short
-  for f in registered.json plan.json work.json feature.spec.ts plan-run work-run; do
+  for f in registered.json plan.json work.json spec.txt plan-run work-run; do
     [ -e "$dir/$f" ] || { echo "$dir is not a world: no $f" >&2; exit 2; }
   done
   restic cat config > /dev/null 2>&1 || restic init >&2
@@ -50,7 +50,7 @@ judge_world() {
   # keeps; the world is the shallowest directory holding registered.json.
   world="$(find "$at" -name registered.json -not -path '*/feature/*' -printf '%d %h\n' | sort -n | head -1 | cut -d' ' -f2-)"
   echo "World: $id ($(restic snapshots "$id" --json | jq -r '.[0].tags | join(", ")')), restored to $world"
-  node delivery/facts.mjs "$world/feature.spec.ts" "$at/facts.json" \
+  node delivery/facts.mjs "$world/spec.txt" "$at/facts.json" \
     "plan=$world/plan.json,$world/plan-run" "work=$world/work.json,$world/work-run"
   pkl eval -f json -p observed="file://$at/facts.json" -p registered="file://$world/registered.json" \
     delivery/Reconcile.pkl > "$at/pkl.json"
