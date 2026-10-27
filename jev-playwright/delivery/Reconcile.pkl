@@ -1,14 +1,13 @@
 /// What witness showed of a delivery run (facts.mjs, `prop:observed`), judged
-/// against what the planner predicted in Pass before it (Predicted.pkl,
-/// `prop:registered`) and against Delivery.pkl.
+/// against what the planner predicted in Pass between Jules's plan and its
+/// work (Predicted.pkl, `prop:registered`) and against Delivery.pkl.
 ///
 /// `installed` is the world's: every answer witness showed is fresh and on
 /// its test's line. `facts` adds the registered experiment's: the predictions
-/// were last changed before the plan run began and before Jules was first
-/// asked, in any session either run used (a reused session can be older than
-/// the run), both runs show exactly the
-/// predicted steps, Jev answered on the registered model, and the work moved
-/// each step as predicted. Whether Jules did each step is not among them:
+/// were last changed after Jules was asked for the plan and before its plan
+/// was approved, so they bind to the plan as presented and were fixed before
+/// any work; both runs show exactly the predicted steps, Jev answered on the
+/// registered model, and the work moved each step as predicted. Whether Jules did each step is not among them:
 /// witness shows Jev's answers, not Jules's activity. It decides; the check
 /// only reports and fails unless `installedPass`, or `pass`.
 module Reconcile
@@ -18,8 +17,10 @@ import "Delivery.pkl"
 import "Predicted.pkl"
 
 class Run {
-  began: String
+  /// When each Jules session the run used was created.
   created: Listing<String>
+  /// When Jules recorded each plan the run approved.
+  approved: Listing<String>
   model: String
   shown: Mapping<String, Number>
   offLine: Listing<String>
@@ -31,8 +32,8 @@ hidden observed: Dynamic = new json.Parser {}.parse(read(read("prop:observed")).
 hidden plan: Run = toRun(observed.plan)
 hidden work: Run = toRun(observed.work)
 local function toRun(d: Dynamic): Run = new {
-  began = d.began
   created = d.created.toList().toListing()
+  approved = d.approved.toList().toListing()
   model = d.model
   shown = d.shown.toMap().toMapping()
   offLine = d.offLine.toList().toListing()
@@ -69,9 +70,10 @@ installed: Mapping<String, Boolean> = new {
 
 facts: Mapping<String, Boolean> = (installed) {
   // ISO times in UTC to the millisecond compare as strings.
-  ["the predictions were last changed before the plan run began"] = predicted.written < plan.began
-  ["the predictions were last changed before Jules was first asked"] =
-    !plan.created.isEmpty && (plan.created.toList() + work.created.toList()).every((t) -> predicted.written < t)
+  ["the predictions were last changed after Jules was asked for the plan"] =
+    !plan.created.isEmpty && plan.created.toList().every((t) -> t < predicted.written)
+  ["the predictions were last changed before Jules's plan was approved"] =
+    plan.approved.isEmpty && !work.approved.isEmpty && work.approved.toList().every((t) -> predicted.written < t)
   ["both runs show exactly the predicted steps"] = plan.shown.keys == steps && work.shown.keys == steps
   ["Jev answered on the registered model, \(Delivery.model)"] =
     plan.model == Delivery.model && work.model == Delivery.model

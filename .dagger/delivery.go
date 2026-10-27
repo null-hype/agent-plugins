@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"dagger/agent-plugins/internal/dagger"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -49,7 +48,7 @@ func (m *AgentPlugins) PeopleCanInstallWitness(
 	// +default=40
 	logLines int,
 ) error {
-	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, "", repairs, logLines)
+	world, err := m.installedWitness(ctx, m.Delivery(harness, plannerToken, judgeToken, ""), repairs, logLines)
 	if err != nil {
 		return err
 	}
@@ -64,20 +63,22 @@ jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show
 
 // RegisteredDelivery: the delivery experiment came out as registered. It is
 // PeopleCanInstallWitness's world, judged also against what the planner
-// predicted in Pass before the run (jev-playwright/delivery/Predicted.pkl):
-// what the work should do to each step of Jules's approved plan. The judge
-// reads them from the planner's journal, which it can view and not change,
-// before the world, which is keyed to them, Jules's sessions with it; and
-// again after it, and Reconcile.pkl's `facts` judge: the world's facts, the
-// predictions last changed before the plan run began and before Jules was
-// first asked in any session either run used, both
-// runs show exactly the predicted steps, Jev answered on Delivery.pkl's model,
-// and the work moved each step as predicted, by Delivery.pkl's `moved`.
+// predicted in Pass (jev-playwright/delivery/Predicted.pkl): what the work
+// should do to each step of Jules's plan. The planner registers once Jules has
+// presented its plan and before the plan is approved, so the predictions bind
+// to the plan as presented and are fixed before any work: the check runs the
+// plan, and stops there, printing its steps, until the planner has registered
+// for exactly them. Then it approves the plan, and Jules works. The judge
+// reads the predictions from the planner's journal, which it can view and not
+// change, again after the world, and Reconcile.pkl's `facts` judge: the
+// world's facts, the predictions last changed after Jules was asked for the
+// plan and before Jules recorded it approved, both runs show exactly the
+// predicted steps, Jev answered on Delivery.pkl's model, and the work moved
+// each step as predicted, by Delivery.pkl's `moved`.
 //
-// The planner registers before the run (jev-playwright/delivery/README.md):
-//
-//	node delivery/register.mjs <predictions.json>
-//	pass-cli run --env-file .env -- dagger check registered-delivery
+//	pass-cli run --env-file .env -- dagger check registered-delivery   # stops at the plan
+//	node delivery/register.mjs <predictions.json>                      # the planner
+//	pass-cli run --env-file .env -- dagger check registered-delivery   # the same plan, worked
 //
 // Never cached as a call, so the predictions are read each time it is checked.
 //
@@ -92,28 +93,33 @@ func (m *AgentPlugins) RegisteredDelivery(
 	plannerToken *dagger.Secret,
 	// +optional
 	judgeToken *dagger.Secret,
+	// Keys Jules's sessions: under the same key the check resumes the same
+	// plan, so the planner can register for it; under another, Jules is asked anew.
+	// +default="registered"
+	run string,
 	// +default=3
 	repairs int,
 	// +default=40
 	logLines int,
 ) error {
-	// The predictions as registered now, before the world: a new registration
-	// is a new world, Jules's sessions keyed to it, so no session the run uses
-	// is older than the predictions. The same registration reuses the world.
-	out, err := withLogins(base(harness), plannerToken, judgeToken).
+	planned := m.planned(harness, plannerToken, judgeToken, run)
+	// The work waits for the planner: the predictions as registered now, for this plan.
+	ready := planned.
 		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
-		WithExec([]string{"sh", "-c", "set -eu; . /logins.sh; node delivery/registered.mjs"}).
-		Stdout(ctx)
+		WithExec([]string{"sh", "-c", "set -eu; node delivery/registered.mjs > /registered.json; node delivery/ready.mjs /registered.json /runs/plan/priorities.json"},
+			dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
+	code, err := ready.ExitCode(ctx)
 	if err != nil {
-		return fmt.Errorf("the planner registered no valid predictions: %w", err)
-	}
-	var registered struct {
-		Written string `json:"written"`
-	}
-	if err := json.Unmarshal([]byte(out), &registered); err != nil {
 		return err
 	}
-	world, err := m.installedWitness(ctx, harness, plannerToken, judgeToken, "registered "+registered.Written, repairs, logLines)
+	if code != 0 {
+		waiting, err := ready.Stderr(ctx)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("%s", waiting)
+	}
+	world, err := m.installedWitness(ctx, worked(planned), repairs, logLines)
 	if err != nil {
 		return err
 	}
@@ -140,13 +146,12 @@ node delivery/facts.mjs delivery/feature.spec.ts /facts.json plan=/plan.json,/ru
 
 // The delivery, its feature installed into a clean dev container, repaired
 // up to `repairs` times, and the witness it installed on the delivery's PATH.
-func (m *AgentPlugins) installedWitness(ctx context.Context, harness *dagger.Directory, plannerToken, judgeToken *dagger.Secret, sessions string, repairs, logLines int) (*dagger.Container, error) {
-	delivered := m.Delivery(harness, plannerToken, judgeToken, sessions)
+func (m *AgentPlugins) installedWitness(ctx context.Context, delivered *dagger.Container, repairs, logLines int) (*dagger.Container, error) {
 	for repair := 0; ; repair++ {
 		feature := delivered.Directory("/feature")
 		installed := devcontainer(feature).
 			WithEnvVariable("REPAIRS", fmt.Sprint(repair)).
-			WithExec([]string{"bash", "-c", "exec 2>&1; echo \"installing the feature $(cat * | sha256sum | cut -c1-12), repair $REPAIRS\"; " + installFeature + ` && { w="$(command -v witness)" || { echo "the feature installed no witness on PATH"; exit 1; }; cp "$w" /witness; }`},
+			WithExec([]string{"bash", "-c", "exec 2>&1; echo \"installing the feature $(find . -maxdepth 1 -type f -exec cat {} + | sha256sum | cut -c1-12), repair $REPAIRS\"; " + installFeature + ` && { w="$(command -v witness)" || { echo "the feature installed no witness on PATH"; exit 1; }; cp "$w" /witness; }`},
 				dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
 		code, err := installed.ExitCode(ctx)
 		if err != nil {
@@ -183,6 +188,10 @@ func evidence(ctx context.Context, feature *dagger.Directory, log string) (strin
 	var b strings.Builder
 	b.WriteString("The feature, as installed:\n")
 	for _, name := range names {
+		// The files Jules wrote: a run's directory beside them, as its attachments, is not.
+		if strings.HasSuffix(name, "/") {
+			continue
+		}
 		content, err := feature.File(name).Contents(ctx)
 		if err != nil {
 			return "", err
@@ -218,17 +227,21 @@ func (m *AgentPlugins) Delivery(
 	// +optional
 	sessions string,
 ) *dagger.Container {
+	return worked(m.planned(harness, plannerToken, judgeToken, sessions))
+}
+
+// The delivery loop to Jules's plan, not yet approved: the plan run, its
+// witness run in /runs/plan.
+func (m *AgentPlugins) planned(harness *dagger.Directory, plannerToken, judgeToken *dagger.Secret, sessions string) *dagger.Container {
 	c := withLogins(base(harness), plannerToken, judgeToken)
 	if sessions != "" {
 		c = c.WithEnvVariable("DELIVERY_SESSIONS", sessions)
 	}
 	return c.
-		WithNewFile("/delivery.sh", `set -eu
+		WithNewFile("/plan.sh", `set -eu
 . /logins.sh
 npx playwright test -c delivery --project feature-plan
 mkdir -p /runs && cp -r delivery/.witness/run /runs/plan
-npx playwright test -c delivery --project feature
-. /work.sh
 `).
 		WithNewFile("/repair.sh", `set -eu
 # Jules repairs its work with how it failed, and the work run is read again.
@@ -242,7 +255,13 @@ manifest="$(find delivery/test-results/feature-* -name devcontainer-feature.json
 [ -n "$manifest" ] || { echo "Jules wrote no dev container feature" >&2; exit 1; }
 cp -r "$(dirname "$manifest")" /feature
 `).
-		WithExec([]string{"bash", "/delivery.sh"})
+		WithExec([]string{"bash", "/plan.sh"})
+}
+
+// The planned delivery, its plan approved and worked: the work run, its
+// witness run in /runs/work, and the feature Jules wrote in /feature.
+func worked(planned *dagger.Container) *dagger.Container {
+	return planned.WithExec([]string{"bash", "-c", "set -eu; npx playwright test -c delivery --project feature; . /work.sh"})
 }
 
 // The harness, its dependencies installed, with pass-cli and Pkl.
