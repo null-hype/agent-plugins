@@ -62,12 +62,12 @@ const specs = [
     }),
   ], { error: `Jules is waiting for an answer: ${jules('6021448811736512812')}` })),
   test('goal', 'goal.spec.ts', 'Can someone install jev-lsp and see each answer on the line of the test that asked it?', 'skipped', 9, []),
-  test('audit', 'audit.spec.ts', 'Is anything this run asked for still urgent?', 'passed', 22, [], {
+  test('audit', 'audit.spec.ts', 'Is anything this run asked for still a priority?', 'passed', 22, [], {
     annotations: [
-      { type: 'is-urgent', description: '0.06  jev-root  start the planner' },
-      { type: 'is-urgent', description: '0.05  jev-planner  have Jules write one file of each node' },
-      { type: 'is-urgent', description: '0.05  jev-judge  ask Jev whether each file does what was asked' },
-      { type: 'is-urgent', description: `0.88  jules  ${question}` },
+      { type: 'is-priority', description: '0.06  jev-root  start the planner' },
+      { type: 'is-priority', description: '0.05  jev-planner  have Jules write one file of each node' },
+      { type: 'is-priority', description: '0.05  jev-judge  ask Jev whether each file does what was asked' },
+      { type: 'is-priority', description: `0.88  jules  ${question}` },
       { type: 'triage', description: `0.88  Jules asks about src/jev-lsp/install.sh  ${jules('6021448811736512812')}` },
     ],
   }),
