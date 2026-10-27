@@ -45,7 +45,7 @@ export function ownerMonitor(agent: string) {
 export const planFile = () => path.join(path.dirname(process.env.DELIVERY_LEDGER!), 'plans.json');
 
 const JULES_KEY = process.env.JULES_KEY_REF ?? 'pass://jev-planner/jules/JULES_API_KEY';
-const JEV_KEY = process.env.TYPESAFE_KEY_REF ?? 'pass://jev-judge/typesafe/TYPESAFE_API_KEY';
+export const JEV_KEY = process.env.TYPESAFE_KEY_REF ?? 'pass://jev-judge/typesafe/TYPESAFE_API_KEY';
 
 export type PlanStep = { title: string; description?: string };
 export type Plan = { id: string; url: string; steps: PlanStep[] };
@@ -60,6 +60,10 @@ type Fixtures = {
    * asked only the task, and for its plan. Each step of Jules's plan is a step
    * under it. A reply in place of a plan fails the step with the reply. */
   plan: (task: string) => Promise<Plan>;
+  /** Approves Jules's plan, as a step. Waiting, it collects the files Jules
+   * wrote, each a step in which Jev judges the file against the task and plan;
+   * not waiting, the plan is approved and nothing is yet written. */
+  approve: (task: string, plan: Plan, opts?: { wait?: boolean }) => Promise<{ path: string; content: string }[]>;
   /** Jules's plan for a goal: a repoless session that waits for approval of its plan. */
   planFor: (goal: string, prompt: string) => Promise<Plan>;
   /** Jules's work on an approved plan: approves it, waits for the session to
@@ -71,6 +75,25 @@ type Fixtures = {
    * then judged by Jev against `ask`. Returns the file's content. */
   hunk: (file: string, ask: string) => Promise<string>;
 };
+
+/** A session's state from Jules itself: the SDK keeps a finished session's state
+ * for a day, even after an approval sets it working again. */
+async function fresh(session: SessionClient) {
+  await (session as any).sessionStorage.delete(session.id);
+  return session.info();
+}
+
+/** Every activity of a session, oldest first, from Jules itself. */
+async function activities(session: SessionClient) {
+  const all: any[] = [];
+  let token = '';
+  do {
+    const page = await (session as any).request(`sessions/${session.id}/activities?pageSize=100${token && `&pageToken=${token}`}`);
+    all.push(...(page.activities ?? []));
+    token = page.nextPageToken ?? '';
+  } while (token);
+  return all;
+}
 
 /** Jules's last word to us, when it stops to ask: the test fails with it. */
 async function blocked(session: SessionClient, url: string, annotations: { type: string; description?: string }[]) {
@@ -91,7 +114,7 @@ export const test = base.extend<Fixtures>({
       let id: string | undefined;
       let seen = 0;
       for await (const s of client.sessions()) {
-        if (s.title === task && s.state !== 'failed') { id = s.id; break; }
+        if (s.title === task && s.state !== 'failed' && !s.archived) { id = s.id; break; }
         if (++seen >= 200) break;
       }
       if (!id) id = (await client.session({ prompt, title: task, requireApproval: true })).id;
@@ -126,6 +149,39 @@ export const test = base.extend<Fixtures>({
         }
       }
       throw new Error(`Jules has no plan yet: ${url}. Run again later.`);
+    }));
+  },
+  approve: async ({ judge }, use, testInfo) => {
+    let client: ReturnType<typeof jules.with> | undefined;
+    const verdict = judge(`ask Jev whether Jules's files do what its plan said: ${testInfo.title}`);
+    await use((task, plan, { wait = true } = {}) => base.step("Approve Jules's plan", async () => {
+      client ??= jules.with({ apiKey: secret('planner', JULES_KEY, `have Jules carry out its plan: ${testInfo.title}`) });
+      const session = client.session(plan.id);
+      // A repoless session completes with its plan; approving sets it working again.
+      if (!(await activities(session)).some((a) => a.planApproved)) await session.approve();
+      if (!wait) return [];
+      for (const until = Date.now() + 30 * 60_000; Date.now() < until; await sleep(15_000)) {
+        const { state } = await fresh(session);
+        if (state === 'failed') throw new Error(`Jules failed: ${plan.url}`);
+        if (state === 'awaitingUserFeedback') throw await blocked(session, plan.url, testInfo.annotations);
+        const acts = await activities(session);
+        const approved = acts.findIndex((a) => a.planApproved);
+        if (!acts.slice(approved).some((a) => a.sessionCompleted)) continue;
+        const files = (await session.result()).generatedFiles().all().filter((f) => f.changeType !== 'deleted');
+        if (!files.length) throw new Error(`Jules finished its plan but wrote no files: ${plan.url}`);
+        for (const f of files) {
+          await base.step(`Jev: does ${f.path} do what the plan said?`, async () => {
+            const out = path.join(testInfo.outputDir, f.path);
+            mkdirSync(path.dirname(out), { recursive: true });
+            writeFileSync(out, f.content);
+            await testInfo.attach(f.path, { path: out, contentType: 'text/plain' });
+            const p = await verdict({ task, plan: plan.steps, path: f.path, file: f.content }, 'Does the file do what the task and plan asked? Judge only the supplied task, plan and file.');
+            testInfo.annotations.push({ type: 'does-what-was-asked', description: `${p}  ${f.path}` });
+          });
+        }
+        return files.map((f) => ({ path: f.path, content: f.content }));
+      }
+      throw new Error(`Jules has not finished its plan yet: ${plan.url}. Run again later.`);
     }));
   },
   planFor: async ({}, use, testInfo) => {
