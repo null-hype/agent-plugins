@@ -1,0 +1,23 @@
+{
+  "item": "jev-planner/journal",
+  "role": "Viewer",
+  "written": "2026-10-27T10:10:00.000Z",
+  "plan": [
+    {
+      "title": "Create the dev container feature definition",
+      "after": "cools"
+    },
+    {
+      "title": "Create the installation script",
+      "after": "cools"
+    },
+    {
+      "title": "Complete pre-commit steps",
+      "after": "steady"
+    },
+    {
+      "title": "Submit the change",
+      "after": "steady"
+    }
+  ]
+}
