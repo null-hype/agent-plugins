@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"dagger/agent-plugins/internal/dagger"
+	"fmt"
+	"strings"
 )
 
 // PeopleCanInstallWitness: people can install witness and see each answer on
@@ -12,11 +14,13 @@ import (
 // (feature-plan), once to the files Jules wrote (feature). Each run, the
 // priority reporter asks Jev what is still a priority for the goal and leaves
 // each answer as a witness finding on the line of its test. The check installs
-// the dev container feature Jules wrote into a dev container, then opens the
-// spec, as an editor would, in the witness that feature installed, once on each
-// run. It passes when every answer shows on its test's line, none is stale, and
-// between the two runs the work moved the priorities forward: some step cooled
-// beyond noise, and none warmed beyond it.
+// the dev container feature Jules wrote into a clean dev container; when that
+// fails, Jules is given the failure and repairs its work, and the check
+// installs again, up to three repairs. It then opens the spec, as an editor
+// would, in the witness that feature installed, once on each run. It passes
+// when every answer shows on its test's line, none is stale, and between the
+// plan and the last work the priorities moved forward: some step cooled beyond
+// noise, and none warmed beyond it.
 //
 // Each agent logs in to Pass with its own token. The repo's .env gives the
 // tokens as defaults, env:// variables that pass-cli resolves from pass:// refs:
@@ -37,8 +41,37 @@ func (m *AgentPlugins) PeopleCanInstallWitness(
 	judgeToken *dagger.Secret,
 ) error {
 	delivered := m.Delivery(harness, plannerToken, judgeToken)
-	installed := m.Install(delivered.Directory("/feature")).
-		WithExec([]string{"sh", "-c", `w="$(command -v witness)" || { echo "the feature Jules wrote installed no witness on PATH" >&2; exit 1; }; cp "$w" /witness`})
+	var installed *dagger.Container
+	for repairs := 0; ; repairs++ {
+		feature := delivered.Directory("/feature")
+		installed = devcontainer(feature).
+			WithEnvVariable("REPAIRS", fmt.Sprint(repairs)).
+			WithExec([]string{"bash", "-c", "exec 2>&1; echo \"installing the feature $(cat * | sha256sum | cut -c1-12), repair $REPAIRS\"; " + installFeature + ` && { w="$(command -v witness)" || { echo "the feature installed no witness on PATH"; exit 1; }; cp "$w" /witness; }`},
+				dagger.ContainerWithExecOpts{Expect: dagger.ReturnTypeAny})
+		code, err := installed.ExitCode(ctx)
+		if err != nil {
+			return err
+		}
+		if code == 0 {
+			break
+		}
+		out, err := installed.Stdout(ctx)
+		if err != nil {
+			return err
+		}
+		if repairs == 3 {
+			return fmt.Errorf("the feature Jules wrote still fails to install after %d repairs:\n%s", repairs, tail(out, 40))
+		}
+		// The evidence is the world as it was: the feature as installed, and
+		// its install log. Jules's next turn does not have its files.
+		failed, err := evidence(ctx, feature, tail(out, 40))
+		if err != nil {
+			return err
+		}
+		delivered = delivered.
+			WithNewFile("/failed.txt", failed).
+			WithExec([]string{"bash", "/repair.sh"})
+	}
 	_, err := delivered.
 		WithFile("/usr/local/bin/witness", installed.File("/witness")).
 		WithExec([]string{"sh", "-c", `set -e
@@ -47,6 +80,34 @@ WITNESS_RUN_DIR=/runs/work node delivery/diagnostics.mjs delivery/feature.spec.t
 node /forward.mjs delivery/feature.spec.ts /plan.json /work.json`}).
 		Sync(ctx)
 	return err
+}
+
+// The feature's files, then its install log: the log last, ending on how it failed.
+func evidence(ctx context.Context, feature *dagger.Directory, log string) (string, error) {
+	names, err := feature.Entries(ctx)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	b.WriteString("The feature, as installed:\n")
+	for _, name := range names {
+		content, err := feature.File(name).Contents(ctx)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&b, "\n--- %s\n%s", name, content)
+	}
+	fmt.Fprintf(&b, "\nIts install log, the last lines:\n\n%s", log)
+	return b.String(), nil
+}
+
+// The last n lines of s.
+func tail(s string, n int) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
 
 // Delivery runs the delivery loop for the goal and leaves its reports in
@@ -89,9 +150,17 @@ done
 npx playwright test -c delivery --project feature-plan
 mkdir -p /runs && cp -r delivery/.witness/run /runs/plan
 npx playwright test -c delivery --project feature
+. /work.sh
+`).
+		WithNewFile("/repair.sh", `set -eu
+# Jules repairs its work with how it failed, and the work run is read again.
+DELIVERY_FAILED=/failed.txt npx playwright test -c delivery --project feature
+. /work.sh
+`).
+		WithNewFile("/work.sh", `rm -rf /runs/work /feature
 cp -r delivery/.witness/run /runs/work
 # The dev container feature Jules wrote: the directory with its manifest.
-manifest="$(ls delivery/test-results/feature-*/src/*/devcontainer-feature.json | head -1)"
+manifest="$(find delivery/test-results/feature-* -name devcontainer-feature.json | head -1)"
 [ -n "$manifest" ] || { echo "Jules wrote no dev container feature" >&2; exit 1; }
 cp -r "$(dirname "$manifest")" /feature
 `).
@@ -132,12 +201,18 @@ if (!cooled.length || warmed.length) {
 // Install installs a dev container feature into a dev container, as the dev
 // container CLI does: as root, its options' defaults in the environment.
 func (m *AgentPlugins) Install(feature *dagger.Directory) *dagger.Container {
+	return devcontainer(feature).WithExec([]string{"bash", "-c", installFeature})
+}
+
+// A clean dev container, the feature in it, not yet installed.
+func devcontainer(feature *dagger.Directory) *dagger.Container {
 	return dag.Container().
 		From("mcr.microsoft.com/devcontainers/base:bookworm").
 		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq jq"}).
 		WithDirectory("/tmp/feature", feature).
 		WithWorkdir("/tmp/feature").
 		WithEnvVariable("_REMOTE_USER", "vscode").
-		WithEnvVariable("_REMOTE_USER_HOME", "/home/vscode").
-		WithExec([]string{"bash", "-c", `eval "$(jq -r '.options // {} | to_entries[] | "export \(.key | ascii_upcase)=\(.value.default | tostring | @sh)"' devcontainer-feature.json)" && bash install.sh`})
+		WithEnvVariable("_REMOTE_USER_HOME", "/home/vscode")
 }
+
+const installFeature = `eval "$(jq -r '.options // {} | to_entries[] | "export \(.key | ascii_upcase)=\(.value.default | tostring | @sh)"' devcontainer-feature.json)" && bash install.sh`
