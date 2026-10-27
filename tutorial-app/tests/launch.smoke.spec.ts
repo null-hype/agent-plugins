@@ -5,38 +5,25 @@ const DEMO = '/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-r
 const EVIDENCE = 'https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md';
 const CONTACT = 'https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml';
 
-test('logged-out journey: root → explanation → demo → evidence → contact', async ({ page, context }) => {
+test('logged-out journey: professional overview → proof, contact and demonstration', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveURL(new RegExp(`${LANDING}/?$`));
-  await expect(page.getByText('What does the passing check actually tell you about the answer?', { exact: true })).toBeVisible();
-
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Verification infrastructure for agent-produced software.' })).toBeVisible();
+  await expect(page.getByText('Richard Anthony · Software engineer · Sydney', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Inspect the Worlds proof ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/worlds#start-here-one-exact-world-proof');
   const email = page.getByRole('link', { name: 'public.rant@pm.me', exact: true });
   await expect(email).toBeVisible();
   await expect(email).toHaveAttribute('href', 'mailto:public.rant@pm.me');
-  await expect(page.getByRole('link', { name: 'Open an issue', exact: true })).toHaveAttribute('href', CONTACT);
-  await page.getByRole('link', { name: /Start the review/ }).first().click();
+  await expect(page.getByRole('link', { name: 'Witness ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/witness');
+  // The explanation should fit a phone without horizontal scrolling or a tutorial runtime.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await expect(page.locator('iframe')).toHaveCount(0);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
+  await page.getByRole('link', { name: 'Explore an interactive demonstration →', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${DEMO}/?$`));
   await expect(page.getByRole('heading', { name: 'Can the check tell a real read of the private file from a forged one?', exact: true })).toBeVisible();
-
-  const evidence = page.locator('#gap-footer-band').getByRole('link', { name: 'Inspect the evidence', exact: true });
-  await expect(evidence).toHaveAttribute('href', EVIDENCE);
-  const [sourcePage] = await Promise.all([context.waitForEvent('page'), evidence.click()]);
-  await sourcePage.waitForLoadState('domcontentloaded');
-  await expect(sourcePage).toHaveURL(EVIDENCE);
-  await expect(sourcePage.getByRole('heading', { name: 'Claim → executable evidence (CIT-162)', exact: true })).toBeVisible();
-
-  const [contactPage] = await Promise.all([
-    context.waitForEvent('page'),
-    page.locator('#gap-footer-band').getByRole('link', { name: 'Contact', exact: true }).click(),
-  ]);
-  await contactPage.waitForLoadState('domcontentloaded');
-  // GitHub requires an account to create an issue. The logged-out route must
-  // reach its sign-in page and preserve the intended issue-form destination.
-  await expect(contactPage).toHaveURL(/https:\/\/github\.com\/login\?/);
-  const destination = new URL(new URL(contactPage.url()).searchParams.get('return_to')!, 'https://github.com');
-  expect(destination.pathname).toBe('/null-hype/agent-plugins/issues/new');
-  expect(destination.searchParams.get('template')).toBe('apply-this.yml');
-  await expect(contactPage.getByRole('heading', { name: 'Sign in to GitHub' })).toBeVisible();
+  await expect(page.locator('#gap-footer-band').getByRole('link', { name: 'Inspect the evidence', exact: true })).toHaveAttribute('href', EVIDENCE);
+  await expect(page.locator('#gap-footer-band').getByRole('link', { name: 'Contact', exact: true })).toHaveAttribute('href', CONTACT);
 });
 
 test('rendered metadata points to a canonical page and loadable preview assets', async ({ page }) => {
