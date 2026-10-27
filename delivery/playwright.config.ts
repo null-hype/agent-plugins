@@ -38,5 +38,5 @@ export default defineConfig({
     { name: 'audit', testMatch: 'audit.spec.ts' },
   ],
   // In CI, failures also become check annotations.
-  reporter: [['list'], ['json', { outputFile: './test-results/report.json' }], ['../witness-reporter.ts'], ...(process.env.CI ? [['github'] as const] : [])],
+  reporter: [['list'], ['json', { outputFile: './test-results/report.json' }], ['../witness-reporter.ts'], ['./priority-reporter.ts'], ...(process.env.CI ? [['github'] as const] : [])],
 });
