@@ -76,6 +76,11 @@ jq -e 'all(.[]; .)' /installed.json > /dev/null || { echo "witness does not show
 // predicted steps, Jev answered on Delivery.pkl's model, and the work moved
 // each step as predicted, by Delivery.pkl's `moved`.
 //
+// The world is a restic snapshot (delivery/world.sh): the check captures the
+// completed run labelled observed, then judges the snapshot it selects by
+// `label`, restored apart. REGISTEREDDELIVERY_LABEL=synthetic judges a world
+// CaptureWorld made instead, without running Jules.
+//
 //	pass-cli run --env-file .env -- dagger check registered-delivery   # stops at the plan
 //	node delivery/register.mjs <predictions.json>                      # the planner
 //	pass-cli run --env-file .env -- dagger check registered-delivery   # the same plan, worked
@@ -97,11 +102,21 @@ func (m *AgentPlugins) RegisteredDelivery(
 	// plan, so the planner can register for it; under another, Jules is asked anew.
 	// +default="registered"
 	run string,
+	// Which world to judge, by its snapshot's label: observed runs the
+	// delivery and snapshots what it made; any other (synthetic) judges the
+	// newest snapshot with that label, made by CaptureWorld. In .env:
+	// REGISTEREDDELIVERY_LABEL=synthetic.
+	// +default="observed"
+	label string,
 	// +default=3
 	repairs int,
 	// +default=40
 	logLines int,
 ) error {
+	// A world other than the one this run makes is judged as it was snapshotted.
+	if label != observedLabel {
+		return judged(ctx, withWorlds(base(harness)), label)
+	}
 	planned := m.planned(harness, plannerToken, judgeToken, run)
 	// The work waits for the planner: the predictions as registered now, for this plan.
 	ready := planned.
@@ -123,23 +138,63 @@ func (m *AgentPlugins) RegisteredDelivery(
 	if err != nil {
 		return err
 	}
-	_, err = world.
-		// The predictions are read again after the run, whatever the world's cache.
+	// The completed world, snapshotted: what witness showed of both runs, the
+	// spec, the predictions as read now (whatever the world's cache), and the
+	// feature. The verdict is then judged from the snapshot, not from here.
+	return judged(ctx, withWorlds(world).
+		WithEnvVariable("RUN", run).
 		WithEnvVariable("READ_AT", time.Now().UTC().Format(time.RFC3339Nano)).
-		WithExec([]string{"sh", "-c", observe + `
-node delivery/registered.mjs > /registered.json
-pkl eval -f json -p observed=file:///facts.json -p registered=file:///registered.json delivery/Reconcile.pkl > /verdict.json
-jq -r '"Registered: " + .registration' /verdict.json
-for layer in "installed the world" "protocol the protocol" "measured Jev"; do
-  echo "${layer#* }:"
-  jq -r --arg k "${layer%% *}" '.[$k] | to_entries[] | "  " + (if .value then "✓ " else "✗ " end) + .key' /verdict.json
-done
-jq -r '.movements | to_entries[] | "  \(.value * 100 | round / 100)  \(.key)"' /verdict.json
-jq -r '"Verdict: " + .verdict' /verdict.json
-jq -r '"Next: " + .next' /verdict.json
-jq -e .pass /verdict.json > /dev/null || { jq -r .verdict /verdict.json >&2; exit 1; }`}).
-		Sync(ctx)
+		WithExec([]string{"sh", "-c", `set -e
+w=/world; rm -rf $w; mkdir -p $w
+cp -r /runs/plan $w/plan-run; cp -r /runs/work $w/work-run; cp -r /feature $w/feature
+cp delivery/feature.spec.ts $w/
+WITNESS_RUN_DIR=/runs/plan node delivery/diagnostics.mjs delivery/feature.spec.ts > $w/plan.json
+WITNESS_RUN_DIR=/runs/work node delivery/diagnostics.mjs delivery/feature.spec.ts > $w/work.json
+node delivery/registered.mjs > $w/registered.json
+bash delivery/world.sh capture $w ` + observedLabel + ` "$RUN"`}), label)
+}
+
+const observedLabel = "observed"
+
+// A restic repository for worlds, in a cache volume so snapshots outlast a
+// check. It is local: its password keeps the repository's integrity, not a secret.
+func withWorlds(c *dagger.Container) *dagger.Container {
+	return c.
+		WithExec([]string{"sh", "-c", "apt-get update -qq && apt-get install -y -qq restic"}).
+		WithMountedCache("/worlds", dag.CacheVolume("delivery-worlds")).
+		WithEnvVariable("RESTIC_REPOSITORY", "/worlds").
+		WithEnvVariable("RESTIC_PASSWORD", "delivery-worlds")
+}
+
+// The world labelled `label`, restored apart and judged by Reconcile.pkl: the
+// same check on whichever world is selected. Its output names the snapshot.
+func judged(ctx context.Context, c *dagger.Container, label string) error {
+	_, err := c.WithExec([]string{"bash", "delivery/world.sh", "judge", label}).Sync(ctx)
 	return err
+}
+
+// CaptureWorld snapshots a world (a directory as delivery/world.sh describes,
+// e.g. jev-playwright/delivery/worlds/run7) under a label, for RegisteredDelivery
+// to judge by that label; it returns the snapshot's id.
+func (m *AgentPlugins) CaptureWorld(
+	ctx context.Context,
+	// +defaultPath="/jev-playwright"
+	// +ignore=["node_modules", ".jules", "runs", "**/test-results", "**/.priorities", "**/.witness"]
+	harness *dagger.Directory,
+	// The world: its registered.json, plan.json, work.json, feature.spec.ts, plan-run and work-run.
+	world *dagger.Directory,
+	// How it came to be: synthetic, observed.
+	label string,
+	// +optional
+	run string,
+) (string, error) {
+	out, err := withWorlds(dag.Container().From("debian:bookworm-slim")).
+		WithExec([]string{"sh", "-c", "apt-get install -y -qq jq"}).
+		WithFile("/world.sh", harness.File("delivery/world.sh")).
+		WithDirectory("/world", world).
+		WithExec([]string{"bash", "/world.sh", "capture", "/world", label, run}).
+		Stdout(ctx)
+	return strings.TrimSpace(out), err
 }
 
 // What witness showed of both runs, as data for Reconcile.pkl: facts.json.
