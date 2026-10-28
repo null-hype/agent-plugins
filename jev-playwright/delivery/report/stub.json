@@ -1,0 +1,520 @@
+{
+  "config": {
+    "metadata": {
+      "goal": "People can install jev-lsp and see each answer on the line of the test that asked it.",
+      "delivery": {
+        "moved": 0.14
+      }
+    },
+    "projects": [
+      {
+        "name": "jev-ts",
+        "dependencies": []
+      },
+      {
+        "name": "dagger",
+        "dependencies": [
+          "jev-ts"
+        ]
+      },
+      {
+        "name": "package",
+        "dependencies": [
+          "dagger"
+        ]
+      },
+      {
+        "name": "feature",
+        "dependencies": [
+          "package"
+        ]
+      },
+      {
+        "name": "goal",
+        "dependencies": [
+          "feature"
+        ]
+      },
+      {
+        "name": "audit",
+        "dependencies": []
+      }
+    ]
+  },
+  "suites": [
+    {
+      "title": "delivery/jev-ts.spec.ts",
+      "file": "delivery/jev-ts.spec.ts",
+      "specs": [
+        {
+          "title": "Can the harness ask Jev from TypeScript, with no Python?",
+          "file": "delivery/jev-ts.spec.ts",
+          "line": 9,
+          "column": 1,
+          "ok": true,
+          "tests": [
+            {
+              "projectName": "jev-ts",
+              "status": "expected",
+              "annotations": [
+                {
+                  "type": "jules",
+                  "description": "jev.ts  https://jules.google.com/session/6021448811736510042"
+                },
+                {
+                  "type": "does-what-was-asked",
+                  "description": "0.91  jev.ts"
+                },
+                {
+                  "type": "jules",
+                  "description": "score.mjs  https://jules.google.com/session/6021448811736510519"
+                },
+                {
+                  "type": "does-what-was-asked",
+                  "description": "0.84  score.mjs"
+                },
+                {
+                  "type": "jules",
+                  "description": "package.json  https://jules.google.com/session/6021448811736510733"
+                },
+                {
+                  "type": "does-what-was-asked",
+                  "description": "0.88  package.json"
+                }
+              ],
+              "results": [
+                {
+                  "status": "passed",
+                  "duration": 956700,
+                  "steps": [
+                    {
+                      "title": "Write the Jev client in TypeScript",
+                      "file": "jev.ts",
+                      "location": {
+                        "file": "delivery/jev-ts.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
+                      "duration": 321900,
+                      "steps": [
+                        {
+                          "title": "Jules writes jev.ts",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does jev.ts do what was asked?",
+                          "duration": 2400
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Have score.mjs ask Jev through it",
+                      "file": "score.mjs",
+                      "location": {
+                        "file": "delivery/jev-ts.spec.ts",
+                        "line": 20,
+                        "column": 3
+                      },
+                      "duration": 315600,
+                      "steps": [
+                        {
+                          "title": "Jules writes score.mjs",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does score.mjs do what was asked?",
+                          "duration": 2400
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Drop pkl-python from the install",
+                      "file": "package.json",
+                      "location": {
+                        "file": "delivery/jev-ts.spec.ts",
+                        "line": 28,
+                        "column": 3
+                      },
+                      "duration": 319200,
+                      "steps": [
+                        {
+                          "title": "Jules writes package.json",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does package.json do what was asked?",
+                          "duration": 2400
+                        }
+                      ]
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "name": "jev.ts",
+                      "contentType": "text/plain",
+                      "body": "ZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIG5vdWwoYXBpS2V5LCBzdGF0ZSwgaW5zdHJ1Y3Rpb25zKSB7CiAgLy8gUE9TVCAvdjEvc3lzdGVtb25lLCBtb2RlbCBqZXYtbGF0ZXN0LCBvbmUgTm91bCBxdWVzdGlvbgp9Cg=="
+                    },
+                    {
+                      "name": "score.mjs",
+                      "contentType": "text/plain",
+                      "body": "aW1wb3J0IHsgbm91bCB9IGZyb20gJy4vamV2LnRzJzsKLy8gd2FzOiBzcGF3biAudmVudi9iaW4vcHl0aG9uCg=="
+                    },
+                    {
+                      "name": "package.json",
+                      "contentType": "text/plain",
+                      "body": "eyAibmFtZSI6ICJqZXYtcGxheXdyaWdodCIsICJ0eXBlIjogIm1vZHVsZSIgfQo="
+                    }
+                  ],
+                  "errors": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "delivery/dagger.spec.ts",
+      "file": "delivery/dagger.spec.ts",
+      "specs": [
+        {
+          "title": "Do the mechanical steps run in Dagger from a Playwright fixture?",
+          "file": "delivery/dagger.spec.ts",
+          "line": 9,
+          "column": 1,
+          "ok": true,
+          "tests": [
+            {
+              "projectName": "dagger",
+              "status": "expected",
+              "annotations": [
+                {
+                  "type": "jules",
+                  "description": "dagger.ts  https://jules.google.com/session/6021448811736511204"
+                },
+                {
+                  "type": "does-what-was-asked",
+                  "description": "0.77  dagger.ts"
+                }
+              ],
+              "results": [
+                {
+                  "status": "passed",
+                  "duration": 309300,
+                  "steps": [
+                    {
+                      "title": "Write a Dagger fixture",
+                      "file": "dagger.ts",
+                      "location": {
+                        "file": "delivery/dagger.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
+                      "duration": 309300,
+                      "steps": [
+                        {
+                          "title": "Jules writes dagger.ts",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does dagger.ts do what was asked?",
+                          "duration": 2400
+                        }
+                      ]
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "name": "dagger.ts",
+                      "contentType": "text/plain",
+                      "body": "ZXhwb3J0IGNvbnN0IGRhZ2dlciA9IGJhc2UuZXh0ZW5kKHsgZW5naW5lOiBhc3luYyAoe30sIHVzZSkgPT4geyAvKiBjb25uZWN0ICovIH0gfSk7Cg=="
+                    }
+                  ],
+                  "errors": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "delivery/package.spec.ts",
+      "file": "delivery/package.spec.ts",
+      "specs": [
+        {
+          "title": "Can any Playwright project install the fixtures?",
+          "file": "delivery/package.spec.ts",
+          "line": 9,
+          "column": 1,
+          "ok": true,
+          "tests": [
+            {
+              "projectName": "package",
+              "status": "expected",
+              "annotations": [
+                {
+                  "type": "jules",
+                  "description": "package.json  https://jules.google.com/session/6021448811736511881"
+                },
+                {
+                  "type": "does-what-was-asked",
+                  "description": "0.81  package.json"
+                },
+                {
+                  "type": "jules",
+                  "description": "README.md  https://jules.google.com/session/6021448811736512090"
+                },
+                {
+                  "type": "does-what-was-asked",
+                  "description": "0.69  README.md"
+                }
+              ],
+              "results": [
+                {
+                  "status": "passed",
+                  "duration": 615000,
+                  "steps": [
+                    {
+                      "title": "Export the fixtures and reporter",
+                      "file": "package.json",
+                      "location": {
+                        "file": "delivery/package.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
+                      "duration": 312900,
+                      "steps": [
+                        {
+                          "title": "Jules writes package.json",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does package.json do what was asked?",
+                          "duration": 2400
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Document the install",
+                      "file": "README.md",
+                      "location": {
+                        "file": "delivery/package.spec.ts",
+                        "line": 20,
+                        "column": 3
+                      },
+                      "duration": 302100,
+                      "steps": [
+                        {
+                          "title": "Jules writes README.md",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does README.md do what was asked?",
+                          "duration": 2400
+                        }
+                      ]
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "name": "package.json",
+                      "contentType": "text/plain",
+                      "body": "eyAiZXhwb3J0cyI6IHsgIi4vZml4dHVyZXMiOiAiLi9hc2sudHMiLCAiLi9yZXBvcnRlciI6ICIuL3JlcG9ydGVyLnRzIiB9IH0K"
+                    },
+                    {
+                      "name": "README.md",
+                      "contentType": "text/plain",
+                      "body": "IyMgSW5zdGFsbAoKbnBtIGkgLUQgamV2LXBsYXl3cmlnaHQK"
+                    }
+                  ],
+                  "errors": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "delivery/feature.spec.ts",
+      "file": "delivery/feature.spec.ts",
+      "specs": [
+        {
+          "title": "Can one dev container feature install jev-lsp and its Neovim setup?",
+          "file": "delivery/feature.spec.ts",
+          "line": 9,
+          "column": 1,
+          "ok": false,
+          "tests": [
+            {
+              "projectName": "feature",
+              "status": "unexpected",
+              "annotations": [
+                {
+                  "type": "jules",
+                  "description": "src/jev-lsp/devcontainer-feature.json  https://jules.google.com/session/6021448811736512577"
+                },
+                {
+                  "type": "does-what-was-asked",
+                  "description": "0.93  src/jev-lsp/devcontainer-feature.json"
+                },
+                {
+                  "type": "jules",
+                  "description": "src/jev-lsp/install.sh  https://jules.google.com/session/6021448811736512812"
+                },
+                {
+                  "type": "jules asks",
+                  "description": "The module is not tagged yet, so \"latest\" will not resolve. Should install.sh build jev-lsp from a branch, from a commit, or should I wait for a tagged release?"
+                }
+              ],
+              "results": [
+                {
+                  "status": "failed",
+                  "duration": 563700,
+                  "steps": [
+                    {
+                      "title": "Write the feature's manifest",
+                      "file": "src/jev-lsp/devcontainer-feature.json",
+                      "location": {
+                        "file": "delivery/feature.spec.ts",
+                        "line": 12,
+                        "column": 3
+                      },
+                      "duration": 323700,
+                      "steps": [
+                        {
+                          "title": "Jules writes src/jev-lsp/devcontainer-feature.json",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does src/jev-lsp/devcontainer-feature.json do what was asked?",
+                          "duration": 2400
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Write the install script",
+                      "file": "src/jev-lsp/install.sh",
+                      "location": {
+                        "file": "delivery/feature.spec.ts",
+                        "line": 19,
+                        "column": 3
+                      },
+                      "duration": 240000,
+                      "steps": [
+                        {
+                          "title": "Jules writes src/jev-lsp/install.sh",
+                          "duration": 230000
+                        },
+                        {
+                          "title": "Jev: does src/jev-lsp/install.sh do what was asked?",
+                          "duration": 2400
+                        }
+                      ],
+                      "error": {
+                        "message": "Jules is waiting for an answer: https://jules.google.com/session/6021448811736512812\n\nThe module is not tagged yet, so \"latest\" will not resolve. Should install.sh build jev-lsp from a branch, from a commit, or should I wait for a tagged release?"
+                      }
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "name": "src/jev-lsp/devcontainer-feature.json",
+                      "contentType": "text/plain",
+                      "body": "eyAiaWQiOiAiamV2LWxzcCIsICJ2ZXJzaW9uIjogIjAuMS4wIiwgIm9wdGlvbnMiOiB7ICJ2ZXJzaW9uIjogeyAidHlwZSI6ICJzdHJpbmciLCAiZGVmYXVsdCI6ICJsYXRlc3QiIH0gfSB9Cg=="
+                    }
+                  ],
+                  "errors": [
+                    {
+                      "message": "Jules is waiting for an answer: https://jules.google.com/session/6021448811736512812"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "delivery/goal.spec.ts",
+      "file": "delivery/goal.spec.ts",
+      "specs": [
+        {
+          "title": "Can someone install jev-lsp and see each answer on the line of the test that asked it?",
+          "file": "delivery/goal.spec.ts",
+          "line": 9,
+          "column": 1,
+          "ok": true,
+          "tests": [
+            {
+              "projectName": "goal",
+              "status": "skipped",
+              "annotations": [],
+              "results": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "delivery/audit.spec.ts",
+      "file": "delivery/audit.spec.ts",
+      "specs": [
+        {
+          "title": "Is anything this run asked for still a priority?",
+          "file": "delivery/audit.spec.ts",
+          "line": 22,
+          "column": 1,
+          "ok": true,
+          "tests": [
+            {
+              "projectName": "audit",
+              "status": "expected",
+              "annotations": [
+                {
+                  "type": "is-priority",
+                  "description": "0.06  jev-root  start the planner"
+                },
+                {
+                  "type": "is-priority",
+                  "description": "0.05  jev-planner  have Jules write one file of each node"
+                },
+                {
+                  "type": "is-priority",
+                  "description": "0.05  jev-judge  ask Jev whether each file does what was asked"
+                },
+                {
+                  "type": "is-priority",
+                  "description": "0.88  jules  The module is not tagged yet, so \"latest\" will not resolve. Should install.sh build jev-lsp from a branch, from a commit, or should I wait for a tagged release?"
+                },
+                {
+                  "type": "triage",
+                  "description": "0.88  Jules asks about src/jev-lsp/install.sh  https://jules.google.com/session/6021448811736512812"
+                }
+              ],
+              "results": [
+                {
+                  "status": "passed",
+                  "duration": 0,
+                  "steps": [],
+                  "attachments": [],
+                  "errors": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "startTime": "2026-10-26T06:30:00.000Z",
+    "duration": 1874000,
+    "expected": 4,
+    "unexpected": 1,
+    "skipped": 1,
+    "flaky": 0
+  },
+  "errors": []
+}

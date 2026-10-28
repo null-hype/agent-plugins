@@ -1,0 +1,96 @@
+name: delivery
+
+# The planner has Jules plan the goal; the judge, under its own key, has Jev
+# judge that plan against the goal and against ours; then the planner approves
+# it and keeps the patch Jules makes. The owner audits the reasons afterwards, outside CI.
+# Our plan must be fixed before Jules's is seen, so this runs only on a pull
+# request labelled `dispatch`.
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+    paths:
+      - 'jev-playwright/delivery/**'
+      - '.github/workflows/delivery.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    if: contains(github.event.pull_request.labels.*.name, 'dispatch')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jev-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: jev-playwright/package-lock.json
+      - run: npm ci
+      # Each agent has its own session (bootstrap.sh). The root holds the
+      # planner's token; the judge has its own.
+      - name: Log in to Proton Pass as each agent
+        env:
+          ROOT_TOKEN: ${{ secrets.JEV_ROOT_PASS_TOKEN }}
+          JUDGE_TOKEN: ${{ secrets.JEV_JUDGE_PASS_TOKEN }}
+        run: |
+          curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+          export PROTON_PASS_KEY_PROVIDER=fs
+          # A failed login says which agent, as an annotation (the log is not always readable).
+          login() {
+            local err; err="$(mktemp)"
+            PROTON_PASS_PERSONAL_ACCESS_TOKEN="$2" PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-$1" pass-cli login 2>"$err" && return
+            echo "::error title=Pass login as $1 failed::$(tr '\n' ' ' < "$err" | head -c 500)"; exit 1
+          }
+          [[ -n "$ROOT_TOKEN" ]] || { echo "::error::JEV_ROOT_PASS_TOKEN is empty"; exit 1; }
+          [[ -n "$JUDGE_TOKEN" ]] || { echo "::error::JEV_JUDGE_PASS_TOKEN is empty"; exit 1; }
+          login root "$ROOT_TOKEN"
+          err="$(mktemp)"
+          planner="$(PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-root" PROTON_PASS_AGENT_REASON="start the planner" \
+            pass-cli item view pass://jev-root/planner-token/PROTON_PASS_PERSONAL_ACCESS_TOKEN 2>"$err")" ||
+            { echo "::error title=Root could not read the planner token::$(tr '\n' ' ' < "$err" | head -c 500)"; exit 1; }
+          echo "::add-mask::$planner"
+          login planner "$planner"
+          login judge "$JUDGE_TOKEN"
+          echo "PASS_SESSION_PLANNER=$RUNNER_TEMP/pass-planner" >> "$GITHUB_ENV"
+          echo "PASS_SESSION_JUDGE=$RUNNER_TEMP/pass-judge" >> "$GITHUB_ENV"
+      - name: Run the loop
+        run: npx playwright test -c delivery --project plan --project judge --project build
+      # The plan and each answer, as check notices, readable without the artifact.
+      - name: Show the results
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs"), dir = "delivery/test-results";
+            const out = (s) => console.log("::notice::" + s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A"));
+            if (fs.existsSync(dir + "/plans.json")) {
+              const p = JSON.parse(fs.readFileSync(dir + "/plans.json", "utf8"));
+              out("Jules plan (" + p.jules.url + ")\n" + p.jules.steps.map((s, i) => (i + 1) + ". " + s.title + (s.description ? "\n   " + s.description.replace(/\n/g, "\n   ") : "")).join("\n"));
+            }
+            if (fs.existsSync(dir + "/report.json")) {
+              const walk = (s) => [...(s.specs ?? []).flatMap((x) => x.tests.flatMap((t) => t.annotations ?? [])), ...(s.suites ?? []).flatMap(walk)];
+              const notes = JSON.parse(fs.readFileSync(dir + "/report.json", "utf8")).suites.flatMap(walk);
+              if (notes.length) out(notes.map((a) => a.type + "  " + a.description).join("\n"));
+            }
+          '
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delivery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: jev-playwright/delivery/test-results/
+          if-no-files-found: warn
+          retention-days: 30
+      - if: always()
+        run: |
+          for role in root planner judge; do
+            PROTON_PASS_KEY_PROVIDER=fs PROTON_PASS_SESSION_DIR="$RUNNER_TEMP/pass-$role" pass-cli logout >/dev/null 2>&1 || true
+          done

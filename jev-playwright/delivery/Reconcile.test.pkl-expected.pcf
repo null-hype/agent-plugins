@@ -1,0 +1,42 @@
+examples {
+  ["the first passing run, fact by fact"] {
+    new {
+      ["every answer is on its test's line"] = true
+      ["no answer is stale"] = true
+      ["the predictions were last changed after Jules was asked for the plan"] = true
+      ["the predictions were last changed before Jules's plan was approved"] = true
+      ["both runs show exactly the predicted steps"] = true
+      ["Jev answered on the registered model, jev-1.14.0"] = true
+      ["the work cooled Create the dev container feature definition"] = true
+      ["the work cooled Create the installation script"] = true
+      ["the work left steady Complete pre-commit steps"] = true
+      ["the work left steady Submit the change"] = true
+    }
+    "Complete pre-commit steps"
+  }
+  ["run 7, layer by layer"] {
+    new {
+      ["every answer is on its test's line"] = true
+      ["no answer is stale"] = true
+    }
+    new {
+      ["the predictions were last changed after Jules was asked for the plan"] = true
+      ["the predictions were last changed before Jules's plan was approved"] = true
+      ["both runs show exactly the predicted steps"] = true
+      ["Jev answered on the registered model, jev-1.14.0"] = true
+    }
+    new {
+      ["the work cooled Create `src/witness/devcontainer-feature.json`."] = false
+      ["the work cooled Create `src/witness/install.sh`."] = false
+      ["the work left steady Complete pre commit steps."] = true
+      ["the work left steady Submit the change."] = true
+    }
+    new {
+      ["Create `src/witness/devcontainer-feature.json`."] = 0.020000000000000018
+      ["Create `src/witness/install.sh`."] = -0.09000000000000002
+      ["Complete pre commit steps."] = 0.06
+      ["Submit the change."] = 0.08000000000000002
+    }
+    "valid finding: Jev disagreement; the world and the protocol held, and the steps did not move as registered"
+  }
+}

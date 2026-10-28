@@ -1,0 +1,126 @@
+/// What witness showed of a delivery run (facts.mjs, `prop:observed`), judged
+/// against what the planner predicted in Pass between Jules's plan and its
+/// work (Predicted.pkl, `prop:registered`) and against Delivery.pkl.
+///
+/// Three layers, kept apart. `installed` is the world's: every answer witness
+/// showed is fresh and on its test's line. `protocol` is the registration's:
+/// the predictions were last changed after Jules was asked for the plan and
+/// before its plan was approved, so they bind to the plan as presented and
+/// were fixed before any work; both runs show exactly the predicted steps, and
+/// Jev answered on the registered model. `measured` is Jev's: the work moved
+/// each step as predicted. `facts` is all three. Whether Jules did each step
+/// is not among them:
+/// witness shows Jev's answers, not Jules's activity. It decides; the check
+/// only reports. A run is `valid` when its world and protocol held; then Jev's
+/// agreeing or not is a finding either way, and `pass` is whether it agreed.
+module Reconcile
+
+import "pkl:json"
+import "Delivery.pkl"
+import "Predicted.pkl"
+
+class Run {
+  /// When each Jules session the run used was created.
+  created: Listing<String>
+  /// When Jules recorded each plan the run approved.
+  approved: Listing<String>
+  model: String
+  shown: Mapping<String, Number>
+  offLine: Listing<String>
+  stale: Listing<String>
+}
+
+/// facts.mjs's output; a test amends it with its own.
+hidden observed: Dynamic = new json.Parser {}.parse(read(read("prop:observed")).text)
+hidden plan: Run = toRun(observed.plan)
+hidden work: Run = toRun(observed.work)
+local function toRun(d: Dynamic): Run = new {
+  created = d.created.toList().toListing()
+  approved = d.approved.toList().toListing()
+  model = d.model
+  shown = d.shown.toMap().toMapping()
+  offLine = d.offLine.toList().toListing()
+  stale = d.stale.toList().toListing()
+}
+
+/// The predictions, as registered; a test amends it with its own.
+hidden predicted: Predicted = Predicted
+local steps: Set<String> = predicted.plan.toList().map((s) -> s.title).toSet()
+
+local function shows(r: Run, step: String): Boolean = r.shown.containsKey(step)
+
+/// How far the work moved each predicted step, work minus plan.
+movements: Mapping<String, Number> = new {
+  for (s in predicted.plan) {
+    when (shows(plan, s.title) && shows(work, s.title)) {
+      [s.title] = work.shown[s.title] - plan.shown[s.title]
+    }
+  }
+}
+
+local function moved(step: Delivery.Step): Boolean =
+  movements.containsKey(step.title) && (
+    if (step.after == "cools") movements[step.title] <= -Delivery.moved
+    else movements[step.title].abs < Delivery.moved)
+
+/// What this verdict judged against: the Pass item, and when it was last changed.
+registration: String = "\(predicted.item), last changed \(predicted.written)"
+
+/// The world's: every answer witness showed is fresh and on its test's line.
+installed: Mapping<String, Boolean> = new {
+  ["every answer is on its test's line"] = plan.offLine.isEmpty && work.offLine.isEmpty
+  ["no answer is stale"] = plan.stale.isEmpty && work.stale.isEmpty
+}
+
+/// The protocol's: the predictions bind to this plan, as presented, and were
+/// fixed before any work, on the registered model. Without it the run cannot
+/// judge Jev at all.
+protocol: Mapping<String, Boolean> = new {
+  // ISO times in UTC to the millisecond compare as strings.
+  ["the predictions were last changed after Jules was asked for the plan"] =
+    !plan.created.isEmpty && plan.created.toList().every((t) -> t < predicted.written)
+  ["the predictions were last changed before Jules's plan was approved"] =
+    plan.approved.isEmpty && !work.approved.isEmpty && work.approved.toList().every((t) -> predicted.written < t)
+  ["both runs show exactly the predicted steps"] = plan.shown.keys == steps && work.shown.keys == steps
+  ["Jev answered on the registered model, \(Delivery.model)"] =
+    plan.model == Delivery.model && work.model == Delivery.model
+}
+
+/// Jev's: the work moved each step as predicted.
+measured: Mapping<String, Boolean> = new {
+  for (s in predicted.plan) {
+    ["the work \(if (s.after == "cools") "cooled" else "left steady") \(s.title)"] = moved(s)
+  }
+}
+
+facts: Mapping<String, Boolean> = (installed) {
+  for (k, v in protocol) { [k] = v }
+  for (k, v in measured) { [k] = v }
+}
+
+/// What is still most a priority after the work.
+next: String? = work.shown.toMap().entries.sortWith((a, b) -> a.value > b.value).firstOrNull?.key
+
+local function all(m: Mapping<String, Boolean>): Boolean = m.toMap().values.every((v) -> v)
+
+installedPass: Boolean = all(installed)
+
+protocolPass: Boolean = all(protocol)
+
+measuredPass: Boolean = all(measured)
+
+/// The world and the protocol held, so what Jev did is a finding.
+valid: Boolean = installedPass && protocolPass
+
+/// A run whose world or protocol did not hold says nothing of Jev, and names
+/// the first that did not. A valid run where Jev moved otherwise than
+/// registered is a valid finding, a disagreement with the world, not a failed
+/// run.
+verdict: String =
+  if (!installedPass) "not valid, the world: an answer is stale or off its line"
+  else if (!protocolPass) "not valid, the protocol: this run cannot judge Jev"
+  else if (!measuredPass) "valid finding: Jev disagreement; the world and the protocol held, and the steps did not move as registered"
+  else "valid finding: Jev agreement; the steps moved as registered"
+
+/// A valid run on which Jev agreed: the experiment is green.
+pass: Boolean = valid && measuredPass

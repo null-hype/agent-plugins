@@ -1,0 +1,99 @@
+name: jev-playwright
+
+# The Question graph, the witness run it writes, the Neovim setup that
+# runs it on save, and the Dagger launcher that names runs by their inputs.
+
+on:
+  pull_request:
+    paths:
+      - 'jev-playwright/**'
+      - 'src/jev/**'
+      - '.github/workflows/jev-playwright.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'jev-playwright/**'
+      - 'src/jev/**'
+      - '.github/workflows/jev-playwright.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jev-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: jev-playwright/package-lock.json
+      - uses: actions/checkout@v4
+        with:
+          repository: null-hype/witness
+          ref: v0.1.0
+          path: witness
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: witness/go.mod
+          cache: false
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.8.22'
+      - name: Install Pkl and Neovim
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSL -o "$RUNNER_TEMP/bin/pkl" https://github.com/apple/pkl/releases/download/0.32.1/pkl-linux-amd64
+          chmod +x "$RUNNER_TEMP/bin/pkl"
+          curl -fsSL https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-x86_64.tar.gz | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
+      - run: npm ci
+      - run: |
+          uv venv .venv
+          uv pip install --python .venv/bin/python pkl-python==0.1.19 requests==2.32.3
+      - run: npm run test:contracts
+      - name: Neovim shows the witness run, marks it stale on save, and shows the next run
+        run: |
+          (cd ../witness && go build -o "$RUNNER_TEMP/bin/witness" .)
+          npx playwright test
+          nvim --headless --clean \
+            -c "lua vim.g.witness_run_cmd = { 'npx', 'playwright', 'test' }" \
+            -c "luafile ../witness/nvim/witness.lua" \
+            -c "edit tests/questions.spec.ts" \
+            -c "luafile test/witness-check.lua"
+          git diff --exit-code -- tests
+
+  dagger:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jev-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Dagger
+        run: curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR="$RUNNER_TEMP/bin" DAGGER_VERSION=0.21.7 sh && echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: A run is named by its inputs, records the code it was asked of, and is not repeated
+        env:
+          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+        run: |
+          first="$(node dagger-run.mjs | tee /dev/stderr | tail -1)"
+          run="$(node inputs.mjs --run)"
+          code="$(node inputs.mjs)"
+          case "$first" in *"artifacts: $PWD/runs/$run") ;; *) echo "expected runs/$run: $first"; exit 1 ;; esac
+          test "$(node -p "require('./runs/$run/inputs.json').code")" = "$code"
+          node -e "const c = require('./runs/$run/comparison.json'); if (!c.passed || !c.questions['baseline-alice-reads'].location) process.exit(1)"
+          second="$(node dagger-run.mjs | tail -1)"
+          case "$second" in *"unchanged, not run again"*) ;; *) echo "expected a reused run: $second"; exit 1 ;; esac

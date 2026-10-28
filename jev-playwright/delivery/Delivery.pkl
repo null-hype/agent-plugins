@@ -1,0 +1,43 @@
+/// The delivery experiment: what is run, and how it is measured.
+///
+/// What the run asks, as typesafe-experiment's TypesafeExperiment.pkl is for
+/// its cases: the Playwright config evaluates it before any test, so
+/// feature.spec.ts asks Jules this `task` and the priority reporter asks Jev
+/// this `question`. What the work should do to each step of Jules's plan is
+/// not here: the planner registers it in Pass once Jules has planned and before
+/// its plan is approved, where the judge can read it and not change it
+/// (Predicted.pkl). Reconcile.pkl judges what
+/// witness showed against both.
+module Delivery
+
+/// The goal, word for word as goal.md says it.
+goal: String(!isEmpty) = read("goal.md").text.trim()
+
+/// The one node the check delivers, asked of Jules word for word.
+task: String(!isEmpty) = "Write a dev container feature that installs witness (https://github.com/null-hype/witness) and its Neovim setup"
+
+/// Asked of Jev for each item of work, the item appended: the noul it answers
+/// is how much it is still a priority.
+question: String(!isEmpty) = "This is still a priority for the goal: the state does not show it done."
+
+/// The resolved model the noise was measured on. Another model fails the
+/// check on purpose: measure again, then re-register.
+model: String(!isEmpty) = "jev-1.14.0"
+
+/// The widest max-min spread capture.mjs measured in Jev's answer for any one
+/// step of one fixed state (noise-observed.json). See `moved`.
+noise: Number(isBetween(0, 1)) = 0.07
+
+/// How far a step's priority must move between the plan and the work to count
+/// as moved: twice the noise, so one noisy answer at each end cannot move it.
+moved: Number = 2 * noise
+
+typealias Movement = "cools"|"steady"
+
+class Step {
+  /// The step's title, word for word as Jules's plan in this run has it.
+  title: String(!isEmpty)
+  /// What the work should do to its priority: cool it by at least `moved`,
+  /// or leave it within `moved`. Nothing the work does should warm a step.
+  after: Movement
+}
