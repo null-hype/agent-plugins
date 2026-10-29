@@ -296,6 +296,8 @@ run_rerun() {
   cat > "$root/runtime.env" <<'ENV'
 DAGGER_CLOUD_TOKEN=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN
 LINEAR_API_KEY=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY
+# Keep the INF-6 live fixture apart from the already-approved manual run.
+REGISTEREDDELIVERY_RUN=linear-inf-6
 ENV
   cd "$root/repo"
   set +e
@@ -303,7 +305,7 @@ ENV
   dagger_exit=$?
   set -e
   trace=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | grep -Eo 'https://dagger\.cloud[^[:space:]]+' | tail -1 | sed 's/[),.;]*$//' || true)
-  verdict=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | sed -n 's/^Verdict: //p' | tail -1 || true)
+  verdict=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | sed -n -e 's/^.*| Verdict: /Verdict: /' -e 's/^Verdict: //p' | tail -1 || true)
 
   # A green check is complete. registered-delivery also deliberately exits 1
   # for a valid disagreement; its explicit valid-finding verdict is a result,
@@ -315,14 +317,28 @@ ENV
 
   if [ "$complete" = true ]; then
     if [ -n "$verdict" ]; then
-      comment="Rerun completed for $check: $verdict\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
+      comment="Rerun completed for $check: $verdict
+
+Dagger trace: $trace
+
+Linear delivery: $delivery"
     else
-      comment="Rerun completed for $check (Dagger exit $dagger_exit).\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
+      comment="Rerun completed for $check (Dagger exit $dagger_exit).
+
+Dagger trace: $trace
+
+Linear delivery: $delivery"
     fi
   elif [ -n "$trace" ]; then
-    comment="Rerun did not produce a completed result for $check (Dagger exit $dagger_exit). The issue remains Todo.\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
+    comment="Rerun did not produce a completed result for $check (Dagger exit $dagger_exit). The issue remains Todo.
+
+Dagger trace: $trace
+
+Linear delivery: $delivery"
   else
-    comment="Rerun did not produce a completed result or Dagger trace for $check (Dagger exit $dagger_exit). The issue remains Todo.\n\nLinear delivery: $delivery"
+    comment="Rerun did not produce a completed result or Dagger trace for $check (Dagger exit $dagger_exit). The issue remains Todo.
+
+Linear delivery: $delivery"
   fi
 
   gql_env=$root/runtime.env
