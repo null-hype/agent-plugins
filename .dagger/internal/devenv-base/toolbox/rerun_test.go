@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
+	"strings"
 	"testing"
 	"time"
 )
@@ -38,6 +40,7 @@ func issueWebhookBody(t *testing.T, stateID string, changed bool) []byte {
 			"id":          "57805248-b4bd-4415-8cf8-62981c01dae2",
 			"identifier":  "INF-6",
 			"description": infra6Description,
+			"teamId":      infraTeamID,
 			"stateId":     stateID,
 		},
 		"updatedFrom":     updated,
@@ -76,6 +79,15 @@ func TestRerunFromIssueEvent(t *testing.T) {
 	}
 	if _, ok := rerunFromIssueEvent(event, "delivery-3"); ok {
 		t.Fatal("Todo issue without a state transition was accepted")
+	}
+
+	event = linearIssueWebhook{}
+	if err := json.Unmarshal(issueWebhookBody(t, infraTodoStatusID, true), &event); err != nil {
+		t.Fatal(err)
+	}
+	event.Data.TeamID = "another-team"
+	if _, ok := rerunFromIssueEvent(event, "delivery-4"); ok {
+		t.Fatal("Todo transition outside the Infrastructure team was accepted")
 	}
 }
 
@@ -136,5 +148,13 @@ func TestLinearRerunWebhookRejectsBadSignatureAndStaleBody(t *testing.T) {
 	h.ServeHTTP(rr, signedRerunRequest(t, secret, "delivery-stale", staleBody))
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("stale webhook status = %d", rr.Code)
+	}
+}
+
+func TestRerunHostScriptParses(t *testing.T) {
+	cmd := exec.Command("bash", "-n")
+	cmd.Stdin = strings.NewReader(rerunHostScript)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("bash -n: %v: %s", err, out)
 	}
 }
