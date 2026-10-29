@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	infraTeamID       = "3b8f729e-b2fd-4b8d-8b24-5ef2df70e504"
 	infraTodoStatusID = "92aa240b-7b53-4fde-8812-eea4f1243d10"
 	infraDoneStatusID = "dc303bdd-20c6-4214-8b6f-73cbf43d03df"
 )
@@ -34,6 +35,7 @@ type linearIssueWebhook struct {
 		ID          string `json:"id"`
 		Identifier  string `json:"identifier"`
 		Description string `json:"description"`
+		TeamID      string `json:"teamId"`
 		StateID     string `json:"stateId"`
 		State       struct {
 			ID   string `json:"id"`
@@ -139,6 +141,11 @@ func absDuration(d time.Duration) time.Duration {
 
 func rerunFromIssueEvent(event linearIssueWebhook, delivery string) (rerunRequest, bool) {
 	if delivery == "" || event.Type != "Issue" || event.Action != "update" {
+		return rerunRequest{}, false
+	}
+	// v0 is deliberately scoped to the Infrastructure team's check issues.
+	// Other teams can have a Todo state with different completion semantics.
+	if event.Data.TeamID != infraTeamID {
 		return rerunRequest{}, false
 	}
 	if _, changed := event.UpdatedFrom["stateId"]; !changed {
@@ -272,7 +279,7 @@ fi
 run_rerun() {
   set -euo pipefail
   local delivery=$1 issue_id=$2 identifier=$3 repo=$4 ref=$5 check=$6 id=rerun-$1
-  local root=$HOME/.toolbox/reruns/$delivery log=$JOBS/$id.dagger.log trace comment gql_env dagger_exit
+  local root=$HOME/.toolbox/reruns/$delivery log=$JOBS/$id.dagger.log trace verdict comment gql_env dagger_exit complete
   mkdir -p "$root" "$HOME/.local/bin"
   export PATH="$HOME/.local/bin:$PATH"
   export PROTON_PASS_KEY_PROVIDER=fs
@@ -296,19 +303,40 @@ ENV
   dagger_exit=$?
   set -e
   trace=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | grep -Eo 'https://dagger\.cloud[^[:space:]]+' | tail -1 | sed 's/[),.;]*$//' || true)
-  if [ -n "$trace" ]; then
-    comment="Rerun completed for $check (Dagger exit $dagger_exit).\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
-  else
-    comment="Rerun completed for $check (Dagger exit $dagger_exit). No Dagger Cloud trace URL was emitted.\n\nLinear delivery: $delivery"
+  verdict=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | sed -n 's/^Verdict: //p' | tail -1 || true)
+
+  # A green check is complete. registered-delivery also deliberately exits 1
+  # for a valid disagreement; its explicit valid-finding verdict is a result,
+  # not a broken instrument. Everything else stays Todo for another look.
+  complete=false
+  if [ -n "$trace" ] && { [ "$dagger_exit" -eq 0 ] || [[ $verdict == "valid finding:"* ]]; }; then
+    complete=true
   fi
+
+  if [ "$complete" = true ]; then
+    if [ -n "$verdict" ]; then
+      comment="Rerun completed for $check: $verdict\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
+    else
+      comment="Rerun completed for $check (Dagger exit $dagger_exit).\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
+    fi
+  elif [ -n "$trace" ]; then
+    comment="Rerun did not produce a completed result for $check (Dagger exit $dagger_exit). The issue remains Todo.\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
+  else
+    comment="Rerun did not produce a completed result or Dagger trace for $check (Dagger exit $dagger_exit). The issue remains Todo.\n\nLinear delivery: $delivery"
+  fi
+
   gql_env=$root/runtime.env
   jq -n --arg issue "$issue_id" --arg body "$comment" '{query:"mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }",variables:{input:{issueId:$issue,body:$body}}}' |
     pass-cli run --env-file "$gql_env" -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" --data @-' > "$root/comment.json"
   jq -e '.data.commentCreate.success == true' "$root/comment.json" >/dev/null
-  jq -n --arg id "$issue_id" --arg state "` + infraDoneStatusID + `" '{query:"mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success } }",variables:{id:$id,input:{stateId:$state}}}' |
-    pass-cli run --env-file "$gql_env" -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" --data @-' > "$root/update.json"
-  jq -e '.data.issueUpdate.success == true' "$root/update.json" >/dev/null
-  jq -n --arg issue "$identifier" --arg check "$check" --arg trace "$trace" --argjson dagger_exit "$dagger_exit" '{issue:$issue,check:$check,trace:$trace,dagger_exit:$dagger_exit}' > "$JOBS/$id.json"
+
+  if [ "$complete" = true ]; then
+    jq -n --arg id "$issue_id" --arg state "` + infraDoneStatusID + `" '{query:"mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success } }",variables:{id:$id,input:{stateId:$state}}}' |
+      pass-cli run --env-file "$gql_env" -- sh -c 'curl -fsS https://api.linear.app/graphql -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" --data @-' > "$root/update.json"
+    jq -e '.data.issueUpdate.success == true' "$root/update.json" >/dev/null
+  fi
+  jq -n --arg issue "$identifier" --arg check "$check" --arg trace "$trace" --arg verdict "$verdict" --argjson dagger_exit "$dagger_exit" --argjson complete "$complete" \
+    '{issue:$issue,check:$check,trace:$trace,verdict:$verdict,dagger_exit:$dagger_exit,complete:$complete}' > "$JOBS/$id.json"
 }
 export JOBS
 rm -f "$JOBS/$id.exit" "$JOBS/$id.interrupted" "$JOBS/$id.json"
