@@ -40,8 +40,8 @@ type linearIssueWebhook struct {
 			Name string `json:"name"`
 		} `json:"state"`
 	} `json:"data"`
-	UpdatedFrom     map[string]json.RawMessage `json:"updatedFrom"`
-	WebhookTimestamp int64                     `json:"webhookTimestamp"`
+	UpdatedFrom      map[string]json.RawMessage `json:"updatedFrom"`
+	WebhookTimestamp int64                      `json:"webhookTimestamp"`
 }
 
 type rerunRequest struct {
@@ -297,9 +297,9 @@ ENV
   set -e
   trace=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | grep -Eo 'https://dagger\.cloud[^[:space:]]+' | tail -1 | sed 's/[),.;]*$//' || true)
   if [ -n "$trace" ]; then
-    comment="Rerun completed for \`$check\` (Dagger exit $dagger_exit).\n\nDagger trace: $trace\n\nLinear delivery: \`$delivery\`"
+    comment="Rerun completed for $check (Dagger exit $dagger_exit).\n\nDagger trace: $trace\n\nLinear delivery: $delivery"
   else
-    comment="Rerun completed for \`$check\` (Dagger exit $dagger_exit). No Dagger Cloud trace URL was emitted.\n\nLinear delivery: \`$delivery\`"
+    comment="Rerun completed for $check (Dagger exit $dagger_exit). No Dagger Cloud trace URL was emitted.\n\nLinear delivery: $delivery"
   fi
   gql_env=$root/runtime.env
   jq -n --arg issue "$issue_id" --arg body "$comment" '{query:"mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }",variables:{input:{issueId:$issue,body:$body}}}' |
