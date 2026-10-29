@@ -296,10 +296,11 @@ run_rerun() {
   cat > "$root/runtime.env" <<'ENV'
 DAGGER_CLOUD_TOKEN=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN
 LINEAR_API_KEY=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY
-# Keep the INF-6 live fixture apart from the already-approved manual run.
-REGISTEREDDELIVERY_RUN=linear-inf-6
 ENV
   cd "$root/repo"
+  # Dagger reads function defaults from its .env, not the process environment.
+  # Keep this live fixture apart from the already-approved manual run.
+  echo "REGISTEREDDELIVERY_RUN=linear-inf-6" >> .env
   set +e
   pass-cli run --env-file .env --env-file "$root/runtime.env" -- dagger check "$check" >"$log" 2>&1
   dagger_exit=$?
