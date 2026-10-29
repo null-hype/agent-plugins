@@ -7,9 +7,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -43,7 +46,7 @@ func issueWebhookBody(t *testing.T, stateID string, changed bool) []byte {
 			"teamId":      infraTeamID,
 			"stateId":     stateID,
 		},
-		"updatedFrom":     updated,
+		"updatedFrom":      updated,
 		"webhookTimestamp": time.Now().UnixMilli(),
 	})
 	if err != nil {
@@ -156,5 +159,41 @@ func TestRerunHostScriptParses(t *testing.T) {
 	cmd.Stdin = strings.NewReader(rerunHostScript)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("bash -n: %v: %s", err, out)
+	}
+}
+
+// Exercise the real host result block on Dagger's observed progress log shape.
+func TestRerunVerdictFromDaggerProgress(t *testing.T) {
+	start := strings.Index(rerunHostScript, "  trace=$(")
+	end := strings.Index(rerunHostScript, "\n  if [ \"$complete\" = true ]; then")
+	if start < 0 || end < start {
+		t.Fatal("host result block not found")
+	}
+	for _, tt := range []struct {
+		name, verdict string
+		want          bool
+	}{
+		{"valid disagreement", "valid finding: Jev did not predict the work", true},
+		{"invalid protocol", "not valid, the protocol: this run cannot judge Jev", false},
+		{"no verdict", "", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			log := filepath.Join(t.TempDir(), "dagger.log")
+			body := "https://dagger.cloud/test/traces/abc\n"
+			if tt.verdict != "" {
+				body += "\x1b[95m92 : \x1b[0m[1m22s] | Verdict: " + tt.verdict + "\n"
+			}
+			if err := os.WriteFile(log, []byte(body), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("bash", "-c", "set -euo pipefail; log=$1; dagger_exit=1; "+rerunHostScript[start:end]+"\nprintf '%s' \"$complete\"", "_", log)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("result block: %v: %s", err, out)
+			}
+			if string(out) != fmt.Sprint(tt.want) {
+				t.Fatalf("complete=%s, want %t", out, tt.want)
+			}
+		})
 	}
 }
