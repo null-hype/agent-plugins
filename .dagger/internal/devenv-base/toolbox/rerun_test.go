@@ -62,12 +62,15 @@ func TestRerunFromIssueEvent(t *testing.T) {
 		t.Fatalf("rerun = %+v", got)
 	}
 
+	event = linearIssueWebhook{}
 	if err := json.Unmarshal(issueWebhookBody(t, "some-other-state", true), &event); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := rerunFromIssueEvent(event, "delivery-2"); ok {
 		t.Fatal("non-Todo transition was accepted")
 	}
+
+	event = linearIssueWebhook{}
 	if err := json.Unmarshal(issueWebhookBody(t, infraTodoStatusID, false), &event); err != nil {
 		t.Fatal(err)
 	}
