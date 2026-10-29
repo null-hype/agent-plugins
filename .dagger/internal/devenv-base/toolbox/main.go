@@ -91,6 +91,14 @@ func newMux(token, baseURL string, tb *toolbox) *http.ServeMux {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "ok")
 	})
+	// A separate Linear data-change webhook can use the toolbox as the
+	// private-check controller. It is authenticated by Linear's HMAC, not the
+	// MCP bearer token. No route exists until its dedicated secret is set.
+	if tb != nil {
+		if secret := os.Getenv("LINEAR_CHECK_WEBHOOK_SECRET"); secret != "" {
+			mux.Handle("/linear/webhook", linearRerunHandler(secret, newRerunController(tb)))
+		}
+	}
 	// No authorization server exists: Linear sends a static bearer header.
 	// Listing none tells an OAuth client there is nothing to log in with.
 	mux.HandleFunc("/.well-known/", func(w http.ResponseWriter, r *http.Request) {
