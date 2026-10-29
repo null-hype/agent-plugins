@@ -10,10 +10,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -154,46 +152,111 @@ func TestLinearRerunWebhookRejectsBadSignatureAndStaleBody(t *testing.T) {
 	}
 }
 
-func TestRerunHostScriptParses(t *testing.T) {
-	cmd := exec.Command("bash", "-n")
-	cmd.Stdin = strings.NewReader(rerunHostScript)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("bash -n: %v: %s", err, out)
+// linearRecorder is Linear's GraphQL endpoint as the controller sees it: it
+// records each mutation and answers it with success.
+type linearRecorder struct {
+	mu    sync.Mutex
+	calls []string
+	auth  []string
+}
+
+func (l *linearRecorder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Query     string         `json:"query"`
+		Variables map[string]any `json:"variables"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.auth = append(l.auth, r.Header.Get("Authorization"))
+	input, _ := req.Variables["input"].(map[string]any)
+	switch {
+	case strings.Contains(req.Query, "commentCreate"):
+		l.calls = append(l.calls, "comment "+input["body"].(string))
+		fmt.Fprint(w, `{"data":{"commentCreate":{"success":true}}}`)
+	case strings.Contains(req.Query, "issueUpdate"):
+		l.calls = append(l.calls, "state "+input["stateId"].(string))
+		fmt.Fprint(w, `{"data":{"issueUpdate":{"success":true}}}`)
+	default:
+		http.Error(w, "unexpected query", http.StatusBadRequest)
 	}
 }
 
-// Exercise the real host result block on Dagger's observed progress log shape.
-func TestRerunVerdictFromDaggerProgress(t *testing.T) {
-	start := strings.Index(rerunHostScript, "  trace=$(")
-	end := strings.Index(rerunHostScript, "\n  if [ \"$complete\" = true ]; then")
-	if start < 0 || end < start {
-		t.Fatal("host result block not found")
+func rerunHarness(t *testing.T, status ...string) (*rerunController, *fakeHost, *linearRecorder) {
+	t.Helper()
+	tb, _, h := newTestToolbox("RUNNING")
+	h.checkStatus = status
+	rec := &linearRecorder{}
+	srv := httptest.NewServer(rec)
+	t.Cleanup(srv.Close)
+	c := newRerunController(tb, &linearAPI{client: srv.Client(), url: srv.URL, key: "lin_api_test"})
+	c.poll = time.Millisecond
+	return c, h, rec
+}
+
+var inf6Rerun = rerunRequest{
+	Delivery: "delivery-1", IssueID: "issue-uuid", Identifier: "INF-6",
+	Repo: "null-hype/worlds", Ref: "main", Check: "registered-delivery",
+}
+
+func TestCheckRerunGreenIsDone(t *testing.T) {
+	c, h, rec := rerunHarness(t,
+		`{"job_running": true, "job_exit": null, "result": null}`,
+		`{"job_running": false, "job_exit": 0, "result": {"exit": 0, "trace": "https://dagger.cloud/t/abc"}}`)
+	if err := c.rerun(context.Background(), inf6Rerun); err != nil {
+		t.Fatal(err)
 	}
-	for _, tt := range []struct {
-		name, verdict string
-		want          bool
-	}{
-		{"valid disagreement", "valid finding: Jev did not predict the work", true},
-		{"invalid protocol", "not valid, the protocol: this run cannot judge Jev", false},
-		{"no verdict", "", false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			log := filepath.Join(t.TempDir(), "dagger.log")
-			body := "https://dagger.cloud/test/traces/abc\n"
-			if tt.verdict != "" {
-				body += "\x1b[95m92 : \x1b[0m[1m22s] | Verdict: " + tt.verdict + "\n"
-			}
-			if err := os.WriteFile(log, []byte(body), 0600); err != nil {
-				t.Fatal(err)
-			}
-			cmd := exec.Command("bash", "-c", "set -euo pipefail; log=$1; dagger_exit=1; "+rerunHostScript[start:end]+"\nprintf '%s' \"$complete\"", "_", log)
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("result block: %v: %s", err, out)
-			}
-			if string(out) != fmt.Sprint(tt.want) {
-				t.Fatalf("complete=%s, want %t", out, tt.want)
-			}
-		})
+	var submit *hostCall
+	for i := range h.calls {
+		if h.calls[i].args[0] == "check" {
+			submit = &h.calls[i]
+		}
+	}
+	if submit == nil {
+		t.Fatalf("no check submitted: %v", h.actions())
+	}
+	if got := strings.Join(submit.args, " "); got != "check delivery-1 null-hype/worlds main registered-delivery linear-inf-6" {
+		t.Fatalf("submitted %q", got)
+	}
+	if _, ok := submit.env["LINEAR_API_KEY"]; ok || submit.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "pass-token" {
+		t.Fatalf("host env = %v; want the Pass token and no Linear key", submit.env)
+	}
+	if len(rec.calls) != 3 || rec.calls[0] != "state "+infraInReviewStatusID ||
+		!strings.HasPrefix(rec.calls[1], "comment Rerun of `registered-delivery` is green.") ||
+		!strings.Contains(rec.calls[1], "https://dagger.cloud/t/abc") || rec.calls[2] != "state "+infraDoneStatusID {
+		t.Fatalf("linear calls = %q", rec.calls)
+	}
+	if rec.auth[0] != "lin_api_test" {
+		t.Fatalf("authorization = %q", rec.auth[0])
+	}
+}
+
+// A red check is a verdict: it is recorded, and the issue stays In Review.
+func TestCheckRerunRedStaysInReview(t *testing.T) {
+	c, _, rec := rerunHarness(t,
+		`{"job_running": false, "job_exit": 0, "result": {"exit": 1, "trace": "https://dagger.cloud/t/def"}, "log_tail": "Verdict: not valid, the protocol"}`)
+	if err := c.rerun(context.Background(), inf6Rerun); err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.calls) != 2 || rec.calls[0] != "state "+infraInReviewStatusID ||
+		!strings.Contains(rec.calls[1], "is red (exit 1)") || !strings.Contains(rec.calls[1], "Verdict: not valid, the protocol") {
+		t.Fatalf("linear calls = %q", rec.calls)
+	}
+}
+
+// A job that broke before the check gave a verdict is a broken instrument:
+// the controller reports an error, not a red check.
+func TestCheckRerunBrokenJobIsAnError(t *testing.T) {
+	c, _, rec := rerunHarness(t,
+		`{"job_running": false, "job_exit": 128, "result": null, "log_tail": "fatal: Remote branch main not found"}`)
+	err := c.rerun(context.Background(), inf6Rerun)
+	if err == nil || !strings.Contains(err.Error(), "exited 128") {
+		t.Fatalf("err = %v", err)
+	}
+	if len(rec.calls) != 2 || !strings.Contains(rec.calls[1], "did not finish") || !strings.Contains(rec.calls[1], "Remote branch main not found") {
+		t.Fatalf("linear calls = %q", rec.calls)
 	}
 }
