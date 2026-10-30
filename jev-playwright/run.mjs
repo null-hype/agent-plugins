@@ -1,12 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkConsistency } from './consistency.mjs';
-import { reconcile } from './reconcile.mjs';
-import { writeReportUI } from './report-ui.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const { values } = parseArgs({ options: {
@@ -29,7 +25,6 @@ if (values.backend === 'real' && values.credentials === 'env' && !process.env.TY
 const runId = values['run-id'] ?? randomUUID();
 if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,79}$/.test(runId)) throw new Error('Invalid run ID');
 const runDir = values['output-dir'] ? path.resolve(values['output-dir']) : path.join(here, 'runs', runId);
-mkdirSync(runDir, { recursive: true });
 const env = { ...process.env, JEV_RUN_ID: runId, JEV_RUN_DIR: runDir,
   JEV_CREDENTIALS: values.credentials,
   JEV_BACKEND: values.backend, JEV_CONTRACT: path.resolve(values.contract),
@@ -37,27 +32,7 @@ const env = { ...process.env, JEV_RUN_ID: runId, JEV_RUN_DIR: runDir,
 delete env.JEV_CONTRACT_SNAPSHOT;
 const child = spawnSync(process.execPath, [path.join(here, 'node_modules/@playwright/test/cli.js'),
   'test', '--config', path.join(here, 'playwright.config.ts')], { cwd: here, env, stdio: 'inherit' });
-let success = false;
-try {
-  const comparison = reconcile(runDir);
-  success = child.status === 0 && comparison.passed;
-  for (const [id, result] of Object.entries(comparison.questions)) {
-    console.log(`${id}: ${result.probability ?? 'no score'}; ${result.outcome}${result.blockedBy.length ? `; blocked by ${result.blockedBy.join(', ')}` : ''}`);
-  }
-} catch (error) {
-  const message = error.stderr?.toString() || error.message;
-  writeFileSync(path.join(runDir, 'validation-error.txt'), message + '\n');
-  console.error(message);
-}
-// CIT-320: whether the run agrees with itself, independent of whether it passed.
-try {
-  const consistency = checkConsistency(runDir, values.backend);
-  console.log(`Consistency: ${consistency.consistent ? 'consistent' : `INCONSISTENT\n  ${consistency.broken.join('\n  ')}`}`);
-} catch (error) {
-  const message = error.stderr?.toString() || error.message;
-  writeFileSync(path.join(runDir, 'consistency-error.txt'), message + '\n');
-  console.error(message);
-}
-console.log(`Report: ${writeReportUI(runDir)}`);
-console.log(`${success ? 'PASS' : 'FAIL'} — artifacts: ${runDir}`);
-process.exitCode = success ? 0 : 1;
+// The jev reporter reconciles, checks consistency and writes the viewer when
+// the run ends; a failed reconcile fails the Playwright run.
+console.log(`${child.status === 0 ? 'PASS' : 'FAIL'} — artifacts: ${runDir}`);
+process.exitCode = child.status ?? 1;

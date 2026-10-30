@@ -1,15 +1,19 @@
 # Jev question graph — document ownership fix
 
-`report-expected.pcf` defines the question set, Jev instructions, evidence
-collectors, required evidence, dependencies, model, and expected probability ranges.
+Each test in `tests/questions.spec.ts` is a Question, titled with its words,
+and gathers its evidence. `report-expected.pcf` names which revision each test
+is asked of, and holds the Jev instructions, required evidence, dependencies,
+model, and expected probability ranges.
 Pkl rejects unknown dependency IDs and cycles before execution.
 `playwright.config.ts` evaluates it using the local Pkl CLI adapter and saves
 one JSON snapshot for the tests and reporter. No npm Pkl binding is assumed.
 
 The config generates one Playwright project per question, with native project
-dependencies. Each test gathers HTTP evidence, asserts the deterministic
-behavior, invokes the existing `src/jev/jev` client, and records whether its
-score is in range. Only a prerequisite whose answer could not be collected skips
+dependencies: it runs the test titled with the question's words at the
+question's revision. Each test gathers HTTP evidence and asserts the
+deterministic behavior; its `ask` fixture (`ask.ts`) records the evidence,
+invokes the existing `src/jev/jev` client, and records whether its score is in
+range. Only a prerequisite whose answer could not be collected skips
 dependent projects; an out-of-range answer is data, and its dependents run. The
 reporter only records results.
 
@@ -56,7 +60,7 @@ collectors and the scorer here still run on their own.
 
 ## Run
 
-Requires Node 18+, Python 3.10+, and `pkl` on PATH. Verified with Pkl 0.26.3.
+Requires Node 18+, Python 3.10+, and `pkl` on PATH. Verified with Pkl 0.32.1, the version the `jev` feature installs.
 From this directory:
 
 ```sh
@@ -156,8 +160,12 @@ Replace `artifacts export --path /tmp/jev-report` with `check` to make the
 Dagger call fail when the experiment fails. Export deliberately remains
 available for failed experiments; `exit-code.json` records their status.
 The npm launcher exports first, then exits with that recorded status.
-Use a fresh run ID for a new experiment: it is a Dagger cache input, so an
-identical invocation may reuse the earlier result.
+The run ID is a Dagger cache input. `npm run dagger` names each run by what it
+depends on (`inputs.mjs`): the code it copies into the container, plus the
+backend, canned answers, contract and an optional `--seed`. The same inputs give
+the same ID, so an unchanged run is reused, and an existing `runs/<id>` is not
+repeated at all. A cached live answer is a record: to ask Jev again on purpose,
+pass a new `--seed`.
 
 ## Artifacts
 
@@ -207,9 +215,11 @@ Generated artifacts are ignored by Git; evidence may contain sensitive data.
 The HTML embeds evidence too, so keep it with the same audience as the JSON.
 To add the UI to an existing run: `node report-ui.mjs runs/<uuid>`.
 
-Add questions and dependencies in Pkl and implement referenced collectors in
-`collectors.ts`. The shared test registers each question; project filters
-select exactly one question per project. The contract is evaluated once per
+To add a question, write a test in `tests/` titled with its words and add the
+question to the contract with `ask` set to that title. Both are needed: a
+question no test asks, or a test no question asks (it runs in the `unasked`
+project), fails the run. Each answer in `comparison.json` records the `location`
+of the test that asked it. The contract is evaluated once per
 command, before test registration. This v0 uses no retries or sharding;
 duplicate executions fail the final comparison. `npm test` is the complete
 entry point—calling Playwright directly omits the final ledger comparison.
