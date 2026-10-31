@@ -174,6 +174,8 @@ func (l *linearRecorder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.auth = append(l.auth, r.Header.Get("Authorization"))
 	input, _ := req.Variables["input"].(map[string]any)
 	switch {
+	case strings.Contains(req.Query, "issue(id:"):
+		fmt.Fprint(w, `{"data":{"issue":{"id":"issue-uuid","identifier":"INF-6","title":"The current claim","description":"From Linear after completion","labels":{"nodes":[]}}}}`)
 	case strings.Contains(req.Query, "commentCreate"):
 		l.calls = append(l.calls, "comment "+input["body"].(string))
 		fmt.Fprint(w, `{"data":{"commentCreate":{"success":true}}}`)

@@ -36,6 +36,35 @@ func (l *linearAPI) setState(ctx context.Context, issueID, stateID string) error
 
 // mutate runs one mutation and requires its `success`.
 func (l *linearAPI) mutate(ctx context.Context, name, query string, vars map[string]any) error {
+	var out struct {
+		Data map[string]struct{ Success bool } `json:"data"`
+	}
+	if err := l.query(ctx, name, query, vars, &out); err != nil {
+		return err
+	}
+	if !out.Data[name].Success {
+		return fmt.Errorf("linear %s: not successful", name)
+	}
+	return nil
+}
+
+func (l *linearAPI) issue(ctx context.Context, issueID string) (claimIssue, error) {
+	var out struct {
+		Data struct {
+			Issue *claimIssue `json:"issue"`
+		} `json:"data"`
+	}
+	err := l.query(ctx, "issue", `query($id: String!) { issue(id: $id) { id identifier title description labels { nodes { name } } } }`, map[string]any{"id": issueID}, &out)
+	if err != nil {
+		return claimIssue{}, err
+	}
+	if out.Data.Issue == nil || out.Data.Issue.ID != issueID {
+		return claimIssue{}, fmt.Errorf("linear issue: missing or mismatched issue")
+	}
+	return *out.Data.Issue, nil
+}
+
+func (l *linearAPI) query(ctx context.Context, name, query string, vars map[string]any, result any) error {
 	body, err := json.Marshal(map[string]any{"query": query, "variables": vars})
 	if err != nil {
 		return err
@@ -60,8 +89,7 @@ func (l *linearAPI) mutate(ctx context.Context, name, query string, vars map[str
 		return fmt.Errorf("linear %s: %s: %s", name, resp.Status, lastLines(string(b), 5))
 	}
 	var out struct {
-		Data   map[string]struct{ Success bool } `json:"data"`
-		Errors []struct{ Message string }        `json:"errors"`
+		Errors []struct{ Message string } `json:"errors"`
 	}
 	if err := json.Unmarshal(b, &out); err != nil {
 		return fmt.Errorf("linear %s: %w", name, err)
@@ -69,8 +97,8 @@ func (l *linearAPI) mutate(ctx context.Context, name, query string, vars map[str
 	if len(out.Errors) > 0 {
 		return fmt.Errorf("linear %s: %s", name, out.Errors[0].Message)
 	}
-	if !out.Data[name].Success {
-		return fmt.Errorf("linear %s: not successful", name)
+	if err := json.Unmarshal(b, result); err != nil {
+		return fmt.Errorf("linear %s: %w", name, err)
 	}
 	return nil
 }

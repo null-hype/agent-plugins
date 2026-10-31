@@ -214,3 +214,76 @@ docker build -t toolbox .
 
 The build runs the tests, including `TestHostScript`, which runs `host.sh`
 against a fake `devpod` (it skips where `jq` is missing).
+
+### Static claim pages (CIT-563)
+
+After a check finishes, the existing rerun controller reads the issue's current
+title, description and labels from Linear and uploads one self-contained HTML
+object to R2. Both green and red reruns replace that object. Only Dagger's exit
+code selects the verdict and state; metadata or publishing failures are logged
+and reported in the comment without changing that verdict. Broken host jobs do
+not publish a completed result.
+
+Configure these on the toolbox, alongside the existing webhook configuration:
+
+| Variable | Value |
+| --- | --- |
+| `R2_ENDPOINT` | HTTPS S3 origin, e.g. `https://<account-id>.r2.cloudflarestorage.com` |
+| `R2_BUCKET` | Bucket behind the claim domain |
+| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 S3 credentials with object write permission for that bucket |
+| `CLAIM_URL_SECRET` | At least 32 random bytes, generated once (e.g. `openssl rand -hex 32`) and retained across deployments |
+| `CLAIM_BASE_URL` | HTTPS custom domain origin; defaults to `https://tidelands.dev` |
+
+Missing or invalid configuration disables publishing and logs the reason. R2
+credentials stay in the toolbox; the host and Dagger checks never receive them.
+
+An exact `public` label opts into `/<lowercase-issue-identifier>`, for example
+`/inf-6`. Other issues use `/r/<HMAC-SHA256-token>` derived from the immutable
+Linear issue UUID and `CLAIM_URL_SECRET`. Titles, deliveries and R2 key rotations
+do not change the URL. Retain the URL secret: rotating it changes private URLs.
+These are unlisted bearer URLs, without authentication. Visibility label changes
+select a different route; existing objects are not deleted automatically, so
+remove previously public objects explicitly before treating a claim as private.
+
+The bucket's custom domain must serve extensionless object keys directly (keys
+are `inf-6` or `r/<token>`, with HTML Content-Type). Disable any cache rule that
+forces caching these paths; uploads have `Cache-Control: no-store` so subsequent
+reruns are visible without cache purges. If the domain previously cached these
+keys, purge them once when enabling publishing.
+
+Add the rule in `claim-page-response-headers.json` ([Cloudflare API instructions](https://developers.cloudflare.com/rules/transform/response-header-modification/create-api/)) to the domain's existing
+Cloudflare zone ruleset in phase `http_response_headers_transform`. Merge this
+rule into that ruleset; do not replace other rules. Adjust the hostname when
+using another `CLAIM_BASE_URL`. It sets `X-Robots-Tag: noindex` on every `/r/*`
+response, including missing objects, and adds browser cache/referrer headers.
+This response rule does not control Cloudflare edge caching; respect the object's
+origin Cache-Control or add a separate Cache Rule to bypass these paths. This is an edge rule,
+not S3 custom metadata or an uploaded `_headers` file: those do not set arbitrary
+HTTP headers on R2 custom domains. The publisher HEADs the exact private URL
+before uploading and requires HTTP 200 or 404 with `X-Robots-Tag: noindex`.
+Without that evidence it skips publishing and records the failure. The HTML also
+has a noindex meta tag and a no-referrer policy.
+
+The page includes the trace, snapshot identity and run key, and a snapshot
+evidence link to the Dagger trace. The host collects a full snapshot ID only
+from a `World:` provenance record explicitly tagged `run=linear-<issue>` in the
+check log. Missing provenance is displayed as unavailable; it never supplies or
+changes the verdict. There is no assumed public restic browser or repository
+credential in the page. `#xeno-status` and JSON in `#claim-data` (`xeno: null`) are
+the integration points for CIT-562.
+
+For a local proof with synthetic input, without starting the server or host:
+
+```sh
+go build -o /tmp/toolbox-claim .
+/tmp/toolbox-claim render-claim < testdata/completed-claim.json > /tmp/claim.html
+go test ./... -run 'Test(Claim|PrivateClaim|RenderClaim|RerunPublishing|CheckCollectsSnapshot)' -v
+```
+
+The tests run the actual publisher against a local HTTP fake of R2 and check
+signed uploads, stable private/public URLs, green-to-red overwrites, noindex
+preconditions, HTML escaping, metadata failures and verdict preservation. They
+perform no writes to real services. For an explicitly configured test bucket,
+`toolbox publish-claim < testdata/completed-claim.json` uploads the fixture and
+prints its URL. Change `labels.nodes` to `[{"name":"public"}]` to exercise the
+public route. Publishing this fixture is an explicit operator action.
