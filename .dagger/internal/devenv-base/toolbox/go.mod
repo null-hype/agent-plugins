@@ -3,6 +3,7 @@ module devenv/toolbox
 go 1.25.14
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.47.5
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	golang.org/x/crypto v0.55.0
 	golang.org/x/oauth2 v0.35.0
@@ -10,6 +11,7 @@ require (
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	github.com/aws/smithy-go v1.28.7 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect

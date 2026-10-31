@@ -61,11 +61,12 @@ type rerunRequest struct {
 // A check's exit code is its verdict: a valid finding that refutes a claim is
 // the check's to report as green or not, not the controller's to read.
 type rerunController struct {
-	tb     *toolbox
-	linear *linearAPI
-	mu     sync.Mutex
-	seen   map[string]struct{}
-	run    func(context.Context, rerunRequest) error
+	tb        *toolbox
+	linear    *linearAPI
+	publisher *claimPublisher
+	mu        sync.Mutex
+	seen      map[string]struct{}
+	run       func(context.Context, rerunRequest) error
 	// poll is how often the host and the check's job are looked at.
 	poll time.Duration
 }
@@ -196,8 +197,9 @@ type checkStatus struct {
 	JobRunning bool `json:"job_running"`
 	JobExit    *int `json:"job_exit"`
 	Result     *struct {
-		Exit  int    `json:"exit"`
-		Trace string `json:"trace"`
+		Exit     int    `json:"exit"`
+		Trace    string `json:"trace"`
+		Snapshot string `json:"snapshot"`
 	} `json:"result"`
 	LogTail string `json:"log_tail"`
 }
@@ -216,7 +218,20 @@ func (c *rerunController) rerun(ctx context.Context, req rerunRequest) error {
 			"Rerun of `%s` did not finish: %v\n\nIt stays In Review; move it to Todo to rerun.\n\nLinear delivery: %s",
 			req.Check, err, req.Delivery)))
 	}
-	if err := c.linear.comment(ctx, req.IssueID, verdictComment(req, st)); err != nil {
+	comment := verdictComment(req, st)
+	if c.publisher != nil {
+		// Publishing has a bounded budget and never changes the Dagger verdict.
+		publishCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		publishedURL, publishErr := c.publishClaim(publishCtx, req, st)
+		cancel()
+		if publishErr != nil {
+			log.Printf("linear rerun %s: claim publishing failed: %v", req.Identifier, publishErr)
+			comment += "\n\nClaim page publishing failed; the Dagger verdict is unchanged."
+		} else {
+			comment += "\n\nClaim page: " + publishedURL
+		}
+	}
+	if err := c.linear.comment(ctx, req.IssueID, comment); err != nil {
 		return err
 	}
 	if st.Result.Exit == 0 {
@@ -302,4 +317,15 @@ func verdictComment(req rerunRequest, st checkStatus) string {
 	}
 	fmt.Fprintf(&b, "\n\nLinear delivery: %s", req.Delivery)
 	return b.String()
+}
+
+func (c *rerunController) publishClaim(ctx context.Context, req rerunRequest, st checkStatus) (string, error) {
+	issue, err := c.linear.issue(ctx, req.IssueID)
+	if err != nil {
+		return "", err
+	}
+	return c.publisher.publish(ctx, completedClaim{
+		Issue: issue, Delivery: req.Delivery, Check: req.Check, Exit: st.Result.Exit, Trace: st.Result.Trace,
+		Snapshot: claimSnapshot{ID: st.Result.Snapshot, URL: st.Result.Trace, RunKey: runKey(req.Identifier)},
+	})
 }
