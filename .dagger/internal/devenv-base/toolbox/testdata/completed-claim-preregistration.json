@@ -1,0 +1,49 @@
+{
+  "issue": {
+    "id": "57805248-b4bd-4415-8cf8-62981c01dae2",
+    "identifier": "INF-6",
+    "title": "A completed claim fixture",
+    "description": "The claim and its evidence are published at one stable URL.\nThis is synthetic evidence for local verification.",
+    "state": {
+      "id": "fixture-done",
+      "name": "Done",
+      "type": "completed"
+    },
+    "labels": {
+      "nodes": []
+    }
+  },
+  "delivery": "fixture-delivery-1",
+  "check": "registered-delivery",
+  "exit": 0,
+  "trace": "https://dagger.cloud/example/traces/fixture",
+  "snapshot": {
+    "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "url": "https://dagger.cloud/example/traces/fixture",
+    "run_key": "linear-inf-6"
+  },
+  "xeno": null,
+  "preregistration": {
+    "file": "delivery/Preregistration.pkl",
+    "source": "// Synthetic preregistration for UI verification, not a measured result.\nquestions {\n  new {\n    question = \"Does the observed work stay inside the registered band?\"\n    acceptable { min = -0.10; max = 0.10 }\n    prediction = 0.0\n  }\n}\n",
+    "findings": {
+      "version": 1,
+      "findings": [
+        {
+          "id": "registered-band",
+          "location": {
+            "file": "delivery/Preregistration.pkl",
+            "line": 6,
+            "column": 5
+          },
+          "severity": "warning",
+          "message": "Observed +0.24; acceptable band is -0.10 to +0.10. The prediction was outside its registered band.",
+          "sourceHash": "sha256:18b64d8ca67d840a95b062b326bcb4d20e1742262e134628627c4b3c5984700a",
+          "evidence": [
+            "evidence/verdict.json"
+          ]
+        }
+      ]
+    }
+  }
+}

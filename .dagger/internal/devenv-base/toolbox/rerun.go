@@ -197,9 +197,10 @@ type checkStatus struct {
 	JobRunning bool `json:"job_running"`
 	JobExit    *int `json:"job_exit"`
 	Result     *struct {
-		Exit     int    `json:"exit"`
-		Trace    string `json:"trace"`
-		Snapshot string `json:"snapshot"`
+		Exit            int                   `json:"exit"`
+		Trace           string                `json:"trace"`
+		Snapshot        string                `json:"snapshot"`
+		Preregistration *claimPreregistration `json:"preregistration,omitempty"`
 	} `json:"result"`
 	LogTail string `json:"log_tail"`
 }
@@ -329,6 +330,7 @@ func (c *rerunController) publishClaim(ctx context.Context, req rerunRequest, st
 	}
 	return c.publisher.publish(ctx, completedClaim{
 		Issue: issue, Delivery: req.Delivery, Check: req.Check, Exit: st.Result.Exit, Trace: st.Result.Trace,
-		Snapshot: claimSnapshot{ID: st.Result.Snapshot, URL: st.Result.Trace, RunKey: runKey(req.Identifier)},
+		Snapshot:        claimSnapshot{ID: st.Result.Snapshot, URL: st.Result.Trace, RunKey: runKey(req.Identifier)},
+		Preregistration: st.Result.Preregistration,
 	})
 }

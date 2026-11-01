@@ -158,7 +158,7 @@ func TestClaimEscapesUntrustedMetadata(t *testing.T) {
 	if bytes.Contains(body, []byte("<script>alert(1)</script>")) || bytes.Contains(body, []byte(`href="javascript:`)) {
 		t.Fatal("unsafe metadata rendered")
 	}
-	if bytes.Count(body, []byte("</script>")) != 1 {
+	if bytes.Count(body, []byte("</script>")) != 2 {
 		t.Fatal("JSON broke out of script")
 	}
 	if !bytes.Contains(body, []byte(`name="robots" content="noindex"`)) {
@@ -203,8 +203,8 @@ func TestClaimReportEvidenceStates(t *testing.T) {
 		if bytes.Contains(body, []byte(`name="robots"`)) || bytes.Contains(body, []byte("Snapshot evidence")) || bytes.Contains(body, []byte("Open trace")) {
 			t.Errorf("exit %d: public report fabricated evidence or received private metadata", exit)
 		}
-		if bytes.Count(body, []byte("<script")) != 1 || bytes.Contains(body, []byte("<script src=")) {
-			t.Fatal("report needs a browser runtime")
+		if bytes.Count(body, []byte("<script")) != 2 || bytes.Contains(body, []byte("<script src=")) {
+			t.Fatal("unexpected report scripts")
 		}
 	}
 }
@@ -357,7 +357,7 @@ func TestRerunPublishingCannotChangeVerdict(t *testing.T) {
 		{"Done update fails", 0, 200, false, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			c, _, rec := rerunHarness(t, fmt.Sprintf(`{"job_running":false,"job_exit":0,"result":{"exit":%d,"trace":"https://dagger.cloud/test/traces/abc","snapshot":"snapshot-123"}}`, tt.exit))
+			c, _, rec := rerunHarness(t, fmt.Sprintf(`{"job_running":false,"job_exit":0,"result":{"exit":%d,"trace":"https://dagger.cloud/test/traces/abc","snapshot":"snapshot-123","preregistration":{"file":"Predicted.pkl","source":"prediction = 0.0","findings":{"version":1,"findings":[]}}}}`, tt.exit))
 			// A separate local server handles both read-only metadata and writes.
 			rec.failDone = tt.failDone
 			linear := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -422,6 +422,9 @@ func TestRerunPublishingCannotChangeVerdict(t *testing.T) {
 				xeno, _ := uploaded.Xeno.(map[string]any)
 				if uploaded.Issue.State == nil || uploaded.Issue.State.Name != wantState || xeno["name"] != wantState {
 					t.Fatalf("report did not capture actual completion state %q: %+v", wantState, uploaded)
+				}
+				if uploaded.Preregistration == nil || uploaded.Preregistration.File != "Predicted.pkl" {
+					t.Fatal("controller dropped preregistration artifact")
 				}
 				if uploaded.Issue.Title != "The current claim" || uploaded.Exit != tt.exit || uploaded.Snapshot.ID != "snapshot-123" || uploaded.Snapshot.RunKey != "linear-inf-6" {
 					t.Fatalf("wrong payload: %+v", uploaded)

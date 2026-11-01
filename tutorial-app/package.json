@@ -19,7 +19,10 @@
     "image-claims:render": "node --import tsx scripts/render-image-claims.ts",
     "image-claims:check": "vitest run src/lib/imageClaims.spec.ts && node --import tsx scripts/render-image-claims.ts --check",
     "claim:export": "node scripts/export-claim-page.mjs",
-    "claim:check": "node scripts/export-claim-page.mjs --check"
+    "claim:check": "node scripts/export-claim-page.mjs --check",
+    "storybook:tidelands": "storybook dev -c .storybook-tidelands -p 7881",
+    "storybook:remote": "node scripts/start-storybooks.mjs",
+    "build-storybook:tidelands": "storybook build -c .storybook-tidelands -o tidelands-storybook-static"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",

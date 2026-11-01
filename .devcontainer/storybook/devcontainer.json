@@ -1,0 +1,15 @@
+{
+  "name": "Tidelands Storybooks",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
+  "forwardPorts": [7880, 7881],
+  "portsAttributes": {
+    "7880": { "label": "Agent plugins Storybook", "onAutoForward": "silent" },
+    "7881": { "label": "Tidelands Storybook", "onAutoForward": "openBrowser" }
+  },
+  "postCreateCommand": "bash .devcontainer/storybook/setup.sh",
+  "postStartCommand": "bash .devcontainer/storybook/start.sh",
+  "remoteUser": "node"
+}
