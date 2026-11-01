@@ -12,6 +12,8 @@ export REPO=https://github.com/null-hype/agent-plugins.git
 export LINEAR_TEAM_ID=c59e559d-fd9c-43da-a049-108672cb6bb4
 export LINEAR_TRIAGE_STATE_ID=5b35854e-8954-4fec-a99b-61752cd2400c
 export LINEAR_API_KEY_REF=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY
+# check's Dagger Cloud token, for the trace each rerun links to.
+export DAGGER_CLOUD_TOKEN_REF=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN
 # agent_ship's push token: can push this repository and nothing else.
 export SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN
 export DEVCONTAINER_DIR=.dagger/internal/devenv-base/.devcontainer
@@ -97,6 +99,27 @@ run_up() {
 # Reviews the PR with the host's Codex login, so AGENTS.md sets the criteria,
 # and has Codex create a container-use environment and a Linear triage issue
 # for each finding. Its final message, one line per finding, lands in $out.
+# A Dagger check of a repository at a ref, for the toolbox's Linear rerun
+# webhook. Only dagger runs here: the toolbox reads $out and writes Linear, so
+# neither this job nor the check sees a Linear key. $out holds the check's exit
+# code, which is its verdict, and the trace it linked to.
+run_check() {
+  set -euo pipefail
+  local repo=$1 ref=$2 check=$3 run=$4 out=$5 log=$6 dir=$HOME/.toolbox/checks/$(basename "$5" .json) code trace
+  rm -rf "$dir" && mkdir -p "$dir"
+  git clone -q --depth 1 --branch "$ref" "https://github.com/$repo.git" "$dir/repo"
+  # Dagger reads a check's defaults from the repository's .env: a check that
+  # takes a `run` gets the issue's, so one issue's reruns resume one session.
+  echo "$(tr -d - <<< "$check" | tr '[:lower:]' '[:upper:]')_RUN=$run" >> "$dir/repo/.env"
+  echo "DAGGER_CLOUD_TOKEN=$DAGGER_CLOUD_TOKEN_REF" > "$dir/runtime.env"
+  cd "$dir/repo"
+  code=0
+  pass-cli run --env-file .env --env-file "$dir/runtime.env" -- dagger check "$check" > "$log" 2>&1 || code=$?
+  trace=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | grep -Eo 'https://dagger\.cloud/[^[:space:]]+' | tail -1 | sed 's/[),.;]*$//' || true)
+  jq -n --argjson exit "$code" --arg trace "$trace" '{exit: $exit, trace: $trace}' > "$out"
+  cd "$HOME" && rm -rf "$dir"
+}
+
 # Each environment's branch is then pushed under its issue's branch name, so
 # Linear links it to the issue, and the pre-push hook's backup runs.
 # Progress is kept per head, so a review the host stopped part way through
@@ -450,6 +473,43 @@ ship-status)
     --arg codex "$(cat "$HOME/.toolbox/ship/last-message.md" 2>/dev/null || true)" \
     --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null || true)" \
     '{job_running: $job_running, job_exit: $job_exit, request: $request, result: $result, codex: $codex, log_tail: $log_tail}'
+  ;;
+check)
+  delivery=$1 repo=$2 ref=$3 check=$4 run=$5 id=check-$1
+  # They go into a clone, a .env and a command line: only plain names pass.
+  [[ $delivery =~ ^[A-Za-z0-9-]+$ ]] || { echo "invalid delivery $delivery" >&2; exit 2; }
+  [[ $repo = null-hype/worlds ]] || { echo "unsupported repository $repo" >&2; exit 2; }
+  [[ $ref =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "invalid ref $ref" >&2; exit 2; }
+  [[ $check =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "invalid check $check" >&2; exit 2; }
+  [[ $run =~ ^[a-z0-9-]+$ ]] || { echo "invalid run $run" >&2; exit 2; }
+  # Linear redelivers a webhook it thinks failed: one job per delivery.
+  if [ -f "$JOBS/$id.exit" ] || job_running "$id"; then
+    jq -n --arg id "$id" '{job: $id, duplicate: true}'
+    exit 0
+  fi
+  export PROTON_PASS_KEY_PROVIDER=fs
+  export PROTON_PASS_AGENT_REASON="check rerun: $check on $repo for Linear"
+  if ! pass-cli info >/dev/null 2>&1 && [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+    pass-cli logout --force >/dev/null 2>&1 || true
+    pass-cli login >/dev/null 2>&1 || true
+  fi
+  pass-cli info >/dev/null 2>&1 || { echo "no Proton Pass session on this host, so the check's secrets cannot be resolved" >&2; exit 2; }
+  rm -f "$JOBS/$id.exit" "$JOBS/$id.json" "$JOBS/$id.dagger.log"
+  setsid nohup bash -c "$(declare -p DAGGER_CLOUD_TOKEN_REF; declare -f run_check)"'
+    (run_check "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$repo" "$ref" "$check" "$run" "$JOBS/$id.json" "$JOBS/$id.dagger.log" \
+    > "$JOBS/$id.log" 2>&1 < /dev/null &
+  echo $! > "$JOBS/$id.pid"
+  jq -n --arg id "$id" '{job: $id, duplicate: false, job_running: true}'
+  ;;
+check-status)
+  id=check-$1
+  # log_tail is the check's own output when it ran, else the job's.
+  if [ -s "$JOBS/$id.dagger.log" ]; then tail_of=$JOBS/$id.dagger.log; else tail_of=$JOBS/$id.log; fi
+  jq -n --argjson job_running "$(job_running "$id" && echo true || echo false)" \
+    --argjson job_exit "$(cat "$JOBS/$id.exit" 2>/dev/null || echo null)" \
+    --argjson result "$(cat "$JOBS/$id.json" 2>/dev/null || echo null)" \
+    --arg log_tail "$(tail -n 15 "$tail_of" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' || true)" \
+    '{job_running: $job_running, job_exit: $job_exit, result: $result, log_tail: $log_tail}'
   ;;
 review-status)
   id=review-$1

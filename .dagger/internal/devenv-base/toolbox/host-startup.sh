@@ -67,6 +67,19 @@ if [ "$(container-use version 2>/dev/null | awk '{print $NF}' | tr -d v | head -
   rm -rf "$d"
 fi
 
+# dagger, for the Linear check reruns (host.sh check): the engine runs in the
+# host's Docker.
+DAGGER_VERSION=0.21.8
+if [ "$(dagger version 2>/dev/null | awk '{print $2}' | head -1)" != "v$DAGGER_VERSION" ]; then
+  f=dagger_v${DAGGER_VERSION}_linux_amd64.tar.gz
+  d=$(mktemp -d)
+  curl -fsSL -o "$d/$f" "https://github.com/dagger/dagger/releases/download/v$DAGGER_VERSION/$f"
+  curl -fsSL -o "$d/checksums.txt" "https://github.com/dagger/dagger/releases/download/v$DAGGER_VERSION/checksums.txt"
+  (cd "$d" && grep " $f\$" checksums.txt | sha256sum -c --quiet && tar -xzf "$f" dagger)
+  install -m 0755 "$d/dagger" /usr/local/bin/dagger
+  rm -rf "$d"
+fi
+
 if ! echo "$DEVPOD_SHA256  /usr/local/bin/devpod" | sha256sum -c --quiet >/dev/null 2>&1; then
   curl -fsSL -o /tmp/devpod "https://github.com/loft-sh/devpod/releases/download/$DEVPOD_VERSION/devpod-linux-amd64"
   echo "$DEVPOD_SHA256  /tmp/devpod" | sha256sum -c --quiet
