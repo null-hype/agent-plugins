@@ -26,11 +26,18 @@ import (
 
 // claimIssue is current Linear metadata, fetched after the check finishes.
 // Public URLs use the current title in kebab-case; private URLs use the ID.
+type claimWorkflowState struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
 type claimIssue struct {
-	ID          string `json:"id"`
-	Identifier  string `json:"identifier"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	ID          string              `json:"id"`
+	Identifier  string              `json:"identifier"`
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	State       *claimWorkflowState `json:"state"`
 	Labels      struct {
 		Nodes []struct {
 			Name string `json:"name"`
@@ -54,7 +61,7 @@ type claimSnapshot struct {
 }
 
 // completedClaim is also the fixture boundary for publishing without a host,
-// Linear writes or Dagger. Xeno is deliberately an empty integration slot.
+// Linear writes or Dagger. Xeno projects the completion-time Linear state.
 type completedClaim struct {
 	Issue    claimIssue    `json:"issue"`
 	Delivery string        `json:"delivery"`
@@ -185,6 +192,15 @@ func (p *claimPublisher) publish(ctx context.Context, claim completedClaim) (str
 }
 
 func renderClaim(claim completedClaim) ([]byte, error) {
+	// The issue snapshot is authoritative, even if a fixture supplies stale xeno data.
+	claim.Xeno = claim.Issue.State
+	xenoName, xenoType := "Unavailable", "unknown"
+	if claim.Issue.State != nil && claim.Issue.State.Name != "" {
+		xenoName = claim.Issue.State.Name
+		if claim.Issue.State.Type != "" {
+			xenoType = claim.Issue.State.Type
+		}
+	}
 	data, err := json.Marshal(claim) // encoding/json escapes HTML, including </script>.
 	if err != nil {
 		return nil, err
@@ -213,7 +229,9 @@ func renderClaim(claim completedClaim) ([]byte, error) {
 		DescriptionLines []descriptionLine
 		Verdict          string
 		Outcome          string
-	}{claim, template.JS(data), claim.Issue.public(), lines, verdict, outcome})
+		XenoName         string
+		XenoType         string
+	}{claim, template.JS(data), claim.Issue.public(), lines, verdict, outcome, xenoName, xenoType})
 	return out.Bytes(), err
 }
 

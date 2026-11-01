@@ -218,7 +218,16 @@ func (c *rerunController) rerun(ctx context.Context, req rerunRequest) error {
 			"Rerun of `%s` did not finish: %v\n\nIt stays In Review; move it to Todo to rerun.\n\nLinear delivery: %s",
 			req.Check, err, req.Delivery)))
 	}
+	// Apply the exit-code-driven completion transition before reading metadata,
+	// so the report captures Linear's actual final state rather than In Review.
+	var stateErr error
+	if st.Result.Exit == 0 {
+		stateErr = c.linear.setState(ctx, req.IssueID, infraDoneStatusID)
+	}
 	comment := verdictComment(req, st)
+	if stateErr != nil {
+		comment += "\n\nLinear status update failed; the Dagger verdict is unchanged."
+	}
 	if c.publisher != nil {
 		// Publishing has a bounded budget and never changes the Dagger verdict.
 		publishCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -231,13 +240,7 @@ func (c *rerunController) rerun(ctx context.Context, req rerunRequest) error {
 			comment += "\n\nClaim page: " + publishedURL
 		}
 	}
-	if err := c.linear.comment(ctx, req.IssueID, comment); err != nil {
-		return err
-	}
-	if st.Result.Exit == 0 {
-		return c.linear.setState(ctx, req.IssueID, infraDoneStatusID)
-	}
-	return nil
+	return errors.Join(stateErr, c.linear.comment(ctx, req.IssueID, comment))
 }
 
 // check wakes the host, submits the check's job and waits for its result.

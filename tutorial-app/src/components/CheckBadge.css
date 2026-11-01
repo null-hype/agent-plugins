@@ -5,3 +5,5 @@
 .ic-origin-A { background: #d6e4ff; color: #12295e; }
 .ic-origin-B { background: #f0dcff; color: #45185f; }
 .ic-origin-base { background: #e4e4e4; color: #222; }
+.ic-workflow-completed { background: #d1f7d8; color: #0b3d17; }
+.ic-workflow-started { background: #fff1c2; color: #5c4300; }
