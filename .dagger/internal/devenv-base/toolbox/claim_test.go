@@ -184,6 +184,52 @@ func TestClaimPublisherConfiguration(t *testing.T) {
 	}
 }
 
+func TestCheckDoesNotResolveOtherHostActionSecrets(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "bin")
+	if err := os.Mkdir(bin, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for name, script := range map[string]string{
+		"git": "#!/bin/bash\nmkdir -p \"${@: -1}\"\ntouch \"${@: -1}/.env\"\n",
+		"pass-cli": `#!/bin/bash
+set -eu
+for name in SHIP_PUSH_PAT_REF LINEAR_API_KEY_REF DAGGER_CLOUD_TOKEN_REF; do
+  if [ -n "${!name:-}" ]; then echo "unrelated reference reached resolver: $name" >&2; exit 9; fi
+done
+grep -q 'DAGGER_CLOUD_TOKEN=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN' ../runtime.env
+if [ -f "$HOME/.toolbox/check.env" ]; then
+  [ "$6" = --env-file ] && [ "$7" = "$HOME/.toolbox/check.env" ] && [ "$8" = -- ]
+fi
+echo 'https://dagger.cloud/test/traces/isolated'
+`,
+	} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	start := strings.Index(hostScript, "run_check() {")
+	end := strings.Index(hostScript[start:], "\n}\n") + start + 3
+	if err := os.MkdirAll(filepath.Join(dir, ".toolbox"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".toolbox", "check.env"), []byte("DAGGER_CLOUD_TOKEN=pass://granted-share/granted-item/DAGGER_CLOUD_TOKEN\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", "-c", hostScript[start:end]+`run_check null-hype/worlds main registered-delivery linear-inf-6 "$HOME/result.json" "$HOME/dagger.log"`)
+	cmd.Env = append(os.Environ(), "HOME="+dir, "PATH="+bin+":"+os.Getenv("PATH"), "DAGGER_CLOUD_TOKEN_REF=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN", "SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN", "LINEAR_API_KEY_REF=pass://api.linear.app/team/LINEAR_API_KEY")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("run check: %v: %s", err, out)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "result.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"exit": 0`) || !strings.Contains(string(b), "traces/isolated") {
+		t.Fatalf("check did not reach its resolver: %s", b)
+	}
+}
+
 // Run the actual host result collection with a recorded log, never Dagger or
 // restic. Neither snapshot tags nor verdict-like text may override the exit.
 func TestCheckCollectsSnapshotForIssueRun(t *testing.T) {
