@@ -88,7 +88,7 @@ func loadClaimPublisher() *claimPublisher {
 	p := &claimPublisher{
 		client:   &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 		endpoint: strings.TrimRight(os.Getenv("R2_ENDPOINT"), "/"), bucket: os.Getenv("R2_BUCKET"),
-		baseURL:   strings.TrimRight(envOr("CLAIM_BASE_URL", "https://claims.tidelands.dev"), "/"),
+		baseURL:   strings.TrimRight(envOr("CLAIM_BASE_URL", "https://check.tidelands.dev"), "/"),
 		accessKey: os.Getenv("R2_ACCESS_KEY_ID"), secretKey: os.Getenv("R2_SECRET_ACCESS_KEY"), urlSecret: os.Getenv("CLAIM_URL_SECRET"),
 	}
 	for _, raw := range []string{p.endpoint, p.baseURL} {
