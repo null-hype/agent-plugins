@@ -21,7 +21,7 @@ test.describe('Static claim reports', () => {
       await expect(page.getByText(/Anyone with this link can view it/)).toBeVisible();
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
       if (red) {
-        await expect(page.getByText('Unavailable for this rerun')).toBeVisible();
+        await expect(page.getByText('Unavailable for this rerun', { exact: true })).toBeVisible();
         await expect(page.getByRole('link', { name: 'Snapshot evidence ↗' })).toHaveCount(0);
       } else {
         await expect(page.getByRole('link', { name: 'Snapshot evidence ↗' })).toBeVisible();
