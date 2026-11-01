@@ -78,6 +78,14 @@ job that broke before the check gave a verdict, leaves it In Review with the
 end of the log. The check's exit code is its verdict, and the controller
 reads nothing else of it. Move the issue to Todo again to rerun.
 
+With an item-scoped Proton Pass runtime token, named vault references may not
+resolve. Put the check's variables with their granted `pass://<share-id>/<item-id>/<field>`
+references in the host's `~/.toolbox/check.env` (mode 0600). This optional file
+overrides the cloned repository's `.env` and the default Dagger trace reference;
+it contains references, not secret values. Update it when replacing item grants.
+The check launcher removes unrelated host-action secret references before Pass
+resolves the check's environment, so checks need no GitHub or Linear grant.
+
 ## Tailscale and Codex
 
 The host is its own tailnet node, `toolbox-host`, with Tailscale SSH. The

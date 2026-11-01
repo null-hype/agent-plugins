@@ -113,8 +113,17 @@ run_check() {
   echo "$(tr -d - <<< "$check" | tr '[:lower:]' '[:upper:]')_RUN=$run" >> "$dir/repo/.env"
   echo "DAGGER_CLOUD_TOKEN=$DAGGER_CLOUD_TOKEN_REF" > "$dir/runtime.env"
   cd "$dir/repo"
+  # pass-cli run also resolves inherited pass:// values. Other host actions'
+  # references must not request GitHub or Linear access for a check.
+  unset SHIP_PUSH_PAT_REF LINEAR_API_KEY_REF DAGGER_CLOUD_TOKEN_REF
+  local -a check_env=(--env-file .env --env-file "$dir/runtime.env")
+  # Item-scoped Pass tokens use opaque item/share references. An operator
+  # can override the clone's named references without changing the check repo.
+  if [ -f "$HOME/.toolbox/check.env" ]; then
+    check_env+=(--env-file "$HOME/.toolbox/check.env")
+  fi
   code=0
-  pass-cli run --env-file .env --env-file "$dir/runtime.env" -- dagger check "$check" > "$log" 2>&1 || code=$?
+  pass-cli run "${check_env[@]}" -- dagger check "$check" > "$log" 2>&1 || code=$?
   trace=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | grep -Eo 'https://dagger\.cloud/[^[:space:]]+' | tail -1 | sed 's/[),.;]*$//' || true)
   # Snapshot provenance is display data, never a verdict. Select only a
   # restored world explicitly tagged for this issue's run key.
