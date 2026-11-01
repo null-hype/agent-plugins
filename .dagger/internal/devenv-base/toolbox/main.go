@@ -99,7 +99,9 @@ func newMux(token, baseURL string, tb *toolbox) *http.ServeMux {
 		secret, key := os.Getenv("LINEAR_CHECK_WEBHOOK_SECRET"), os.Getenv("LINEAR_API_KEY")
 		switch {
 		case secret != "" && key != "":
-			mux.Handle("/linear/webhook", linearRerunHandler(secret, newRerunController(tb, newLinearAPI(key))))
+			controller := newRerunController(tb, newLinearAPI(key))
+			controller.publisher = loadClaimPublisher()
+			mux.Handle("/linear/webhook", linearRerunHandler(secret, controller))
 		case secret != "":
 			log.Printf("toolbox: check reruns off; LINEAR_CHECK_WEBHOOK_SECRET is set but LINEAR_API_KEY is not")
 		}
@@ -162,6 +164,12 @@ func loadToolbox(ctx context.Context) (*toolbox, error) {
 }
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "publish-claim" || os.Args[1] == "render-claim") {
+		if err := runClaimCommand(context.Background(), os.Args[1], os.Stdin, os.Stdout); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	port := envOr("PORT", "8080")
 	// Render sets RENDER_EXTERNAL_URL on web services.
 	baseURL := strings.TrimSuffix(os.Getenv("RENDER_EXTERNAL_URL"), "/")
