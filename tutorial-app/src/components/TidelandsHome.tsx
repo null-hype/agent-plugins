@@ -8,7 +8,8 @@ export default function TidelandsHome() {
     <main className="td-main">
       <section className="td-hero" aria-labelledby="home-title">
         <p className="td-eyebrow">Richard Anthony · Software engineer · Sydney</p>
-        <h1 id="home-title">A green check should lead to evidence you can inspect.</h1>
+        <div className="td-hero-row"><h1 id="home-title"><span className="td-cut">A green check</span> should lead to <em>evidence</em> you can inspect.</h1>
+        <aside className="td-note" aria-label="Approach"><span>Field note / 01</span><p>A log of<br /><strong>evidence.</strong></p><span>Capture. Check. Preserve.</span></aside></div>
         <p className="td-lead">Verification infrastructure for agent-produced software.</p>
         <p className="td-muted">I build tools to preserve what a check actually saw, judge a claim against that exact world, and put the finding back on the source.</p>
         <div className="td-actions"><a className="td-button" href="https://github.com/null-hype/worlds#start-here-one-exact-world-proof">Inspect the Worlds proof ↗</a><a href="#try-a-check">Try a check below ↓</a></div>
