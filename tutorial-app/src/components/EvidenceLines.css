@@ -1,0 +1,5 @@
+.td-source-lines { margin: 0; padding: 16px 0; overflow-x: auto; background: #202722; color: #e8e8df; font: 13px/1.7 ui-monospace, Menlo, Consolas, monospace; tab-size: 2; }
+.td-source-lines > span { display: flex; min-height: 1.7em; padding-right: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.td-source-lines > span > i { flex: 0 0 42px; margin-right: 16px; color: #a5aaa4; text-align: right; font-style: normal; user-select: none; }
+.td-source-lines > span > code { font: inherit; min-width: 0; white-space: inherit; }
+.td-source-lines > .highlight { background: #493f20; box-shadow: inset 3px 0 #e0b83c; }

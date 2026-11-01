@@ -6,13 +6,6 @@
 .ic-cards { list-style: none; padding: 0 !important; margin: 0.75rem 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
 .ic-card { border: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 30%, transparent); border-radius: 6px; padding: 0.6rem 0.8rem; }
 .ic-meta { font-size: 0.85em; opacity: 0.85; }
-.ic-badge { display: inline-block; padding: 0 0.5em; border-radius: 1em; font-size: 0.85em; font-weight: 600; background: #e4e4e4; color: #222; }
-.ic-pass, .ic-passed, .ic-appr-granted { background: #d1f7d8; color: #0b3d17; }
-.ic-fail, .ic-failed, .ic-conflict { background: #ffd9d9; color: #6b0f0f; }
-.ic-stale, .ic-appr-stale { background: #fff1c2; color: #5c4300; }
-.ic-origin-A { background: #d6e4ff; color: #12295e; }
-.ic-origin-B { background: #f0dcff; color: #45185f; }
-.ic-origin-base { background: #e4e4e4; color: #222; }
 .ic-warn { font-size: 0.9em; border-left: 3px solid #d9a400; padding-left: 0.5rem; }
 .ic-diag { border: 2px solid #c62828; border-radius: 6px; padding: 0.5rem 0.8rem; margin: 0.75rem 0; }
 .ic-panel { border: 1px solid; border-color: color-mix(in srgb, currentColor 30%, transparent); border-radius: 6px; padding: 0.25rem 0.8rem 0.75rem; margin: 0.75rem 0; }

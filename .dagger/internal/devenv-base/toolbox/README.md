@@ -225,6 +225,18 @@ against a fake `devpod` (it skips where `jq` is missing).
 
 ### Static claim pages (CIT-563)
 
+The report layout is shared with `tutorial-app`'s **Tidelands / Claim report**
+Storybook stories. Its status badge also serves the integration-check stories;
+its numbered text view also serves the captured evidence inspector. The root
+Astro page uses the same branding and the existing interactive integration
+check. Reports remain static HTML with embedded CSS and need no JavaScript.
+
+After changing the report components or their styles, run `npm run claim:export`
+in `tutorial-app` and commit the generated `claim-page.html` here. Run
+`npm run claim:check` to detect a stale export; the toolbox workflow checks this
+as well as building and testing the Go image. Node is a development dependency
+for the export, not a dependency of the deployed publisher.
+
 After a check finishes, the existing rerun controller reads the issue's current
 title, description and labels from Linear and uploads one self-contained HTML
 object to R2. Both green and red reruns replace that object. Only Dagger's exit

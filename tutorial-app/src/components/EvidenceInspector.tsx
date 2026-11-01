@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ArtifactRef, EvidenceRef, RecordedEvaluation, ReplayCursor, SuppliedArtifactResolver } from '../lib/acpReplayContract';
 import { describeArtifactIdentity, recordLineNumber } from '../lib/evidenceArtifactResolver';
 import './EvidenceInspector.css';
+import EvidenceLines from './EvidenceLines';
 
 type Props = {
   evaluation: RecordedEvaluation;
@@ -53,7 +54,6 @@ export default function EvidenceInspector({ evaluation, resolver, cursor }: Prop
   const highlight = location?.kind === 'source-range'
     ? { from: location.startLine, to: location.endLine }
     : recordLine ? { from: recordLine, to: recordLine } : undefined;
-  const lines = content.text.split('\n');
 
   return (
     <section className="evidence-inspector" aria-label="Captured evidence inspector">
@@ -78,7 +78,7 @@ export default function EvidenceInspector({ evaluation, resolver, cursor }: Prop
           </div>
         )}
         {content.status === 'resolved' ? (
-          <pre>{lines.map((line, index) => <span key={index} className={highlight && index + 1 >= highlight.from && index + 1 <= highlight.to ? 'highlight' : ''}><i>{index + 1}</i>{line}{'\n'}</span>)}</pre>
+          <EvidenceLines text={content.text} highlight={highlight} />
         ) : <p>{content.text || 'No evidence is attached to this evaluation.'}</p>}
       </div>
     </section>
