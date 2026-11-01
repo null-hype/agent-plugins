@@ -17,13 +17,14 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 )
 
 // claimIssue is current Linear metadata, fetched after the check finishes.
-// The identifier is the public slug: renaming a claim cannot move its URL.
+// Public URLs use the current title in kebab-case; private URLs use the ID.
 type claimIssue struct {
 	ID          string `json:"id"`
 	Identifier  string `json:"identifier"`
@@ -114,7 +115,13 @@ func (p *claimPublisher) path(issue claimIssue) (string, error) {
 		return "", fmt.Errorf("claim needs an issue ID and identifier")
 	}
 	if issue.public() {
-		return "/" + strings.ToLower(issue.Identifier), nil
+		slug := strings.Join(strings.FieldsFunc(strings.ToLower(issue.Title), func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+		}), "-")
+		if slug == "" {
+			return "", fmt.Errorf("public claim title needs a letter or number for its slug")
+		}
+		return "/" + slug, nil
 	}
 	mac := hmac.New(sha256.New, []byte(p.urlSecret))
 	mac.Write([]byte("claim-page-v1:" + issue.ID))

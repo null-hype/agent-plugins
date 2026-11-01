@@ -66,11 +66,12 @@ func TestClaimPublishesAndOverwrites(t *testing.T) {
 			defer srv.Close()
 			p := &claimPublisher{client: srv.Client(), endpoint: srv.URL, bucket: "claims", baseURL: srv.URL, accessKey: "test-key", secretKey: "test-secret", urlSecret: strings.Repeat("s", 32)}
 			claim := fakeClaim(t, public)
+			claim.Issue.Title = "Registered Delivery"
 			first, err := p.publish(context.Background(), claim)
 			if err != nil {
 				t.Fatal(err)
 			}
-			claim.Issue.Title = "Renamed claim"
+			claim.Issue.Description = "Updated claim description"
 			claim.Delivery = "delivery-2"
 			claim.Exit = 1
 			second, err := p.publish(context.Background(), claim)
@@ -80,14 +81,14 @@ func TestClaimPublishesAndOverwrites(t *testing.T) {
 			if first != second || len(objects) != 1 || puts != 2 {
 				t.Fatalf("URL/object changed: %s %s %v", first, second, objects)
 			}
-			if public && (first != srv.URL+"/inf-6" || heads != 0) {
+			if public && (first != srv.URL+"/registered-delivery" || heads != 0) {
 				t.Fatalf("public URL=%s HEADs=%d", first, heads)
 			}
 			if !public && (!strings.HasPrefix(first, srv.URL+"/r/") || heads != 2 || len(strings.TrimPrefix(first, srv.URL+"/r/")) != 64) {
 				t.Fatalf("private URL=%s HEADs=%d", first, heads)
 			}
 			body := objects["/claims"+strings.TrimPrefix(first, srv.URL)]
-			for _, part := range []string{"Red", "Dagger exit 1", "Renamed claim", "linear-inf-6", "abcdef0123456789", "Snapshot evidence", `id="xeno-status"`, `"xeno":null`} {
+			for _, part := range []string{"Red", "Dagger exit 1", "Registered Delivery", "Updated claim description", "linear-inf-6", "abcdef0123456789", "Snapshot evidence", `id="xeno-status"`, `"xeno":null`} {
 				if !strings.Contains(body, part) {
 					t.Errorf("missing %q", part)
 				}
@@ -109,6 +110,39 @@ func TestClaimPublishesAndOverwrites(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestClaimTitleSlug(t *testing.T) {
+	p := &claimPublisher{urlSecret: strings.Repeat("s", 32)}
+	for _, tc := range []struct{ title, path string }{
+		{"Registered Delivery", "/registered-delivery"},
+		{"  Publish a CLAIM: title / with___spaces & punctuation!  ", "/publish-a-claim-title-with-spaces-punctuation"},
+		{"Already--kebab-case 123", "/already-kebab-case-123"},
+		{"Café Überprüfung", "/café-überprüfung"},
+		{"", ""},
+		{" /...?!_ ", ""},
+	} {
+		t.Run(tc.title, func(t *testing.T) {
+			claim := fakeClaim(t, true)
+			claim.Issue.Title = tc.title
+			got, err := p.path(claim.Issue)
+			if got != tc.path || (err != nil) != (tc.path == "") {
+				t.Fatalf("path=%q err=%v; want %q", got, err, tc.path)
+			}
+		})
+	}
+	for _, public := range []bool{false, true} {
+		claim := fakeClaim(t, public)
+		before, err := p.path(claim.Issue)
+		if err != nil {
+			t.Fatal(err)
+		}
+		claim.Issue.Title = "Renamed claim"
+		after, err := p.path(claim.Issue)
+		if err != nil || (before != after) != public {
+			t.Fatalf("public=%v rename: %q -> %q err=%v", public, before, after, err)
+		}
 	}
 }
 

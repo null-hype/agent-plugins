@@ -245,16 +245,23 @@ Configure these on the toolbox, alongside the existing webhook configuration:
 Missing or invalid configuration disables publishing and logs the reason. R2
 credentials stay in the toolbox; the host and Dagger checks never receive them.
 
-An exact `public` label opts into `/<lowercase-issue-identifier>`, for example
-`/inf-6`. Other issues use `/r/<HMAC-SHA256-token>` derived from the immutable
-Linear issue UUID and `CLAIM_URL_SECRET`. Titles, deliveries and R2 key rotations
-do not change the URL. Retain the URL secret: rotating it changes private URLs.
+An exact `public` label opts into `/<issue-title-in-kebab-case>`, for example
+`Registered Delivery` publishes at `/registered-delivery`. Lowercase letters and
+numbers are retained; runs of spaces or punctuation become one hyphen, with no
+leading or trailing hyphen. A title without letters or numbers cannot publish.
+Public titles must have distinct slugs. Renaming a public issue changes its URL
+on the next publish; old objects are not deleted automatically. Reruns with the
+same title overwrite the same URL, regardless of verdict. The run key remains
+`linear-<issue>`; it is independent of the public URL.
+Other issues use `/r/<HMAC-SHA256-token>` derived from the immutable Linear issue
+UUID and `CLAIM_URL_SECRET`. Titles, deliveries and R2 key rotations do not change
+private URLs. Retain the URL secret: rotating it changes private URLs.
 These are unlisted bearer URLs, without authentication. Visibility label changes
 select a different route; existing objects are not deleted automatically, so
 remove previously public objects explicitly before treating a claim as private.
 
 The bucket's custom domain must serve extensionless object keys directly (keys
-are `inf-6` or `r/<token>`, with HTML Content-Type). Disable any cache rule that
+are `registered-delivery` or `r/<token>`, with HTML Content-Type). Disable any cache rule that
 forces caching these paths; uploads have `Cache-Control: no-store` so subsequent
 reruns are visible without cache purges. If the domain previously cached these
 keys, purge them once when enabling publishing.
