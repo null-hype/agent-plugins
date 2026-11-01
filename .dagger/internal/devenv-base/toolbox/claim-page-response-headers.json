@@ -1,0 +1,13 @@
+{
+  "description": "Keep unlisted claim pages out of search indexes",
+  "expression": "(http.host eq \"check.tidelands.dev\" and starts_with(http.request.uri.path, \"/r/\"))",
+  "action": "rewrite",
+  "action_parameters": {
+    "headers": {
+      "x-robots-tag": { "operation": "set", "value": "noindex" },
+      "cache-control": { "operation": "set", "value": "no-store" },
+      "referrer-policy": { "operation": "set", "value": "no-referrer" }
+    }
+  },
+  "enabled": true
+}

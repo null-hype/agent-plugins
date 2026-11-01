@@ -105,7 +105,7 @@ run_up() {
 # code, which is its verdict, and the trace it linked to.
 run_check() {
   set -euo pipefail
-  local repo=$1 ref=$2 check=$3 run=$4 out=$5 log=$6 dir=$HOME/.toolbox/checks/$(basename "$5" .json) code trace
+  local repo=$1 ref=$2 check=$3 run=$4 out=$5 log=$6 dir=$HOME/.toolbox/checks/$(basename "$5" .json) code trace snapshot
   rm -rf "$dir" && mkdir -p "$dir"
   git clone -q --depth 1 --branch "$ref" "https://github.com/$repo.git" "$dir/repo"
   # Dagger reads a check's defaults from the repository's .env: a check that
@@ -113,10 +113,22 @@ run_check() {
   echo "$(tr -d - <<< "$check" | tr '[:lower:]' '[:upper:]')_RUN=$run" >> "$dir/repo/.env"
   echo "DAGGER_CLOUD_TOKEN=$DAGGER_CLOUD_TOKEN_REF" > "$dir/runtime.env"
   cd "$dir/repo"
+  # pass-cli run also resolves inherited pass:// values. Other host actions'
+  # references must not request GitHub or Linear access for a check.
+  unset SHIP_PUSH_PAT_REF LINEAR_API_KEY_REF DAGGER_CLOUD_TOKEN_REF
+  local -a check_env=(--env-file .env --env-file "$dir/runtime.env")
+  # Item-scoped Pass tokens use opaque item/share references. An operator
+  # can override the clone's named references without changing the check repo.
+  if [ -f "$HOME/.toolbox/check.env" ]; then
+    check_env+=(--env-file "$HOME/.toolbox/check.env")
+  fi
   code=0
-  pass-cli run --env-file .env --env-file "$dir/runtime.env" -- dagger check "$check" > "$log" 2>&1 || code=$?
+  pass-cli run "${check_env[@]}" -- dagger check "$check" > "$log" 2>&1 || code=$?
   trace=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | grep -Eo 'https://dagger\.cloud/[^[:space:]]+' | tail -1 | sed 's/[),.;]*$//' || true)
-  jq -n --argjson exit "$code" --arg trace "$trace" '{exit: $exit, trace: $trace}' > "$out"
+  # Snapshot provenance is display data, never a verdict. Select only a
+  # restored world explicitly tagged for this issue's run key.
+  snapshot=$(sed 's/\x1b\[[0-9;]*m//g' "$log" | grep -E "World: [0-9a-f]{64} .*run=$run(,|\\))" | sed -nE 's/.*World: ([0-9a-f]{64}) .*/\1/p' | tail -1 || true)
+  jq -n --argjson exit "$code" --arg trace "$trace" --arg snapshot "$snapshot" '{exit: $exit, trace: $trace, snapshot: $snapshot}' > "$out"
   cd "$HOME" && rm -rf "$dir"
 }
 
