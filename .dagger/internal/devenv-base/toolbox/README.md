@@ -60,6 +60,23 @@ name.
 | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`, for cloning the private repo, and with Codespaces lifecycle admin for the codespace tools |
 | `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Forwarded to the agent workspace's `tailscale-up.sh`, as the keepalive does; logs in `codex_review`'s pass-cli, which gives Codex's curl the Linear key and leaves the host a pass session that `agent_ship` resolves its push token with |
 | `TS_AUTHKEY` | `pass://infra/tailscale/TS_AUTHKEY`, joins the host itself to the tailnet (optional) |
+| `LINEAR_CHECK_WEBHOOK_SECRET` | The signing secret of the Linear data-change webhook for [check reruns](#check-reruns) (optional) |
+| `LINEAR_API_KEY` | `pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY`: the rerun controller's comments and state changes. Only the toolbox holds it; the host and the checks never see it (optional; reruns stay off without it) |
+
+## Check reruns
+
+An Infrastructure issue whose description names a check of
+`null-hype/worlds` ("This issue and `null-hype/worlds` … `dagger check
+<name>`") is rerun when it moves to Todo. Linear signs a data-change webhook to `/linear/webhook`; the toolbox
+moves the issue to In Review, wakes the host, and runs `host.sh check`, a job
+that clones the repository's main and runs `dagger check <name>` with the
+repository's `.env` and a Dagger Cloud token, both resolved by the host's
+pass-cli. A check that takes a `run` gets `linear-<issue>`, so one issue's
+reruns resume one session. The toolbox polls `check-status` and comments the
+result with its trace: a green check moves the issue to Done; a red one, or a
+job that broke before the check gave a verdict, leaves it In Review with the
+end of the log. The check's exit code is its verdict, and the controller
+reads nothing else of it. Move the issue to Todo again to rerun.
 
 ## Tailscale and Codex
 

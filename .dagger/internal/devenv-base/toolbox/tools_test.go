@@ -45,6 +45,9 @@ type fakeHost struct {
 	agentStatus string
 	// agentLive is the agent-live action's answer: the webhook check, now.
 	agentLive bool
+	// checkStatus is the check-status action's answers, one per call; the
+	// last repeats.
+	checkStatus []string
 }
 
 func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string) ([]byte, error) {
@@ -70,7 +73,13 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 	case "ping":
 		return []byte(`{"ready": true, "tailnet": {"state": "Running", "name": "toolbox-host.tail.ts.net", "online": true},
 			"lifecycle": {"idle_limit": 900, "idle_for": 30, "lease_until": 1761000000}}`), nil
-	case "up", "stop", "delete", "review", "review-status", "ship", "ship-status":
+	case "check-status":
+		st := f.checkStatus[0]
+		if len(f.checkStatus) > 1 {
+			f.checkStatus = f.checkStatus[1:]
+		}
+		return []byte(st), nil
+	case "up", "stop", "delete", "review", "review-status", "ship", "ship-status", "check":
 		return []byte(`{}`), nil
 	}
 	return nil, fmt.Errorf("unexpected action %s", args[0])
