@@ -1,6 +1,6 @@
 {
   "description": "Keep unlisted claim pages out of search indexes",
-  "expression": "(http.host eq \"tidelands.dev\" and starts_with(http.request.uri.path, \"/r/\"))",
+  "expression": "(http.host eq \"claims.tidelands.dev\" and starts_with(http.request.uri.path, \"/r/\"))",
   "action": "rewrite",
   "action_parameters": {
     "headers": {
