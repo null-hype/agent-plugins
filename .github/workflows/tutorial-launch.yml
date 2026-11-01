@@ -35,6 +35,25 @@ jobs:
       - run: npm test
       - run: npm run image-claims:check
       - run: npm run build
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .dagger/internal/devenv-base/toolbox/go.mod
+          cache-dependency-path: .dagger/internal/devenv-base/toolbox/go.sum
+      - name: Render static report fixtures for local browser checks
+        working-directory: .dagger/internal/devenv-base/toolbox
+        run: |
+          go build -o "$RUNNER_TEMP/toolbox-report" .
+          "$RUNNER_TEMP/toolbox-report" render-claim < testdata/completed-claim.json > ../../../../tutorial-app/dist/claim-fixture.html
+          python3 - <<'PY' > "$RUNNER_TEMP/red-claim.json"
+          import json
+          with open('testdata/completed-claim.json') as source:
+              claim = json.load(source)
+          claim['exit'] = 1
+          claim['snapshot']['id'] = ''
+          claim['snapshot']['url'] = ''
+          print(json.dumps(claim))
+          PY
+          "$RUNNER_TEMP/toolbox-report" render-claim < "$RUNNER_TEMP/red-claim.json" > ../../../../tutorial-app/dist/red-claim-fixture.html
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --config=playwright.launch.config.ts
         env:
