@@ -1,0 +1,91 @@
+<!-- Generated from tutorial-app Storybook components. Run npm run claim:export there. -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{.Issue.Title}}</title>{{if not .Public}}<meta name="robots" content="noindex">{{end}}
+<meta name="referrer" content="no-referrer"><style>.td-page { --td-ink: #243c33; --td-muted: #596b60; --td-line: #d7dbcf; --td-paper: #f7f6ee; background: var(--td-paper); color: var(--td-ink); font: 16px/1.65 system-ui, sans-serif; min-height: 100vh; }
+.td-page, .td-page * { box-sizing: border-box; }
+.td-page a { color: inherit; text-underline-offset: 4px; }
+.td-page a:hover { color: #31694b; }
+.td-page :focus-visible { outline: 3px solid #965b1c; outline-offset: 5px; }
+.td-page h1, .td-page h2, .td-page h3, .td-page p { margin-top: 0; }
+.td-page h1 { font-size: clamp(2.4rem, 5.6vw, 4.7rem); line-height: 1.08; letter-spacing: -0.045em; font-weight: 550; text-wrap: balance; overflow-wrap: anywhere; }
+.td-page h2 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -0.025em; font-weight: 550; }
+.td-page h3 { line-height: 1.3; }
+.td-page code { overflow-wrap: anywhere; }
+.td-header, .td-footer, .td-main { width: min(1120px, 100%); margin: 0 auto; padding-left: 32px; padding-right: 32px; }
+.td-header { padding-top: 24px; padding-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--td-line); }
+.td-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; letter-spacing: -0.025em; }
+.td-brand span { color: var(--td-muted); font-weight: 400; letter-spacing: 0; }
+.td-brand .td-logo { display: flex; flex: 0 0 34px; }
+.td-logo svg { width: 34px; height: 34px; }
+.td-header nav { display: flex; gap: 24px; font-size: 0.85rem; }
+.td-footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--td-line); padding-top: 24px; padding-bottom: 32px; color: var(--td-muted); font-size: 0.85rem; }
+.td-eyebrow { color: var(--td-muted); font: 0.75rem/1.5 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.12em; }
+.td-lead { font-size: clamp(1.1rem, 2vw, 1.35rem); max-width: 660px; }
+.td-muted { color: var(--td-muted); }
+.td-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin: 28px 0 0; }
+.td-button { display: inline-flex; align-items: center; padding: 12px 18px; background: #294e3d; border: 1px solid #294e3d; border-radius: 5px; color: #fff !important; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+.td-button:hover { background: #1c392a; }
+.td-panel { min-width: 0; border: 1px solid var(--td-line); border-radius: 8px; overflow: hidden; background: #fffef9; }
+.td-panel-heading { padding: 15px 20px; border-bottom: 1px solid var(--td-line); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.td-panel-heading h2, .td-panel-heading h3 { font-size: 1rem; margin: 0; letter-spacing: 0; }
+.td-panel-heading span { color: var(--td-muted); font: 0.75rem ui-monospace, monospace; }
+.td-panel-body { padding: 22px; }
+.td-section { padding: 52px 0; border-top: 1px solid var(--td-line); }
+.td-section-intro { max-width: 680px; margin-bottom: 28px; }
+.td-hero { padding: 72px 0 56px; }
+.td-hero h1 { max-width: 900px; margin-bottom: 28px; }
+.td-hero p:not(.td-eyebrow) { max-width: 660px; }
+.td-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; list-style: none; margin: 44px 0 0; padding: 0; }
+.td-steps li { padding: 20px 0; border-top: 1px solid var(--td-line); }
+.td-steps h2 { font-size: 1.1rem; margin-bottom: 10px; }
+.td-steps p { color: var(--td-muted); font-size: 0.9rem; margin-bottom: 0; }
+.td-step-number { display: block; margin-bottom: 12px; color: var(--td-muted); font: 0.75rem ui-monospace, monospace; }
+.td-demo { padding: 24px; }
+.td-demo .ic { max-width: none; font-size: 0.92rem; }
+.td-projects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.td-project { padding: 24px; }
+.td-project h3 { margin-bottom: 12px; font-size: 1.25rem; }
+.td-project p { color: var(--td-muted); font-size: 0.9rem; }
+.td-report-hero { padding: 56px 0 32px; }
+.td-report-hero h1 { max-width: 900px; font-size: clamp(2rem, 4.8vw, 3.6rem); margin: 16px 0 24px; }
+.td-report-status { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.td-report-status p { margin: 0; font-size: 0.9rem; color: var(--td-muted); }
+.td-report-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr); align-items: start; gap: 24px; padding: 0 0 48px; }
+.td-report-side { display: grid; gap: 20px; min-width: 0; }
+.td-report-facts { margin: 0; }
+.td-report-facts dt { font-size: 0.78rem; color: var(--td-muted); margin-top: 20px; }
+.td-report-facts dt:first-child { margin-top: 0; }
+.td-report-facts dd { margin: 5px 0 0; font-size: 0.88rem; overflow-wrap: anywhere; }
+.td-report-note { font-size: 0.85rem; margin: 0; color: var(--td-muted); }
+.td-report-detail { margin-top: 24px; border-top: 1px solid var(--td-line); padding-top: 16px; }
+.td-report-detail summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+.td-report-description-note { padding: 12px 20px; margin: 0; color: var(--td-muted); font-size: 0.78rem; }
+.td-report-visibility { font-size: 0.78rem; color: var(--td-muted); margin-top: 18px; max-width: 720px; }
+@media (max-width: 720px) { .td-header, .td-footer, .td-main { padding-left: 20px; padding-right: 20px; } .td-header { flex-wrap: wrap; } .td-brand > span:not(.td-logo) { display: none; } .td-header nav { gap: 16px; } .td-hero { padding-top: 44px; } .td-steps, .td-projects, .td-report-grid { grid-template-columns: 1fr; } .td-steps { gap: 0; margin-top: 32px; } .td-section { padding: 36px 0; } .td-demo { padding: 16px; } .td-report-hero { padding-top: 36px; } .td-panel-heading { flex-wrap: wrap; } .td-footer { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: no-preference) { .td-page a { transition: color 120ms, background-color 120ms; } }
+
+.ic-badge { display: inline-block; padding: 0.15em 0.65em; border-radius: 1em; font-size: 0.85em; font-weight: 600; background: #e4e4e4; color: #222; }
+.ic-pass, .ic-passed, .ic-appr-granted { background: #d1f7d8; color: #0b3d17; }
+.ic-fail, .ic-failed, .ic-conflict { background: #ffd9d9; color: #6b0f0f; }
+.ic-stale, .ic-appr-stale { background: #fff1c2; color: #5c4300; }
+.ic-origin-A { background: #d6e4ff; color: #12295e; }
+.ic-origin-B { background: #f0dcff; color: #45185f; }
+.ic-origin-base { background: #e4e4e4; color: #222; }
+.ic-workflow-completed { background: #d1f7d8; color: #0b3d17; }
+.ic-workflow-started { background: #fff1c2; color: #5c4300; }
+
+.td-source-lines { margin: 0; padding: 16px 0; overflow-x: auto; background: #202722; color: #e8e8df; font: 13px/1.7 ui-monospace, Menlo, Consolas, monospace; tab-size: 2; }
+.td-source-lines > span { display: flex; min-height: 1.7em; padding-right: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.td-source-lines > span > i { flex: 0 0 42px; margin-right: 16px; color: #a5aaa4; text-align: right; font-style: normal; user-select: none; }
+.td-source-lines > span > code { font: inherit; min-width: 0; white-space: inherit; }
+.td-source-lines > .highlight { background: #493f20; box-shadow: inset 3px 0 #e0b83c; }
+</style></head>
+<body style="margin:0"><div class="td-page"><header class="td-header"><a class="td-brand" href="https://www.tidelands.dev/" aria-label="Tidelands home"><span class="td-logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="#172a31" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>Tidelands</title>
+  <circle cx="24" cy="24" r="21.5"/>
+  <path d="M13 14.8a1.6 1.6 0 0 1 0 3.2a3 3 0 0 1 0-6H35a3 3 0 0 1 0 6a1.6 1.6 0 0 1 0-3.2"/>
+  <path d="M17.5 15.4c2.8 0 3.7 1.4 3.7 4.2V31c0 5-2.1 8.6-5.7 8.6c3.6 0 6.5-0.9 8.5-3.1c2 2.2 4.9 3.1 8.5 3.1c-3.6 0-5.7-3.6-5.7-8.6V19.6c0-2.8 0.9-4.2 3.7-4.2"/>
+</svg>
+</span>Tidelands<span>/ Check report</span></a><nav aria-label="Main navigation"><a href="https://github.com/null-hype/worlds">Worlds ↗</a><a href="https://github.com/null-hype/agent-plugins">Source ↗</a></nav></header><main class="td-main"><header class="td-report-hero"><p class="td-eyebrow">Claim report / {{.Issue.Identifier}}</p><h1>{{.Issue.Title}}</h1><div class="td-report-status"><span class="ic-badge ic-{{.Outcome}}">{{.Verdict}}</span><p>Dagger exit {{.Exit}} · <code>{{.Check}}</code></p></div><p class="td-report-visibility">{{if .Public}}Public report. Later reruns replace the result at this URL.{{else}}Unlisted report · noindex. Anyone with this link can view it. Later reruns replace the result at this URL.{{end}}</p></header><div class="td-report-grid"><section class="td-panel" aria-labelledby="claim-heading"><div class="td-panel-heading"><h2 id="claim-heading">The claim</h2><span>Linear issue description</span></div><pre class="td-source-lines">{{range .DescriptionLines}}<span><i aria-hidden="true">{{.Number}}</i><code>{{.Text}}</code>
+</span>{{end}}</pre><p class="td-report-description-note">Issue text as supplied for this rerun. This is not a copy of the preregistration or its diagnostics.</p></section><aside class="td-report-side" aria-label="Rerun evidence"><section class="td-panel" aria-labelledby="rerun-heading"><div class="td-panel-heading"><h2 id="rerun-heading">Latest rerun</h2><span>Evidence</span></div><div class="td-panel-body"><dl class="td-report-facts"><dt>Dagger trace</dt><dd>{{if .Trace}}<a href="{{.Trace}}" rel="noreferrer">Open trace ↗</a>{{else}}Unavailable{{end}}</dd><dt id="restic-snapshot">Restic snapshot</dt><dd>{{if .Snapshot.ID}}<code>{{.Snapshot.ID}}</code>{{if .Snapshot.URL}} · <a href="{{.Snapshot.URL}}" rel="noreferrer">Snapshot evidence ↗</a>{{end}}{{else}}Unavailable for this rerun{{end}}</dd><dt>Run key</dt><dd><code>{{.Snapshot.RunKey}}</code></dd></dl><details class="td-report-detail"><summary>Run details</summary><dl class="td-report-facts"><dt>Linear delivery</dt><dd><code>{{.Delivery}}</code></dd><dt>Check</dt><dd><code>{{.Check}}</code></dd></dl></details></div></section><section class="td-panel" id="xeno-status" data-status="{{.XenoType}}" aria-labelledby="xeno-heading"><div class="td-panel-heading"><h2 id="xeno-heading">Xeno status</h2><span class="ic-badge ic-workflow-{{.XenoType}}">{{.XenoName}}</span></div><div class="td-panel-body"><p class="td-report-note">Linear issue status when this run completed. The check verdict above comes only from the Dagger exit code.</p></div></section></aside></div></main><footer class="td-footer"><span>A log of evidence.</span><a href="mailto:public.rant@pm.me">Work with Richard ↗</a></footer></div><script id="claim-data" type="application/json">{{.Data}}</script></body></html>

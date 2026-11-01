@@ -155,9 +155,11 @@ func TestLinearRerunWebhookRejectsBadSignatureAndStaleBody(t *testing.T) {
 // linearRecorder is Linear's GraphQL endpoint as the controller sees it: it
 // records each mutation and answers it with success.
 type linearRecorder struct {
-	mu    sync.Mutex
-	calls []string
-	auth  []string
+	mu       sync.Mutex
+	calls    []string
+	auth     []string
+	stateID  string
+	failDone bool
 }
 
 func (l *linearRecorder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -175,12 +177,26 @@ func (l *linearRecorder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	input, _ := req.Variables["input"].(map[string]any)
 	switch {
 	case strings.Contains(req.Query, "issue(id:"):
-		fmt.Fprint(w, `{"data":{"issue":{"id":"issue-uuid","identifier":"INF-6","title":"The current claim","description":"From Linear after completion","labels":{"nodes":[]}}}}`)
+		if !strings.Contains(req.Query, "state { id name type }") {
+			http.Error(w, "state was not requested", 400)
+			return
+		}
+		name, kind := "In Review", "started"
+		if l.stateID == infraDoneStatusID {
+			name, kind = "Done", "completed"
+		}
+		fmt.Fprintf(w, `{"data":{"issue":{"id":"issue-uuid","identifier":"INF-6","title":"The current claim","description":"From Linear after completion","state":{"id":%q,"name":%q,"type":%q},"labels":{"nodes":[]}}}}`, l.stateID, name, kind)
 	case strings.Contains(req.Query, "commentCreate"):
 		l.calls = append(l.calls, "comment "+input["body"].(string))
 		fmt.Fprint(w, `{"data":{"commentCreate":{"success":true}}}`)
 	case strings.Contains(req.Query, "issueUpdate"):
-		l.calls = append(l.calls, "state "+input["stateId"].(string))
+		stateID := input["stateId"].(string)
+		l.calls = append(l.calls, "state "+stateID)
+		if l.failDone && stateID == infraDoneStatusID {
+			fmt.Fprint(w, `{"data":{"issueUpdate":{"success":false}}}`)
+			return
+		}
+		l.stateID = stateID
 		fmt.Fprint(w, `{"data":{"issueUpdate":{"success":true}}}`)
 	default:
 		http.Error(w, "unexpected query", http.StatusBadRequest)
@@ -227,8 +243,9 @@ func TestCheckRerunGreenIsDone(t *testing.T) {
 		t.Fatalf("host env = %v; want the Pass token and no Linear key", submit.env)
 	}
 	if len(rec.calls) != 3 || rec.calls[0] != "state "+infraInReviewStatusID ||
-		!strings.HasPrefix(rec.calls[1], "comment Rerun of `registered-delivery` is green.") ||
-		!strings.Contains(rec.calls[1], "https://dagger.cloud/t/abc") || rec.calls[2] != "state "+infraDoneStatusID {
+		rec.calls[1] != "state "+infraDoneStatusID ||
+		!strings.HasPrefix(rec.calls[2], "comment Rerun of `registered-delivery` is green.") ||
+		!strings.Contains(rec.calls[2], "https://dagger.cloud/t/abc") {
 		t.Fatalf("linear calls = %q", rec.calls)
 	}
 	if rec.auth[0] != "lin_api_test" {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -25,11 +26,18 @@ import (
 
 // claimIssue is current Linear metadata, fetched after the check finishes.
 // Public URLs use the current title in kebab-case; private URLs use the ID.
+type claimWorkflowState struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
 type claimIssue struct {
-	ID          string `json:"id"`
-	Identifier  string `json:"identifier"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	ID          string              `json:"id"`
+	Identifier  string              `json:"identifier"`
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	State       *claimWorkflowState `json:"state"`
 	Labels      struct {
 		Nodes []struct {
 			Name string `json:"name"`
@@ -53,7 +61,7 @@ type claimSnapshot struct {
 }
 
 // completedClaim is also the fixture boundary for publishing without a host,
-// Linear writes or Dagger. Xeno is deliberately an empty integration slot.
+// Linear writes or Dagger. Xeno projects the completion-time Linear state.
 type completedClaim struct {
 	Issue    claimIssue    `json:"issue"`
 	Delivery string        `json:"delivery"`
@@ -184,34 +192,56 @@ func (p *claimPublisher) publish(ctx context.Context, claim completedClaim) (str
 }
 
 func renderClaim(claim completedClaim) ([]byte, error) {
+	// The issue snapshot is authoritative, even if a fixture supplies stale xeno data.
+	claim.Xeno = claim.Issue.State
+	xenoName, xenoType := "Unavailable", "unknown"
+	if claim.Issue.State != nil && claim.Issue.State.Name != "" {
+		xenoName = claim.Issue.State.Name
+		if claim.Issue.State.Type != "" {
+			xenoType = claim.Issue.State.Type
+		}
+	}
 	data, err := json.Marshal(claim) // encoding/json escapes HTML, including </script>.
 	if err != nil {
 		return nil, err
 	}
+	type descriptionLine struct {
+		Number int
+		Text   string
+	}
+	description := claim.Issue.Description
+	if description == "" {
+		description = "No description supplied."
+	}
+	var lines []descriptionLine
+	for index, text := range strings.Split(description, "\n") {
+		lines = append(lines, descriptionLine{index + 1, text})
+	}
+	verdict, outcome := "Red · Failed", "failed"
+	if claim.Exit == 0 {
+		verdict, outcome = "Green · Passed", "passed"
+	}
 	var out bytes.Buffer
 	err = claimTemplate.Execute(&out, struct {
 		completedClaim
-		Data   template.JS
-		Public bool
-	}{claim, template.JS(data), claim.Issue.public()})
+		Data             template.JS
+		Public           bool
+		DescriptionLines []descriptionLine
+		Verdict          string
+		Outcome          string
+		XenoName         string
+		XenoType         string
+	}{claim, template.JS(data), claim.Issue.public(), lines, verdict, outcome, xenoName, xenoType})
 	return out.Bytes(), err
 }
 
-var claimTemplate = template.Must(template.New("claim").Parse(`<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{.Issue.Title}}</title>{{if not .Public}}<meta name="robots" content="noindex">{{end}}
-<meta name="referrer" content="no-referrer">
-<style>body{font:18px/1.6 system-ui,sans-serif;max-width:52rem;margin:3rem auto;padding:0 1.2rem;color:#18212b}h1{line-height:1.2}.description{white-space:pre-wrap;overflow-wrap:anywhere}code{overflow-wrap:anywhere}dt{font-weight:600}dd{margin:0 0 1rem}a{color:#1658a0}</style>
-</head><body><main>
-<p>{{.Issue.Identifier}}</p><h1>{{.Issue.Title}}</h1>
-<div class="description">{{.Issue.Description}}</div>
-<h2>Latest rerun</h2><p>{{if eq .Exit 0}}Green{{else}}Red{{end}} · <code>{{.Check}}</code> · Dagger exit {{.Exit}}</p>
-<dl><dt>Dagger trace</dt><dd>{{if .Trace}}<a href="{{.Trace}}" rel="noreferrer">Open trace</a>{{else}}Unavailable{{end}}</dd>
-<dt id="restic-snapshot">Restic snapshot</dt><dd>{{if .Snapshot.ID}}<code>{{.Snapshot.ID}}</code>{{if .Snapshot.URL}} · <a href="{{.Snapshot.URL}}" rel="noreferrer">Snapshot evidence</a>{{end}}{{else}}Unavailable for this rerun{{end}}<br>Run key: <code>{{.Snapshot.RunKey}}</code></dd>
-<dt>Linear delivery</dt><dd><code>{{.Delivery}}</code></dd></dl>
-<section id="xeno-status" data-status="pending"><h2>Xeno status</h2><p>Status component pending.</p></section>
-<script id="claim-data" type="application/json">{{.Data}}</script>
-</main></body></html>`))
+// Generated from tutorial-app's shared React/Storybook report. The toolbox
+// embeds the export so publishing never needs Node or a browser runtime.
+//
+//go:embed claim-page.html
+var claimPageHTML string
+
+var claimTemplate = template.Must(template.New("claim").Parse(claimPageHTML))
 
 // Local proof boundary: the real renderer/uploader accepts a completed fixture.
 func runClaimCommand(ctx context.Context, command string, in io.Reader, out io.Writer) error {
