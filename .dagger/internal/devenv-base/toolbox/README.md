@@ -232,7 +232,7 @@ Configure these on the toolbox, alongside the existing webhook configuration:
 | `R2_BUCKET` | Bucket behind the claim domain |
 | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 S3 credentials with object write permission for that bucket |
 | `CLAIM_URL_SECRET` | At least 32 random bytes, generated once (e.g. `openssl rand -hex 32`) and retained across deployments |
-| `CLAIM_BASE_URL` | HTTPS custom domain origin; defaults to `https://claims.tidelands.dev` |
+| `CLAIM_BASE_URL` | HTTPS custom domain origin; defaults to `https://check.tidelands.dev` |
 
 Missing or invalid configuration disables publishing and logs the reason. R2
 credentials stay in the toolbox; the host and Dagger checks never receive them.
