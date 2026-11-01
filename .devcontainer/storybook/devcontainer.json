@@ -10,6 +10,6 @@
     "7881": { "label": "Tidelands Storybook", "onAutoForward": "openBrowser" }
   },
   "postCreateCommand": "bash .devcontainer/storybook/setup.sh",
-  "postStartCommand": "bash .devcontainer/storybook/start.sh",
+  "postStartCommand": "bash -lc 'bash .devcontainer/storybook/start.sh'",
   "remoteUser": "node"
 }

@@ -1,6 +1,11 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+if (process.env.CODESPACES === 'true' && (!process.env.CODESPACE_NAME || !process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN)) {
+  console.error('Codespaces preview environment missing. Run this command from a login shell (bash -l).');
+  process.exit(1);
+}
+
 // One foreground command runs both books. The Codespace lifecycle backgrounds it.
 const cwd = fileURLToPath(new URL('..', import.meta.url));
 const children = [];
