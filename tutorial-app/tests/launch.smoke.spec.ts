@@ -26,7 +26,8 @@ test.describe('Static claim reports', () => {
       }
       await page.getByText('Run details', { exact: true }).click();
       await expect(page.getByText('fixture-delivery-1', { exact: true })).toBeVisible();
-      await expect(page.getByText('Not evaluated', { exact: true })).toBeVisible();
+      await expect(page.locator('#xeno-status')).toHaveAttribute('data-status', red ? 'started' : 'completed');
+      await expect(page.locator('#xeno-status').getByText(red ? 'In Review' : 'Done', { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
   }

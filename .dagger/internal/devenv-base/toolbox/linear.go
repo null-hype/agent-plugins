@@ -54,7 +54,7 @@ func (l *linearAPI) issue(ctx context.Context, issueID string) (claimIssue, erro
 			Issue *claimIssue `json:"issue"`
 		} `json:"data"`
 	}
-	err := l.query(ctx, "issue", `query($id: String!) { issue(id: $id) { id identifier title description labels { nodes { name } } } }`, map[string]any{"id": issueID}, &out)
+	err := l.query(ctx, "issue", `query($id: String!) { issue(id: $id) { id identifier title description state { id name type } labels { nodes { name } } } }`, map[string]any{"id": issueID}, &out)
 	if err != nil {
 		return claimIssue{}, err
 	}

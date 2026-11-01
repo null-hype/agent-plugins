@@ -49,6 +49,7 @@ jobs:
           with open('testdata/completed-claim.json') as source:
               claim = json.load(source)
           claim['exit'] = 1
+          claim['issue']['state'] = {'id': 'fixture-review', 'name': 'In Review', 'type': 'started'}
           claim['snapshot']['id'] = ''
           claim['snapshot']['url'] = ''
           print(json.dumps(claim))

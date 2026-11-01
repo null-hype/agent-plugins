@@ -296,8 +296,13 @@ evidence link to the Dagger trace. The host collects a full snapshot ID only
 from a `World:` provenance record explicitly tagged `run=linear-<issue>` in the
 check log. Missing provenance is displayed as unavailable; it never supplies or
 changes the verdict. There is no assumed public restic browser or repository
-credential in the page. `#xeno-status` and JSON in `#claim-data` (`xeno: null`) are
-the integration points for CIT-562.
+credential in the page. `#xeno-status` shows the Linear issue status captured after completion.
+A green run attempts its Done transition before reading that status; a red
+run retains the current Linear state. A failed transition is reported, and
+the page still shows the actual returned state. `xeno` in `#claim-data`
+projects that same `{id, name, type}` state, or null when unavailable.
+The Dagger verdict still comes only from its exit code. Further xeno visuals
+remain the integration point for CIT-562.
 
 For a local proof with synthetic input, without starting the server or host:
 
