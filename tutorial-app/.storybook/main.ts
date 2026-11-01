@@ -17,7 +17,7 @@ const config: StorybookConfig = {
 	addons: ['@storybook/addon-a11y', '@storybook/addon-docs', '@storybook/addon-mcp'],
 	framework: '@storybook/react-vite',
 	// The otel-warm-log template serves Monaco from /monaco/; do the same here.
-	staticDirs: [{ from: '../node_modules/monaco-editor/min', to: '/monaco' }],
+	staticDirs: ['../public', { from: '../node_modules/monaco-editor/min', to: '/monaco' }],
 	async viteFinal(config) {
 		return mergeConfig(config, {
 			plugins: [otelWarmLogPage(), acpTracePages()],

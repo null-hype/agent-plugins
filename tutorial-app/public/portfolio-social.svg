@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Richard Anthony — Null Hype</title>
+  <desc id="desc">Verification infrastructure for agent-produced software. A log of evidence. Sydney. tidelands.dev.</desc>
+  <rect width="1200" height="630" fill="#f4f0e7"/>
+  <path d="M64 112H1136M64 550H1136" stroke="#262722"/>
+  <text x="64" y="76" fill="#262722" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700">Richard Anthony / null-hype</text>
+  <text x="1136" y="74" text-anchor="end" fill="#a23924" font-family="monospace" font-size="16">SYDNEY</text>
+  <g transform="rotate(-1.3 64 196)"><rect x="60" y="166" width="605" height="105" fill="#262722"/><text x="72" y="250" fill="#f4f0e7" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="700" letter-spacing="-5">Verification</text></g>
+  <text x="78" y="356" fill="#a23924" font-family="Georgia, 'Times New Roman', serif" font-size="86" font-style="italic" letter-spacing="-4">infrastructure</text>
+  <text x="64" y="427" fill="#262722" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700" letter-spacing="-1.5">for agent-produced software.</text>
+  <g transform="rotate(4 976 320)"><path d="M842 188H1100V447L1076 451L1050 447L1024 453L998 448L970 453L944 449L916 453L891 448L865 452L842 447Z" fill="#e5dfcc"/><rect x="922" y="188" width="80" height="11" fill="#b4ad91"/><text x="867" y="236" fill="#262722" font-family="monospace" font-size="13">FIELD NOTE / 01</text><text x="867" y="312" fill="#262722" font-family="Georgia, serif" font-size="38" font-style="italic">A log of</text><text x="867" y="358" fill="#262722" font-family="Georgia, serif" font-size="38">evidence.</text><path d="M867 369H1040" stroke="#a23924" stroke-width="2"/></g>
+  <text x="64" y="590" fill="#262722" font-family="monospace" font-size="17">CAPTURE. CHECK. PRESERVE.</text>
+  <text x="1136" y="590" text-anchor="end" fill="#262722" font-family="Arial, Helvetica, sans-serif" font-size="21">tidelands.dev</text>
+</svg>
