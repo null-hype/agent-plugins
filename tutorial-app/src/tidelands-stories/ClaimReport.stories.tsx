@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
+import completedFixture from '../../../.dagger/internal/devenv-base/toolbox/testdata/completed-claim-preregistration.json';
+import type { ClaimPreregistration } from '../lib/claimPreregistration';
 import ClaimReport, { type CompletedClaim } from '../components/ClaimReport';
+const preregistration = completedFixture.preregistration;
 
 // This is a display fixture, not the result of a real rerun. Use the same
 // completed-claim boundary as the toolbox's local publisher proof.
@@ -55,3 +58,5 @@ export const WorkflowStatusDoesNotSetVerdict: Story = {
     await expect(canvas.getByText('Red · Failed')).toBeVisible();
   },
 };
+
+export const PreregistrationWithFindings: Story = { args: { claim: { ...claim, exit: 1, preregistration: preregistration as ClaimPreregistration } } };

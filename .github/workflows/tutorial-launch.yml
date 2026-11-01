@@ -44,6 +44,7 @@ jobs:
         run: |
           go build -o "$RUNNER_TEMP/toolbox-report" .
           "$RUNNER_TEMP/toolbox-report" render-claim < testdata/completed-claim.json > ../../../../tutorial-app/dist/claim-fixture.html
+          "$RUNNER_TEMP/toolbox-report" render-claim < testdata/completed-claim-preregistration.json > ../../../../tutorial-app/dist/preregistration-claim-fixture.html
           python3 - <<'PY' > "$RUNNER_TEMP/red-claim.json"
           import json
           with open('testdata/completed-claim.json') as source:

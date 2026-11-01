@@ -63,13 +63,14 @@ type claimSnapshot struct {
 // completedClaim is also the fixture boundary for publishing without a host,
 // Linear writes or Dagger. Xeno projects the completion-time Linear state.
 type completedClaim struct {
-	Issue    claimIssue    `json:"issue"`
-	Delivery string        `json:"delivery"`
-	Check    string        `json:"check"`
-	Exit     int           `json:"exit"`
-	Trace    string        `json:"trace"`
-	Snapshot claimSnapshot `json:"snapshot"`
-	Xeno     any           `json:"xeno"`
+	Issue           claimIssue            `json:"issue"`
+	Delivery        string                `json:"delivery"`
+	Check           string                `json:"check"`
+	Exit            int                   `json:"exit"`
+	Trace           string                `json:"trace"`
+	Snapshot        claimSnapshot         `json:"snapshot"`
+	Xeno            any                   `json:"xeno"`
+	Preregistration *claimPreregistration `json:"preregistration,omitempty"`
 }
 
 type claimPublisher struct {
@@ -224,14 +225,15 @@ func renderClaim(claim completedClaim) ([]byte, error) {
 	var out bytes.Buffer
 	err = claimTemplate.Execute(&out, struct {
 		completedClaim
-		Data             template.JS
-		Public           bool
-		DescriptionLines []descriptionLine
-		Verdict          string
-		Outcome          string
-		XenoName         string
-		XenoType         string
-	}{claim, template.JS(data), claim.Issue.public(), lines, verdict, outcome, xenoName, xenoType})
+		Data                template.JS
+		Public              bool
+		DescriptionLines    []descriptionLine
+		Verdict             string
+		Outcome             string
+		XenoName            string
+		XenoType            string
+		PreregistrationView *preregistrationView
+	}{claim, template.JS(data), claim.Issue.public(), lines, verdict, outcome, xenoName, xenoType, projectPreregistration(claim.Preregistration)})
 	return out.Bytes(), err
 }
 
