@@ -1,10 +1,10 @@
 .td-card { position: relative; padding: 20px 24px; }
-.td-card h3 { margin: 4px 0 14px; font-size: 1.15rem; letter-spacing: -0.015em; }
+.td-card h3 { margin: 4px 0 14px; font: 1.3rem/1.25 var(--td-serif); letter-spacing: -0.02em; }
 .td-card h3 a { text-decoration: none; }
 .td-card h3 a::after { content: ''; position: absolute; inset: 0; }
-.td-card:hover { border-color: #31694b; }
-.td-card:has(a:focus-visible) { outline: 3px solid #965b1c; outline-offset: 3px; }
+.td-card:hover { border-color: var(--td-accent); }
+.td-card:has(a:focus-visible) { outline: 3px solid var(--td-accent); outline-offset: 3px; }
 .td-card h3 a:focus-visible { outline: none; }
 .td-card-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 0.85rem; color: var(--td-muted); }
-.td-card-marker { margin: 14px 0 0; font: 0.75rem/1.5 ui-monospace, Menlo, monospace; color: var(--td-muted); }
+.td-card-marker { margin: 14px 0 0; font: 0.75rem/1.5 var(--td-mono); color: var(--td-muted); }
 .td-card-marker::before { content: '✓ '; color: #31694b; }
