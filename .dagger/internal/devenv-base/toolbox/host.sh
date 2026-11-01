@@ -105,13 +105,16 @@ run_up() {
 # code, which is its verdict, and the trace it linked to.
 run_check() {
   set -euo pipefail
-  local repo=$1 ref=$2 check=$3 run=$4 out=$5 log=$6 dir=$HOME/.toolbox/checks/$(basename "$5" .json) code trace snapshot
+  local repo=$1 ref=$2 check=$3 run=$4 out=$5 log=$6 delivery=$7 dir=$HOME/.toolbox/checks/$(basename "$5" .json) code trace snapshot
   rm -rf "$dir" && mkdir -p "$dir"
   git clone -q --depth 1 --branch "$ref" "https://github.com/$repo.git" "$dir/repo"
   # Dagger reads a check's defaults from the repository's .env: a check that
   # takes a `run` gets the issue's, so one issue's reruns resume one session.
   echo "$(tr -d - <<< "$check" | tr '[:lower:]' '[:upper:]')_RUN=$run" >> "$dir/repo/.env"
   echo "DAGGER_CLOUD_TOKEN=$DAGGER_CLOUD_TOKEN_REF" > "$dir/runtime.env"
+  # Keep per-delivery input outside the harness directory, so it cannot
+  # invalidate the cached plan through the source tree's contents.
+  echo "$(tr -d - <<< "$check" | tr '[:lower:]' '[:upper:]')_DELIVERY=$delivery" >> "$dir/runtime.env"
   cd "$dir/repo"
   # pass-cli run also resolves inherited pass:// values. Other host actions'
   # references must not request GitHub or Linear access for a check.
@@ -508,7 +511,7 @@ check)
   pass-cli info >/dev/null 2>&1 || { echo "no Proton Pass session on this host, so the check's secrets cannot be resolved" >&2; exit 2; }
   rm -f "$JOBS/$id.exit" "$JOBS/$id.json" "$JOBS/$id.dagger.log"
   setsid nohup bash -c "$(declare -p DAGGER_CLOUD_TOKEN_REF; declare -f run_check)"'
-    (run_check "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$repo" "$ref" "$check" "$run" "$JOBS/$id.json" "$JOBS/$id.dagger.log" \
+    (run_check "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$repo" "$ref" "$check" "$run" "$JOBS/$id.json" "$JOBS/$id.dagger.log" "$delivery" \
     > "$JOBS/$id.log" 2>&1 < /dev/null &
   echo $! > "$JOBS/$id.pid"
   jq -n --arg id "$id" '{job: $id, duplicate: false, job_running: true}'
