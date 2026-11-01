@@ -198,6 +198,9 @@ for name in SHIP_PUSH_PAT_REF LINEAR_API_KEY_REF DAGGER_CLOUD_TOKEN_REF; do
   if [ -n "${!name:-}" ]; then echo "unrelated reference reached resolver: $name" >&2; exit 9; fi
 done
 grep -q 'DAGGER_CLOUD_TOKEN=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN' ../runtime.env
+grep -qx 'REGISTEREDDELIVERY_RUN=linear-inf-6' .env
+grep -qx 'REGISTEREDDELIVERY_DELIVERY=fake-delivery' ../runtime.env
+! grep -q 'DELIVERY=' .env
 if [ -f "$HOME/.toolbox/check.env" ]; then
   [ "$6" = --env-file ] && [ "$7" = "$HOME/.toolbox/check.env" ] && [ "$8" = -- ]
 fi
@@ -216,7 +219,7 @@ echo 'https://dagger.cloud/test/traces/isolated'
 	if err := os.WriteFile(filepath.Join(dir, ".toolbox", "check.env"), []byte("DAGGER_CLOUD_TOKEN=pass://granted-share/granted-item/DAGGER_CLOUD_TOKEN\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("bash", "-c", hostScript[start:end]+`run_check null-hype/worlds main registered-delivery linear-inf-6 "$HOME/result.json" "$HOME/dagger.log"`)
+	cmd := exec.Command("bash", "-c", hostScript[start:end]+`run_check null-hype/worlds main registered-delivery linear-inf-6 "$HOME/result.json" "$HOME/dagger.log" fake-delivery`)
 	cmd.Env = append(os.Environ(), "HOME="+dir, "PATH="+bin+":"+os.Getenv("PATH"), "DAGGER_CLOUD_TOKEN_REF=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN", "SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN", "LINEAR_API_KEY_REF=pass://api.linear.app/team/LINEAR_API_KEY")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("run check: %v: %s", err, out)
