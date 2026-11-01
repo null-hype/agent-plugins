@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import ClaimPreregistration from './ClaimPreregistration';
 import type { ClaimPreregistration as PreregistrationArtifact } from '../lib/claimPreregistration';
 import CheckBadge from './CheckBadge';
+import { claimVerdict } from '../lib/claimVerdict';
 import EvidenceLines from './EvidenceLines';
 import { TidelandsFooter, TidelandsHeader } from './TidelandsChrome';
 import './Tidelands.css';
@@ -55,5 +56,5 @@ export type CompletedClaim = {
 
 export default function ClaimReport({ claim }: { claim: CompletedClaim }) {
   const isPublic = claim.issue.labels?.nodes.some(({ name }) => name === 'public');
-  return <ClaimReportView identifier={claim.issue.identifier} title={claim.issue.title} preregistration={<ClaimPreregistration artifact={claim.preregistration} />} description={<EvidenceLines text={claim.issue.description || 'No description supplied.'} />} verdict={<CheckBadge kind={claim.exit === 0 ? 'passed' : 'failed'}>{claim.exit === 0 ? 'Green · Passed' : 'Red · Failed'}</CheckBadge>} exit={claim.exit} check={claim.check} trace={claim.trace ? <a href={claim.trace} rel="noreferrer">Open trace ↗</a> : 'Unavailable'} snapshot={claim.snapshot.id ? <><code>{claim.snapshot.id}</code>{claim.snapshot.url && <> · <a href={claim.snapshot.url} rel="noreferrer">Snapshot evidence ↗</a></>}</> : 'Unavailable for this rerun'} runKey={claim.snapshot.run_key} delivery={claim.delivery} xenoName={claim.issue.state?.name || 'Unavailable'} xenoType={claim.issue.state?.name ? claim.issue.state.type || 'unknown' : 'unknown'} visibility={isPublic ? 'Public report. Later reruns replace the result at this URL.' : 'Unlisted report · noindex. Anyone with this link can view it. Later reruns replace the result at this URL.'} />;
+  return <ClaimReportView identifier={claim.issue.identifier} title={claim.issue.title} preregistration={<ClaimPreregistration artifact={claim.preregistration} />} description={<EvidenceLines text={claim.issue.description || 'No description supplied.'} />} verdict={<CheckBadge kind={claimVerdict(claim.exit).kind}>{claimVerdict(claim.exit).label}</CheckBadge>} exit={claim.exit} check={claim.check} trace={claim.trace ? <a href={claim.trace} rel="noreferrer">Open trace ↗</a> : 'Unavailable'} snapshot={claim.snapshot.id ? <><code>{claim.snapshot.id}</code>{claim.snapshot.url && <> · <a href={claim.snapshot.url} rel="noreferrer">Snapshot evidence ↗</a></>}</> : 'Unavailable for this rerun'} runKey={claim.snapshot.run_key} delivery={claim.delivery} xenoName={claim.issue.state?.name || 'Unavailable'} xenoType={claim.issue.state?.name ? claim.issue.state.type || 'unknown' : 'unknown'} visibility={isPublic ? 'Public report. Later reruns replace the result at this URL.' : 'Unlisted report · noindex. Anyone with this link can view it. Later reruns replace the result at this URL.'} />;
 }
