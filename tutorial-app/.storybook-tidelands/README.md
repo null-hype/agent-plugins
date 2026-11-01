@@ -14,9 +14,10 @@ For a hosted reference, set `AGENT_PLUGINS_STORYBOOK_URL` to that Storybook's
 public URL when starting or building; the local default is
 `http://localhost:7880`.
 
-For Codespaces, select `.devcontainer/storybook/devcontainer.json`. It installs
-the locked dependencies and starts both books on ports 7880 and 7881 on each
-start. Open port 7881 for Tidelands; its external library URL automatically uses
+For Codespaces, select `.devcontainer/internal/devcontainer.json` and set the
+idle timeout to four hours (`gh codespace create --idle-timeout 4h`). The internal
+environment installs the development tools and locked dependencies, then starts
+both books on ports 7880 and 7881 on each start. Open port 7881 for Tidelands; its external library URL automatically uses
 the Codespace's forwarded port 7880. Both ports retain private visibility.
 If the external library asks for authentication, open port 7880 once in the same
 browser, then reload Tidelands.
