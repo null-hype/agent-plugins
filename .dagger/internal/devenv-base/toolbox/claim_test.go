@@ -149,6 +149,7 @@ func TestClaimTitleSlug(t *testing.T) {
 func TestClaimEscapesUntrustedMetadata(t *testing.T) {
 	claim := fakeClaim(t, false)
 	claim.Trace = "javascript:alert(1)"
+	claim.Snapshot.URL = "javascript:alert(2)"
 	body, err := renderClaim(claim)
 	if err != nil {
 		t.Fatal(err)
@@ -170,6 +171,40 @@ func TestClaimEscapesUntrustedMetadata(t *testing.T) {
 	}
 	if decoded.Issue.Description != claim.Issue.Description {
 		t.Fatal("metadata changed in JSON")
+	}
+}
+
+// The real published HTML must retain evidence and disclose unavailable fields
+// without relying on client scripts or mistaking absent evidence for a pass.
+func TestClaimReportEvidenceStates(t *testing.T) {
+	for _, exit := range []int{0, 1, 2} {
+		claim := fakeClaim(t, true)
+		claim.Exit = exit
+		claim.Issue.Description = ""
+		claim.Trace = ""
+		claim.Snapshot.ID, claim.Snapshot.URL = "", ""
+		body, err := renderClaim(claim)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, text := range []string{"No description supplied.", "Unavailable for this rerun", "linear-inf-6", "delivery-1", "Not evaluated", fmt.Sprintf("Dagger exit %d", exit)} {
+			if !bytes.Contains(body, []byte(text)) {
+				t.Errorf("exit %d: missing %q", exit, text)
+			}
+		}
+		want := "Red · Failed"
+		if exit == 0 {
+			want = "Green · Passed"
+		}
+		if !bytes.Contains(body, []byte(want)) {
+			t.Errorf("exit %d: missing verdict %q", exit, want)
+		}
+		if bytes.Contains(body, []byte(`name="robots"`)) || bytes.Contains(body, []byte("Snapshot evidence")) || bytes.Contains(body, []byte("Open trace")) {
+			t.Errorf("exit %d: public report fabricated evidence or received private metadata", exit)
+		}
+		if bytes.Count(body, []byte("<script")) != 1 || bytes.Contains(body, []byte("<script src=")) {
+			t.Fatal("report needs a browser runtime")
+		}
 	}
 }
 

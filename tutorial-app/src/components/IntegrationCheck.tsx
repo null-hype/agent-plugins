@@ -2,6 +2,7 @@ import React, { useId, useReducer, useState } from 'react';
 import './IntegrationCheck.css';
 import { FILE_PATH, REPAIR, revLoc } from '../lib/integrationScenario';
 import { INITIAL_STATE, deriveView, reduce, type SessionState } from '../lib/integrationSession';
+import Badge from './CheckBadge';
 
 /**
  * CIT-176: the shared pre-merge comparison. Rendered by Storybook and by the
@@ -21,10 +22,6 @@ const STATUS_LABEL = {
   stale: 'Stale: inputs changed',
   conflict: 'Textual conflict',
 } as const;
-
-function Badge({ kind, children }: { kind: string; children: React.ReactNode }) {
-  return <span className={`ic-badge ic-${kind}`}>{children}</span>;
-}
 
 export default function IntegrationCheck({ initialState = INITIAL_STATE, initialInspect = false }: Props) {
   const [state, dispatch] = useReducer(reduce, initialState);

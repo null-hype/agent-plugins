@@ -5,11 +5,23 @@ on:
     paths:
       - '.dagger/internal/devenv-base/toolbox/**'
       - '.github/workflows/devenv-base-toolbox.yml'
+      - 'tutorial-app/**'
 
 permissions:
   contents: read
 
 jobs:
+  claim-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tutorial-app/package-lock.json
+      - run: npm ci --no-audit --no-fund && npm run claim:check
+        working-directory: tutorial-app
   test:
     runs-on: ubuntu-latest
     steps:
