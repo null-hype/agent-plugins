@@ -3,6 +3,7 @@ type: tutorial
 title: Agent decisions, checked against evidence
 parts:
   - part-0
+  - part-8
   - part-7
   - part-5
   - part-4

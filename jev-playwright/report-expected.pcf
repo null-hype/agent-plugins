@@ -105,7 +105,6 @@ local aliceReads: Experiment.Asked = new {
       `false` = "The request is denied, ownership or caller identity is unestablished, or no private content is returned."
     }
   }
-  collector = "read-as-alice"
   requiredEvidence { "http"; "fixtureState"; "authorizationPolicy" }
   expected { min = 0; max = 0.2 }
 }
@@ -120,7 +119,6 @@ local bobReads: Experiment.Asked = new {
       `false` = "The request is denied, ownership or caller identity is unestablished, or other content is returned."
     }
   }
-  collector = "read-as-bob"
   requiredEvidence { "http"; "fixtureState"; "authorizationPolicy" }
   expected { min = 0.8; max = 1 }
 }

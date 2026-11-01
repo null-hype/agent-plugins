@@ -17,7 +17,9 @@
     "duo:export": "node --import tsx scripts/export-duo-left-page.ts",
     "image-claims": "node --import tsx scripts/image-claims.ts",
     "image-claims:render": "node --import tsx scripts/render-image-claims.ts",
-    "image-claims:check": "vitest run src/lib/imageClaims.spec.ts && node --import tsx scripts/render-image-claims.ts --check"
+    "image-claims:check": "vitest run src/lib/imageClaims.spec.ts && node --import tsx scripts/render-image-claims.ts --check",
+    "jev-lsp:render": "node --import tsx scripts/render-jev-lsp.ts",
+    "jev-lsp:check": "node --import tsx scripts/render-jev-lsp.ts --check"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
@@ -44,6 +46,7 @@
     "js-yaml": "4.1.1",
     "monaco-editor": "^0.55.1",
     "nanostores": "0.10.3",
+    "roughjs": "^4.6.6",
     "storybook": "^10.6.0",
     "tsx": "4.20.6",
     "vitest": "^5.0.1"
