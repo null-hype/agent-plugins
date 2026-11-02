@@ -29,5 +29,5 @@ Automated changes can each pass the same policy check and still violate it when 
 ### Contact
 
 - **Public Collaboration:** [Open an issue](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) to discuss open-source setups, reproduction, or test cases (public; do not include private credentials).
-- **Private Enquiries (Consulting, Research Collaboration, Advisory, Funding):** Email [`public.rant@pm.me`](mailto:public.rant@pm.me) for confidential discussions regarding production agent architectures. (Please describe workflow context; do not send secrets or API keys in initial outreach).
+- **Private Enquiries (Consulting, Research Collaboration, Advisory, Funding):** Email [`richard@tidelands.dev`](mailto:richard@tidelands.dev) for confidential discussions regarding production agent architectures. (Please describe workflow context; do not send secrets or API keys in initial outreach).
 

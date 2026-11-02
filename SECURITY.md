@@ -6,7 +6,7 @@ If you discover a security vulnerability in this project or want to report an is
 
 Instead, please send an email to:
 
-**`public.rant@pm.me`**
+**`richard@tidelands.dev`**
 
 Include:
 - A description of the vulnerability and its potential impact.

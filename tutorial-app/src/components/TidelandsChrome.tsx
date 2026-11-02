@@ -8,5 +8,5 @@ export function TidelandsHeader({ report = false }: { report?: boolean }) {
 }
 
 export function TidelandsFooter() {
-  return <footer className="td-footer"><span>A log of evidence.</span><a href="mailto:public.rant@pm.me">Work with Richard ↗</a></footer>;
+  return <footer className="td-footer"><span>A log of evidence.</span><a href="mailto:richard@tidelands.dev">Work with Richard ↗</a></footer>;
 }

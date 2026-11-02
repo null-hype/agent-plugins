@@ -1,0 +1,3 @@
+.td-contact { box-sizing: border-box; width: 100%; padding: 0 20px 24px; display: flex; flex-wrap: wrap; gap: 8px 24px; background: #fff; color: #000; font: 1rem/1.5 Arial, Helvetica, sans-serif; }
+.td-contact a { color: inherit; text-decoration: underline; text-underline-offset: 4px; overflow-wrap: anywhere; }
+@media (min-width: 720px) { .td-contact { padding: 0 32px 32px; } }
