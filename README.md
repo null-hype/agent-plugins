@@ -64,7 +64,7 @@ worker fact (Pkl) ──► Ledger.pkl gate ──► GovernanceDiagnostic (type
 We support two direct routes depending on your context:
 
 - **Public Collaboration & Reproductions:** [Open an issue with the template](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) to discuss open-source agent setups, reproduce checks, or ask technical questions. (Public; do not include secrets or proprietary architecture details).
-- **Private Enquiries (Consulting, Research, Funding, Hiring):** Email [`public.rant@pm.me`](mailto:public.rant@pm.me) to discuss internal agent systems, confidential evaluation, or advisory engagements. Please describe the workflow context; do not send credentials, API keys, or unredacted secrets in an initial message.
+- **Private Enquiries (Consulting, Research, Funding, Hiring):** Email [`richard@tidelands.dev`](mailto:richard@tidelands.dev) to discuss internal agent systems, confidential evaluation, or advisory engagements. Please describe the workflow context; do not send credentials, API keys, or unredacted secrets in an initial message.
 
 
 ## Repository notes
