@@ -1,0 +1,3 @@
+.td-hero-bar { box-sizing: border-box; width: 100%; padding: 20px; border-bottom: 2px solid #000; background: #fff; color: #000; }
+.td-hero-bar h1 { margin: 0; font: 700 1.5rem/1.2 Arial, Helvetica, sans-serif; letter-spacing: -0.02em; }
+@media (min-width: 720px) { .td-hero-bar { padding: 28px 32px; } .td-hero-bar h1 { font-size: 2rem; } }
