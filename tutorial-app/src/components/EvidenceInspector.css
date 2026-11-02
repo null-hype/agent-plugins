@@ -10,9 +10,5 @@
 .evidence-inspector .artifact { min-height: 190px; background: #1e1e1e; color: #d4d4d4; }
 .evidence-inspector .artifact-heading { display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px; color: #ddd6c8; border-bottom: 1px solid #414141; }
 .evidence-inspector .artifact-heading code { color: #aaa; font-size: 10px; }
-.evidence-inspector pre { margin: 0; padding: 8px 0; overflow: auto; font: 12px/1.55 "Roboto Mono", Menlo, Consolas, monospace; }
-.evidence-inspector pre span { display: block; min-height: 1.55em; padding-right: 12px; }
-.evidence-inspector pre i { display: inline-block; width: 38px; margin-right: 12px; color: #767676; text-align: right; font-style: normal; user-select: none; }
-.evidence-inspector pre .highlight { background: #493f20; box-shadow: inset 3px 0 #e0b83c; }
 .evidence-inspector .artifact p { margin: 0; padding: 18px; }
 .evidence-inspector .artifact.error { color: #ffb4ae; }

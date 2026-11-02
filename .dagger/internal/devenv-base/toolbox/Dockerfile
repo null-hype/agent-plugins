@@ -4,7 +4,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends jq && rm -rf /v
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY *.go host.sh host-lifecycle.sh ./
+COPY *.go claim-page.html host.sh host-lifecycle.sh ./
+COPY testdata ./testdata
 RUN go test ./... && CGO_ENABLED=0 go build -ldflags '-s -w' -o /out/toolbox .
 
 # gh rebuilds codespaces for codespace_rebuild: GitHub's REST API cannot.

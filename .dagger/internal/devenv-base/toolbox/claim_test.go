@@ -149,6 +149,8 @@ func TestClaimTitleSlug(t *testing.T) {
 func TestClaimEscapesUntrustedMetadata(t *testing.T) {
 	claim := fakeClaim(t, false)
 	claim.Trace = "javascript:alert(1)"
+	claim.Snapshot.URL = "javascript:alert(2)"
+	claim.Issue.State = &claimWorkflowState{Name: "<script>alert(1)</script>", Type: "started"}
 	body, err := renderClaim(claim)
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +158,7 @@ func TestClaimEscapesUntrustedMetadata(t *testing.T) {
 	if bytes.Contains(body, []byte("<script>alert(1)</script>")) || bytes.Contains(body, []byte(`href="javascript:`)) {
 		t.Fatal("unsafe metadata rendered")
 	}
-	if bytes.Count(body, []byte("</script>")) != 1 {
+	if bytes.Count(body, []byte("</script>")) != 2 {
 		t.Fatal("JSON broke out of script")
 	}
 	if !bytes.Contains(body, []byte(`name="robots" content="noindex"`)) {
@@ -170,6 +172,40 @@ func TestClaimEscapesUntrustedMetadata(t *testing.T) {
 	}
 	if decoded.Issue.Description != claim.Issue.Description {
 		t.Fatal("metadata changed in JSON")
+	}
+}
+
+// The real published HTML must retain evidence and disclose unavailable fields
+// without relying on client scripts or mistaking absent evidence for a pass.
+func TestClaimReportEvidenceStates(t *testing.T) {
+	for _, exit := range []int{0, 1, 2} {
+		claim := fakeClaim(t, true)
+		claim.Exit = exit
+		claim.Issue.Description = ""
+		claim.Trace = ""
+		claim.Snapshot.ID, claim.Snapshot.URL = "", ""
+		body, err := renderClaim(claim)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, text := range []string{"No description supplied.", "Unavailable for this rerun", "linear-inf-6", "delivery-1", `data-status="unknown"`, fmt.Sprintf("Dagger exit %d", exit)} {
+			if !bytes.Contains(body, []byte(text)) {
+				t.Errorf("exit %d: missing %q", exit, text)
+			}
+		}
+		want := "Red · Failed"
+		if exit == 0 {
+			want = "Green · Passed"
+		}
+		if !bytes.Contains(body, []byte(want)) {
+			t.Errorf("exit %d: missing verdict %q", exit, want)
+		}
+		if bytes.Contains(body, []byte(`name="robots"`)) || bytes.Contains(body, []byte("Snapshot evidence")) || bytes.Contains(body, []byte("Open trace")) {
+			t.Errorf("exit %d: public report fabricated evidence or received private metadata", exit)
+		}
+		if bytes.Count(body, []byte("<script")) != 2 || bytes.Contains(body, []byte("<script src=")) {
+			t.Fatal("unexpected report scripts")
+		}
 	}
 }
 
@@ -314,13 +350,16 @@ func TestRerunPublishingCannotChangeVerdict(t *testing.T) {
 		name          string
 		exit, status  int
 		metadataError bool
+		failDone      bool
 	}{
-		{"green publishes", 0, 200, false}, {"red publishes", 1, 200, false},
-		{"R2 fails on green", 0, 503, false}, {"Linear metadata fails on green", 0, 200, true},
+		{"green publishes", 0, 200, false, false}, {"red publishes", 1, 200, false, false},
+		{"R2 fails on green", 0, 503, false, false}, {"Linear metadata fails on green", 0, 200, true, false},
+		{"Done update fails", 0, 200, false, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			c, _, rec := rerunHarness(t, fmt.Sprintf(`{"job_running":false,"job_exit":0,"result":{"exit":%d,"trace":"https://dagger.cloud/test/traces/abc","snapshot":"snapshot-123"}}`, tt.exit))
+			c, _, rec := rerunHarness(t, fmt.Sprintf(`{"job_running":false,"job_exit":0,"result":{"exit":%d,"trace":"https://dagger.cloud/test/traces/abc","snapshot":"snapshot-123","preregistration":{"file":"Predicted.pkl","source":"prediction = 0.0","findings":{"version":1,"findings":[]}}}}`, tt.exit))
 			// A separate local server handles both read-only metadata and writes.
+			rec.failDone = tt.failDone
 			linear := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				body, _ := io.ReadAll(r.Body)
 				r.Body = io.NopCloser(bytes.NewReader(body))
@@ -354,8 +393,8 @@ func TestRerunPublishingCannotChangeVerdict(t *testing.T) {
 			}))
 			defer bucket.Close()
 			c.publisher = &claimPublisher{client: bucket.Client(), endpoint: bucket.URL, bucket: "claims", baseURL: bucket.URL, accessKey: "test", secretKey: "test", urlSecret: strings.Repeat("s", 32)}
-			if err := c.rerun(context.Background(), inf6Rerun); err != nil {
-				t.Fatal(err)
+			if err := c.rerun(context.Background(), inf6Rerun); (err != nil) != tt.failDone {
+				t.Fatalf("rerun error = %v, failDone = %v", err, tt.failDone)
 			}
 			expectedCalls := 2
 			if tt.exit == 0 {
@@ -364,10 +403,10 @@ func TestRerunPublishingCannotChangeVerdict(t *testing.T) {
 			if len(rec.calls) != expectedCalls {
 				t.Fatalf("verdict calls=%v", rec.calls)
 			}
-			if tt.exit == 0 && rec.calls[2] != "state "+infraDoneStatusID {
+			if tt.exit == 0 && rec.calls[1] != "state "+infraDoneStatusID {
 				t.Fatalf("publishing changed green state: %v", rec.calls)
 			}
-			comment := rec.calls[1]
+			comment := rec.calls[len(rec.calls)-1]
 			if tt.metadataError || tt.status != 200 {
 				if !strings.Contains(comment, "Claim page publishing failed") || strings.Contains(comment, "Claim page: ") {
 					t.Fatalf("bad failure comment: %s", comment)
@@ -375,6 +414,17 @@ func TestRerunPublishingCannotChangeVerdict(t *testing.T) {
 			} else {
 				if !strings.Contains(comment, "Claim page: "+bucket.URL+"/r/") {
 					t.Fatalf("missing URL: %s", comment)
+				}
+				wantState := "In Review"
+				if tt.exit == 0 && !tt.failDone {
+					wantState = "Done"
+				}
+				xeno, _ := uploaded.Xeno.(map[string]any)
+				if uploaded.Issue.State == nil || uploaded.Issue.State.Name != wantState || xeno["name"] != wantState {
+					t.Fatalf("report did not capture actual completion state %q: %+v", wantState, uploaded)
+				}
+				if uploaded.Preregistration == nil || uploaded.Preregistration.File != "Predicted.pkl" {
+					t.Fatal("controller dropped preregistration artifact")
 				}
 				if uploaded.Issue.Title != "The current claim" || uploaded.Exit != tt.exit || uploaded.Snapshot.ID != "snapshot-123" || uploaded.Snapshot.RunKey != "linear-inf-6" {
 					t.Fatalf("wrong payload: %+v", uploaded)
@@ -399,5 +449,36 @@ func TestRenderClaimCommand(t *testing.T) {
 	}
 	if err := runClaimCommand(context.Background(), "render-claim", strings.NewReader(`{"exit":0}`), &out); err == nil {
 		t.Fatal("accepted incomplete payload")
+	}
+}
+
+// Linear's state snapshot wins over stale xeno input, while a red Dagger
+// verdict remains red even if the issue snapshot says Done.
+func TestClaimXenoUsesIssueStatus(t *testing.T) {
+	for _, state := range []*claimWorkflowState{
+		{ID: "done", Name: "Done", Type: "completed"},
+		{ID: "review", Name: "Awaiting review", Type: "started"},
+		nil,
+	} {
+		claim := fakeClaim(t, false)
+		claim.Exit = 1
+		claim.Issue.State = state
+		claim.Xeno = map[string]string{"name": "Stale fixture status"}
+		body, err := renderClaim(claim)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name, kind := "Unavailable", "unknown"
+		if state != nil {
+			name, kind = state.Name, state.Type
+		}
+		for _, text := range []string{"Red · Failed", name, `data-status="` + kind + `"`} {
+			if !bytes.Contains(body, []byte(text)) {
+				t.Errorf("missing %q", text)
+			}
+		}
+		if bytes.Contains(body, []byte("Stale fixture status")) {
+			t.Fatal("xeno ignored authoritative issue state")
+		}
 	}
 }

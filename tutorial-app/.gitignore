@@ -5,4 +5,4 @@ node_modules/
 /playwright-report/
 /storybook-static/
 evaluations.jsonl
-
+/tidelands-storybook-static/
