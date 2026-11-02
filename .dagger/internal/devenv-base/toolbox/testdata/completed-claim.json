@@ -4,6 +4,7 @@
     "identifier": "INF-6",
     "title": "A completed claim fixture",
     "description": "The claim and its evidence are published at one stable URL.\nThis is synthetic evidence for local verification.",
+    "state": { "id": "fixture-done", "name": "Done", "type": "completed" },
     "labels": { "nodes": [] }
   },
   "delivery": "fixture-delivery-1",

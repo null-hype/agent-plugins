@@ -225,6 +225,18 @@ against a fake `devpod` (it skips where `jq` is missing).
 
 ### Static claim pages (CIT-563)
 
+The report layout is shared with `tutorial-app`'s **Tidelands / Claim report**
+Storybook stories. Its status badge also serves the integration-check stories;
+its numbered text view also serves the captured evidence inspector. The root
+Astro page uses the same branding and the existing interactive integration
+check. Reports remain static HTML with embedded CSS and need no JavaScript.
+
+After changing the report components or their styles, run `npm run claim:export`
+in `tutorial-app` and commit the generated `claim-page.html` here. Run
+`npm run claim:check` to detect a stale export; the toolbox workflow checks this
+as well as building and testing the Go image. Node is a development dependency
+for the export, not a dependency of the deployed publisher.
+
 After a check finishes, the existing rerun controller reads the issue's current
 title, description and labels from Linear and uploads one self-contained HTML
 object to R2. Both green and red reruns replace that object. Only Dagger's exit
@@ -284,8 +296,13 @@ evidence link to the Dagger trace. The host collects a full snapshot ID only
 from a `World:` provenance record explicitly tagged `run=linear-<issue>` in the
 check log. Missing provenance is displayed as unavailable; it never supplies or
 changes the verdict. There is no assumed public restic browser or repository
-credential in the page. `#xeno-status` and JSON in `#claim-data` (`xeno: null`) are
-the integration points for CIT-562.
+credential in the page. `#xeno-status` shows the Linear issue status captured after completion.
+A green run attempts its Done transition before reading that status; a red
+run retains the current Linear state. A failed transition is reported, and
+the page still shows the actual returned state. `xeno` in `#claim-data`
+projects that same `{id, name, type}` state, or null when unavailable.
+The Dagger verdict still comes only from its exit code. Further xeno visuals
+remain the integration point for CIT-562.
 
 For a local proof with synthetic input, without starting the server or host:
 
