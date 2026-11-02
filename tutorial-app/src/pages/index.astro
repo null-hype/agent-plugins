@@ -1,24 +1,8 @@
 ---
+import ProfessionalLayout from '../layouts/ProfessionalLayout.astro';
 import TidelandsHome from '../components/TidelandsHome';
-const title = 'Richard Anthony — verification infrastructure for agent-produced software';
-const description = 'Capture the world, run the check, preserve the evidence. Richard Anthony builds verification infrastructure and developer tools. Based in Sydney; available for senior engineering roles and selected consulting.';
-const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
+const title = 'Richard Anthony — Senior software & security engineer';
+const description = 'Richard Anthony is a Sydney-based senior software and security engineer building AI and agent infrastructure, verification systems and developer tooling. Available for consulting and senior engineering roles.';
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <link rel="canonical" href={canonical.href} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical.href} />
-    <meta name="twitter:card" content="summary" />
-  </head>
-  <body style="margin: 0"><TidelandsHome client:load /></body>
-</html>
+<ProfessionalLayout title={title} description={description} path="/"><TidelandsHome client:load /></ProfessionalLayout>

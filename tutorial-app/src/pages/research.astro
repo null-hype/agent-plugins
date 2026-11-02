@@ -1,0 +1,8 @@
+---
+import ProfessionalLayout from '../layouts/ProfessionalLayout.astro';
+import ResearchPage from '../components/ResearchPage';
+const title = 'Research and demonstrations — Richard Anthony';
+const description = 'An interactive example, source repositories and a recorded review behind Richard Anthony’s work on verification for agent-produced software.';
+---
+
+<ProfessionalLayout title={title} description={description} path="/research"><ResearchPage client:load /></ProfessionalLayout>
