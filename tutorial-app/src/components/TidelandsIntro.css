@@ -1,0 +1,5 @@
+.td-intro { box-sizing: border-box; width: 100%; padding: 24px 20px; background: #fff; color: #000; font: 1rem/1.5 Arial, Helvetica, sans-serif; }
+.td-intro p { margin: 0; max-width: 34em; }
+.td-intro p + p { margin-top: 12px; }
+.td-intro-lead { font-size: 1.25rem; line-height: 1.35; }
+@media (min-width: 720px) { .td-intro { padding: 32px; } .td-intro-lead { font-size: 1.5rem; } }

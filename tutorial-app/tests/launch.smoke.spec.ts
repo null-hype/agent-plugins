@@ -32,10 +32,11 @@ test.describe('Static claim reports', () => {
   }
 });
 
-test('homepage is the name-only hero', async ({ page }) => {
+test('homepage is the name hero and a one-sentence intro', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Richard Anthony', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Verification infrastructure for agent-produced software.', { exact: true })).toBeVisible();
   await expect(page.getByRole('link')).toHaveCount(0);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
