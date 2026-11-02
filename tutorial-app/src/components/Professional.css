@@ -1,0 +1,73 @@
+/* Professional pages (home, research). Self-contained on purpose: Tidelands.css
+   is embedded in the claim-page template shipped in the toolbox image. */
+.pro-page { --pro-ink: #1c1f24; --pro-muted: #545c68; --pro-line: #d9dde3; --pro-bg: #fff; --pro-sheet: #f5f6f8; --pro-accent: #a23924; background: var(--pro-bg); color: var(--pro-ink); font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; min-height: 100vh; }
+.pro-page, .pro-page * { box-sizing: border-box; }
+.pro-page a { color: inherit; text-underline-offset: 3px; }
+.pro-page a:hover { color: var(--pro-accent); }
+.pro-page :focus-visible { outline: 3px solid var(--pro-accent); outline-offset: 3px; }
+.pro-page h1, .pro-page h2, .pro-page h3, .pro-page p { margin-top: 0; }
+.pro-page h1 { font-size: clamp(2.6rem, 6vw, 4rem); line-height: 1.05; letter-spacing: -0.035em; font-weight: 650; margin-bottom: 8px; overflow-wrap: anywhere; }
+.pro-page h2 { font-size: clamp(1.4rem, 2.6vw, 1.75rem); line-height: 1.25; letter-spacing: -0.02em; font-weight: 650; margin-bottom: 16px; }
+.pro-page h3 { font-size: 1.1rem; line-height: 1.35; font-weight: 650; margin-bottom: 10px; }
+.pro-header, .pro-footer, .pro-main { width: min(1040px, 100%); margin: 0 auto; padding-left: 32px; padding-right: 32px; }
+.pro-header { padding-top: 22px; padding-bottom: 22px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--pro-line); }
+.pro-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; letter-spacing: -0.01em; }
+.pro-logo { display: flex; flex: 0 0 30px; }
+.pro-logo svg { width: 30px; height: 30px; }
+.pro-header nav { display: flex; gap: 24px; font-size: 0.92rem; }
+.pro-header nav a { text-decoration: none; color: var(--pro-muted); }
+.pro-header nav a:hover { color: var(--pro-ink); text-decoration: underline; }
+.pro-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; border-top: 1px solid var(--pro-line); padding-top: 24px; padding-bottom: 36px; color: var(--pro-muted); font-size: 0.88rem; }
+.pro-footer-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.pro-eyebrow { color: var(--pro-muted); font-size: 0.9rem; margin-bottom: 20px; }
+.pro-role { font-size: clamp(1.25rem, 2.6vw, 1.6rem); font-weight: 500; margin-bottom: 20px; }
+.pro-lead { font-size: clamp(1.05rem, 1.8vw, 1.25rem); max-width: 640px; }
+.pro-intro { color: var(--pro-muted); max-width: 640px; margin-bottom: 28px; }
+.pro-hero { padding: 72px 0 56px; }
+.pro-hero-compact { padding: 48px 0 24px; }
+.pro-hero-compact h1 { font-size: clamp(2rem, 4.5vw, 2.8rem); }
+.pro-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 28px; }
+.pro-button { display: inline-flex; align-items: center; padding: 12px 20px; background: var(--pro-accent); border: 1px solid var(--pro-accent); border-radius: 4px; color: #fff !important; text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+.pro-button:hover { background: var(--pro-ink); border-color: var(--pro-ink); }
+.pro-button-secondary { background: transparent; color: var(--pro-ink) !important; border-color: var(--pro-ink); }
+.pro-button-secondary:hover { background: var(--pro-ink); color: #fff !important; }
+.pro-section { padding: 52px 0; border-top: 1px solid var(--pro-line); scroll-margin-top: 8px; }
+.pro-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.pro-card { padding: 22px; background: var(--pro-sheet); border: 1px solid var(--pro-line); border-radius: 4px; }
+.pro-card p { color: var(--pro-muted); font-size: 0.95rem; margin: 0; }
+.pro-work { display: grid; gap: 20px; }
+.pro-project { padding: 26px 28px; border: 1px solid var(--pro-line); border-radius: 4px; }
+.pro-project h3 { font-size: 1.3rem; margin-bottom: 16px; }
+.pro-project dl { display: grid; gap: 14px; margin: 0 0 16px; }
+.pro-project dl > div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; }
+.pro-project dt { color: var(--pro-muted); font-size: 0.85rem; font-weight: 600; padding-top: 2px; }
+.pro-project dd { margin: 0; }
+.pro-project-note { color: var(--pro-muted); font-size: 0.88rem; margin-bottom: 8px; }
+.pro-project-link { margin: 0; font-weight: 600; }
+.pro-more { margin: 24px 0 0; color: var(--pro-muted); }
+.pro-about { max-width: 700px; }
+.pro-about p { margin-bottom: 16px; }
+.pro-about .pro-links { display: flex; gap: 24px; font-weight: 600; margin: 24px 0 0; }
+.pro-contact { padding-bottom: 72px; }
+.pro-fine { color: var(--pro-muted); font-size: 0.88rem; margin: 20px 0 0; max-width: 560px; }
+.pro-demo { padding: 24px; background: var(--pro-sheet); border: 1px solid var(--pro-line); border-radius: 4px; }
+.pro-demo .ic { max-width: none; font-size: 0.92rem; }
+.pro-page .ic-primary { background: var(--pro-accent); border-color: var(--pro-accent); }
+.pro-page .ic-primary:hover { background: var(--pro-ink); border-color: var(--pro-ink); }
+.pro-reading { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; }
+.pro-reading li { padding-top: 16px; border-top: 1px solid var(--pro-line); }
+.pro-reading li:first-child { padding-top: 0; border-top: 0; }
+.pro-reading p { color: var(--pro-muted); margin: 0; max-width: 680px; }
+@media (max-width: 760px) {
+  .pro-header, .pro-footer, .pro-main { padding-left: 20px; padding-right: 20px; }
+  .pro-header { flex-wrap: wrap; gap: 12px; }
+  .pro-header nav { gap: 18px; font-size: 0.88rem; }
+  .pro-hero { padding: 44px 0 36px; }
+  .pro-section { padding: 36px 0; }
+  .pro-grid { grid-template-columns: 1fr; }
+  .pro-project { padding: 20px; }
+  .pro-project dl > div { grid-template-columns: 1fr; gap: 2px; }
+  .pro-demo { padding: 14px; }
+}
+@media (prefers-reduced-motion: no-preference) { .pro-page a { transition: color 120ms, background-color 120ms; } }
+@media (forced-colors: active) { .pro-button { border: 1px solid CanvasText; } }
