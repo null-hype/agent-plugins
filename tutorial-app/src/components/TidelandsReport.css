@@ -8,3 +8,5 @@
 @media (min-width: 720px) { .td-report { padding: 32px; } .td-report h2 { font-size: 1.5rem; } }
 .td-report-paragraph em { font-style: normal; font-size: 0.85em; color: #444; }
 .td-report-numbers { margin: 2px 0 0 !important; font-size: 0.85rem; color: #444; }
+.td-report-id { font-size: 0.75rem; letter-spacing: 0.08em; color: #444; }
+.td-report-paragraph a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }

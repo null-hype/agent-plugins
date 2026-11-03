@@ -1,6 +1,5 @@
-/// The liar and its two controls. Predictions are the ones registered for
-/// godel-check; the liar's answers are its one recorded run (worlds, with the
-/// expectation as a .env literal). The controls have not run.
+/// The liar and its two controls: the preregistration only. A run's answers
+/// come in as `-p answers=…`; the liar's one recorded run is runs/worlds.json.
 amends "Report.pkl"
 
 registration {
@@ -8,8 +7,6 @@ registration {
   role = "Viewer"
   written = "2026-11-03T00:00:00.000Z"
 }
-runStarted = null
-
 title = "This sentence is false."
 
 questions {
@@ -27,6 +24,5 @@ questions {
     text = "This sentence is false."
     prediction = 0.5
     requires { "five-words"; "three-words" }
-    answers { 0.13; 0.12; 0.12 }
   }
 }

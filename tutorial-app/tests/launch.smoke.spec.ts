@@ -32,15 +32,15 @@ test.describe('Static claim reports', () => {
   }
 });
 
-test('homepage is the name hero, a one-sentence intro, contact and the liar report', async ({ page }) => {
+test('homepage is the name hero, a one-sentence intro, contact and the checks', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Richard Anthony', exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByText('Verification infrastructure for agent-produced software.', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'richard@tidelands.dev', exact: true })).toHaveAttribute('href', 'mailto:richard@tidelands.dev');
   await expect(page.getByRole('link', { name: 'LinkedIn', exact: true })).toHaveAttribute('href', 'https://www.linkedin.com/in/richardanthonydev/');
-  await expect(page.getByRole('link')).toHaveCount(2);
-  await expect(page.getByRole('heading', { level: 2, name: 'This sentence is false.', exact: true })).toBeVisible();
+  await expect(page.getByRole('link')).toHaveCount(3);
+  await expect(page.getByRole('heading', { level: 2, name: 'Checks', exact: true })).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

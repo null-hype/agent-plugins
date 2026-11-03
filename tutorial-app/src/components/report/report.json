@@ -1,42 +1,18 @@
 {
-  "title": "This sentence is false.",
+  "title": "Checks",
   "tampered": false,
   "paragraphs": [
     {
-      "id": "five-words",
-      "text": "This sentence has five words.",
-      "control": true,
-      "prediction": 0.9,
-      "requires": [],
-      "answers": [],
-      "status": "Not run"
-    },
-    {
-      "id": "three-words",
-      "text": "This sentence has three words.",
-      "control": true,
-      "prediction": 0.05,
-      "requires": [],
-      "answers": [],
-      "status": "Not run"
-    },
-    {
-      "id": "liar",
-      "text": "This sentence is false.",
+      "id": "INF-6",
+      "text": "Preserve preregistered delivery claims across an observed World.",
+      "href": "https://check.tidelands.dev/preserve-preregistered-delivery-claims-across-an-observed-world",
       "control": false,
-      "prediction": 0.5,
-      "requires": [
-        "five-words",
-        "three-words"
-      ],
+      "requires": [],
       "answers": [
-        0.13,
-        0.12,
-        0.12
+        1.0
       ],
-      "mean": 0.12333333333333334,
-      "brier": 0.14187777777777777,
-      "status": "Inconclusive"
+      "mean": 1.0,
+      "status": "Passed"
     }
   ]
 }

@@ -1,6 +1,138 @@
-/// The homepage report: godel-check's liar report, graded. godel/ is vendored
-/// (manual copy) from null-hype/godel-check at fa61aa2, report/Report.pkl and
-/// report/Liar.pkl; it is private, so it can't be imported by URL. Re-copy them
-/// to publish new predictions or results, and bump the commit here.
-/// `pkl eval Report.pkl` renders report.json; report.spec.ts fails if they drift.
-amends "godel/Liar.pkl"
+/// One object, three jobs. Before a run it is a preregistration: each question
+/// carries the prediction, registered in Pass. During a run it is Jev's
+/// payload: `requests` is what systemOne is sent. After a run, with Jev's
+/// answers added, it is the graded report.
+///
+/// Controls are graded against truth, claims against Jev: a control's status
+/// says whether Jev got a known answer right; a claim's says whether Jev
+/// answered as predicted. A claim is only read when every control it requires
+/// has held.
+module Report
+
+import "pkl:json"
+
+/// Jev's model, and the spread of its answers to one question about one fixed
+/// state (measured on worlds' delivery steps, not on these questions).
+model: String = "jev-1.14.0"
+noise: Float = 0.07
+
+/// What Jev is asked about every question's state.
+instructions: String = "How likely is it that the sentence in the state is true?"
+
+class Question {
+  /// The paragraph.
+  text: String(!isEmpty)
+  /// The state Jev is asked about; by default, the paragraph as the sentence.
+  state: Mapping<String, String> = new { ["sentence"] = text }
+  /// Where this question's own report is published.
+  href: String?
+  /// Registered before the run: what Jev is predicted to answer. Without one,
+  /// the question reads Passed or Failed from its result.
+  prediction: Float(isBetween(0, 1))?
+  /// Set on controls only: the known answer.
+  truth: Float(isBetween(0, 1))?
+  /// The questions that have to hold before this one can be read.
+  requires: Listing<String>
+  /// Jev's answers; empty until the run.
+  answers: Listing<Float(isBetween(0, 1))>
+
+  hidden fixed isControl: Boolean = truth != null
+  hidden fixed mean: Float? = if (answers.isEmpty) null else answers.toList().fold(0.0, (a, x) -> a + x) / answers.length
+  /// The prediction against Jev's mean.
+  hidden fixed brier: Float? = if (mean == null || prediction == null) null else (prediction!! - mean!!) ** 2
+  /// Jev's mean against the known answer, for controls.
+  hidden fixed jevError: Float? = if (mean == null || truth == null) null else (truth!! - mean!!).abs
+}
+
+/// Where the predictions are registered and when, as Pass gives it.
+class Registration {
+  item: String(!isEmpty)
+  /// The judge's role on the item: one that cannot change it.
+  role: String
+  /// When Pass last saw the item change, UTC.
+  written: String
+}
+
+/// Null when nothing was registered, as for a check published without a prediction.
+registration: Registration?
+
+/// A run's answers by question id, as JSON: `-p answers='{"liar":[0.13,0.12,0.12]}'`.
+/// They replace a question's own answers. Empty before a run.
+run: Mapping<String, Listing<Number>> =
+  let (s = read?("prop:answers")) if (s == null) new Mapping {} else new json.Parser { useMapping = true }.parse(s) as Mapping<String, Listing<Number>>
+
+/// When the run that produced the answers started, UTC: `-p started=…`; null before a run.
+runStarted: String? = read?("prop:started")
+
+title: String
+questions: Mapping<String, Question>
+
+/// The questions with the run's answers in place.
+hidden fixed answered: Mapping<String, Question> = new {
+  for (id, q in questions) {
+    [id] = if (run.containsKey(id)) (q) { answers = new Listing { for (a in run[id]) { a.toFloat() } } } else q
+  }
+}
+
+/// Written after the run, or by a role that could have changed it.
+hidden fixed tampered: Boolean = registration != null && (registration.role != "Viewer" || (runStarted != null && registration.written > runStarted!!))
+
+hidden fixed statuses: Mapping<String, String> = new {
+  for (id, q in answered) {
+    [id] = status(q)
+  }
+}
+
+local function graded(q: Question): String =
+  if (q.isControl) (if (q.jevError!! < noise) "Held" else "Missed")
+  else if (q.prediction == null) (if (q.mean!! >= 0.5) "Passed" else "Failed")
+  else (if ((q.prediction!! - q.mean!!).abs < noise) "Held" else "Missed")
+
+local function status(q: Question): String =
+  if (tampered) "Tampered"
+  else if (q.answers.isEmpty) "Not run"
+  else if (q.requires.toList().any((r) -> answered[r].answers.isEmpty || graded(answered[r]) != "Held")) "Inconclusive"
+  else graded(q)
+
+/// Mean Brier over the claims that were read: how well the predictions matched Jev.
+hidden fixed brier: Float? =
+  let (scored = answered.toMap().entries
+    .filter((e) -> !e.value.isControl && (statuses[e.key] == "Held" || statuses[e.key] == "Missed"))
+    .map((e) -> e.value.brier!!))
+    if (scored.isEmpty) null else scored.fold(0.0, (a, x) -> a + x) / scored.length
+
+/// What systemOne is sent, one request per question.
+hidden fixed requests: Mapping<String, Dynamic> = new {
+  for (id, q in questions) {
+    [id] {
+      state = q.state
+      model = module.model
+      questions { ["q"] { type = "noul"; instructions = module.instructions } }
+    }
+  }
+}
+
+output {
+  value = new Dynamic {
+    title = module.title
+    tampered = module.tampered
+    brier = module.brier
+    paragraphs = new Listing {
+      for (qid, q in answered) {
+        new Dynamic {
+          id = qid
+          text = q.text
+          href = q.href
+          control = q.isControl
+          prediction = q.prediction
+          requires = q.requires
+          answers = q.answers
+          mean = q.mean
+          brier = q.brier
+          status = statuses[qid]
+        }
+      }
+    }
+  }
+  renderer = new JsonRenderer {}
+}

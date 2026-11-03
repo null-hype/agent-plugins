@@ -1,0 +1,18 @@
+/// The homepage report: one entry per published check, in the order they
+/// should be read. To publish a check, add it here with its result and the
+/// link to its report. `pkl eval Home.pkl` renders report.json.
+amends "Report.pkl"
+
+title = "Checks"
+
+questions {
+  ["INF-6"] {
+    text = "Preserve preregistered delivery claims across an observed World."
+    href = "https://check.tidelands.dev/preserve-preregistered-delivery-claims-across-an-observed-world"
+  }
+}
+
+// Each check's latest completed rerun: 1 green, 0 red.
+run {
+  ["INF-6"] = new Listing { 1 } // 2 Nov 2026, registered-delivery, exit 0
+}
