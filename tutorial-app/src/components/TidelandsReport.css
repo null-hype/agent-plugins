@@ -1,0 +1,8 @@
+.td-report { box-sizing: border-box; width: 100%; padding: 24px 20px; border-top: 2px solid #000; background: #fff; color: #000; font: 1rem/1.5 Arial, Helvetica, sans-serif; }
+.td-report h2 { margin: 0 0 16px; font-size: 1.25rem; line-height: 1.3; }
+.td-report-paragraph { display: grid; grid-template-columns: minmax(0, 34em) auto; gap: 4px 24px; align-items: end; }
+.td-report-paragraph + .td-report-paragraph { margin-top: 16px; }
+.td-report-paragraph p { margin: 0; }
+.td-report-paragraph span { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+@media (max-width: 719px) { .td-report-paragraph { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 720px) { .td-report { padding: 32px; } .td-report h2 { font-size: 1.5rem; } }
