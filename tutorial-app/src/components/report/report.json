@@ -1,20 +1,42 @@
 {
   "title": "This sentence is false.",
+  "tampered": false,
   "paragraphs": [
     {
-      "check": "five-words",
-      "text": "A sentence that says \"this sentence has five words\" is true, so a judge that understands it should say so. I predicted 0.9.",
+      "id": "five-words",
+      "text": "This sentence has five words.",
+      "control": true,
+      "prediction": 0.9,
+      "requires": [],
+      "answers": [],
       "status": "Not run"
     },
     {
-      "check": "three-words",
-      "text": "\"This sentence has three words\" is false. I predicted close to 0.",
+      "id": "three-words",
+      "text": "This sentence has three words.",
+      "control": true,
+      "prediction": 0.05,
+      "requires": [],
+      "answers": [],
       "status": "Not run"
     },
     {
-      "check": "liar",
-      "text": "The liar has no consistent truth value. I predicted the judge would split the difference at 0.5. It answered 0.13, 0.12 and 0.12. This can't be read until both paragraphs above have held.",
-      "status": "Missed"
+      "id": "liar",
+      "text": "This sentence is false.",
+      "control": false,
+      "prediction": 0.5,
+      "requires": [
+        "five-words",
+        "three-words"
+      ],
+      "answers": [
+        0.13,
+        0.12,
+        0.12
+      ],
+      "mean": 0.12333333333333334,
+      "brier": 0.14187777777777777,
+      "status": "Inconclusive"
     }
   ]
 }

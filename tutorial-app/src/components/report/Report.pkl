@@ -1,37 +1,6 @@
-/// The liar report on the homepage: one paragraph per godel-check module, in
-/// the order they have to be trusted. Committed for now; each paragraph's text
-/// and prediction are meant to move to its Pass item's Note, and its status
-/// to the check's run. `pkl eval Report.pkl` renders report.json, which is
-/// what TidelandsReport renders; report.spec.ts fails if the two drift apart.
-module Report
-
-class Paragraph {
-  /// The godel-check module this paragraph reports.
-  check: String(!isEmpty)
-  text: String(!isEmpty)
-  status: "Not run" | "Held" | "Missed" | "Tampered"
-}
-
-title: String = "This sentence is false."
-
-paragraphs: Listing<Paragraph> = new {
-  new {
-    check = "five-words"
-    text = "A sentence that says \"this sentence has five words\" is true, so a judge that understands it should say so. I predicted 0.9."
-    status = "Not run"
-  }
-  new {
-    check = "three-words"
-    text = "\"This sentence has three words\" is false. I predicted close to 0."
-    status = "Not run"
-  }
-  new {
-    check = "liar"
-    text = "The liar has no consistent truth value. I predicted the judge would split the difference at 0.5. It answered 0.13, 0.12 and 0.12. This can't be read until both paragraphs above have held."
-    status = "Missed"
-  }
-}
-
-output {
-  renderer = new JsonRenderer {}
-}
+/// The homepage report: godel-check's liar report, graded. godel/ is vendored
+/// (manual copy) from null-hype/godel-check at fa61aa2, report/Report.pkl and
+/// report/Liar.pkl; it is private, so it can't be imported by URL. Re-copy them
+/// to publish new predictions or results, and bump the commit here.
+/// `pkl eval Report.pkl` renders report.json; report.spec.ts fails if they drift.
+amends "godel/Liar.pkl"
