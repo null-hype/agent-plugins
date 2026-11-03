@@ -10,7 +10,7 @@
     {
       "id": "INF-6",
       "text": "Preserve preregistered delivery claims across an observed World.",
-      "href": "https://check.tidelands.dev/preserve-preregistered-delivery-claims-across-an-observed-world",
+      "href": "/checks/INF-6/",
       "why": "An agent's work is judged against the predictions registered before its plan was approved, using a frozen snapshot of what happened rather than the repo as it is now. It fails if the judgement reads live state an agent could still change.",
       "control": false,
       "requires": [],

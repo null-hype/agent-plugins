@@ -1,0 +1,20 @@
+{
+  "issue": {
+    "id": "57805248-b4bd-4415-8cf8-62981c01dae2",
+    "identifier": "INF-6",
+    "title": "Preserve preregistered delivery claims across an observed World",
+    "description": "Verify that a delivery run is judged against predictions registered after the agent presents its plan and before that plan is approved, with the resulting evidence frozen as a World and judged from the restored snapshot rather than from live mutable state.",
+    "state": { "id": "done", "name": "Done", "type": "completed" },
+    "labels": { "nodes": [{ "name": "public" }, { "name": "engineer" }] }
+  },
+  "delivery": "ffc17872-d317-461c-8a99-2009df6032d1",
+  "check": "registered-delivery",
+  "exit": 0,
+  "trace": "https://dagger.cloud/salute-stopping/traces/62febd7321f4f8c84c7e3f4a8eb3abd7",
+  "snapshot": {
+    "id": "da7c8fd4fe318ef76ad372604a2ea68a70e92caef4f4e93291011d543e52987c",
+    "url": "https://dagger.cloud/salute-stopping/traces/62febd7321f4f8c84c7e3f4a8eb3abd7",
+    "run_key": "linear-inf-6"
+  },
+  "xeno": null
+}

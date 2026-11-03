@@ -37,6 +37,22 @@ test('homepage is the name hero, the intro and checks from Home.pkl, and contact
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('each check on the homepage opens its claim page on the same deploy, and comes back', async ({ page, baseURL }) => {
+  const report = JSON.parse(await readFile(fileURLToPath(new URL('../src/components/report/report.json', import.meta.url)), 'utf8'));
+  for (const p of report.paragraphs) {
+    const claim = JSON.parse(await readFile(fileURLToPath(new URL(`../src/components/report/checks/${p.id}.json`, import.meta.url)), 'utf8'));
+    await page.goto('/');
+    await page.getByRole('link', { name: p.text, exact: true }).click();
+    expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
+    await expect(page.getByRole('heading', { level: 1, name: claim.issue.title, exact: true })).toBeVisible();
+    await expect(page.getByText(claim.exit === 0 ? 'Passed' : 'Failed', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Trace ↗' })).toHaveAttribute('href', claim.trace);
+    await page.getByRole('link', { name: 'Richard Anthony', exact: true }).click();
+    expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+});
+
 test('rendered metadata points to a canonical page and loadable preview assets', async ({ page }) => {
   await page.goto(LANDING);
   const pathname = new URL(page.url()).pathname;

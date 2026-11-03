@@ -1,0 +1,28 @@
+---
+// One page per completed claim in report/checks/, so every deploy, previews
+// included, carries the claim pages its homepage links to.
+import ClaimReport, { type CompletedClaim } from '../../components/ClaimReport';
+
+export function getStaticPaths() {
+  const claims = import.meta.glob<CompletedClaim>('../../components/report/checks/*.json', { eager: true, import: 'default' });
+  return Object.values(claims).map(claim => ({ params: { id: claim.issue.identifier }, props: { claim } }));
+}
+
+const { claim } = Astro.props as { claim: CompletedClaim };
+const isPublic = claim.issue.labels?.nodes.some(label => label.name === 'public') ?? false;
+const canonical = new URL(`/checks/${claim.issue.identifier}/`, Astro.site ?? 'https://www.tidelands.dev');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{claim.issue.title}</title>
+    {!isPublic && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical.href} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="referrer" content="no-referrer" />
+  </head>
+  <body style="margin: 0; background: #fff"><ClaimReport claim={claim} home="/" /></body>
+</html>
