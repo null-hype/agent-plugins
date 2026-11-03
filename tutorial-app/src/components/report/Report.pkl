@@ -26,6 +26,8 @@ class Question {
   state: Mapping<String, String> = new { ["sentence"] = text }
   /// Where this question's own report is published.
   href: String?
+  /// For a reader: what is predicted, and how it could have failed.
+  why: String?
   /// Registered before the run: what Jev is predicted to answer. Without one,
   /// the question reads Passed or Failed from its result.
   prediction: Float(isBetween(0, 1))?
@@ -65,6 +67,8 @@ run: Mapping<String, Listing<Number>> =
 runStarted: String? = read?("prop:started")
 
 title: String
+/// The words around the checks, one paragraph per entry.
+intro: Listing<String(!isEmpty)>
 questions: Mapping<String, Question>
 
 /// The questions with the run's answers in place.
@@ -115,6 +119,7 @@ hidden fixed requests: Mapping<String, Dynamic> = new {
 output {
   value = new Dynamic {
     title = module.title
+    intro = module.intro
     tampered = module.tampered
     brier = module.brier
     paragraphs = new Listing {
@@ -123,6 +128,7 @@ output {
           id = qid
           text = q.text
           href = q.href
+          why = q.why
           control = q.isControl
           prediction = q.prediction
           requires = q.requires

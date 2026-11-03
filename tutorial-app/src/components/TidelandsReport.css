@@ -10,3 +10,4 @@
 .td-report-numbers { margin: 2px 0 0 !important; font-size: 0.85rem; color: #444; }
 .td-report-id { font-size: 0.75rem; letter-spacing: 0.08em; color: #444; }
 .td-report-paragraph a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
+.td-report-why { margin: 6px 0 0 !important; font-size: 0.9rem; color: #333; max-width: 34em; }
