@@ -31,6 +31,11 @@ class Question {
   /// Registered before the run: what Jev is predicted to answer. Without one,
   /// the question reads Passed or Failed from its result.
   prediction: Float(isBetween(0, 1))?
+  /// When the prediction was written, UTC. A result from before then is not a
+  /// test of it, and is shown only as what happened previously.
+  registered: String?
+  /// What happened before the prediction was registered, for a reader.
+  previously: String?
   /// Set on controls only: the known answer.
   truth: Float(isBetween(0, 1))?
   /// The questions that have to hold before this one can be read.
@@ -129,6 +134,8 @@ output {
           text = q.text
           href = q.href
           why = q.why
+          registered = q.registered
+          previously = q.previously
           control = q.isControl
           prediction = q.prediction
           requires = q.requires

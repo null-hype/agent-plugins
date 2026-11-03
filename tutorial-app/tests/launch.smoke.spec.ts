@@ -46,6 +46,7 @@ test('each check on the homepage opens its claim page on the same deploy, and co
     expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
     await expect(page.getByRole('heading', { level: 1, name: claim.issue.title, exact: true })).toBeVisible();
     if (p.why) await expect(page.getByText(p.why, { exact: true })).toBeVisible();
+    if (p.prediction !== undefined) await expect(page.locator('.td-claim-prediction')).toContainText('Predicted');
     await expect(page.getByText(claim.exit === 0 ? 'Passed' : 'Failed', { exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Trace ↗' })).toHaveAttribute('href', claim.trace);
     await page.getByRole('link', { name: 'Richard Anthony', exact: true }).click();

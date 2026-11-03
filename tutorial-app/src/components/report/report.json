@@ -12,13 +12,13 @@
       "text": "Preserve preregistered delivery claims across an observed World.",
       "href": "/checks/INF-6/",
       "why": "An agent's work is judged against the predictions registered before its plan was approved, using a frozen snapshot of what happened rather than the repo as it is now. It fails if the judgement reads live state an agent could still change.",
+      "registered": "2026-11-03T05:45:00Z",
+      "previously": "Passed on 2026-11-02, before this prediction was written.",
       "control": false,
+      "prediction": 1.0,
       "requires": [],
-      "answers": [
-        1.0
-      ],
-      "mean": 1.0,
-      "status": "Passed"
+      "answers": [],
+      "status": "Not run"
     }
   ]
 }

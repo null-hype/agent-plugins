@@ -3,7 +3,8 @@ import './TidelandsReport.css';
 
 // The homepage report: one entry per published check, from report/Home.pkl as
 // rendered to report/report.json. Statuses are computed by report/Report.pkl.
-type Paragraph = { id: string; text: string; href?: string; why?: string; control: boolean; prediction?: number; requires: string[]; answers: number[]; mean?: number; status: string };
+type Paragraph = { id: string; text: string; href?: string; why?: string; registered?: string; previously?: string; control: boolean; prediction?: number; requires: string[]; answers: number[]; mean?: number; status: string };
+export type { Paragraph };
 type Report = { title: string; brier?: number; paragraphs: Paragraph[] };
 const report = reportJson as Report;
 
@@ -11,11 +12,27 @@ const round = (x: number) => x.toFixed(2).replace(/\.?0+$/, '') || '0';
 
 function numbers(p: Paragraph) {
   if (p.prediction === undefined) return undefined;
+  // A check graded by its exit code predicts a pass or a fail, so say it.
+  if (p.prediction === 1 || p.prediction === 0) return `Predicted to ${p.prediction ? 'pass' : 'fail'}${p.registered ? `, registered ${p.registered.slice(0, 10)}` : ''}.`;
   return `Predicted ${round(p.prediction)} · ${p.mean === undefined ? 'not run' : `Jev ${round(p.mean)}`}`;
 }
 
-function note(p: Paragraph) {
-  return p.status === 'Inconclusive' ? `Can't be read until ${p.requires.join(' and ')} hold.` : undefined;
+function notes(p: Paragraph) {
+  return [
+    p.status === 'Inconclusive' ? `Can't be read until ${p.requires.join(' and ')} hold.` : undefined,
+    p.status === 'Not run' && p.registered ? `The next rerun is the first one this prediction grades.${p.previously ? ` ${p.previously}` : ''}` : undefined,
+    p.prediction !== undefined && !p.control && p.requires.length === 0 ? 'No negative control yet.' : undefined,
+  ].filter((n): n is string => n !== undefined);
+}
+
+const shown = (p: Paragraph) => p.status === 'Not run' && p.registered ? 'Awaiting rerun' : p.status;
+
+/** What a check predicts and where that stands, in words; on the homepage and its claim page. */
+export function PredictionNotes({ p }: { p: Paragraph }) {
+  return <>
+    {numbers(p) && <p className="td-report-numbers">{numbers(p)}</p>}
+    {notes(p).map(n => <p key={n} className="td-report-numbers">{n}</p>)}
+  </>;
 }
 
 export function ReportView({ report }: { report: Report }) {
@@ -26,10 +43,9 @@ export function ReportView({ report }: { report: Report }) {
         <p className="td-report-id">{p.id}</p>
         <p>{p.href ? <a href={p.href}>{p.text}</a> : p.text}{p.control && <em> Control.</em>}</p>
         {p.why && <p className="td-report-why">{p.why}</p>}
-        {numbers(p) && <p className="td-report-numbers">{numbers(p)}</p>}
-        {note(p) && <p className="td-report-numbers">{note(p)}</p>}
+        <PredictionNotes p={p} />
       </div>
-      <span>{p.status}</span>
+      <span>{shown(p)}</span>
     </div>)}
     {report.brier !== undefined && <p className="td-report-numbers">Brier {round(report.brier)}</p>}
   </section>;
