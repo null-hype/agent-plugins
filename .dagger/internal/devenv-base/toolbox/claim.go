@@ -195,45 +195,22 @@ func (p *claimPublisher) publish(ctx context.Context, claim completedClaim) (str
 func renderClaim(claim completedClaim) ([]byte, error) {
 	// The issue snapshot is authoritative, even if a fixture supplies stale xeno data.
 	claim.Xeno = claim.Issue.State
-	xenoName, xenoType := "Unavailable", "unknown"
-	if claim.Issue.State != nil && claim.Issue.State.Name != "" {
-		xenoName = claim.Issue.State.Name
-		if claim.Issue.State.Type != "" {
-			xenoType = claim.Issue.State.Type
-		}
-	}
 	data, err := json.Marshal(claim) // encoding/json escapes HTML, including </script>.
 	if err != nil {
 		return nil, err
 	}
-	type descriptionLine struct {
-		Number int
-		Text   string
-	}
-	description := claim.Issue.Description
-	if description == "" {
-		description = "No description supplied."
-	}
-	var lines []descriptionLine
-	for index, text := range strings.Split(description, "\n") {
-		lines = append(lines, descriptionLine{index + 1, text})
-	}
-	verdict, outcome := "Red · Failed", "failed"
+	verdict := "Failed"
 	if claim.Exit == 0 {
-		verdict, outcome = "Green · Passed", "passed"
+		verdict = "Passed"
 	}
 	var out bytes.Buffer
 	err = claimTemplate.Execute(&out, struct {
 		completedClaim
 		Data                template.JS
 		Public              bool
-		DescriptionLines    []descriptionLine
 		Verdict             string
-		Outcome             string
-		XenoName            string
-		XenoType            string
 		PreregistrationView *preregistrationView
-	}{claim, template.JS(data), claim.Issue.public(), lines, verdict, outcome, xenoName, xenoType, projectPreregistration(claim.Preregistration)})
+	}{claim, template.JS(data), claim.Issue.public(), verdict, projectPreregistration(claim.Preregistration)})
 	return out.Bytes(), err
 }
 
