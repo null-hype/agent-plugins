@@ -6,3 +6,5 @@
 .td-report-paragraph span { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
 @media (max-width: 719px) { .td-report-paragraph { grid-template-columns: minmax(0, 1fr); } }
 @media (min-width: 720px) { .td-report { padding: 32px; } .td-report h2 { font-size: 1.5rem; } }
+.td-report-paragraph em { font-style: normal; font-size: 0.85em; color: #444; }
+.td-report-numbers { margin: 2px 0 0 !important; font-size: 0.85rem; color: #444; }

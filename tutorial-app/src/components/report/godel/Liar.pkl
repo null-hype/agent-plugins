@@ -1,0 +1,32 @@
+/// The liar and its two controls. Predictions are the ones registered for
+/// godel-check; the liar's answers are its one recorded run (worlds, with the
+/// expectation as a .env literal). The controls have not run.
+amends "Report.pkl"
+
+registration {
+  item = "checks/godel-this-sentence-is-false"
+  role = "Viewer"
+  written = "2026-11-03T00:00:00.000Z"
+}
+runStarted = null
+
+title = "This sentence is false."
+
+questions {
+  ["five-words"] {
+    text = "This sentence has five words."
+    prediction = 0.9
+    truth = 1.0
+  }
+  ["three-words"] {
+    text = "This sentence has three words."
+    prediction = 0.05
+    truth = 0.0
+  }
+  ["liar"] {
+    text = "This sentence is false."
+    prediction = 0.5
+    requires { "five-words"; "three-words" }
+    answers { 0.13; 0.12; 0.12 }
+  }
+}
