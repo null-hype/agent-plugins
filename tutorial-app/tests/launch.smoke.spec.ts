@@ -13,20 +13,10 @@ test.describe('Static claim reports', () => {
       test.skip(!baseURL || !['127.0.0.1', 'localhost'].includes(new URL(baseURL).hostname), 'Local rendered fixture only');
       await page.goto(red ? '/red-claim-fixture.html' : '/claim-fixture.html');
       await expect(page.getByRole('heading', { level: 1, name: 'A completed claim fixture' })).toBeVisible();
-      await expect(page.getByText(red ? 'Red · Failed' : 'Green · Passed', { exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Open trace ↗' })).toHaveAttribute('href', 'https://dagger.cloud/example/traces/fixture');
-      await expect(page.getByText(/Anyone with this link can view it/)).toBeVisible();
+      await expect(page.getByText(red ? 'Failed' : 'Passed', { exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Trace ↗' })).toHaveAttribute('href', 'https://dagger.cloud/example/traces/fixture');
+      await expect(page.getByRole('link', { name: 'Richard Anthony' })).toHaveAttribute('href', 'https://www.tidelands.dev/');
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
-      if (red) {
-        await expect(page.getByText('Unavailable for this rerun', { exact: true })).toBeVisible();
-        await expect(page.getByRole('link', { name: 'Snapshot evidence ↗' })).toHaveCount(0);
-      } else {
-        await expect(page.getByRole('link', { name: 'Snapshot evidence ↗' })).toBeVisible();
-      }
-      await page.getByText('Run details', { exact: true }).click();
-      await expect(page.getByText('fixture-delivery-1', { exact: true })).toBeVisible();
-      await expect(page.locator('#xeno-status')).toHaveAttribute('data-status', red ? 'started' : 'completed');
-      await expect(page.locator('#xeno-status').getByText(red ? 'In Review' : 'Done', { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
   }

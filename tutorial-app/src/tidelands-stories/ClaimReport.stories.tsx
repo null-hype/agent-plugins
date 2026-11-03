@@ -17,46 +17,24 @@ const meta = { title: 'Tidelands/Claim report', component: ClaimReport, paramete
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const PublicPassing: Story = {
+export const Passing: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('Green · Passed')).toBeVisible();
-    await expect(canvas.getByText('Done', { exact: true })).toBeVisible();
-    await expect(canvas.getByRole('link', { name: 'Snapshot evidence ↗' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Preserve a claim across an observed world' })).toBeVisible();
+    await expect(canvas.getByText('Passed')).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Trace ↗' })).toHaveAttribute('href', 'https://dagger.cloud/');
   },
 };
 
-export const UnlistedFailingWithoutSnapshot: Story = {
-  args: { claim: { ...claim, exit: 1, issue: { ...claim.issue, labels: { nodes: [] }, state: { id: 'state-review', name: 'In Review', type: 'started' } }, snapshot: { id: '', run_key: 'linear-demo-1' } } },
-  play: async ({ canvas, userEvent }) => {
-    await expect(canvas.getByText('Red · Failed')).toBeVisible();
-    await expect(canvas.getByText('In Review', { exact: true })).toBeVisible();
-    await expect(canvas.getByText('Unavailable for this rerun')).toBeVisible();
-    await expect(canvas.getByText(/Anyone with this link can view it/)).toBeVisible();
-    await userEvent.click(canvas.getByText('Run details'));
-    await expect(canvas.getByText('fixture-delivery-2')).toBeVisible();
-  },
-};
-
-export const MissingEvidenceAndLongClaim: Story = {
-  args: { claim: { ...claim, exit: 2, trace: '', issue: { ...claim.issue, title: 'A long claim title that must remain readable on a narrow screen without hiding the verdict or its evidence', description: '<script>This text is issue metadata, not executable HTML.</script>\n' + 'A-very-long-unbroken-issue-token-'.repeat(12) }, snapshot: { id: '', run_key: 'linear-demo-1' } } },
-};
-
-export const EmptyDescription: Story = { args: { claim: { ...claim, issue: { ...claim.issue, description: '' } } } };
-
-export const MissingIssueStatus: Story = {
-  args: { claim: { ...claim, issue: { ...claim.issue, state: null } } },
+export const FailingWithoutTrace: Story = {
+  args: { claim: { ...claim, exit: 1, trace: '' } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('Unavailable', { exact: true })).toBeVisible();
-    await expect(canvas.getByText('Green · Passed')).toBeVisible();
+    await expect(canvas.getByText('Failed')).toBeVisible();
+    await expect(canvas.getByText('No trace')).toBeVisible();
   },
 };
 
-export const WorkflowStatusDoesNotSetVerdict: Story = {
-  args: { claim: { ...claim, exit: 1 } },
-  play: async ({ canvas }) => {
-    await expect(canvas.getByText('Done', { exact: true })).toBeVisible();
-    await expect(canvas.getByText('Red · Failed')).toBeVisible();
-  },
+export const LongClaim: Story = {
+  args: { claim: { ...claim, issue: { ...claim.issue, title: 'A long claim title that must remain readable on a narrow screen without hiding the verdict or its evidence' } } },
 };
 
 export const PreregistrationWithFindings: Story = { args: { claim: { ...claim, exit: 1, preregistration: preregistration as ClaimPreregistration } } };
