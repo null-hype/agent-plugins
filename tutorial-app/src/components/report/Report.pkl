@@ -10,6 +10,7 @@
 module Report
 
 import "pkl:json"
+import "pkl:reflect"
 
 /// Jev's model, and the spread of its answers to one question about one fixed
 /// state (measured on worlds' delivery steps, not on these questions).
@@ -120,6 +121,53 @@ hidden fixed requests: Mapping<String, Dynamic> = new {
     }
   }
 }
+
+/// What a reader should be warned about before trusting a question, as
+/// witness findings on the line of the report that holds it:
+/// `pkl eval Home.pkl -x findings > .witness/run/findings.json`. A release
+/// goes out when none is an error.
+hidden fixed findings: String = new JsonRenderer {}.renderValue(new Dynamic {
+  version = 1
+  findings = new Listing {
+    for (qid, fs in warnings) {
+      for (f in fs) {
+        (f) { location = at(qid) }
+      }
+    }
+  }
+})
+
+/// The findings by question, before they are placed on a line.
+hidden fixed warnings: Mapping<String, Listing<Dynamic>> = new {
+  for (qid, q in answered) {
+    [qid] = rules(qid, q)
+  }
+}
+
+local function rules(qid: String, q: Question): Listing<Dynamic> = new {
+  when (statuses[qid] == "Tampered") {
+    new { id = "\(qid)/tampered"; severity = "error"; message = "The predictions were written after this run started, or by a judge who could change them." }
+  }
+  when (q.prediction != null && q.registered == null && registration == null) {
+    new { id = "\(qid)/unregistered"; severity = "error"; message = "Predicted, but nothing says when: this can't be told apart from hindsight." }
+  }
+  when (!q.isControl && q.requires.isEmpty) {
+    new { id = "\(qid)/unfalsified"; severity = "warning"; message = "No control has shown this check can fail, so a pass says little." }
+  }
+  when (q.previously != null) {
+    new { id = "\(qid)/not-a-test"; severity = "info"; message = q.previously!! }
+  }
+}
+
+local source: List<String> = read(reflect.Module(module).uri).text.split("\n")
+
+local function at(qid: String): Dynamic =
+  let (i = source.findIndexOrNull((l) -> l.contains("[\"\(qid)\"]")))
+    new {
+      file = reflect.Module(module).uri.split("/").last
+      line = if (i == null) 1 else i + 1
+      column = if (i == null) 1 else source[i].indexOf("[") + 1
+    }
 
 output {
   value = new Dynamic {

@@ -12,6 +12,8 @@ local function run(answers: String) = (Liar) {
 }
 
 local recorded = run(read("runs/worlds.json").text)
+local function ids(r): List<String> = r.warnings.toMap().values.flatMap((fs) -> fs.toList().map((f) -> f.id))
+
 local controlsHeld = #"{"five-words":[0.95,0.93,0.97],"three-words":[0.02,0.03,0.01]"#
 
 facts {
@@ -43,5 +45,18 @@ facts {
   ["the judge could change the registration: tampered"] {
     let (r = (recorded) { registration { role = "Owner" } })
       r.statuses["liar"] == "Tampered"
+  }
+
+  ["findings: a claim with controls and a registration has none"] {
+    ids(Liar).isEmpty
+  }
+  ["findings: a claim with no controls is unfalsified"] {
+    ids((Liar) { questions { ["liar"] { requires = new Listing {} } } }).contains("liar/unfalsified")
+  }
+  ["findings: a prediction with no registration is an error"] {
+    ids((Liar) { registration = null }).contains("liar/unregistered")
+  }
+  ["findings: tampering is an error on every question"] {
+    ids((recorded) { registration { role = "Owner" } }).filter((i) -> i.endsWith("/tampered")).length == 3
   }
 }
