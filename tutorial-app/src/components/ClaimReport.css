@@ -7,3 +7,4 @@
 @media (min-width: 720px) { .td-hero-bar a { font-size: 2rem; } .td-report h1 { font-size: 2rem; } }
 .td-claim .td-report { border-top: 0; }
 .td-claim-summary { max-width: 34em; font-size: 1.05rem; line-height: 1.5; margin: 0 0 16px !important; }
+.td-claim-prediction { margin: 0 0 16px; }

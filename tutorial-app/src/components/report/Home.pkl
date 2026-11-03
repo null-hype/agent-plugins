@@ -18,15 +18,28 @@ questions {
   ["INF-6"] {
     text = "Preserve preregistered delivery claims across an observed World."
     href = "/checks/INF-6/"
+    prediction = 1.0
+    registered = "2026-11-03T05:45:00Z"
+    previously = earlier("INF-6", registered!!)
     why = "An agent's work is judged against the predictions registered before its plan was approved, using a frozen snapshot of what happened rather than the repo as it is now. It fails if the judgement reads live state an agent could still change."
   }
 }
 
 // Each check's result is its completed claim's exit code: 1 green, 0 red.
+// A claim that ran before its question's prediction was registered is not a
+// test of that prediction, so it is left out.
 run {
-  for (id, _ in questions) {
-    [id] = new Listing { if (claim(id).exit == 0) 1 else 0 }
+  for (id, q in questions) {
+    when (q.registered == null || claim(id).ran > q.registered!!) {
+      [id] = new Listing { if (claim(id).exit == 0) 1 else 0 }
+    }
   }
 }
 
 local function claim(id: String): Dynamic = new json.Parser {}.parse(read("checks/\(id).json")) as Dynamic
+
+/// A claim that ran before the prediction was registered, as a reader sees it.
+local function earlier(id: String, registered: String): String? =
+  let (c = claim(id))
+    if (c.ran > registered) null
+    else "\(if (c.exit == 0) "Passed" else "Failed") on \(c.ran), before this prediction was written."
