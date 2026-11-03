@@ -9,12 +9,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Liar: Story = {
+export const Home: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('heading', { level: 2, name: 'This sentence is false.' })).toBeVisible();
-    await expect(canvas.getAllByText('Not run')).toHaveLength(2);
-    await expect(canvas.getByText('Inconclusive')).toBeVisible();
-    await expect(canvas.getByText("Can't be read until five-words and three-words hold.")).toBeVisible();
-    await expect(canvas.getByText('Predicted 0.5 · Jev 0.12')).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 2, name: 'Checks' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Preserve preregistered delivery claims across an observed World.' }))
+      .toHaveAttribute('href', 'https://check.tidelands.dev/preserve-preregistered-delivery-claims-across-an-observed-world');
+    await expect(canvas.getByText('Passed')).toBeVisible();
   },
 };
