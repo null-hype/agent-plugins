@@ -1,0 +1,39 @@
+/// An article on tidelands.dev. Its words live here, not in Markdown, so the
+/// page and what the article says about its own evidence come from one place.
+/// `pkl eval <Article>.pkl` renders the JSON its page is built from.
+module Article
+
+/// Where it is published: /articles/<slug>/.
+slug: String(matches(Regex("[a-z0-9-]+")))
+title: String(!isEmpty)
+/// The line under the title.
+dek: String(!isEmpty)
+/// UTC date, YYYY-MM-DD.
+published: String(matches(Regex(#"\d{4}-\d{2}-\d{2}"#)))
+
+/// What the article rests on and how far each part has been checked, for a
+/// reader, before they read it.
+class Evidence {
+  what: String(!isEmpty)
+  /// Tested, Recorded, or Not yet.
+  state: "Tested" | "Recorded" | "Not yet"
+  note: String(!isEmpty)
+}
+evidence: Listing<Evidence>(!isEmpty)
+
+class Code {
+  text: String(!isEmpty)
+}
+
+/// A paragraph, or a block of code.
+typealias Block = String | Code
+
+class Section {
+  heading: String?
+  blocks: Listing<Block>(!isEmpty)
+}
+sections: Listing<Section>(!isEmpty)
+
+output {
+  renderer = new JsonRenderer {}
+}

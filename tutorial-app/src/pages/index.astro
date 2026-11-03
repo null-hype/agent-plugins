@@ -3,6 +3,7 @@ import TidelandsHero from '../components/TidelandsHero';
 import TidelandsIntro from '../components/TidelandsIntro';
 import TidelandsContact from '../components/TidelandsContact';
 import TidelandsReport from '../components/TidelandsReport';
+import TidelandsArticles from '../components/TidelandsArticle';
 const title = 'Richard Anthony';
 const description = 'Richard Anthony, software engineer in Sydney.';
 const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
@@ -23,5 +24,5 @@ const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
     <meta property="og:url" content={canonical.href} />
     <meta name="twitter:card" content="summary" />
   </head>
-  <body style="margin: 0; background: #fff"><TidelandsHero /><main><TidelandsIntro /><TidelandsContact /><TidelandsReport /></main></body>
+  <body style="margin: 0; background: #fff"><TidelandsHero /><main><TidelandsIntro /><TidelandsContact /><TidelandsArticles /><TidelandsReport /></main></body>
 </html>
