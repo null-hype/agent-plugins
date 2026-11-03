@@ -3,7 +3,7 @@ import './TidelandsReport.css';
 
 // The homepage report: one entry per published check, from report/Home.pkl as
 // rendered to report/report.json. Statuses are computed by report/Report.pkl.
-type Paragraph = { id: string; text: string; href?: string; control: boolean; prediction?: number; requires: string[]; answers: number[]; mean?: number; status: string };
+type Paragraph = { id: string; text: string; href?: string; why?: string; control: boolean; prediction?: number; requires: string[]; answers: number[]; mean?: number; status: string };
 type Report = { title: string; brier?: number; paragraphs: Paragraph[] };
 const report = reportJson as Report;
 
@@ -25,6 +25,7 @@ export function ReportView({ report }: { report: Report }) {
       <div>
         <p className="td-report-id">{p.id}</p>
         <p>{p.href ? <a href={p.href}>{p.text}</a> : p.text}{p.control && <em> Control.</em>}</p>
+        {p.why && <p className="td-report-why">{p.why}</p>}
         {numbers(p) && <p className="td-report-numbers">{numbers(p)}</p>}
         {note(p) && <p className="td-report-numbers">{note(p)}</p>}
       </div>

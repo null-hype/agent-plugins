@@ -1,8 +1,13 @@
+import reportJson from './report/report.json';
 import './TidelandsIntro.css';
 
-export default function TidelandsIntro() {
+// The intro's words come from report/Home.pkl, with the checks they introduce.
+export function IntroView({ paragraphs }: { paragraphs: string[] }) {
   return <section className="td-intro" aria-label="Introduction">
-    <p className="td-intro-lead">Verification infrastructure for agent-produced software.</p>
-    <p>Sydney. Available for senior engineering roles and selected consulting.</p>
+    {paragraphs.map((text, i) => <p key={i} className={i === 0 ? 'td-intro-lead' : undefined}>{text}</p>)}
   </section>;
+}
+
+export default function TidelandsIntro() {
+  return <IntroView paragraphs={reportJson.intro} />;
 }

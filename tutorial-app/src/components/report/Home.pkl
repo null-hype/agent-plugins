@@ -3,12 +3,19 @@
 /// link to its report. `pkl eval Home.pkl` renders report.json.
 amends "Report.pkl"
 
+intro {
+  "I break software for a living. Lately what I break most is an AI agent's claim that the job is done."
+  "So I write down what should happen before an agent runs, then check what actually happened. This page is built from that written record, so every check is on it, including the ones that fail."
+  "Sydney. Available for senior engineering roles and selected consulting."
+}
+
 title = "Checks"
 
 questions {
   ["INF-6"] {
     text = "Preserve preregistered delivery claims across an observed World."
     href = "https://check.tidelands.dev/preserve-preregistered-delivery-claims-across-an-observed-world"
+    why = "An agent's work is judged against the predictions registered before its plan was approved, using a frozen snapshot of what happened rather than the repo as it is now. It fails if the judgement reads live state an agent could still change."
   }
 }
 

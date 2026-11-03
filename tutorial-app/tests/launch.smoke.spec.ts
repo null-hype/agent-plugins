@@ -22,11 +22,13 @@ test.describe('Static claim reports', () => {
   }
 });
 
-test('homepage is the name hero, a one-sentence intro, contact and the checks', async ({ page }) => {
+test('homepage is the name hero, the intro and checks from Home.pkl, and contact', async ({ page }) => {
+  const report = JSON.parse(await readFile(fileURLToPath(new URL('../src/components/report/report.json', import.meta.url)), 'utf8'));
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Richard Anthony', exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByText('Verification infrastructure for agent-produced software.', { exact: true })).toBeVisible();
+  for (const text of report.intro) await expect(page.getByRole('main').getByText(text, { exact: true })).toBeVisible();
+  for (const p of report.paragraphs) if (p.why) await expect(page.getByRole('main').getByText(p.why, { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'richard@tidelands.dev', exact: true })).toHaveAttribute('href', 'mailto:richard@tidelands.dev');
   await expect(page.getByRole('link', { name: 'LinkedIn', exact: true })).toHaveAttribute('href', 'https://www.linkedin.com/in/richardanthonydev/');
   await expect(page.getByRole('link')).toHaveCount(3);
