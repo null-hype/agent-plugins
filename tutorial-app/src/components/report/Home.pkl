@@ -1,7 +1,10 @@
 /// The homepage report: one entry per published check, in the order they
-/// should be read. To publish a check, add it here with its result and the
-/// link to its report. `pkl eval Home.pkl` renders report.json.
+/// should be read. To publish a check, add its completed claim to checks/ and
+/// an entry here; its page is /checks/<id>/. `pkl eval Home.pkl` renders
+/// report.json.
 amends "Report.pkl"
+
+import "pkl:json"
 
 intro {
   "I break software for a living. Lately what I break most is an AI agent's claim that the job is done."
@@ -14,12 +17,16 @@ title = "Checks"
 questions {
   ["INF-6"] {
     text = "Preserve preregistered delivery claims across an observed World."
-    href = "https://check.tidelands.dev/preserve-preregistered-delivery-claims-across-an-observed-world"
+    href = "/checks/INF-6/"
     why = "An agent's work is judged against the predictions registered before its plan was approved, using a frozen snapshot of what happened rather than the repo as it is now. It fails if the judgement reads live state an agent could still change."
   }
 }
 
-// Each check's latest completed rerun: 1 green, 0 red.
+// Each check's result is its completed claim's exit code: 1 green, 0 red.
 run {
-  ["INF-6"] = new Listing { 1 } // 2 Nov 2026, registered-delivery, exit 0
+  for (id, _ in questions) {
+    [id] = new Listing { if (claim(id).exit == 0) 1 else 0 }
+  }
 }
+
+local function claim(id: String): Dynamic = new json.Parser {}.parse(read("checks/\(id).json")) as Dynamic
