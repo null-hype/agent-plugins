@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import ClaimCard from '../components/ClaimCard';
+import { godelClaims } from '../lib/godelClaims';
 
 // Display fixtures, not published claims.
 const meta = {
@@ -25,6 +26,22 @@ export const Failing: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByText('Red · Failed')).toBeVisible();
     await expect(canvas.getByText(/Dagger exit 1/)).toBeVisible();
+  },
+};
+
+export const NotRun: Story = {
+  args: { exit: undefined, preregistered: false },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText('Not run')).toBeVisible();
+    await expect(canvas.queryByText(/Dagger exit/)).toBeNull();
+  },
+};
+
+export const MissedWithControlsNotRun: Story = {
+  args: godelClaims[0],
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText('Missed · controls not passed')).toBeVisible();
+    await expect(canvas.getByText(/GODEL-2 · This sentence has five words\. · not run/)).toBeVisible();
   },
 };
 

@@ -1,4 +1,6 @@
+import ClaimCard from './ClaimCard';
 import IntegrationCheck from './IntegrationCheck';
+import { godelClaims } from '../lib/godelClaims';
 import { TidelandsFooter, TidelandsHeader } from './TidelandsChrome';
 import './Tidelands.css';
 
@@ -22,6 +24,10 @@ export default function TidelandsHome() {
         <div className="td-section-intro"><p className="td-eyebrow">From the Storybook / Integration check</p><h2 id="try-title">Two passing changes. One failing combination.</h2><p className="td-muted">Evaluate the integration, inspect the disagreement, then repair and check it again. This is an interactive synthetic example; it does not run or approve a real delivery.</p></div>
         <div className="td-panel td-demo"><IntegrationCheck /></div>
         <noscript><p>The interactive example needs JavaScript. <a href="https://github.com/null-hype/worlds#start-here-one-exact-world-proof">Read the runnable Worlds proof and its evidence instead.</a></p></noscript>
+      </section>
+      <section className="td-section" id="claims" aria-labelledby="claims-title">
+        <div className="td-section-intro"><p className="td-eyebrow">Claims / godel-check</p><h2 id="claims-title">One claim, two controls.</h2><p className="td-muted">Each card is a Dagger check with a prediction made before the model is asked. The claim's own result can't be read until both controls have passed.</p></div>
+        <div className="td-claims">{godelClaims.map(c => <ClaimCard key={c.identifier} {...c} />)}</div>
       </section>
       <section className="td-section" aria-labelledby="evidence-title">
         <p className="td-eyebrow">Source, commands and limits</p><h2 id="evidence-title">Start with the evidence.</h2>

@@ -6,5 +6,12 @@
 .td-card:has(a:focus-visible) { outline: 3px solid #965b1c; outline-offset: 3px; }
 .td-card h3 a:focus-visible { outline: none; }
 .td-card-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 0.85rem; color: var(--td-muted); }
-.td-card-marker { margin: 14px 0 0; font: 0.75rem/1.5 ui-monospace, Menlo, monospace; color: var(--td-muted); }
+.td-card-detail { margin: -6px 0 14px; font-size: 0.9rem; color: var(--td-muted); }
+.td-card-requires { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--td-line); display: grid; gap: 4px; font: 0.75rem/1.5 ui-monospace, Menlo, monospace; color: var(--td-muted); }
+.td-light::before { content: ''; display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; margin-right: 0.6em; background: #c9ccc2; }
+.td-light-passed::before { background: #31694b; }
+.td-light-failed::before { background: #a33a2b; }
+.td-claims { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 720px) { .td-claims { grid-template-columns: 1fr; } }
+.td-card-marker {margin: 14px 0 0; font: 0.75rem/1.5 ui-monospace, Menlo, monospace; color: var(--td-muted); }
 .td-card-marker::before { content: '✓ '; color: #31694b; }
