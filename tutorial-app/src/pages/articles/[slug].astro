@@ -1,0 +1,30 @@
+---
+// One page per article in report/articles/, each rendered from its Pkl source.
+import { ArticleView, type Article } from '../../components/TidelandsArticle';
+
+export function getStaticPaths() {
+  const articles = import.meta.glob<Article>('../../components/report/articles/*.json', { eager: true, import: 'default' });
+  return Object.values(articles).map(article => ({ params: { slug: article.slug }, props: { article } }));
+}
+
+const { article } = Astro.props as { article: Article };
+const canonical = new URL(`/articles/${article.slug}/`, Astro.site ?? 'https://www.tidelands.dev');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{article.title}</title>
+    <meta name="description" content={article.dek} />
+    <link rel="canonical" href={canonical.href} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content={article.title} />
+    <meta property="og:description" content={article.dek} />
+    <meta property="og:url" content={canonical.href} />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body style="margin: 0; background: #fff"><ArticleView article={article} /></body>
+</html>

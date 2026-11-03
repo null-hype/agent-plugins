@@ -18,3 +18,12 @@ describe('the homepage report', () => {
     expect(pkl('test', here('./Report.test.pkl'))).toContain('100.0% tests pass');
   });
 });
+
+// Each article's page is built from the JSON its Pkl source renders.
+describe('the articles', () => {
+  for (const name of ['Xeno']) {
+    it(`${name} is what ${name}.pkl renders, as committed`, () => {
+      expect(readFileSync(here(`./articles/${name.toLowerCase()}.json`), 'utf8')).toBe(pkl('eval', here(`./articles/${name}.pkl`)));
+    });
+  }
+});
