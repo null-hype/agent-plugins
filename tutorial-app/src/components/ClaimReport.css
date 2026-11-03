@@ -6,3 +6,4 @@
 .td-claim-verdict { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 @media (min-width: 720px) { .td-hero-bar a { font-size: 2rem; } .td-report h1 { font-size: 2rem; } }
 .td-claim .td-report { border-top: 0; }
+.td-claim-summary { max-width: 34em; font-size: 1.05rem; line-height: 1.5; margin: 0 0 16px !important; }
