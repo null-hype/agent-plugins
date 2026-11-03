@@ -15,18 +15,21 @@ export type ClaimReportView = {
   preregistration: ReactNode;
   /** Where the name links: relative on the site, absolute where the page is published elsewhere. */
   home?: string;
+  /** For a reader: what the check predicts and how it could have failed. */
+  summary?: ReactNode;
 };
 
 // The publisher exports this same component to a Go HTML template, so every
 // field is a slot Go fills. One check's report: what was claimed, its verdict,
 // and the trace to follow it.
-export function ClaimReportView({ identifier, check, title, verdict, trace, preregistration, home = 'https://www.tidelands.dev/' }: ClaimReportView) {
+export function ClaimReportView({ identifier, check, title, verdict, trace, preregistration, home = 'https://www.tidelands.dev/', summary }: ClaimReportView) {
   return <div className="td-claim">
     <header className="td-hero-bar"><a href={home}>Richard Anthony</a></header>
     <main>
       <section className="td-report" aria-labelledby="claim-title">
         <p className="td-report-id">{identifier} · {check}</p>
         <h1 id="claim-title">{title}</h1>
+        {summary && <p className="td-claim-summary">{summary}</p>}
         <p className="td-claim-verdict">{verdict}</p>
         <p>{trace}</p>
         {preregistration}
@@ -47,9 +50,10 @@ export type CompletedClaim = {
   preregistration?: PreregistrationArtifact | null;
 };
 
-export default function ClaimReport({ claim, home }: { claim: CompletedClaim; home?: string }) {
+export default function ClaimReport({ claim, home, summary }: { claim: CompletedClaim; home?: string; summary?: string }) {
   return <ClaimReportView
     home={home}
+    summary={summary}
     identifier={claim.issue.identifier}
     check={claim.check}
     title={claim.issue.title}
