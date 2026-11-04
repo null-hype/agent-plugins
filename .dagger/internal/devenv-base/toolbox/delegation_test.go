@@ -7,6 +7,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -517,5 +519,84 @@ func TestIssueEventsReachTheAgentOnlyWhileTheHostIsUp(t *testing.T) {
 	h.quiet(t)
 	if len(h.agent.sessions()) != 1 || !h.agent.sigs[0] || h.agent.hdr[0].Get("Linear-Event") != "Issue" || h.gce.starts != 0 {
 		t.Fatalf("passed on %d, signed %v", len(h.agent.sessions()), h.agent.sigs)
+	}
+}
+
+// A delegate that cannot be read on arrival is unknown, not a mention: it is
+// read again at delivery, and a withdrawn delegation is not started.
+func TestUnreadDelegateOnArrivalFailsClosed(t *testing.T) {
+	h := newRelayHarness(t, "")
+	open := holdWake(h)
+	var calls atomic.Int32
+	var answer atomic.Value
+	answer.Store("a-person")
+	h.r.delegate = func(context.Context, string) (string, error) {
+		if calls.Add(1) == 1 {
+			return "", errors.New("linear issue: rate limited")
+		}
+		return answer.Load().(string), nil
+	}
+	h.post(t, "d1", sessionBody(t, "created", "S-x", "issue-x", nil))
+	open.Store(true)
+	eventually(t, "failure comment", func() bool { h.rec.mu.Lock(); defer h.rec.mu.Unlock(); return len(h.rec.calls) >= 2 })
+	if got := h.agent.sessions(); len(got) != 0 {
+		t.Fatalf("withdrawn work dispatched: %v", got)
+	}
+	last := h.rec.calls[len(h.rec.calls)-1]
+	if !strings.Contains(last, "could not confirm") || h.count("*.failed") != 1 {
+		t.Fatalf("not visible: %q failed=%d", last, h.count("*.failed"))
+	}
+}
+
+func TestUnreadDelegateOnArrivalStillDeliversWhenDelegatedAtDelivery(t *testing.T) {
+	h := newRelayHarness(t, "")
+	var calls atomic.Int32
+	h.r.delegate = func(context.Context, string) (string, error) {
+		switch calls.Add(1) {
+		case 1:
+			return "", errors.New("timeout") // arrival
+		case 2:
+			return "", errors.New("timeout") // first delivery attempt: retried, not guessed
+		}
+		return appUser, nil
+	}
+	h.post(t, "d1", sessionBody(t, "created", "S-x", "issue-x", nil))
+	eventually(t, "delivery", func() bool { return len(h.agent.sessions()) == 1 })
+	if calls.Load() < 3 {
+		t.Fatalf("delegate read %d times", calls.Load())
+	}
+}
+
+// The delegate query against a fake GraphQL endpoint with the shape Linear's
+// schema gives (Issue.delegate: User), so the query itself is exercised.
+func TestDelegateQueryShape(t *testing.T) {
+	var next atomic.Value
+	var gotQuery atomic.Value
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Query string }
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		gotQuery.Store(req.Query)
+		fmt.Fprint(w, next.Load().(string))
+	}))
+	defer srv.Close()
+	l := &linearAPI{client: srv.Client(), url: srv.URL, key: "k"}
+	for body, want := range map[string]string{
+		`{"data":{"issue":{"delegate":{"id":"app-1"}}}}`: "app-1",
+		`{"data":{"issue":{"delegate":null}}}`:           "",
+	} {
+		next.Store(body)
+		got, err := l.delegateID(context.Background(), "issue-1")
+		if err != nil || got != want {
+			t.Fatalf("%s: %q %v", body, got, err)
+		}
+	}
+	if q := gotQuery.Load().(string); !strings.Contains(q, "issue(id: $id)") || !strings.Contains(q, "delegate { id }") {
+		t.Fatalf("query %q", q)
+	}
+	for _, body := range []string{`{"errors":[{"message":"rate limited"}]}`, `{"data":{"issue":null}}`} {
+		next.Store(body)
+		if _, err := l.delegateID(context.Background(), "issue-1"); err == nil {
+			t.Fatalf("%s: no error", body)
+		}
 	}
 }

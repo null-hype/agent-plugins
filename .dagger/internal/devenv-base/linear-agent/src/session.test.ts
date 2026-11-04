@@ -131,11 +131,12 @@ test("a repeated delivery of the same event does not start another run", async (
       agentSession: { id: "session-dup", issueId: "issue-dup", status: "active" } as AgentSessionEventWebhookPayload["agentSession"],
       agentActivity: { id, content: { type: "prompt", body: "again" } } as unknown as AgentSessionEventWebhookPayload["agentActivity"],
     });
-  // A prompted delivery builds its prompt from Linear first; with no issue to read it fails after claiming.
+  // A prompted delivery builds its prompt from Linear before it claims: while
+  // that fails the event stays unclaimed, so a retry is not mistaken for a repeat.
   const unreadable = { ...linear, issue: async () => { throw new Error("no issue"); } } as unknown as LinearClient;
   await assert.rejects(handleAgentSessionEvent(prompted("act-1"), unreadable, "token"));
-  await handleAgentSessionEvent(prompted("act-1"), unreadable, "token"); // duplicate: ignored, no throw
-  await assert.rejects(handleAgentSessionEvent(prompted("act-2"), unreadable, "token")); // a new message is not a duplicate
+  await assert.rejects(handleAgentSessionEvent(prompted("act-1"), unreadable, "token"));
+  assert.equal(claimEvent("prompted:session-dup:act-1"), true, "nothing was claimed by the failures");
 });
 
 test("claims survive a restart because they are files, and a different event is not a duplicate", () => {

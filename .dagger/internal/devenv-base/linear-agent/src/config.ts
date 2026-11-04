@@ -19,6 +19,8 @@ export interface Config {
    * into that Pass item.
    */
   linearInstallToken: string;
+  /** Linear GraphQL endpoint; only tests set it, to keep them off the network. */
+  linearApiUrl?: string;
   /** Authenticates headless `claude` CLI invocations. */
   claudeCodeOAuthToken: string;
 }
