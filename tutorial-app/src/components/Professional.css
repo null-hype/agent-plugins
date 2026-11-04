@@ -15,7 +15,7 @@
 .pro-logo { display: flex; flex: 0 0 30px; }
 .pro-logo svg { width: 30px; height: 30px; }
 .pro-header nav { display: flex; gap: 24px; font-size: 0.92rem; }
-.pro-header nav a { text-decoration: none; color: var(--pro-muted); }
+.pro-header nav a { display: inline-flex; align-items: center; min-height: 32px; text-decoration: none; color: var(--pro-muted); }
 .pro-header nav a:hover { color: var(--pro-ink); text-decoration: underline; }
 .pro-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; border-top: 1px solid var(--pro-line); padding-top: 24px; padding-bottom: 36px; color: var(--pro-muted); font-size: 0.88rem; }
 .pro-footer-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }

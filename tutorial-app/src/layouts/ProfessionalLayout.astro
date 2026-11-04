@@ -2,7 +2,8 @@
 interface Props { title: string; description: string; path: string }
 const { title, description, path } = Astro.props;
 const canonical = new URL(path, Astro.site ?? 'https://www.tidelands.dev');
-const image = new URL('/social-preview.png', canonical.origin);
+const image = new URL('/professional-preview.png', canonical.origin);
+const imageAlt = 'Richard Anthony — Senior software & security engineer. AI infrastructure, security and developer tooling. Sydney.';
 ---
 
 <!doctype html>
@@ -20,7 +21,14 @@ const image = new URL('/social-preview.png', canonical.origin);
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical.href} />
     <meta property="og:image" content={image.href} />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image.href} />
+    <meta name="twitter:image:alt" content={imageAlt} />
   </head>
   <body style="margin: 0"><slot /></body>
 </html>

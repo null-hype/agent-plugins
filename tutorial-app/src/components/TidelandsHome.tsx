@@ -13,7 +13,7 @@ const work = [
   {
     name: 'Worlds', href: 'https://github.com/null-hype/worlds', cta: 'Source and runnable example ↗',
     problem: 'When AI agents propose code changes, two changes can each pass review and still fail together. Afterwards, nobody can show exactly what the check saw.',
-    built: 'A system that captures the inputs and records behind a delivery as an exact snapshot, then judges a pre-registered claim against that snapshot and keeps the trace.',
+    built: 'A system that captures the inputs and records behind a delivery as an exact snapshot, then checks a requirement recorded before the run against that snapshot and keeps the trace.',
     why: 'A disagreement stays reproducible and auditable, even after a newer passing version replaces it.',
     note: 'Research prototype. The example runs on synthetic replay with a real store and judge, and needs no API keys.',
   },
@@ -22,14 +22,12 @@ const work = [
     problem: 'Verification results usually live in CI logs, away from the code they are about, and go stale without anyone noticing.',
     built: 'Editor tooling that shows durable findings directly on the source, links each to its evidence, and detects when the source has changed since the finding was made.',
     why: 'Reviewers and agents see what a check concluded where they are reading, and know when to stop trusting it.',
-    note: 'A separate project with its own runnable example.',
   },
   {
     name: 'Challenging a security check', href: REVIEW, cta: 'Follow the recorded review →',
     problem: 'A passing check is only worth what it can detect. A check that claims an upload cannot read a private file can be satisfied by forged evidence.',
     built: 'A recorded review of one real check: three pull requests that each said the check was sound, and the reviews that found it was not. The reviewer edits the evidence and re-runs the author’s own checker.',
     why: 'It shows how to find what a security check actually verifies, rather than what its name claims.',
-    note: 'A demonstration of the research, not a production security guarantee.',
   },
 ];
 
@@ -42,6 +40,7 @@ export default function TidelandsHome() {
         <h1 id="home-title">Richard Anthony</h1>
         <p className="pro-role">Senior software &amp; security engineer</p>
         <p className="pro-lead">I build developer infrastructure, verification systems and agentic software workflows where correctness and auditability matter.</p>
+        <p className="pro-intro">Production software experience at Bloomberg and XO Group.</p>
         <div className="pro-actions"><a className="pro-button" href={CONTACT_HREF}>Discuss a project</a><a className="pro-button pro-button-secondary" href="#work">See selected work</a></div>
       </section>
 
@@ -63,7 +62,7 @@ export default function TidelandsHome() {
               <div><dt>What I built</dt><dd>{built}</dd></div>
               <div><dt>Why it matters</dt><dd>{why}</dd></div>
             </dl>
-            <p className="pro-project-note">{note}</p>
+            {note && <p className="pro-project-note">{note}</p>}
             <p className="pro-project-link"><a href={href}>{cta}</a></p>
           </article>)}
         </div>
@@ -83,7 +82,7 @@ export default function TidelandsHome() {
         <h2 id="contact-title">Let’s talk</h2>
         <p className="pro-lead">I’m open to consulting engagements, difficult engineering and security problems, and senior engineering roles.</p>
         <div className="pro-actions"><a className="pro-button" href={CONTACT_HREF}>Discuss a project</a><a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></div>
-        <p className="pro-fine">A short description of the problem and your timeline is plenty to start. Please don’t send credentials or secrets in a first message.</p>
+        <p className="pro-fine">A short description of the problem and your timeline is plenty to start.</p>
       </section>
     </main>
     <SiteFooter />
