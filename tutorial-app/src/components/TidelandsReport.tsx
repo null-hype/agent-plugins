@@ -20,7 +20,7 @@ function numbers(p: Paragraph) {
 function notes(p: Paragraph) {
   return [
     p.status === 'Inconclusive' ? `Can't be read until ${p.requires.join(' and ')} hold.` : undefined,
-    p.status === 'Not run' && p.registered ? `The next rerun is the first one this prediction grades.${p.previously ? ` ${p.previously}` : ''}` : undefined,
+    p.status === 'Not run' && p.registered ? `This prediction is graded from the next run onwards.${p.previously ? ` ${p.previously}` : ''}` : undefined,
     p.prediction !== undefined && !p.control && p.requires.length === 0 ? 'No negative control yet.' : undefined,
   ].filter((n): n is string => n !== undefined);
 }

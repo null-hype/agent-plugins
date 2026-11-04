@@ -7,21 +7,21 @@ amends "Report.pkl"
 import "pkl:json"
 
 intro {
-  "I break software for a living. Lately what I break most is an AI agent's claim that the job is done."
-  "So I write down what should happen before an agent runs, then check what actually happened. This page is built from that written record, so every check is on it, including the ones that fail."
-  "Sydney. Available for senior engineering roles and selected consulting."
+  "I'm a security researcher. My recent work is on checking what AI coding agents claim to have done."
+  "Before an agent runs, I record what should happen. Afterwards, a check compares that record with what did happen. This page is generated from those records, so failed checks are listed alongside passed ones."
+  "Based in Sydney. Available for senior engineering roles and consulting."
 }
 
 title = "Checks"
 
 questions {
   ["INF-6"] {
-    text = "Preserve preregistered delivery claims across an observed World."
+    text = "An agent's work is judged against predictions registered before its plan was approved."
     href = "/checks/INF-6/"
     prediction = 1.0
     registered = "2026-11-03T05:45:00Z"
     previously = earlier("INF-6", registered!!)
-    why = "An agent's work is judged against the predictions registered before its plan was approved, using a frozen snapshot of what happened rather than the repo as it is now. It fails if the judgement reads live state an agent could still change."
+    why = "The judgement runs on a frozen snapshot of the run, not on the repository as it is now, so nothing changed afterwards can affect the result. The check fails if the judgement reads live state."
   }
 }
 
@@ -42,4 +42,4 @@ local function claim(id: String): Dynamic = new json.Parser {}.parse(read("check
 local function earlier(id: String, registered: String): String? =
   let (c = claim(id))
     if (c.ran > registered) null
-    else "\(if (c.exit == 0) "Passed" else "Failed") on \(c.ran), before this prediction was written."
+    else "An earlier run \(if (c.exit == 0) "passed" else "failed") on \(c.ran), before the prediction was registered."
