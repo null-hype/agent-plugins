@@ -22,7 +22,7 @@
 .pro-eyebrow { color: var(--pro-muted); font-size: 0.9rem; margin-bottom: 20px; }
 .pro-role { font-size: clamp(1.25rem, 2.6vw, 1.6rem); font-weight: 500; margin-bottom: 20px; }
 .pro-lead { font-size: clamp(1.05rem, 1.8vw, 1.25rem); max-width: 640px; }
-.pro-intro { color: var(--pro-muted); max-width: 640px; margin: 14px 0 28px; }
+.pro-page .pro-intro { color: var(--pro-muted); max-width: 640px; margin: 14px 0 28px; }
 .pro-hero { padding: 72px 0 56px; }
 .pro-hero-compact { padding: 48px 0 24px; }
 .pro-hero-compact h1 { font-size: clamp(2rem, 4.5vw, 2.8rem); }
