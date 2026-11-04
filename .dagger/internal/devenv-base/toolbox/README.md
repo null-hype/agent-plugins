@@ -86,6 +86,34 @@ it contains references, not secret values. Update it when replacing item grants.
 The check launcher removes unrelated host-action secret references before Pass
 resolves the check's environment, so checks need no GitHub or Linear grant.
 
+## Agent delegations (CIT-576)
+
+Delegating an issue to the Claude agent makes Linear send an
+`AgentSessionEvent` (`created`; `prompted` for later messages) to the OAuth
+app's webhook URL, which must answer within 5 seconds. Linear retries a failed
+delivery only after 1 minute, 1 hour and 6 hours, so a stopped VM would miss
+the work. With the app's webhook URL set to `https://<toolbox>/linear/agent-webhook`,
+the toolbox verifies the event, answers 200, keeps it, runs the same wake as
+`host_wake` until the agent's webhook answers, and posts the event to the
+agent's own webhook (restamped and re-signed, since the agent rejects bodies
+older than a minute). The agent is unchanged.
+
+- Dropped, never started: events for another app user, finished sessions,
+  issue events (assignment to a person), bad signatures, bodies older than a
+  minute, a repeated delivery or session, a session replaced by a newer one on
+  the same issue, and an issue no longer delegated to the agent when the agent
+  comes up.
+- Failure: the issue gets a comment (starting; or why it could not be taken,
+  with "delegate again to retry"). The retained event is kept as
+  `<delivery>.failed`.
+- Restart: with `LINEAR_AGENT_RELAY_DIR` on a persistent disk, undelivered
+  events are resumed on boot. Without it they live in memory only.
+
+Off until all are set: `LINEAR_AGENT_WEBHOOK_SECRET` (the app's signing
+secret), `LINEAR_API_KEY`, `LINEAR_AGENT_APP_USER_ID`,
+`LINEAR_AGENT_WEBHOOK_URL` (the agent's `/webhooks/linear`). Optional:
+`LINEAR_AGENT_RELAY_DIR`.
+
 ## Tailscale and Codex
 
 The host is its own tailnet node, `toolbox-host`, with Tailscale SSH. The
