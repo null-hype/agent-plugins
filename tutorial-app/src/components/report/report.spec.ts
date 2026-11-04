@@ -21,7 +21,7 @@ describe('the homepage report', () => {
 
 // Each article's page is built from the JSON its Pkl source renders.
 describe('the articles', () => {
-  for (const name of ['Xeno']) {
+  for (const name of ['Xeno', 'Omarchy']) {
     it(`${name} is what ${name}.pkl renders, as committed`, () => {
       expect(readFileSync(here(`./articles/${name.toLowerCase()}.json`), 'utf8')).toBe(pkl('eval', here(`./articles/${name}.pkl`)));
     });
