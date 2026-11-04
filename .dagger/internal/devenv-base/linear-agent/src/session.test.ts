@@ -2,7 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { claimEvent } from "./claims.ts";
 import { handleAgentSessionEvent, handleIssueEvent } from "./session.ts";
+
+process.env.LINEAR_AGENT_STATE_DIR = mkdtempSync(join(tmpdir(), "agent-claims-"));
 
 // A stub that fails the test if createAgentActivity is ever called — used to
 // assert the negative-path guards in handleIssueEvent short-circuit before
@@ -100,4 +106,40 @@ test("handleIssueEvent stops reacting once the session is terminal", async () =>
     unreachableLinear(),
     "token",
   );
+});
+
+test("a repeated delivery of the same event does not start another run", async () => {
+  let thoughts = 0;
+  const linear = {
+    createAgentActivity: async () => {
+      thoughts++;
+      throw new Error("stop before claude runs");
+    },
+  } as unknown as LinearClient;
+  const created = agentSessionEventPayload({
+    agentSession: { id: "session-dup", issueId: "issue-dup", status: "pending" } as AgentSessionEventWebhookPayload["agentSession"],
+    promptContext: "do the work",
+  });
+  await assert.rejects(handleAgentSessionEvent(created, linear, "token"));
+  await handleAgentSessionEvent(created, linear, "token");
+  await handleAgentSessionEvent(created, linear, "token");
+  assert.equal(thoughts, 1);
+
+  const prompted = (id: string) =>
+    agentSessionEventPayload({
+      action: "prompted",
+      agentSession: { id: "session-dup", issueId: "issue-dup", status: "active" } as AgentSessionEventWebhookPayload["agentSession"],
+      agentActivity: { id, content: { type: "prompt", body: "again" } } as unknown as AgentSessionEventWebhookPayload["agentActivity"],
+    });
+  // A prompted delivery builds its prompt from Linear first; with no issue to read it fails after claiming.
+  const unreadable = { ...linear, issue: async () => { throw new Error("no issue"); } } as unknown as LinearClient;
+  await assert.rejects(handleAgentSessionEvent(prompted("act-1"), unreadable, "token"));
+  await handleAgentSessionEvent(prompted("act-1"), unreadable, "token"); // duplicate: ignored, no throw
+  await assert.rejects(handleAgentSessionEvent(prompted("act-2"), unreadable, "token")); // a new message is not a duplicate
+});
+
+test("claims survive a restart because they are files, and a different event is not a duplicate", () => {
+  assert.equal(claimEvent("created:s-x"), true);
+  assert.equal(claimEvent("created:s-x"), false);
+  assert.equal(claimEvent("created:s-y"), true);
 });

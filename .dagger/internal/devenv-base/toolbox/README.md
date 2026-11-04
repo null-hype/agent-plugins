@@ -98,21 +98,37 @@ the toolbox verifies the event, answers 200, keeps it, runs the same wake as
 agent's own webhook (restamped and re-signed, since the agent rejects bodies
 older than a minute). The agent is unchanged.
 
-- Dropped, never started: events for another app user, finished sessions,
-  issue events (assignment to a person), bad signatures, bodies older than a
-  minute, a repeated delivery or session, a session replaced by a newer one on
-  the same issue, and an issue no longer delegated to the agent when the agent
-  comes up.
+- Sessions: a `created` event is a delegation or a mention (Linear does not
+  say which in the action), so both wake the host. Assigning an issue to a
+  person sends no session event and wakes nothing. At arrival the toolbox reads
+  the issue's delegate from Linear; a session on an issue delegated to the
+  agent is dropped at delivery if the delegation was withdrawn meanwhile, for
+  `prompted` events too. A mention is not subject to that check.
+- Dropped, never started: events for another app user, finished sessions, bad
+  signatures, bodies older than a minute, a repeated delivery or session, and a
+  session older (by Linear's `agentSession.createdAt`, not arrival) than another
+  of the same issue.
+- `Issue` events (an edited description of a delegated issue) are passed on to
+  the agent when the host is already running, and dropped when it is stopped:
+  the agent follows an edit only for a session it holds in memory, which a
+  stopped host has not.
+- Delivery is at-least-once, the run at-most-once. After a lost answer or a
+  toolbox crash the same event is sent again; the agent records each event
+  (`LINEAR_AGENT_STATE_DIR`, default `~/.linear-agent/claims`) before running
+  it and ignores a repeat, so no second Claude run starts. If the agent dies
+  mid-run the event is not run again; prompt the session again.
 - Failure: the issue gets a comment (starting; or why it could not be taken,
-  with "delegate again to retry"). The retained event is kept as
-  `<delivery>.failed`.
-- Restart: with `LINEAR_AGENT_RELAY_DIR` on a persistent disk, undelivered
-  events are resumed on boot. Without it they live in memory only.
+  with "delegate again to retry").
+- Durability: every accepted event is written to `LINEAR_AGENT_RELAY_DIR`
+  before the 200; if it cannot be written the answer is 500 and Linear
+  retries. Records stay as `.json` (undelivered, resumed on boot), `.done` or
+  `.failed` (pruned after a week), so a redelivery after a restart is still a
+  duplicate. The route is not registered at all without a writable directory.
 
 Off until all are set: `LINEAR_AGENT_WEBHOOK_SECRET` (the app's signing
 secret), `LINEAR_API_KEY`, `LINEAR_AGENT_APP_USER_ID`,
-`LINEAR_AGENT_WEBHOOK_URL` (the agent's `/webhooks/linear`). Optional:
-`LINEAR_AGENT_RELAY_DIR`.
+`LINEAR_AGENT_WEBHOOK_URL` (the agent's `/webhooks/linear`) and
+`LINEAR_AGENT_RELAY_DIR` (a persistent disk).
 
 ## Tailscale and Codex
 

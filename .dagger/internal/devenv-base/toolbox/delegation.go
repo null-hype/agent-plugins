@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -37,6 +36,7 @@ type agentSessionEvent struct {
 	WebhookTimestamp int64  `json:"webhookTimestamp"`
 	AgentSession     struct {
 		ID        string `json:"id"`
+		CreatedAt string `json:"createdAt"`
 		Status    string `json:"status"`
 		IssueID   string `json:"issueId"`
 		AppUserID string `json:"appUserId"`
@@ -53,13 +53,47 @@ func (e agentSessionEvent) issueID() string {
 	return e.AgentSession.Issue.ID
 }
 
-// delegation is one retained event.
+// created is when Linear created the session, from the signed payload; it,
+// not arrival order, says which of an issue's sessions is newest. A payload
+// without it falls back to Linear's own webhook timestamp.
+func (e agentSessionEvent) created() int64 {
+	if t, err := time.Parse(time.RFC3339Nano, e.AgentSession.CreatedAt); err == nil {
+		return t.UnixMilli()
+	}
+	return e.WebhookTimestamp
+}
+
+// delegation is one retained event. Delegated records whether the issue was
+// delegated to the agent when the event arrived (a mention creates a session
+// too, and is not withdrawn by changing the delegate).
 type delegation struct {
-	Delivery string `json:"delivery"`
-	Body     string `json:"body"`
-	Session  string `json:"-"`
-	Issue    string `json:"-"`
-	Action   string `json:"-"`
+	Delivery  string `json:"delivery"`
+	Body      string `json:"body"`
+	Delegated bool   `json:"delegated"`
+	Session   string `json:"-"`
+	Issue     string `json:"-"`
+	Action    string `json:"-"`
+	Created   int64  `json:"-"`
+}
+
+func (d *delegation) parse() error {
+	var ev agentSessionEvent
+	if err := json.Unmarshal([]byte(d.Body), &ev); err != nil {
+		return err
+	}
+	d.Session, d.Issue, d.Action, d.Created = ev.AgentSession.ID, ev.issueID(), ev.Action, ev.created()
+	return nil
+}
+
+type sessionRef struct {
+	id      string
+	created int64
+}
+
+// newerThan orders sessions by Linear's creation time, then by id so that
+// ties resolve the same way on every run and after a restart.
+func (a sessionRef) newerThan(b sessionRef) bool {
+	return a.created > b.created || (a.created == b.created && a.id > b.id)
 }
 
 type delegationRelay struct {
@@ -69,7 +103,8 @@ type delegationRelay struct {
 	agentURL    string
 	agentSecret string
 	// dir keeps events until they are delivered, so a restart of the toolbox
-	// does not lose them. Empty keeps them in memory only.
+	// does not lose them, and keeps a record of each settled one so a
+	// redelivery after a restart is still a duplicate. Required.
 	dir     string
 	client  *http.Client
 	poll    time.Duration
@@ -83,16 +118,16 @@ type delegationRelay struct {
 	run      func(context.Context, delegation)
 
 	mu       sync.Mutex
-	seen     map[string]struct{} // deliveries
-	sessions map[string]struct{} // created sessions
-	latest   map[string]string   // issue -> newest session
+	seen     map[string]struct{}   // deliveries
+	sessions map[string]struct{}   // created sessions
+	latest   map[string]sessionRef // issue -> newest session
 }
 
 func newDelegationRelay(tb *toolbox, linear *linearAPI, appUserID, agentURL, agentSecret, dir string) *delegationRelay {
 	r := &delegationRelay{
 		tb: tb, linear: linear, appUserID: appUserID, agentURL: agentURL, agentSecret: agentSecret, dir: dir,
 		client: &http.Client{Timeout: 30 * time.Second}, poll: 20 * time.Second, timeout: 30 * time.Minute,
-		seen: map[string]struct{}{}, sessions: map[string]struct{}{}, latest: map[string]string{},
+		seen: map[string]struct{}{}, sessions: map[string]struct{}{}, latest: map[string]sessionRef{},
 	}
 	r.wake = tb.wake
 	r.deliver = r.forward
@@ -121,12 +156,30 @@ func delegationHandler(secret string, r *delegationRelay) http.Handler {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
 		}
+		if ev.Type == "Issue" {
+			// The app's webhook also carries what the agent reacts to while it
+			// runs. Waking the host for it would be pointless: the agent follows
+			// an edited description only for a session it holds in memory, which
+			// a stopped VM does not have. So it is passed on if the host is up.
+			// Stale bodies are not passed on.
+			if ev.WebhookTimestamp != 0 && absDuration(time.Since(time.UnixMilli(ev.WebhookTimestamp))) <= time.Minute {
+				r.passOn(body, req.Header.Get("Linear-Delivery"))
+			}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		if ev.WebhookTimestamp == 0 || absDuration(time.Since(time.UnixMilli(ev.WebhookTimestamp))) > time.Minute {
 			http.Error(w, "stale webhook", http.StatusUnauthorized)
 			return
 		}
 		d, ok := r.relevant(ev, req.Header.Get("Linear-Delivery"), body)
 		if ok {
+			// Whether this is a delegation or, say, a mention is read from Linear
+			// now; if Linear does not answer, no withdrawal check applies later.
+			qctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+			who, err := r.delegate(qctx, d.Issue)
+			cancel()
+			d.Delegated = err == nil && who == r.appUserID
 			if err := r.accept(d); err != nil {
 				// Not retained: let Linear's own retry bring it back.
 				log.Printf("agent delegation %s (%s): not retained: %v", d.Issue, d.Delivery, err)
@@ -151,7 +204,7 @@ func (r *delegationRelay) relevant(ev agentSessionEvent, delivery string, body [
 	if terminalSession[ev.AgentSession.Status] || ev.AgentSession.ID == "" || ev.issueID() == "" {
 		return delegation{}, false
 	}
-	return delegation{Delivery: delivery, Body: string(body), Session: ev.AgentSession.ID, Issue: ev.issueID(), Action: ev.Action}, true
+	return delegation{Delivery: delivery, Body: string(body), Session: ev.AgentSession.ID, Issue: ev.issueID(), Action: ev.Action, Created: ev.created()}, true
 }
 
 var terminalSession = map[string]bool{"complete": true, "error": true}
@@ -174,24 +227,35 @@ func (r *delegationRelay) accept(d delegation) error {
 		return err
 	}
 	r.seen[d.Delivery] = struct{}{}
-	if d.Action == "created" {
-		r.sessions[d.Session] = struct{}{}
-		r.latest[d.Issue] = d.Session
-	} else if _, known := r.latest[d.Issue]; !known {
-		r.latest[d.Issue] = d.Session
-	}
+	r.note(d)
 	r.mu.Unlock()
 	go r.run(context.Background(), d)
 	return nil
 }
 
+// note records the event's session; r.mu is held.
+func (r *delegationRelay) note(d delegation) {
+	r.seen[d.Delivery] = struct{}{}
+	if d.Action == "created" {
+		r.sessions[d.Session] = struct{}{}
+	}
+	ref := sessionRef{d.Session, d.Created}
+	if cur, ok := r.latest[d.Issue]; !ok || ref.newerThan(cur) {
+		r.latest[d.Issue] = ref
+	}
+}
+
+// A retained event is <sha256 of delivery id>.json; once settled it stays as
+// .done (delivered, or dropped as stale) or .failed, so that it still counts
+// as seen after a restart. Settled records are pruned after a week.
 func (r *delegationRelay) file(d delegation, ext string) string {
-	return filepath.Join(r.dir, strings.NewReplacer("/", "_", "..", "_").Replace(d.Delivery)+ext)
+	sum := sha256.Sum256([]byte(d.Delivery))
+	return filepath.Join(r.dir, hex.EncodeToString(sum[:])+ext)
 }
 
 func (r *delegationRelay) persist(d delegation) error {
 	if r.dir == "" {
-		return nil
+		return errors.New("no relay directory configured")
 	}
 	b, _ := json.Marshal(d)
 	tmp := r.file(d, ".tmp")
@@ -202,51 +266,53 @@ func (r *delegationRelay) persist(d delegation) error {
 }
 
 func (r *delegationRelay) settle(d delegation, ext string) {
-	if r.dir == "" {
-		return
+	if err := os.Rename(r.file(d, ".json"), r.file(d, ext)); err != nil {
+		log.Printf("agent delegation %s (%s): could not record %s: %v", d.Issue, d.Delivery, ext, err)
 	}
-	if ext == "" {
-		_ = os.Remove(r.file(d, ".json"))
-		return
-	}
-	_ = os.Rename(r.file(d, ".json"), r.file(d, ext))
 }
 
-// resume takes up the events a previous process retained and had not
-// delivered. Returns how many.
+// resume reloads what the previous process knew: every record marks its
+// delivery and session as seen and orders the issue's sessions, and the ones
+// not settled are taken up again. Returns how many were.
 func (r *delegationRelay) resume() int {
-	if r.dir == "" {
-		return 0
+	var pending []delegation
+	for _, ext := range []string{".json", ".done", ".failed"} {
+		files, _ := filepath.Glob(filepath.Join(r.dir, "*"+ext))
+		for _, f := range files {
+			if ext != ".json" {
+				if fi, err := os.Stat(f); err == nil && time.Since(fi.ModTime()) > 7*24*time.Hour {
+					_ = os.Remove(f)
+					continue
+				}
+			}
+			b, err := os.ReadFile(f)
+			var d delegation
+			if err != nil || json.Unmarshal(b, &d) != nil || d.parse() != nil {
+				log.Printf("agent delegation: unreadable record %s", f)
+				continue
+			}
+			r.mu.Lock()
+			r.note(d)
+			r.mu.Unlock()
+			if ext == ".json" {
+				pending = append(pending, d)
+			}
+		}
 	}
-	files, _ := filepath.Glob(filepath.Join(r.dir, "*.json"))
-	n := 0
-	for _, f := range files {
-		b, err := os.ReadFile(f)
-		var d delegation
-		var ev agentSessionEvent
-		if err != nil || json.Unmarshal(b, &d) != nil || json.Unmarshal([]byte(d.Body), &ev) != nil {
-			log.Printf("agent delegation: unreadable retained event %s", f)
-			continue
-		}
-		d.Session, d.Issue, d.Action = ev.AgentSession.ID, ev.issueID(), ev.Action
-		r.mu.Lock()
-		r.seen[d.Delivery] = struct{}{}
-		if d.Action == "created" {
-			r.sessions[d.Session] = struct{}{}
-			r.latest[d.Issue] = d.Session
-		}
-		r.mu.Unlock()
-		n++
+	// Start only after every record has been read, so the order of the
+	// issue's sessions is known first.
+	for _, d := range pending {
 		go r.run(context.Background(), d)
 	}
-	return n
+	return len(pending)
 }
 
+// superseded: a newer session of the same issue exists.
 func (r *delegationRelay) superseded(d delegation) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cur, ok := r.latest[d.Issue]
-	return ok && cur != d.Session
+	return ok && cur.id != d.Session && cur.newerThan(sessionRef{d.Session, d.Created})
 }
 
 // process wakes the host until the agent answers, then delivers. It ends in
@@ -276,7 +342,7 @@ func (r *delegationRelay) drive(ctx context.Context, d delegation) error {
 	for {
 		if r.superseded(d) {
 			log.Printf("agent delegation %s (%s): superseded by a newer session; dropped", d.Issue, d.Delivery)
-			r.settle(d, "")
+			r.settle(d, ".done")
 			return nil
 		}
 		ready, err := r.wakeStep(ctx)
@@ -297,7 +363,7 @@ func (r *delegationRelay) drive(ctx context.Context, d delegation) error {
 				}
 			} else {
 				if done {
-					r.settle(d, "")
+					r.settle(d, ".done")
 				}
 				return nil
 			}
@@ -333,32 +399,64 @@ func (r *delegationRelay) wakeStep(ctx context.Context) (bool, error) {
 	return w.Ready, nil
 }
 
-// handOff delivers if the issue is still delegated to the agent. done is
-// false when the delegation was withdrawn and the event dropped.
+// handOff delivers if the event is still wanted: no newer session of the
+// issue exists, and an issue that was delegated to the agent still is. This
+// holds for prompted events as much as created ones. done is false when the
+// event was dropped.
 func (r *delegationRelay) handOff(ctx context.Context, d delegation) (bool, error) {
-	if d.Action == "created" {
+	if d.Delegated {
 		who, err := r.delegate(ctx, d.Issue)
 		if err != nil {
 			return false, err
 		}
 		if who != r.appUserID {
 			log.Printf("agent delegation %s (%s): no longer delegated to the agent; dropped", d.Issue, d.Delivery)
-			r.settle(d, "")
+			r.settle(d, ".done")
 			return false, nil
 		}
 	}
 	if r.superseded(d) {
 		log.Printf("agent delegation %s (%s): superseded by a newer session; dropped", d.Issue, d.Delivery)
-		r.settle(d, "")
+		r.settle(d, ".done")
 		return false, nil
 	}
+	// A delivery whose answer is lost may be sent again; the agent claims each
+	// event once, so the repeat does not start a second run.
 	return true, r.deliver(ctx, d)
+}
+
+// passOn sends an Issue event to the agent if the host is already running.
+func (r *delegationRelay) passOn(body []byte, delivery string) {
+	if delivery == "" {
+		return
+	}
+	r.mu.Lock()
+	_, dup := r.seen["issue:"+delivery]
+	r.seen["issue:"+delivery] = struct{}{}
+	r.mu.Unlock()
+	if dup {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if in, err := r.tb.gce.Instance(ctx); err != nil || in.Status != "RUNNING" {
+			return
+		}
+		if err := r.post(ctx, body, delivery, "Issue"); err != nil {
+			log.Printf("agent issue event (%s): %v", delivery, err)
+		}
+	}()
 }
 
 // forward posts the event to the agent's webhook, restamped and re-signed.
 func (r *delegationRelay) forward(ctx context.Context, d delegation) error {
+	return r.post(ctx, []byte(d.Body), d.Delivery, "AgentSessionEvent")
+}
+
+func (r *delegationRelay) post(ctx context.Context, original []byte, delivery, event string) error {
 	var m map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(d.Body), &m); err != nil {
+	if err := json.Unmarshal(original, &m); err != nil {
 		return err
 	}
 	m["webhookTimestamp"] = json.RawMessage(fmt.Sprint(time.Now().UnixMilli()))
@@ -373,8 +471,8 @@ func (r *delegationRelay) forward(ctx context.Context, d delegation) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Linear-Delivery", d.Delivery)
-	req.Header.Set("Linear-Event", "AgentSessionEvent")
+	req.Header.Set("Linear-Delivery", delivery)
+	req.Header.Set("Linear-Event", event)
 	req.Header.Set("Linear-Signature", hex.EncodeToString(mac.Sum(nil)))
 	resp, err := r.client.Do(req)
 	if err != nil {

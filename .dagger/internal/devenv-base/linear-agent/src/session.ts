@@ -1,5 +1,7 @@
 import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
+import { createHash } from "node:crypto";
+import { claimEvent } from "./claims.ts";
 import { runClaude, WORKSPACE_DIR } from "./claude.ts";
 import { syncWorkspace } from "./workspace.ts";
 
@@ -31,6 +33,17 @@ export async function handleAgentSessionEvent(
 ): Promise<void> {
   const agentSessionId = payload.agentSession.id;
   const issueId = payload.agentSession.issueId;
+  // A repeated delivery of the same event must not start another run.
+  const activityId = (payload.agentActivity as { id?: string } | null | undefined)?.id;
+  const body = (payload.agentActivity?.content as { body?: string } | undefined)?.body ?? "";
+  const eventKey =
+    payload.action === "created"
+      ? `created:${agentSessionId}`
+      : `${payload.action}:${agentSessionId}:${activityId ?? createHash("sha256").update(body).digest("hex")}`;
+  if (!claimEvent(eventKey)) {
+    console.log(`AgentSessionEvent ${eventKey} already handled; ignored`);
+    return;
+  }
   if (issueId) {
     if (TERMINAL_STATUSES.has(payload.agentSession.status)) {
       issueSessions.delete(issueId);
@@ -67,6 +80,9 @@ export async function handleIssueEvent(
 
   const agentSessionId = issueSessions.get(payload.data.id);
   if (!agentSessionId) return;
+
+  const updatedAt = (payload.data as { updatedAt?: string }).updatedAt ?? String(payload.webhookTimestamp);
+  if (!claimEvent(`issue:${payload.data.id}:${updatedAt}`)) return;
 
   const context = await buildIssuePrompt(linear, payload.data.id);
   const prompt = `${context}\n\n---\n\nThe issue description was just updated — see "Description" above for the current text. Re-evaluate your plan in light of the change.`;
