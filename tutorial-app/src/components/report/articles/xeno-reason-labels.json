@@ -1,0 +1,69 @@
+{
+  "slug": "xeno-reason-labels",
+  "title": "Which reason fits this Claude thread?",
+  "dek": "Two live Claude threads and two Proton Pass reasons give Jev a control it can get wrong.",
+  "published": "2026-11-04",
+  "evidence": [
+    {
+      "what": "Claude threads and Proton Pass reasons",
+      "state": "Tested",
+      "note": "Both threads ran live. Xeno exported one ItemRead for each from a QA Dev Container."
+    },
+    {
+      "what": "Jev scores for the two controls",
+      "state": "Recorded",
+      "note": "The table comes from live jev-1.14.0 responses. Pkl grades the saved scores against the thresholds written before scoring."
+    },
+    {
+      "what": "Herdr and Witness display",
+      "state": "Tested",
+      "note": "A separate live Claude smoke test was attached to an isolated Herdr pane. Witness published the diagnostic and linked to the Proton Pass evidence."
+    },
+    {
+      "what": "Automatic labels for live Codespace threads",
+      "state": "Not yet",
+      "note": "The label scores were evaluated in a QA harness. Live pane wiring and tests on unseen threads with ambiguous or absent reasons remain open."
+    }
+  ],
+  "sections": [
+    {
+      "blocks": [
+        "Proton Pass records why an agent says it read a credential. Claude records what the thread was asked to do and what it produced. The question for Jev is whether the work in that thread fits a reason from the audit log.",
+        "That gives Herdr a reason it can show on the thread and gives Witness a score and evidence it can surface on the trace."
+      ]
+    },
+    {
+      "heading": "Two threads, one fixture",
+      "blocks": [
+        "Both Claude threads received the same health-probe log. It had a successful response, a failed response, and a fake credential. Both had tools disabled.",
+        "One thread classified each service as healthy or unhealthy. The other redacted the fake credential and kept the HTTP status codes. The two reasons share a subject and differ in the action they describe.",
+        "Jev received the prompt and a short projection of the trace. It answered one Noul question per candidate reason. The recorded pairing stayed in the test harness."
+      ]
+    },
+    {
+      "heading": "Cross the reasons",
+      "blocks": [
+        "Before scoring, the test required both recorded pairings to reach 0.8 and both crossed pairings to stay at or below 0.2. Each thread is the positive control for its own reason and the negative control for the other.",
+        {
+          "text": "Claude thread            Classify probe health   Redact credential\nClassified probe health  0.94                    0.17\nRedacted credential      0.08                    0.97"
+        },
+        "All four pairings met their thresholds.",
+        "With the prompt alone, Jev scored the crossed redaction reason at 0.42 for the classification thread. With the trace alone, that thread's correct score fell to 0.2."
+      ]
+    },
+    {
+      "heading": "What the pane can show",
+      "blocks": [
+        "In the separate smoke test, Herdr displayed idle · verified. Witness published an informational diagnostic on the trace, and go-to-definition led to the Proton Pass read. That exercise checked the display path. The two-thread experiment checked the reason scores.",
+        "A reason label describes how well the observed thread fits a stated purpose. The Proton Pass record remains the evidence that the credential was read."
+      ]
+    },
+    {
+      "heading": "Where this could fail",
+      "blocks": [
+        "Keep the same thresholds on unseen threads. Put similar purposes in the candidate list, include threads whose reason is absent, and give some threads prompts that leave their purpose unclear.",
+        "The strongest counterexample is a high score on the wrong purpose when the prompt, settings and vocabulary all look familiar. In ambiguous cases, check whether the pane stays unlabeled."
+      ]
+    }
+  ]
+}

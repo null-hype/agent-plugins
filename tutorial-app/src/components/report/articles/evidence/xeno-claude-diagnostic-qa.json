@@ -1,0 +1,43 @@
+{
+  "claude_enabled_tools": [],
+  "claude_reply": "XENO_QA_OK",
+  "proton_pass_record": {
+    "action": "ItemRead",
+    "reason": "Check that a Claude Code release smoke test exposes no tools."
+  },
+  "herdr_pane_label": "idle · verified",
+  "witness_diagnostic": {
+    "range": {
+      "start": {
+        "line": 3,
+        "character": 0
+      },
+      "end": {
+        "line": 3,
+        "character": 2140
+      }
+    },
+    "severity": 3,
+    "source": "witness",
+    "code": "xeno.claude.tools-disabled",
+    "message": "Claude completed with zero enabled tools. Proton Pass recorded the credential read."
+  },
+  "witness_definition_resolved_to_audit_evidence": true,
+  "synthetic_counterexample_diagnostic": {
+    "range": {
+      "start": {
+        "line": 0,
+        "character": 0
+      },
+      "end": {
+        "line": 0,
+        "character": 1778
+      }
+    },
+    "severity": 2,
+    "source": "witness",
+    "code": "xeno.claude.tools-disabled",
+    "message": "Claude exposed 1 tool(s) in a tools-disabled session."
+  },
+  "without_pass_evidence": "unverified"
+}

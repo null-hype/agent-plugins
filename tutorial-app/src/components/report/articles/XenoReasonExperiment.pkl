@@ -1,0 +1,40 @@
+/// Grades the recorded Jev responses against the before-scoring protocol.
+module XenoReasonExperiment
+
+import "pkl:json"
+
+local capture = new json.Parser {}.parse(read("evidence/xeno-jev-controls.json").text)
+local protocol = capture.protocol
+local classifyReason = protocol.cases.probe_classification.reason
+local redactReason = protocol.cases.probe_log_redaction.reason
+
+class Scores {
+  classifyAsClassify: Number(isBetween(0, 1))
+  classifyAsRedact: Number(isBetween(0, 1))
+  redactAsClassify: Number(isBetween(0, 1))
+  redactAsRedact: Number(isBetween(0, 1))
+}
+
+local function scores(mode: String): Scores =
+  let (classify = capture.threads.probe_classification.scores.toMap()[mode].toMap())
+  let (redact = capture.threads.probe_log_redaction.scores.toMap()[mode].toMap())
+  new Scores {
+    classifyAsClassify = classify[classifyReason]
+    classifyAsRedact = classify[redactReason]
+    redactAsClassify = redact[classifyReason]
+    redactAsRedact = redact[redactReason]
+  }
+
+minimumMatch: Number(isBetween(0, 1)) = protocol.minimum_match
+maximumMismatch: Number(isBetween(0, 1)) = protocol.maximum_mismatch
+primaryScores: Scores = scores("prompt_and_trace")
+promptOnlyScores: Scores = scores("prompt_only")
+traceOnlyScores: Scores = scores("trace_only")
+
+controlsHeld: Boolean =
+  primaryScores.classifyAsClassify >= minimumMatch
+  && primaryScores.redactAsRedact >= minimumMatch
+  && primaryScores.classifyAsRedact <= maximumMismatch
+  && primaryScores.redactAsClassify <= maximumMismatch
+
+model: String = protocol.model
