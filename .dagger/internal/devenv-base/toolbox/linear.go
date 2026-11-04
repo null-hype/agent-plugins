@@ -64,6 +64,27 @@ func (l *linearAPI) issue(ctx context.Context, issueID string) (claimIssue, erro
 	return *out.Data.Issue, nil
 }
 
+// delegateID is the id of the user the issue is delegated to, or "".
+func (l *linearAPI) delegateID(ctx context.Context, issueID string) (string, error) {
+	var out struct {
+		Data struct {
+			Issue *struct {
+				Delegate *struct{ ID string } `json:"delegate"`
+			} `json:"issue"`
+		} `json:"data"`
+	}
+	if err := l.query(ctx, "issue", `query($id: String!) { issue(id: $id) { delegate { id } } }`, map[string]any{"id": issueID}, &out); err != nil {
+		return "", err
+	}
+	if out.Data.Issue == nil {
+		return "", fmt.Errorf("linear issue: missing issue")
+	}
+	if out.Data.Issue.Delegate == nil {
+		return "", nil
+	}
+	return out.Data.Issue.Delegate.ID, nil
+}
+
 func (l *linearAPI) query(ctx context.Context, name, query string, vars map[string]any, result any) error {
 	body, err := json.Marshal(map[string]any{"query": query, "variables": vars})
 	if err != nil {

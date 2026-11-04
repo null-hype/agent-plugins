@@ -106,6 +106,23 @@ func newMux(token, baseURL string, tb *toolbox) *http.ServeMux {
 			log.Printf("toolbox: check reruns off; LINEAR_CHECK_WEBHOOK_SECRET is set but LINEAR_API_KEY is not")
 		}
 	}
+	// The Linear agent's OAuth app webhook can point here too: a delegation
+	// received while the VM is stopped is kept, the host woken, and the event
+	// handed to the agent. Signed with the app's webhook secret. Off until all
+	// of its settings exist.
+	if tb != nil {
+		secret, key := os.Getenv("LINEAR_AGENT_WEBHOOK_SECRET"), os.Getenv("LINEAR_API_KEY")
+		app, url := os.Getenv("LINEAR_AGENT_APP_USER_ID"), os.Getenv("LINEAR_AGENT_WEBHOOK_URL")
+		if secret != "" && key != "" && app != "" && url != "" {
+			relay := newDelegationRelay(tb, newLinearAPI(key), app, url, secret, os.Getenv("LINEAR_AGENT_RELAY_DIR"))
+			if n := relay.resume(); n > 0 {
+				log.Printf("toolbox: resumed %d retained agent delegation(s)", n)
+			}
+			mux.Handle("/linear/agent-webhook", delegationHandler(secret, relay))
+		} else if secret != "" {
+			log.Printf("toolbox: agent delegation relay off; it needs LINEAR_API_KEY, LINEAR_AGENT_APP_USER_ID and LINEAR_AGENT_WEBHOOK_URL")
+		}
+	}
 	// No authorization server exists: Linear sends a static bearer header.
 	// Listing none tells an OAuth client there is nothing to log in with.
 	mux.HandleFunc("/.well-known/", func(w http.ResponseWriter, r *http.Request) {
