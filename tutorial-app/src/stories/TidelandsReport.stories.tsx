@@ -12,7 +12,7 @@ type Story = StoryObj<typeof meta>;
 export const Home: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('heading', { level: 2, name: 'Checks' })).toBeVisible();
-    await expect(canvas.getByRole('link', { name: 'Preserve preregistered delivery claims across an observed World.' }))
+    await expect(canvas.getByRole('link', { name: "An agent's work is judged against predictions registered before its plan was approved." }))
       .toHaveAttribute('href', 'https://check.tidelands.dev/preserve-preregistered-delivery-claims-across-an-observed-world');
     await expect(canvas.getByText('Passed')).toBeVisible();
   },

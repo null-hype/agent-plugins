@@ -1,13 +1,13 @@
 {
   "slug": "xeno",
-  "title": "A green check isn't enough",
-  "dek": "Xeno puts an AI agent's verification state on its Herdr row, and on the claim's line in your editor.",
+  "title": "A passing check that couldn't fail",
+  "dek": "Xeno shows whether an AI agent's passing check was actually tested, on its row in Herdr and on the claim's line in your editor.",
   "published": "2026-11-04",
   "evidence": [
     {
       "what": "Lights and statuses in Herdr",
       "state": "Tested",
-      "note": "The plugin's tests start a Herdr server and read each pane's lights back. They run in CI but don't gate it yet."
+      "note": "The plugin's tests start a Herdr server and read each pane's lights back. They run in CI but don't yet block a merge."
     },
     {
       "what": "The witness example below",
@@ -17,68 +17,68 @@
     {
       "what": "A live run, agents and Jev included",
       "state": "Not yet",
-      "note": "When it runs, it goes on this site as a check, with its prediction registered first."
+      "note": "When it runs, it will be published on this site as a check, with its prediction registered first."
     }
   ],
   "sections": [
     {
       "blocks": [
-        "An agent tells me people can install witness, my language server for verification findings. The check is green.",
-        "Here is what the check ran:",
+        "An agent reported that people can install witness, my language server for verification findings. Its check passed.",
+        "This is what the check ran:",
         {
           "text": "$ cd /tmp/feature && bash install.sh\nInstalling Go 1.24 for witness...\nwitness installed to /usr/local/bin/witness"
         },
-        "Nobody installs witness that way. People add the dev container feature, and the feature gets Go from another feature it depends on. The check ran the install script in a container that already had what it needed, so it would have passed whether or not that dependency worked.",
-        "The check wasn't wrong about what it saw. It just couldn't have failed."
+        "That isn't how people install witness. They add its dev container feature, which gets Go from another feature it depends on. The check ran the install script in a container that already had Go, so it would have passed whether or not that dependency worked.",
+        "The check was accurate about what it saw. It was never in a position to fail."
       ]
     },
     {
-      "heading": "A check is one arm",
+      "heading": "Verifiers and falsifiers",
       "blocks": [
-        "A passing check is a verifier: it goes looking for the claim being true. On its own it can't tell you whether it was able to see the claim being false.",
-        "For that you need a falsifier: a run that tries to make the claim false. Here, that means removing the dependency and installing the feature again. If the install still succeeds, the check never had teeth. If it breaks, the check can fail, and its pass starts to mean something.",
-        "Two arms still aren't enough when an agent runs both. An agent can report a falsifier that didn't really try. So a third reader, Jev, gets both arms' diffs and is asked how likely it is that both were genuine."
+        "A passing check is a verifier: it looks for evidence that the claim is true. On its own, it can't show that it would have noticed the claim being false.",
+        "That takes a falsifier: a run that tries to make the claim false. Here, that means removing the dependency and installing the feature again. If the install still succeeds, the check could never have failed. If it breaks, the check can fail, and its pass now carries information.",
+        "Both runs still aren't enough when an agent performs them, because an agent can report a falsifier that didn't really try. So a third reader, Jev, a scoring model from TypeSafe, is given both runs' diffs and asked how likely it is that both were genuine."
       ]
     },
     {
       "heading": "Three lights",
       "blocks": [
-        "Xeno is a plugin for Herdr, a terminal multiplexer for agents. An agent reports each arm from inside its own pane:",
+        "Xeno is a plugin for Herdr, a terminal multiplexer for agents. An agent reports each run from its own pane:",
         {
-          "text": "xeno verifier confirmed   # or failed\nxeno falsifier failed     # or refuted\nxeno jev 0.9              # Jev: were both arms genuine?"
+          "text": "xeno verifier confirmed   # or failed\nxeno falsifier failed     # or refuted\nxeno jev 0.9              # Jev: were both runs genuine?"
         },
-        "Each agent's row in the Herdr sidebar gets three lights, in the order of a window's: red for the falsifier, amber for Jev, green for the verifier. A lit light means that arm ran. Red isn't bad news and green isn't good news.",
-        "Next to the lights is a status. Only two of them call for attention:",
+        "Each agent's row in the Herdr sidebar shows three lights, in the order of a macOS window's buttons: red for the falsifier, amber for Jev, green for the verifier. A lit light means that run has reported. The colours don't mean pass or fail.",
+        "Beside the lights is a status. The first two need attention:",
         {
-          "text": "uncontrolled  an arm hasn't reported\nunverified    both reported; Jev missing or below 0.7\nconfirmed     on target; verifier confirmed, falsifier failed\nrefuted       on target; the falsifier won\ninconclusive  on target; neither arm got its way"
+          "text": "uncontrolled  a run hasn't reported\nunverified    both reported; Jev missing or below 0.7\nconfirmed     on target; verifier confirmed, falsifier failed\nrefuted       on target; the falsifier won\ninconclusive  on target; neither run got its way"
         },
-        "A refuted run is on target. The prediction lost, but it was tested, and that's the point."
+        "A refuted run is still on target: the prediction was wrong, but it was properly tested."
       ]
     },
     {
-      "heading": "The witness check, three times",
+      "heading": "The witness check, three ways",
       "blocks": [
-        "Name where the claim lives and xeno also writes a witness finding on that line, so the verdict shows up in the editor, with each arm's diff a go-to-definition away.",
+        "Tell xeno where the claim is and it also writes a witness finding on that line, so the status appears in your editor, with each run's diff a go-to-definition away.",
         {
           "text": "$ xeno claim check.go:9\n$ xeno verifier confirmed today.diff\nuncontrolled"
         },
-        "First, today's green check on its own. One arm has reported, so the run is uncontrolled: a warning on the claim's line.",
+        "First, the original passing check on its own. Only the verifier has reported, so the run is uncontrolled, shown as a warning on the claim's line.",
         {
           "text": "$ xeno falsifier failed falsifier.diff\n$ xeno jev 0.3\nunverified"
         },
-        "Then the falsifier removes the dependency, and the install breaks. Both arms have reported now, but Jev reads them side by side and doubts that the verifier installed witness the way people do. The run is unverified, and the warning becomes an error.",
+        "Next, the falsifier removes the dependency, and the install breaks. Both runs have now reported, but Jev, comparing them, doubts that the verifier installed witness the way people do. The run is unverified, and the warning becomes an error.",
         {
           "text": "$ xeno verifier confirmed verifier.diff\n$ xeno jev 0.9\nconfirmed"
         },
-        "Last, a verifier that installs it properly: it brings a dev container up with the witness feature and finds the binary. Jev is satisfied, the run is confirmed, and the finding drops to information.",
-        "The check was green all three times. Xeno said three different things."
+        "Finally, a verifier that installs it properly: it starts a dev container with the witness feature and finds the binary. Jev scores both runs as genuine, the run is confirmed, and the finding drops to information level.",
+        "The check passed in all three runs. Xeno reported uncontrolled, unverified and confirmed."
       ]
     },
     {
-      "heading": "What this is and isn't",
+      "heading": "Limits",
       "blocks": [
-        "The example above is a replay. The diffs are recordings of agent runs, and Jev's scores are recordings too. What's real is the plugin: it runs in Herdr, lights the panes and writes the findings, and its tests check that against a running Herdr server.",
-        "So this article shows how xeno reads a run, not that a live agent and a live Jev get this one right. That's the next check, and it will be on this site with its prediction written down before it runs, whichever way it goes.",
+        "The example is a replay. The diffs are recordings of agent runs, and Jev's scores are recorded too. The plugin itself is real: it runs in Herdr, lights the panes and writes the findings, and its tests check this against a running Herdr server.",
+        "So this article shows how xeno reads a run. It doesn't show that a live agent and a live Jev get this case right. That is the next check. It will be published here with its prediction registered before it runs, whatever the result.",
         "The source is in null-hype/features, under src/xeno."
       ]
     }
