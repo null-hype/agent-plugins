@@ -63,17 +63,25 @@ func (e agentSessionEvent) created() int64 {
 	return e.WebhookTimestamp
 }
 
-// delegation is one retained event. Delegated records whether the issue was
-// delegated to the agent when the event arrived (a mention creates a session
-// too, and is not withdrawn by changing the delegate).
+// What Linear said the issue's delegate was when the event arrived. A mention
+// creates a session too, and is not withdrawn by changing the delegate, so
+// only "agent" is re-checked as a withdrawal; "unknown" means Linear could not
+// be asked, which is not the same as a mention.
+const (
+	delegateAgent   = "agent"
+	delegateOther   = "other"
+	delegateUnknown = "unknown"
+)
+
+// delegation is one retained event.
 type delegation struct {
-	Delivery  string `json:"delivery"`
-	Body      string `json:"body"`
-	Delegated bool   `json:"delegated"`
-	Session   string `json:"-"`
-	Issue     string `json:"-"`
-	Action    string `json:"-"`
-	Created   int64  `json:"-"`
+	Delivery string `json:"delivery"`
+	Body     string `json:"body"`
+	Delegate string `json:"delegate"`
+	Session  string `json:"-"`
+	Issue    string `json:"-"`
+	Action   string `json:"-"`
+	Created  int64  `json:"-"`
 }
 
 func (d *delegation) parse() error {
@@ -175,11 +183,20 @@ func delegationHandler(secret string, r *delegationRelay) http.Handler {
 		d, ok := r.relevant(ev, req.Header.Get("Linear-Delivery"), body)
 		if ok {
 			// Whether this is a delegation or, say, a mention is read from Linear
-			// now; if Linear does not answer, no withdrawal check applies later.
+			// now. If Linear does not answer it stays unknown and is settled at
+			// delivery, never assumed to be a mention.
 			qctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 			who, err := r.delegate(qctx, d.Issue)
 			cancel()
-			d.Delegated = err == nil && who == r.appUserID
+			switch {
+			case err != nil:
+				d.Delegate = delegateUnknown
+				log.Printf("agent delegation %s (%s): delegate not read on arrival: %v", d.Issue, d.Delivery, err)
+			case who == r.appUserID:
+				d.Delegate = delegateAgent
+			default:
+				d.Delegate = delegateOther
+			}
 			if err := r.accept(d); err != nil {
 				// Not retained: let Linear's own retry bring it back.
 				log.Printf("agent delegation %s (%s): not retained: %v", d.Issue, d.Delivery, err)
@@ -357,6 +374,9 @@ func (r *delegationRelay) drive(ctx context.Context, d delegation) error {
 			last = err
 		case ready:
 			done, err := r.handOff(ctx, d)
+			if errors.Is(err, errDelegationUnconfirmed) {
+				return err
+			}
 			if err != nil {
 				if ctx.Err() == nil {
 					last = err
@@ -382,6 +402,8 @@ func (r *delegationRelay) drive(ctx context.Context, d delegation) error {
 	}
 }
 
+var errDelegationUnconfirmed = errors.New("Linear could not confirm on arrival that the issue was delegated to the agent, and it is not delegated to it now, so this may be a withdrawn delegation; not started (to run it, delegate the issue again or mention the agent again)")
+
 var errAgentFailed = errors.New("the agent failed to start")
 
 // wakeStep is one host_wake. Starts are serialised so simultaneous
@@ -404,12 +426,16 @@ func (r *delegationRelay) wakeStep(ctx context.Context) (bool, error) {
 // holds for prompted events as much as created ones. done is false when the
 // event was dropped.
 func (r *delegationRelay) handOff(ctx context.Context, d delegation) (bool, error) {
-	if d.Delegated {
+	if d.Delegate == delegateAgent || d.Delegate == delegateUnknown {
 		who, err := r.delegate(ctx, d.Issue)
 		if err != nil {
-			return false, err
+			return false, err // not read: try again, never deliver on a guess
 		}
 		if who != r.appUserID {
+			if d.Delegate == delegateUnknown {
+				// A mention or a withdrawn delegation: Linear cannot now say which.
+				return false, errDelegationUnconfirmed
+			}
 			log.Printf("agent delegation %s (%s): no longer delegated to the agent; dropped", d.Issue, d.Delivery)
 			r.settle(d, ".done")
 			return false, nil

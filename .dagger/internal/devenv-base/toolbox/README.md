@@ -100,10 +100,13 @@ older than a minute). The agent is unchanged.
 
 - Sessions: a `created` event is a delegation or a mention (Linear does not
   say which in the action), so both wake the host. Assigning an issue to a
-  person sends no session event and wakes nothing. At arrival the toolbox reads
-  the issue's delegate from Linear; a session on an issue delegated to the
-  agent is dropped at delivery if the delegation was withdrawn meanwhile, for
-  `prompted` events too. A mention is not subject to that check.
+  person sends no session event and wakes nothing. On arrival the toolbox reads
+  the issue's delegate from Linear. Delegated to the agent: re-read at delivery
+  and dropped if withdrawn, for `prompted` events too. Delegated to someone
+  else (a mention): not subject to that check. Linear unreachable: unknown, not
+  a mention; it is re-read at delivery (retried while unreadable), delivered if
+  the agent holds the issue then, and otherwise not started, with a comment on
+  the issue, because a mention and a withdrawn delegation cannot be told apart.
 - Dropped, never started: events for another app user, finished sessions, bad
   signatures, bodies older than a minute, a repeated delivery or session, and a
   session older (by Linear's `agentSession.createdAt`, not arrival) than another
@@ -112,11 +115,14 @@ older than a minute). The agent is unchanged.
   the agent when the host is already running, and dropped when it is stopped:
   the agent follows an edit only for a session it holds in memory, which a
   stopped host has not.
-- Delivery is at-least-once, the run at-most-once. After a lost answer or a
-  toolbox crash the same event is sent again; the agent records each event
-  (`LINEAR_AGENT_STATE_DIR`, default `~/.linear-agent/claims`) before running
-  it and ignores a repeat, so no second Claude run starts. If the agent dies
-  mid-run the event is not run again; prompt the session again.
+- Delivery is at-least-once, the run at-most-once. The agent builds the
+  event's prompt and records its claim (`LINEAR_AGENT_STATE_DIR`, default
+  `~/.linear-agent/claims`) before it answers; a failure in either is a 500, so
+  Linear or the relay retries, and an unclaimed event is not mistaken for a
+  repeat. Only the Claude run itself is detached. A repeat of a claimed event
+  is ignored, so a resend after a lost answer or a toolbox crash starts no
+  second run. If the agent dies mid-run the event is not run again; prompt the
+  session again.
 - Failure: the issue gets a comment (starting; or why it could not be taken,
   with "delegate again to retry").
 - Durability: every accepted event is written to `LINEAR_AGENT_RELAY_DIR`
