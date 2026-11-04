@@ -113,14 +113,19 @@ func newMux(token, baseURL string, tb *toolbox) *http.ServeMux {
 	if tb != nil {
 		secret, key := os.Getenv("LINEAR_AGENT_WEBHOOK_SECRET"), os.Getenv("LINEAR_API_KEY")
 		app, url := os.Getenv("LINEAR_AGENT_APP_USER_ID"), os.Getenv("LINEAR_AGENT_WEBHOOK_URL")
-		if secret != "" && key != "" && app != "" && url != "" {
-			relay := newDelegationRelay(tb, newLinearAPI(key), app, url, secret, os.Getenv("LINEAR_AGENT_RELAY_DIR"))
+		dir := os.Getenv("LINEAR_AGENT_RELAY_DIR")
+		switch {
+		case secret == "":
+		case key == "" || app == "" || url == "" || dir == "":
+			log.Printf("toolbox: agent delegation relay off; it needs LINEAR_API_KEY, LINEAR_AGENT_APP_USER_ID, LINEAR_AGENT_WEBHOOK_URL and LINEAR_AGENT_RELAY_DIR (a persistent disk)")
+		case !writableDir(dir):
+			log.Printf("toolbox: agent delegation relay off; LINEAR_AGENT_RELAY_DIR %q is not writable", dir)
+		default:
+			relay := newDelegationRelay(tb, newLinearAPI(key), app, url, secret, dir)
 			if n := relay.resume(); n > 0 {
 				log.Printf("toolbox: resumed %d retained agent delegation(s)", n)
 			}
 			mux.Handle("/linear/agent-webhook", delegationHandler(secret, relay))
-		} else if secret != "" {
-			log.Printf("toolbox: agent delegation relay off; it needs LINEAR_API_KEY, LINEAR_AGENT_APP_USER_ID and LINEAR_AGENT_WEBHOOK_URL")
 		}
 	}
 	// No authorization server exists: Linear sends a static bearer header.
@@ -208,4 +213,17 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	log.Fatal(srv.ListenAndServe())
+}
+
+// writableDir makes dir if needed and reports whether a file can be kept in it.
+func writableDir(dir string) bool {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return false
+	}
+	f, err := os.CreateTemp(dir, ".probe-*")
+	if err != nil {
+		return false
+	}
+	f.Close()
+	return os.Remove(f.Name()) == nil
 }

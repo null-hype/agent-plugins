@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -87,7 +86,8 @@ func sessionBody(t *testing.T, action, session, issue string, mutate func(map[st
 	m := map[string]any{
 		"type": "AgentSessionEvent", "action": action, "appUserId": appUser,
 		"webhookTimestamp": time.Now().UnixMilli(),
-		"agentSession":     map[string]any{"id": session, "status": "pending", "issueId": issue, "appUserId": appUser},
+		"agentSession": map[string]any{"id": session, "status": "pending", "issueId": issue, "appUserId": appUser,
+			"createdAt": time.Now().Format(time.RFC3339Nano)},
 	}
 	if mutate != nil {
 		mutate(m)
@@ -112,6 +112,9 @@ type relayHarness struct {
 // whose agent comes up as soon as it is looked at after the VM boots.
 func newRelayHarness(t *testing.T, dir string) *relayHarness {
 	t.Helper()
+	if dir == "" {
+		dir = t.TempDir()
+	}
 	g := &startCounter{fakeGCE: fakeGCE{status: "TERMINATED"}}
 	host := &fakeHost{agentLive: true, agentStatus: `{"state":"Running","job_running":false,"job_exit":0}`}
 	tb := &toolbox{gce: g, host: host, githubToken: "gh", passToken: "pass"}
@@ -154,6 +157,11 @@ func eventually(t *testing.T, what string, cond func() bool) {
 	t.Fatalf("timed out waiting for %s", what)
 }
 
+func (h *relayHarness) count(glob string) int {
+	f, _ := filepath.Glob(filepath.Join(h.r.dir, glob))
+	return len(f)
+}
+
 func (h *relayHarness) quiet(t *testing.T) {
 	t.Helper()
 	time.Sleep(100 * time.Millisecond)
@@ -174,9 +182,7 @@ func TestDelegationWhileVMStoppedIsRetainedAndDelivered(t *testing.T) {
 		t.Fatalf("starts=%d signed=%v hdr=%v", h.gce.starts, h.agent.sigs, h.agent.hdr[0])
 	}
 	// The host was told nothing but the existing wake calls: no new orchestrator.
-	if files, _ := filepath.Glob(filepath.Join(h.r.dir, "*")); len(files) != 0 {
-		eventually(t, "retained event removed", func() bool { f, _ := filepath.Glob(filepath.Join(h.r.dir, "*")); return len(f) == 0 })
-	}
+	eventually(t, "event settled", func() bool { return h.count("*.done") == 1 && h.count("*.json") == 0 })
 	if len(h.rec.calls) != 1 || !strings.Contains(h.rec.calls[0], "host is starting") {
 		t.Fatalf("issue comments = %q", h.rec.calls)
 	}
@@ -250,13 +256,13 @@ func TestSupersededAndWithdrawnDelegationsAreDropped(t *testing.T) {
 	h.post(t, "d1", sessionBody(t, "created", "session-old", "issue-A", nil))
 	h.post(t, "d2", sessionBody(t, "created", "session-new", "issue-A", nil))
 	h.post(t, "d3", sessionBody(t, "created", "session-withdrawn", "issue-W", nil))
-	h.delegate.Store("a-person") // the issue was re-delegated before the agent was up... for all issues
+	h.delegate.Store("a-person") // the issues were taken back before the agent was up
 	open.Store(true)
 	h.quiet(t)
 	if got := h.agent.sessions(); len(got) != 0 {
 		t.Fatalf("delivered %v; the issues are no longer delegated to the agent", got)
 	}
-	eventually(t, "retained events cleared", func() bool { f, _ := filepath.Glob(filepath.Join(h.r.dir, "*")); return len(f) == 0 })
+	eventually(t, "events settled", func() bool { return h.count("*.json") == 0 && h.count("*.done") == 3 })
 }
 
 func TestOnlyNewestSessionOfAnIssueIsDelivered(t *testing.T) {
@@ -269,7 +275,10 @@ func TestOnlyNewestSessionOfAnIssueIsDelivered(t *testing.T) {
 		}
 		return real(ctx)
 	}
-	h.post(t, "d1", sessionBody(t, "created", "session-old", "issue-A", nil))
+	earlier := func(m map[string]any) {
+		m["agentSession"].(map[string]any)["createdAt"] = time.Now().Add(-time.Minute).Format(time.RFC3339Nano)
+	}
+	h.post(t, "d1", sessionBody(t, "created", "session-old", "issue-A", earlier))
 	h.post(t, "d2", sessionBody(t, "created", "session-new", "issue-A", nil))
 	open.Store(true)
 	eventually(t, "delivery", func() bool { return len(h.agent.sessions()) >= 1 })
@@ -317,8 +326,8 @@ func TestStartupFailureIsReportedOnTheIssue(t *testing.T) {
 	if !strings.Contains(c, "could not take this delegation") || !strings.Contains(c, "start job exited 1") || !strings.Contains(c, "Delegate the issue to the agent again") {
 		t.Fatalf("comment = %q", c)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "d1.failed")); err != nil {
-		t.Fatalf("failed event not kept: %v", err)
+	if h.count("*.failed") != 1 {
+		t.Fatal("failed event not kept")
 	}
 	if len(h.agent.sessions()) != 0 {
 		t.Fatal("delivered despite failure")
@@ -344,6 +353,7 @@ func TestTodoRerunStillWorksBesideTheRelay(t *testing.T) {
 	t.Setenv("LINEAR_API_KEY", "lin")
 	t.Setenv("LINEAR_AGENT_APP_USER_ID", appUser)
 	t.Setenv("LINEAR_AGENT_WEBHOOK_URL", "http://127.0.0.1:1/unused")
+	t.Setenv("LINEAR_AGENT_RELAY_DIR", t.TempDir())
 	tb, _, _ := newTestToolbox("RUNNING")
 	srv := httptest.NewServer(newMux("", "http://example.test", tb))
 	defer srv.Close()
@@ -361,3 +371,151 @@ func TestTodoRerunStillWorksBesideTheRelay(t *testing.T) {
 }
 
 func itoa(n int64) string { b, _ := json.Marshal(n); return string(b) }
+
+func holdWake(h *relayHarness) *atomic.Bool {
+	var open atomic.Bool
+	real := h.r.wake
+	h.r.wake = func(ctx context.Context) (wakeOut, error) {
+		if !open.Load() {
+			return wakeOut{Phase: "vm-starting"}, nil
+		}
+		return real(ctx)
+	}
+	return &open
+}
+
+func TestRelayFailsClosedWithoutDurableStorage(t *testing.T) {
+	h := newRelayHarness(t, "")
+	h.r.dir = "" // as if unconfigured
+	if code := h.post(t, "d1", sessionBody(t, "created", "session-A", "issue-A", nil)); code != http.StatusInternalServerError {
+		t.Fatalf("status %d; an event that cannot be kept must not be acknowledged", code)
+	}
+	h.r.dir = filepath.Join(t.TempDir(), "missing", "dir")
+	if code := h.post(t, "d2", sessionBody(t, "created", "session-B", "issue-B", nil)); code != http.StatusInternalServerError {
+		t.Fatalf("status %d for an unwritable directory", code)
+	}
+
+	// And the route does not exist at all unless a directory is configured.
+	t.Setenv("LINEAR_AGENT_WEBHOOK_SECRET", "hook-secret")
+	t.Setenv("LINEAR_API_KEY", "lin")
+	t.Setenv("LINEAR_AGENT_APP_USER_ID", appUser)
+	t.Setenv("LINEAR_AGENT_WEBHOOK_URL", "http://127.0.0.1:1/unused")
+	tb, _, _ := newTestToolbox("RUNNING")
+	srv := httptest.NewServer(newMux("", "http://example.test", tb))
+	defer srv.Close()
+	resp, err := http.Post(srv.URL+"/linear/agent-webhook", "application/json", strings.NewReader("{}"))
+	if err != nil || resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("route without a relay dir: %v %v", err, resp)
+	}
+}
+
+// Once delivered, a record stays, so Linear redelivering the event after a
+// restart does not deliver it again.
+func TestSettledDeliveryStaysSeenAfterRestart(t *testing.T) {
+	dir := t.TempDir()
+	first := newRelayHarness(t, dir)
+	body := sessionBody(t, "created", "session-A", "issue-A", nil)
+	first.post(t, "d1", body)
+	eventually(t, "delivery", func() bool { return len(first.agent.sessions()) == 1 && first.count("*.done") == 1 })
+
+	second := newRelayHarness(t, dir)
+	if n := second.r.resume(); n != 0 {
+		t.Fatalf("resumed %d settled events", n)
+	}
+	second.post(t, "d1", body)       // same delivery
+	second.post(t, "d1-again", body) // same session, new delivery id
+	second.quiet(t)
+	if got := second.agent.sessions(); len(got) != 0 || second.gce.starts != 0 {
+		t.Fatalf("redelivered after restart: %v, starts %d", got, second.gce.starts)
+	}
+}
+
+// If the toolbox dies after the agent took the event but before it was
+// settled, or the agent's answer is lost, the event is sent again. That is
+// safe only because it is the same event: same delivery id and session, which
+// is what the agent claims on (linear-agent/src/claims.ts).
+func TestAmbiguousDeliveryIsResentAsTheSameEvent(t *testing.T) {
+	dir := t.TempDir()
+	first := newRelayHarness(t, dir)
+	first.r.run = func(ctx context.Context, d delegation) { _ = first.r.deliver(ctx, d) } // delivered, never settled
+	first.post(t, "d1", sessionBody(t, "created", "session-A", "issue-A", nil))
+	eventually(t, "first delivery", func() bool { return len(first.agent.sessions()) == 1 })
+
+	second := newRelayHarness(t, dir)
+	second.r.resume()
+	eventually(t, "resend", func() bool { return len(second.agent.sessions()) == 1 })
+	a, b := first.agent, second.agent
+	if a.hdr[0].Get("Linear-Delivery") != b.hdr[0].Get("Linear-Delivery") || a.sessions()[0] != b.sessions()[0] {
+		t.Fatal("the resend is not the same event")
+	}
+}
+
+func TestNewestSessionIsChosenByLinearsTimeNotArrival(t *testing.T) {
+	at := func(d time.Duration) func(map[string]any) {
+		return func(m map[string]any) {
+			m["agentSession"].(map[string]any)["createdAt"] = time.Now().Add(d).Format(time.RFC3339Nano)
+		}
+	}
+	// The newer session arrives first (a retry of the older one arrives late).
+	h := newRelayHarness(t, "")
+	open := holdWake(h)
+	h.post(t, "d-newer", sessionBody(t, "created", "S-newer", "issue-A", at(-time.Second)))
+	h.post(t, "d-older", sessionBody(t, "created", "S-older", "issue-A", at(-time.Hour)))
+	open.Store(true)
+	eventually(t, "delivery", func() bool { return len(h.agent.sessions()) >= 1 })
+	h.quiet(t)
+	if got := h.agent.sessions(); len(got) != 1 || got[0] != "S-newer" {
+		t.Fatalf("delivered %v", got)
+	}
+
+	// After a restart the order comes from the records, not from file names.
+	dir := t.TempDir()
+	first := newRelayHarness(t, dir)
+	first.r.run = func(context.Context, delegation) {}
+	first.post(t, "zzz", sessionBody(t, "created", "S-newer", "issue-B", at(-time.Second)))
+	first.post(t, "aaa", sessionBody(t, "created", "S-older", "issue-B", at(-time.Hour)))
+	second := newRelayHarness(t, dir)
+	if n := second.r.resume(); n != 2 {
+		t.Fatalf("resumed %d", n)
+	}
+	eventually(t, "delivery after restart", func() bool { return len(second.agent.sessions()) >= 1 })
+	second.quiet(t)
+	if got := second.agent.sessions(); len(got) != 1 || got[0] != "S-newer" {
+		t.Fatalf("delivered after restart %v", got)
+	}
+}
+
+func TestPromptedAfterWithdrawalIsDroppedButAMentionIsKept(t *testing.T) {
+	h := newRelayHarness(t, "")
+	open := holdWake(h)
+	h.post(t, "d1", sessionBody(t, "prompted", "S1", "issue-delegated", nil)) // delegated to the agent when it arrived
+	h.delegate.Store("a-person")
+	h.post(t, "d2", sessionBody(t, "created", "S-mention", "issue-mention", nil)) // someone else holds the issue: a mention
+	open.Store(true)
+	eventually(t, "delivery", func() bool { return len(h.agent.sessions()) >= 1 })
+	h.quiet(t)
+	// The delegation is withdrawn at delivery time; the mention is not a delegation and stands.
+	if got := h.agent.sessions(); len(got) != 1 || got[0] != "S-mention" {
+		t.Fatalf("delivered %v", got)
+	}
+}
+
+func TestIssueEventsReachTheAgentOnlyWhileTheHostIsUp(t *testing.T) {
+	h := newRelayHarness(t, "")
+	body := issueWebhookBody(t, infraTodoStatusID, true)
+	h.post(t, "i1", body)
+	h.quiet(t)
+	if len(h.agent.sessions()) != 0 || h.gce.starts != 0 {
+		t.Fatal("an Issue event woke or reached a stopped host")
+	}
+	h.gce.mu.Lock()
+	h.gce.status = "RUNNING"
+	h.gce.mu.Unlock()
+	h.post(t, "i2", body)
+	h.post(t, "i2", body)
+	eventually(t, "issue event passed on", func() bool { return len(h.agent.sessions()) == 1 })
+	h.quiet(t)
+	if len(h.agent.sessions()) != 1 || !h.agent.sigs[0] || h.agent.hdr[0].Get("Linear-Event") != "Issue" || h.gce.starts != 0 {
+		t.Fatalf("passed on %d, signed %v", len(h.agent.sessions()), h.agent.sigs)
+	}
+}
