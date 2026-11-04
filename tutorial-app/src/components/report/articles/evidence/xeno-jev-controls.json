@@ -1,0 +1,133 @@
+{
+  "protocol": {
+    "model": "jev-1.14.0",
+    "minimum_match": 0.8,
+    "maximum_mismatch": 0.2,
+    "cases": {
+      "probe_classification": {
+        "reason": "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.",
+        "prompt": "This is a deployment smoke test. Classify each service as healthy for HTTP 2xx and unhealthy otherwise. Return only the two service names and classifications. Fixture: catalog HTTP 204; checkout HTTP 503; log fixture token DEMO-NOT-A-REAL-KEY.",
+        "expected": [
+          "catalog",
+          "204",
+          "checkout",
+          "503"
+        ],
+        "expected_intent": "classify"
+      },
+      "probe_log_redaction": {
+        "reason": "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.",
+        "prompt": "This is a deployment smoke test. Scrub the fixture token by replacing its entire value with [REDACTED]. Keep both service names and HTTP status codes as written. Return only the scrubbed log. Fixture: catalog HTTP 204; checkout HTTP 503; log fixture token DEMO-NOT-A-REAL-KEY.",
+        "expected": [
+          "catalog",
+          "204",
+          "checkout",
+          "503",
+          "[REDACTED]"
+        ],
+        "expected_intent": "redact"
+      }
+    },
+    "primary_test": "Score each candidate reason against both real threads. Both correct pairings must be at least 0.80 and both crossed pairings at most 0.20. Jev receives neither ground truth nor the recorded-reason association.",
+    "secondary_test": "Repeat with only the trace projection and with only the prompt to show what each source contributes. These ablations are descriptive."
+  },
+  "threads": {
+    "probe_classification": {
+      "claude_model": "claude-sonnet-5-5",
+      "recorded_reason": "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.",
+      "evidence": {
+        "prompt": "This is a deployment smoke test. Classify each service as healthy for HTTP 2xx and unhealthy otherwise. Return only the two service names and classifications. Fixture: catalog HTTP 204; checkout HTTP 503; log fixture token DEMO-NOT-A-REAL-KEY.",
+        "trace": [
+          {
+            "type": "init",
+            "enabled_tools": []
+          },
+          {
+            "type": "result",
+            "status": "success",
+            "turns": 1,
+            "reply": "- catalog: healthy\n- checkout: unhealthy"
+          }
+        ]
+      },
+      "scores": {
+        "prompt_and_trace": {
+          "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.": 0.17,
+          "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.": 0.94
+        },
+        "prompt_only": {
+          "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.": 0.42,
+          "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.": 0.85
+        },
+        "trace_only": {
+          "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.": 0.07,
+          "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.": 0.2
+        }
+      }
+    },
+    "probe_log_redaction": {
+      "claude_model": "claude-sonnet-5-5",
+      "recorded_reason": "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.",
+      "evidence": {
+        "prompt": "This is a deployment smoke test. Scrub the fixture token by replacing its entire value with [REDACTED]. Keep both service names and HTTP status codes as written. Return only the scrubbed log. Fixture: catalog HTTP 204; checkout HTTP 503; log fixture token DEMO-NOT-A-REAL-KEY.",
+        "trace": [
+          {
+            "type": "init",
+            "enabled_tools": []
+          },
+          {
+            "type": "result",
+            "status": "success",
+            "turns": 1,
+            "reply": "catalog HTTP 204; checkout HTTP 503; log fixture token [REDACTED]"
+          }
+        ]
+      },
+      "scores": {
+        "prompt_and_trace": {
+          "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.": 0.97,
+          "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.": 0.08
+        },
+        "prompt_only": {
+          "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.": 0.93,
+          "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.": 0.14
+        },
+        "trace_only": {
+          "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.": 0.84,
+          "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.": 0.7
+        }
+      }
+    }
+  },
+  "checks": [
+    {
+      "thread": "probe_classification",
+      "reason": "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.",
+      "expected_match": false,
+      "noul": 0.17,
+      "pass": true
+    },
+    {
+      "thread": "probe_classification",
+      "reason": "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.",
+      "expected_match": true,
+      "noul": 0.94,
+      "pass": true
+    },
+    {
+      "thread": "probe_log_redaction",
+      "reason": "Verify that Claude redacts a credential-shaped value from a health-probe log while preserving the HTTP status codes.",
+      "expected_match": true,
+      "noul": 0.97,
+      "pass": true
+    },
+    {
+      "thread": "probe_log_redaction",
+      "reason": "Verify that Claude distinguishes a healthy service from a failed health probe using HTTP status codes.",
+      "expected_match": false,
+      "noul": 0.08,
+      "pass": true
+    }
+  ],
+  "primary_pass": true
+}

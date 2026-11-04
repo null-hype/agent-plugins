@@ -1,0 +1,33 @@
+amends "pkl:test"
+
+import "XenoReasonExperiment.pkl" as Experiment
+
+facts {
+  ["the recorded positive and negative controls hold"] {
+    Experiment.controlsHeld
+    Experiment.primaryScores.classifyAsClassify == 0.94
+    Experiment.primaryScores.classifyAsRedact == 0.17
+    Experiment.primaryScores.redactAsClassify == 0.08
+    Experiment.primaryScores.redactAsRedact == 0.97
+  }
+  ["a confident crossed label fails the controls"] {
+    !((Experiment) {
+      primaryScores { classifyAsRedact = 0.9 }
+    }.controlsHeld)
+  }
+  ["a weak match to the recorded reason fails the controls"] {
+    !((Experiment) {
+      primaryScores { redactAsRedact = 0.5 }
+    }.controlsHeld)
+  }
+  ["the thresholds include their boundaries"] {
+    (Experiment) {
+      primaryScores {
+        classifyAsClassify = 0.8
+        classifyAsRedact = 0.2
+        redactAsClassify = 0.2
+        redactAsRedact = 0.8
+      }
+    }.controlsHeld
+  }
+}
