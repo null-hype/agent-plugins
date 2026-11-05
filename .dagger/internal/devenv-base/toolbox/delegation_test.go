@@ -119,7 +119,7 @@ func newRelayHarness(t *testing.T, dir string) *relayHarness {
 	}
 	g := &startCounter{fakeGCE: fakeGCE{status: "TERMINATED"}}
 	host := &fakeHost{agentLive: true, agentStatus: `{"state":"Running","job_running":false,"job_exit":0}`}
-	tb := &toolbox{gce: g, host: host, githubToken: "gh", passToken: "pass"}
+	tb := &toolbox{gce: g, host: host, githubToken: "gh", passToken: "pass", agentPassToken: "agent-pass"}
 	rec := &linearRecorder{}
 	lsrv := httptest.NewServer(rec)
 	t.Cleanup(lsrv.Close)

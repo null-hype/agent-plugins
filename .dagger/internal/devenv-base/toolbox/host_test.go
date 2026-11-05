@@ -118,17 +118,10 @@ case "$*" in *--send-env\ PROTON_PASS_PERSONAL_ACCESS_TOKEN*) echo "sent ${PROTO
 		t.Fatalf("token reached a devpod command line:\n%s", calls)
 	}
 
-	// An agent workspace's scripts run from origin/main. The fake pass-cli
-	// has a session, and resolves every env file to the agent's token.
-	os.WriteFile(filepath.Join(bin, "pass-cli"), []byte(`#!/bin/bash
-case $1 in
-info) exit 0 ;;
-run) while [ "$1" != -- ]; do shift; done; shift; PROTON_PASS_PERSONAL_ACCESS_TOKEN=agent-token exec "$@" ;;
-esac
-`), 0o755)
+	// An agent workspace's scripts run from origin/main.
 	os.Remove(filepath.Join(home, "devpod.calls"))
 	os.Remove(filepath.Join(home, ".toolbox/jobs/ws1.exit"))
-	run(exports(map[string]string{"GITHUB_TOKEN": "t", "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "toolbox-token"}), "up", "ws1", "main", "1")
+	run(exports(map[string]string{"GITHUB_TOKEN": "t", "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "toolbox-token", "AGENT_PASS_TOKEN": "agent-token"}), "up", "ws1", "main", "1")
 	exitFile = filepath.Join(home, ".toolbox/jobs/ws1.exit")
 	for i := 0; i < 100; i++ {
 		if _, err := os.Stat(exitFile); err == nil {
@@ -142,13 +135,13 @@ esac
 	if checkout < 0 || firstScript < checkout {
 		t.Fatalf("checkout not moved to origin/main before the scripts:\n%s", calls)
 	}
-	// tailscale-up.sh gets the workspace's own Pass agent token, resolved on
-	// the host from its reference, never the token the toolbox sent.
+	// tailscale-up.sh gets the workspace's own Pass agent token, never the
+	// toolbox's, and local edits are stashed before the checkout.
 	if !strings.Contains(string(calls), "sent agent-token") || strings.Contains(string(calls), "toolbox-token") {
 		t.Fatalf("workspace not sent its own Pass token:\n%s", calls)
 	}
-	if ref, _ := os.ReadFile(filepath.Join(home, ".toolbox/agent/pass.env")); strings.TrimSpace(string(ref)) != "PROTON_PASS_PERSONAL_ACCESS_TOKEN=pass://tidelands.dev/linear-agent-host/PROTON_PASS_PERSONAL_ACCESS_TOKEN" {
-		t.Fatalf("pass.env = %q", ref)
+	if !strings.Contains(string(calls), "git stash push") {
+		t.Fatalf("local edits not stashed before the checkout:\n%s", calls)
 	}
 }
 

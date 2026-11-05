@@ -31,9 +31,10 @@ type toolbox struct {
 	host       hostAPI
 	codespaces codespaceAPI
 	// githubToken lets devpod clone the private repo. passToken logs the
-	// host's pass-cli in, which resolves the agent workspace's own token
-	// (AGENT_PASS_TOKEN_REF in host.sh) and codex_review's Linear key.
-	githubToken, passToken string
+	// host's pass-cli in, for codex_review's Linear key and agent_ship's push
+	// token. agentPassToken is the agent workspace's own: the Pass agent
+	// linear-agent-host (setup-agent-pass.sh), sent to its tailscale-up.sh.
+	githubToken, passToken, agentPassToken string
 	// tsAuthKey joins the host itself to the tailnet. Empty leaves it off.
 	tsAuthKey string
 }
@@ -305,7 +306,10 @@ func (t *toolbox) up(ctx context.Context, name, ref string, agent bool) ([]byte,
 	env := map[string]string{"GITHUB_TOKEN": t.githubToken}
 	flag := "0"
 	if agent {
-		env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] = t.passToken
+		if t.agentPassToken == "" {
+			return nil, fmt.Errorf("LINEAR_AGENT_PASS_TOKEN is not set on the toolbox, so the agent workspace has no Pass token: set it from tidelands.dev/linear-agent-host (toolbox/setup-agent-pass.sh)")
+		}
+		env["AGENT_PASS_TOKEN"] = t.agentPassToken
 		flag = "1"
 	}
 	return t.host.Run(ctx, env, "up", name, ref, flag)
