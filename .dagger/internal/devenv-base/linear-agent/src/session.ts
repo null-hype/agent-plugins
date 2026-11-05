@@ -1,5 +1,7 @@
 import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
+import { createHash } from "node:crypto";
+import { claimEvent } from "./claims.ts";
 import { runClaude, WORKSPACE_DIR } from "./claude.ts";
 import { syncWorkspace } from "./workspace.ts";
 
@@ -18,17 +20,31 @@ const issueSessions = new Map<string, string>();
 const TERMINAL_STATUSES = new Set(["complete", "error"]);
 
 /**
- * Handles one AgentSessionEvent webhook. Must be invoked without the caller
- * awaiting it to completion — a `claude` run takes minutes, and Linear
- * expects a `thought` activity posted within 10 seconds of the session
- * being created. postThought below is the only part callers should await;
- * everything after it runs in the background.
+ * A prepared event: everything that can fail before any work starts has been
+ * done (the prompt is built, the event claimed), and what is left is the
+ * minutes-long Claude run.
  */
-export async function handleAgentSessionEvent(
+export type PreparedRun = () => Promise<void>;
+
+/**
+ * Prepares one AgentSessionEvent webhook. The caller awaits this before
+ * answering Linear and lets the returned run go in the background, so a
+ * failure to build the prompt or to record the claim reaches Linear (and the
+ * toolbox relay) as a failed delivery that is retried, while a slow `claude`
+ * run does not hold the answer up. Returns undefined when there is nothing to
+ * run: an event with no actionable prompt, or a repeat of one already claimed.
+ *
+ * The event is claimed after its prompt is built and before the run starts,
+ * so a transient failure while preparing leaves it unclaimed and a retry
+ * works, and two deliveries of the same event cannot both start a run. Once
+ * claimed it is at-most-once: if the process dies mid-run the event is not
+ * run again and the user prompts the session again.
+ */
+export async function prepareAgentSessionEvent(
   payload: AgentSessionEventWebhookPayload,
   linear: LinearClient,
   claudeCodeOAuthToken: string,
-): Promise<void> {
+): Promise<PreparedRun | undefined> {
   const agentSessionId = payload.agentSession.id;
   const issueId = payload.agentSession.issueId;
   if (issueId) {
@@ -42,35 +58,65 @@ export async function handleAgentSessionEvent(
   const prompt = await buildPrompt(payload, linear, issueId ?? undefined);
   if (prompt === undefined) {
     // Nothing actionable in this event (e.g. a permission change) — ignore.
-    return;
+    return undefined;
   }
 
-  await runTurn(linear, agentSessionId, issueId ?? undefined, prompt, claudeCodeOAuthToken);
+  const activityId = (payload.agentActivity as { id?: string } | null | undefined)?.id;
+  const body = (payload.agentActivity?.content as { body?: string } | undefined)?.body ?? "";
+  const eventKey =
+    payload.action === "created"
+      ? `created:${agentSessionId}`
+      : `${payload.action}:${agentSessionId}:${activityId ?? createHash("sha256").update(body).digest("hex")}`;
+  if (!claimEvent(eventKey)) {
+    console.log(`AgentSessionEvent ${eventKey} already handled; ignored`);
+    return undefined;
+  }
+  return () => runTurn(linear, agentSessionId, issueId ?? undefined, prompt, claudeCodeOAuthToken);
+}
+
+/** Prepares and runs one AgentSessionEvent to completion. */
+export async function handleAgentSessionEvent(
+  payload: AgentSessionEventWebhookPayload,
+  linear: LinearClient,
+  claudeCodeOAuthToken: string,
+): Promise<void> {
+  await (await prepareAgentSessionEvent(payload, linear, claudeCodeOAuthToken))?.();
 }
 
 /**
- * Handles one Issue webhook. Only reacts to an actual description change
+ * Prepares one Issue webhook. Only reacts to an actual description change
  * (`updatedFrom` carries the prior value of every field that changed) on an
  * issue this app user already has a live agent session on — anything else
  * (title/state/assignee edits, an issue this agent was never delegated,
  * create/remove actions) is ignored. There is no `prompted` AgentSessionEvent
  * for this case, so the thought/run/response turn is driven directly here
- * rather than through extractPrompt.
+ * rather than through extractPrompt. Claiming works as for session events.
  */
+export async function prepareIssueEvent(
+  payload: EntityWebhookPayloadWithIssueData,
+  linear: LinearClient,
+  claudeCodeOAuthToken: string,
+): Promise<PreparedRun | undefined> {
+  if (payload.action !== "update") return undefined;
+  if (!payload.updatedFrom || !("description" in payload.updatedFrom)) return undefined;
+
+  const agentSessionId = issueSessions.get(payload.data.id);
+  if (!agentSessionId) return undefined;
+
+  const context = await buildIssuePrompt(linear, payload.data.id);
+  const prompt = `${context}\n\n---\n\nThe issue description was just updated — see "Description" above for the current text. Re-evaluate your plan in light of the change.`;
+  const updatedAt = (payload.data as { updatedAt?: string }).updatedAt ?? String(payload.webhookTimestamp);
+  if (!claimEvent(`issue:${payload.data.id}:${updatedAt}`)) return undefined;
+  return () => runTurn(linear, agentSessionId, payload.data.id, prompt, claudeCodeOAuthToken);
+}
+
+/** Prepares and runs one Issue webhook to completion. */
 export async function handleIssueEvent(
   payload: EntityWebhookPayloadWithIssueData,
   linear: LinearClient,
   claudeCodeOAuthToken: string,
 ): Promise<void> {
-  if (payload.action !== "update") return;
-  if (!payload.updatedFrom || !("description" in payload.updatedFrom)) return;
-
-  const agentSessionId = issueSessions.get(payload.data.id);
-  if (!agentSessionId) return;
-
-  const context = await buildIssuePrompt(linear, payload.data.id);
-  const prompt = `${context}\n\n---\n\nThe issue description was just updated — see "Description" above for the current text. Re-evaluate your plan in light of the change.`;
-  await runTurn(linear, agentSessionId, payload.data.id, prompt, claudeCodeOAuthToken);
+  await (await prepareIssueEvent(payload, linear, claudeCodeOAuthToken))?.();
 }
 
 // `created` sessions carry the full formatted context (issue, comments,
