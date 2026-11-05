@@ -2,7 +2,8 @@ import type { LinearClient } from "@linear/sdk";
 import type { AgentSessionEventWebhookPayload, EntityWebhookPayloadWithIssueData } from "@linear/sdk";
 import { createHash } from "node:crypto";
 import { claimEvent } from "./claims.ts";
-import { runClaude, WORKSPACE_DIR } from "./claude.ts";
+import { WORKSPACE_DIR } from "./claude.ts";
+import type { AgentRunner } from "./runner.ts";
 import { syncWorkspace } from "./workspace.ts";
 
 /**
@@ -43,7 +44,7 @@ export type PreparedRun = () => Promise<void>;
 export async function prepareAgentSessionEvent(
   payload: AgentSessionEventWebhookPayload,
   linear: LinearClient,
-  claudeCodeOAuthToken: string,
+  runner: AgentRunner,
 ): Promise<PreparedRun | undefined> {
   const agentSessionId = payload.agentSession.id;
   const issueId = payload.agentSession.issueId;
@@ -71,16 +72,16 @@ export async function prepareAgentSessionEvent(
     console.log(`AgentSessionEvent ${eventKey} already handled; ignored`);
     return undefined;
   }
-  return () => runTurn(linear, agentSessionId, issueId ?? undefined, prompt, claudeCodeOAuthToken);
+  return () => runTurn(linear, agentSessionId, issueId ?? undefined, prompt, runner);
 }
 
 /** Prepares and runs one AgentSessionEvent to completion. */
 export async function handleAgentSessionEvent(
   payload: AgentSessionEventWebhookPayload,
   linear: LinearClient,
-  claudeCodeOAuthToken: string,
+  runner: AgentRunner,
 ): Promise<void> {
-  await (await prepareAgentSessionEvent(payload, linear, claudeCodeOAuthToken))?.();
+  await (await prepareAgentSessionEvent(payload, linear, runner))?.();
 }
 
 /**
@@ -95,7 +96,7 @@ export async function handleAgentSessionEvent(
 export async function prepareIssueEvent(
   payload: EntityWebhookPayloadWithIssueData,
   linear: LinearClient,
-  claudeCodeOAuthToken: string,
+  runner: AgentRunner,
 ): Promise<PreparedRun | undefined> {
   if (payload.action !== "update") return undefined;
   if (!payload.updatedFrom || !("description" in payload.updatedFrom)) return undefined;
@@ -107,16 +108,16 @@ export async function prepareIssueEvent(
   const prompt = `${context}\n\n---\n\nThe issue description was just updated — see "Description" above for the current text. Re-evaluate your plan in light of the change.`;
   const updatedAt = (payload.data as { updatedAt?: string }).updatedAt ?? String(payload.webhookTimestamp);
   if (!claimEvent(`issue:${payload.data.id}:${updatedAt}`)) return undefined;
-  return () => runTurn(linear, agentSessionId, payload.data.id, prompt, claudeCodeOAuthToken);
+  return () => runTurn(linear, agentSessionId, payload.data.id, prompt, runner);
 }
 
 /** Prepares and runs one Issue webhook to completion. */
 export async function handleIssueEvent(
   payload: EntityWebhookPayloadWithIssueData,
   linear: LinearClient,
-  claudeCodeOAuthToken: string,
+  runner: AgentRunner,
 ): Promise<void> {
-  await (await prepareIssueEvent(payload, linear, claudeCodeOAuthToken))?.();
+  await (await prepareIssueEvent(payload, linear, runner))?.();
 }
 
 // `created` sessions carry the full formatted context (issue, comments,
@@ -196,7 +197,7 @@ async function runTurn(
   agentSessionId: string,
   issueId: string | undefined,
   prompt: string,
-  claudeCodeOAuthToken: string,
+  runner: AgentRunner,
 ): Promise<void> {
   await postActivity(linear, agentSessionId, { type: "thought", body: "On it." });
 
@@ -206,7 +207,7 @@ async function runTurn(
     const withRef = issueRef
       ? `${prompt}\n\n---\n\nThis issue's code is on ${issueRef}, not main: create container-use environments with from_git_ref "${issueRef}".`
       : prompt;
-    const result = await runClaude(withRef, claudeCodeOAuthToken, (content) =>
+    const result = await runner(withRef, (content) =>
       // Best-effort narration: a failed intermediate post shouldn't abort
       // the turn the way a failed final response/error post should.
       postActivity(linear, agentSessionId, content).catch(() => undefined),

@@ -29,6 +29,8 @@ declared: Listing<VaultSpec> = new {
       "render.com"
       "cloudflare"
       "dagger.cloud"
+      "stitch.withgoogle.com"
+      "typesafe.ai"
     }
   }
   // "linear-release" and "claude" used to live here (see the header comment
@@ -47,7 +49,8 @@ declared: Listing<VaultSpec> = new {
   new VaultSpec {
     name = "tidelands.dev"
     items {
-      "agent.tidelands.dev"
+      "agent"
+      "openrouter-agent"
       "pass-cli"
     }
   }

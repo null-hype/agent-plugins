@@ -136,6 +136,56 @@ secret), `LINEAR_API_KEY`, `LINEAR_AGENT_APP_USER_ID`,
 `LINEAR_AGENT_WEBHOOK_URL` (the agent's `/webhooks/linear`) and
 `LINEAR_AGENT_RELAY_DIR` (a persistent disk).
 
+### More than one agent
+
+Each Linear agent is its own OAuth app with its own app user and signing
+secret, so each gets its own route and relay; they share `LINEAR_API_KEY`,
+`LINEAR_AGENT_RELAY_DIR` and one wake, so delegations to two agents still
+start the host once. The Claude agent keeps the settings above and
+`/linear/agent-webhook`. Every name in `LINEAR_AGENTS` (comma-separated)
+adds one on `/linear/agent-webhook/<name>`, off until all of its own
+settings are set:
+
+| Setting | Is |
+| --- | --- |
+| `LINEAR_AGENT_<NAME>_WEBHOOK_SECRET` | That app's signing secret; a route only accepts its own app's signature |
+| `LINEAR_AGENT_<NAME>_APP_USER_ID` | That app's user, the delegate the relay checks for |
+| `LINEAR_AGENT_<NAME>_WEBHOOK_URL` | That agent's `/webhooks/linear` on the host |
+| `LINEAR_AGENT_<NAME>_LABEL` | How the relay's issue comments name it (optional, default "The <name> agent") |
+
+Its events are kept in `<LINEAR_AGENT_RELAY_DIR>/<name>`.
+
+The second agent today is `openrouter`: the same linear-agent server with
+`AGENT_RUNTIME=openrouter` (an open-weight model on OpenRouter, the
+cheapest with tool calling unless `OPENROUTER_MODEL` names one, with the
+same container-use tool surface and work contract as Claude), started by
+`start-openrouter-agent.sh` on port 8081 from `openrouter-agent.env` in the
+same `linear-agent` workspace. To turn it on:
+
+1. Create its Linear OAuth app: callback
+   `https://openrouter-agent.tidelands.dev/oauth/callback`, webhook
+   `https://<toolbox>/linear/agent-webhook/openrouter`, with Agent session
+   events and Issues.
+2. Create `pass://tidelands.dev/openrouter-agent` with `CLIENT_ID`,
+   `CLIENT_SECRET`, `SIGNING_SECRET`, `OPENROUTER_API_KEY` and an empty
+   `DEVELOPER_TOKEN`, and declare it in `pkl/Vaults.pkl` (and the env file in
+   `pkl/Vaults.test.pkl`).
+3. Route `openrouter-agent.tidelands.dev` to `http://localhost:8081` in the
+   Cloudflare tunnel's ingress, next to `agent.tidelands.dev`.
+4. Publish the linear-agent image, wake the host, open
+   `https://openrouter-agent.tidelands.dev/oauth/authorize` once and keep the
+   token as `DEVELOPER_TOKEN`; the app user id is `viewer { id }` with it.
+5. Set `LINEAR_AGENTS=openrouter` and its `LINEAR_AGENT_OPENROUTER_*`
+   settings (`_LABEL` "The OpenRouter agent") on the toolbox.
+
+`host_wake` reports ready on the Claude agent's live webhook check. A
+delegation to the second agent waits on its own delivery instead: until its
+webhook answers, delivery fails and is retried with the wake, and after the
+relay's 30 minutes it is commented on the issue as not taken. Check it by
+hand with `URL=https://openrouter-agent.tidelands.dev/webhooks/linear
+ENV_FILE=.devcontainer/openrouter-agent.env` and
+`check-linear-agent-webhook-live.sh`.
+
 ## Tailscale and Codex
 
 The host is its own tailnet node, `toolbox-host`, with Tailscale SSH. The
@@ -230,8 +280,10 @@ so no agent or LLM has to remember to stop it:
   live webhook check run on that call, not from an old start result; an
   agent whose webhook stopped answering is restarted.
 - **Productive work** is a running toolbox job (workspace up, ship,
-  review, whose last step is the restic backup), the Linear agent working an
-  issue (its `claude-agent-sdk` process), or a `restic` or `codex` process.
+  review, whose last step is the restic backup), a Linear agent working an
+  issue (the Claude agent's `claude-agent-sdk` process, or the `container-use
+  stdio` MCP server either agent runs during a turn), or a `restic` or
+  `codex` process.
   A poll, an SSH session or any other tool call is not, so it does not keep
   the host up.
 - **Idle shutdown** after 15 minutes without productive work.

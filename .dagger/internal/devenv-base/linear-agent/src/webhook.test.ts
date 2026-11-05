@@ -14,6 +14,7 @@ const testConfig: Config = {
   oauthRedirectUrl: "https://agent.tidelands.dev/oauth/callback",
   linearInstallToken: "",
   claudeCodeOAuthToken: "test-claude-token",
+  runtime: "claude",
 };
 
 // A minimal AgentSessionEvent payload. action "created" with no

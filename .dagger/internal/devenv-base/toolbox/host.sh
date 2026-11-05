@@ -17,8 +17,14 @@ export DAGGER_CLOUD_TOKEN_REF=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN
 # agent_ship's push token: can push this repository and nothing else.
 export SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN
 export DEVCONTAINER_DIR=.dagger/internal/devenv-base/.devcontainer
-# Same order as keepalive/runner/bootstrap.go.
-export AGENT_SCRIPTS="generate-env-files.sh tailscale-up.sh install-tools.sh start-linear-agent.sh start-cloudflared.sh check-linear-agent-webhook-live.sh"
+# A Linear agent working an issue, as seen from the host: the Claude
+# runtime's claude-agent-sdk process, or the container-use MCP server either
+# runtime starts for the length of a turn (the OpenRouter runtime has no
+# other process of its own). host-lifecycle.sh uses the same pattern.
+export AGENT_WORK_PATTERN='claude-agent-sdk|container-use stdio'
+# Same order as keepalive/runner/bootstrap.go, plus start-openrouter-agent.sh
+# (the second Linear agent, optional), which the keepalive does not start.
+export AGENT_SCRIPTS="generate-env-files.sh tailscale-up.sh install-tools.sh start-linear-agent.sh start-openrouter-agent.sh start-cloudflared.sh check-linear-agent-webhook-live.sh"
 JOBS=$HOME/.toolbox/jobs
 mkdir -p "$JOBS"
 
@@ -375,7 +381,7 @@ activity)
   for f in "$JOBS"/*.pid; do
     [ -f "$f" ] || continue
     if job_running "$(basename "$f" .pid)"; then basename "$f" .pid; fi
-  done | jq -R . | jq -s --argjson agent "$(pgrep -f claude-agent-sdk >/dev/null 2>&1 && echo true || echo false)" \
+  done | jq -R . | jq -s --argjson agent "$(pgrep -f "$AGENT_WORK_PATTERN" >/dev/null 2>&1 && echo true || echo false)" \
     --argjson lifecycle "$(toolbox-lifecycle status 2>/dev/null || echo null)" \
     '{jobs: ., agent_running: $agent, lifecycle: $lifecycle}'
   ;;

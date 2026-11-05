@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -105,6 +106,10 @@ func (a sessionRef) newerThan(b sessionRef) bool {
 }
 
 type delegationRelay struct {
+	// label names the agent in the comments the relay writes on the issue,
+	// e.g. "The Claude agent". Each Linear agent (its own OAuth app, app
+	// user and webhook) has its own relay; see agentRelayConfigs.
+	label       string
 	tb          *toolbox
 	linear      *linearAPI
 	appUserID   string
@@ -118,7 +123,8 @@ type delegationRelay struct {
 	poll    time.Duration
 	timeout time.Duration
 
-	wakeMu  sync.Mutex
+	// wakeMu is shared by every agent's relay: they all wake the one host.
+	wakeMu  *sync.Mutex
 	wake    func(context.Context) (wakeOut, error)
 	deliver func(context.Context, delegation) error
 	// delegate reports who the issue is delegated to now.
@@ -133,6 +139,7 @@ type delegationRelay struct {
 
 func newDelegationRelay(tb *toolbox, linear *linearAPI, appUserID, agentURL, agentSecret, dir string) *delegationRelay {
 	r := &delegationRelay{
+		label: "The Claude agent", wakeMu: &sync.Mutex{},
 		tb: tb, linear: linear, appUserID: appUserID, agentURL: agentURL, agentSecret: agentSecret, dir: dir,
 		client: &http.Client{Timeout: 30 * time.Second}, poll: 20 * time.Second, timeout: 30 * time.Minute,
 		seen: map[string]struct{}{}, sessions: map[string]struct{}{}, latest: map[string]sessionRef{},
@@ -348,7 +355,7 @@ func (r *delegationRelay) process(ctx context.Context, d delegation) {
 	cctx, ccancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer ccancel()
 	if cerr := r.linear.comment(cctx, d.Issue, fmt.Sprintf(
-		"The Claude agent could not take this delegation: %v\n\nDelegate the issue to the agent again to retry.\n\nLinear delivery: %s", err, d.Delivery)); cerr != nil {
+		"%s could not take this delegation: %v\n\nDelegate the issue to the agent again to retry.\n\nLinear delivery: %s", r.label, err, d.Delivery)); cerr != nil {
 		log.Printf("agent delegation %s (%s): failure not reported: %v", d.Issue, d.Delivery, cerr)
 	}
 }
@@ -389,7 +396,7 @@ func (r *delegationRelay) drive(ctx context.Context, d delegation) error {
 			}
 		case !announced:
 			announced = true
-			if cerr := r.linear.comment(ctx, d.Issue, "The Claude agent's host is starting. This delegation is retained and will be delivered when the agent answers."); cerr != nil {
+			if cerr := r.linear.comment(ctx, d.Issue, r.label+"'s host is starting. This delegation is retained and will be delivered when the agent answers."); cerr != nil {
 				log.Printf("agent delegation %s: start not reported: %v", d.Issue, cerr)
 			}
 		}
@@ -510,4 +517,94 @@ func (r *delegationRelay) post(ctx context.Context, original []byte, delivery, e
 		return fmt.Errorf("agent webhook: %s: %s", resp.Status, lastLines(string(b), 3))
 	}
 	return nil
+}
+
+// agentRelayConfig is one Linear agent the relay serves: its OAuth app's
+// webhook (route, signing secret), its app user, and where its own webhook
+// on the host is.
+type agentRelayConfig struct {
+	name      string // "" for the Claude agent, which keeps the original route
+	label     string
+	route     string
+	secret    string
+	appUserID string
+	url       string
+	dir       string
+}
+
+// agentRelayConfigs reads which agents to relay for. The Claude agent keeps
+// the original settings and route, /linear/agent-webhook. Every name in
+// LINEAR_AGENTS (comma-separated, such as "openrouter") adds an agent with
+// its own OAuth app, on /linear/agent-webhook/<name>, configured by
+// LINEAR_AGENT_<NAME>_WEBHOOK_SECRET, _APP_USER_ID, _WEBHOOK_URL and
+// optionally _LABEL, keeping its events in <LINEAR_AGENT_RELAY_DIR>/<name>.
+// LINEAR_API_KEY and LINEAR_AGENT_RELAY_DIR are shared. An agent without a
+// signing secret is off and says nothing; one with a secret but missing the
+// rest is off and says why.
+func agentRelayConfigs(getenv func(string) string) ([]agentRelayConfig, []string) {
+	key, root := getenv("LINEAR_API_KEY"), getenv("LINEAR_AGENT_RELAY_DIR")
+	var out []agentRelayConfig
+	var problems []string
+	add := func(c agentRelayConfig, prefix string) {
+		if c.secret == "" {
+			return
+		}
+		var missing []string
+		for _, v := range []struct{ name, val string }{
+			{"LINEAR_API_KEY", key},
+			{prefix + "APP_USER_ID", c.appUserID},
+			{prefix + "WEBHOOK_URL", c.url},
+			{"LINEAR_AGENT_RELAY_DIR", root},
+		} {
+			if v.val == "" {
+				missing = append(missing, v.name)
+			}
+		}
+		if len(missing) > 0 {
+			problems = append(problems, fmt.Sprintf("%s: delegation relay off; it needs %s (the relay directory on a persistent disk)", c.label, strings.Join(missing, ", ")))
+			return
+		}
+		out = append(out, c)
+	}
+	add(agentRelayConfig{
+		label: "The Claude agent", route: "/linear/agent-webhook",
+		secret: getenv("LINEAR_AGENT_WEBHOOK_SECRET"), appUserID: getenv("LINEAR_AGENT_APP_USER_ID"),
+		url: getenv("LINEAR_AGENT_WEBHOOK_URL"), dir: root,
+	}, "LINEAR_AGENT_")
+	seen := map[string]bool{}
+	for _, name := range strings.Split(getenv("LINEAR_AGENTS"), ",") {
+		name = strings.ToLower(strings.TrimSpace(name))
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		if !validAgentName(name) {
+			problems = append(problems, fmt.Sprintf("LINEAR_AGENTS: %q is not a name (a-z, 0-9, -); skipped", name))
+			continue
+		}
+		prefix := "LINEAR_AGENT_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_")) + "_"
+		label := getenv(prefix + "LABEL")
+		if label == "" {
+			label = "The " + name + " agent"
+		}
+		dir := ""
+		if root != "" {
+			dir = filepath.Join(root, name)
+		}
+		add(agentRelayConfig{
+			name: name, label: label, route: "/linear/agent-webhook/" + name,
+			secret: getenv(prefix + "WEBHOOK_SECRET"), appUserID: getenv(prefix + "APP_USER_ID"),
+			url: getenv(prefix + "WEBHOOK_URL"), dir: dir,
+		}, prefix)
+	}
+	return out, problems
+}
+
+func validAgentName(name string) bool {
+	for _, c := range name {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-') {
+			return false
+		}
+	}
+	return name[0] != '-'
 }

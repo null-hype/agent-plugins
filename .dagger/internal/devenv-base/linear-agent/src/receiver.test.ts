@@ -92,7 +92,7 @@ async function withReceiver(fn: (port: number, fake: Fake, stateDir: string) => 
   process.env.LINEAR_AGENT_STATE_DIR = stateDir;
   const cfg: Config = {
     port: 0, linearClientId: "c", linearClientSecret: "s", linearWebhookSecret: secret, oauthRedirectUrl: "http://x/cb",
-    linearInstallToken: "token", linearApiUrl: fake.url, claudeCodeOAuthToken: "unused",
+    linearInstallToken: "token", linearApiUrl: fake.url, claudeCodeOAuthToken: "unused", runtime: "claude",
   };
   const server = createServer(cfg);
   await new Promise<void>((r) => server.listen(0, r));
