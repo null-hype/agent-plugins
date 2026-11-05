@@ -48,6 +48,7 @@ declared: Listing<VaultSpec> = new {
     name = "tidelands.dev"
     items {
       "agent.tidelands.dev"
+      "openrouter-agent"
       "pass-cli"
     }
   }
