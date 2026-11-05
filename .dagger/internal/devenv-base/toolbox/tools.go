@@ -30,9 +30,9 @@ type toolbox struct {
 	gce        computeAPI
 	host       hostAPI
 	codespaces codespaceAPI
-	// githubToken lets devpod clone the private repo. passToken is forwarded
-	// to the agent workspace's tailscale-up.sh, as the keepalive does, and
-	// logs codex_review's pass-cli in, for the Linear key.
+	// githubToken lets devpod clone the private repo. passToken logs the
+	// host's pass-cli in, which resolves the agent workspace's own token
+	// (AGENT_PASS_TOKEN_REF in host.sh) and codex_review's Linear key.
 	githubToken, passToken string
 	// tsAuthKey joins the host itself to the tailnet. Empty leaves it off.
 	tsAuthKey string
