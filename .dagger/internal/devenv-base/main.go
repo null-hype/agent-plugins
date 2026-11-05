@@ -732,6 +732,8 @@ func (m *DevenvBase) CheckPlaywrightAgent(ctx context.Context) error {
 // tailscale-up.sh), not a separate tunnel tool. Doesn't set an entrypoint or
 // start command -- start-linear-agent.sh runs the server and opens the
 // funnel, invoked over `devpod ssh` by devpod-gce.sh/devpod-keepalive.sh.
+// The same /app build is also the second Linear agent, run with
+// AGENT_RUNTIME=openrouter by start-openrouter-agent.sh (toolbox/README.md).
 func (m *DevenvBase) LinearAgent(
 	// +optional
 	platform dagger.Platform,

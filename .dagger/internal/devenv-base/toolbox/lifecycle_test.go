@@ -41,7 +41,7 @@ func newLifecycleHost(t *testing.T) *lifecycleHost {
 	os.Mkdir(bin, 0o755)
 	for name, script := range map[string]string{
 		// Only the agent's process can be found, and only when the test says so.
-		"pgrep": `[ "$1 $2" = "-f claude-agent-sdk" ] && [ -f "$FAKE_DIR/agent" ]`,
+		"pgrep": `[ "$1 $2" = "-f claude-agent-sdk|container-use stdio" ] && [ -f "$FAKE_DIR/agent" ]`,
 		// su - user -c CMD: run CMD here.
 		"su": `shift 3; bash -c "$1"`,
 		"devpod": `echo "$*" >> "$FAKE_DIR/devpod.calls"

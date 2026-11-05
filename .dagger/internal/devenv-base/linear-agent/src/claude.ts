@@ -1,4 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { describeToolUse, SHIP_CONTRACT, truncate, type ActivityContent } from "./runner.ts";
 
 /**
  * Runs a single Claude Agent SDK turn and returns its final text result.
@@ -56,34 +57,7 @@ export const WORK_CONTRACT = `## How you change code here
 
 You run on a shared host. Edit, Write and Bash on the host are denied on purpose, and that will not change: do not ask for them, and do not wait for them. The way to change code is a container-use environment. Create one with environment_create (from the issue's branch when you are told it has one), make and test the change with the environment_* tools, and commit it there. That is the intended path, not a workaround.
 
-When the work is done, say so on the issue and name the environment id (like \`amazed-bluebird\`). The supervisor ships it to the issue's branch and opens the pull request; you cannot push. Ask the maintainer only about what no environment can settle, such as spending money or changing a hosted service's settings, and carry on with everything else.`;
-export type ActivityContent = { type: string; body: string };
-
-const MAX_ACTIVITY_BODY = 2000;
-
-function truncate(body: string): string {
-  return body.length > MAX_ACTIVITY_BODY
-    ? `${body.slice(0, MAX_ACTIVITY_BODY)}\n... [truncated]`
-    : body;
-}
-
-// Tool inputs/outputs that are either huge or redundant with the action
-// name itself (file contents, whole diffs) — narrated as just the tool
-// name with no argument dump, instead of a multi-KB blob per call.
-const NOISY_TOOLS = new Set([
-  "mcp__container-use__environment_file_write",
-  "mcp__container-use__environment_file_edit",
-  "mcp__container-use__environment_file_read",
-]);
-
-function describeToolUse(name: string, input: unknown): string {
-  if (NOISY_TOOLS.has(name)) return name;
-  try {
-    return `${name}(${truncate(JSON.stringify(input))})`;
-  } catch {
-    return name;
-  }
-}
+${SHIP_CONTRACT}`;
 
 export async function runClaude(
   prompt: string,

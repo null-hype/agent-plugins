@@ -6,7 +6,12 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { claimEvent } from "./claims.ts";
+import type { AgentRunner } from "./runner.ts";
 import { handleAgentSessionEvent, handleIssueEvent } from "./session.ts";
+
+const noRunner: AgentRunner = async () => {
+  throw new Error("no model run in these tests");
+};
 
 process.env.LINEAR_AGENT_STATE_DIR = mkdtempSync(join(tmpdir(), "agent-claims-"));
 
@@ -58,13 +63,13 @@ test("handleIssueEvent ignores a description-less update", async () => {
       agentSession: { id: "session-1", issueId: "issue-1", status: "pending" } as AgentSessionEventWebhookPayload["agentSession"],
     }),
     unreachableLinear(),
-    "token",
+    noRunner,
   );
 
   await handleIssueEvent(
     issueEventPayload({ data: { id: "issue-1", title: "renamed" } as unknown as EntityWebhookPayloadWithIssueData["data"], updatedFrom: { title: "old title" } }),
     unreachableLinear(),
-    "token",
+    noRunner,
   );
 });
 
@@ -72,7 +77,7 @@ test("handleIssueEvent ignores an issue with no tracked session", async () => {
   await handleIssueEvent(
     issueEventPayload({ data: { id: "issue-never-delegated", description: "x" } as EntityWebhookPayloadWithIssueData["data"], updatedFrom: { description: "old" } }),
     unreachableLinear(),
-    "token",
+    noRunner,
   );
 });
 
@@ -82,13 +87,13 @@ test("handleIssueEvent ignores non-update actions", async () => {
       agentSession: { id: "session-2", issueId: "issue-2", status: "pending" } as AgentSessionEventWebhookPayload["agentSession"],
     }),
     unreachableLinear(),
-    "token",
+    noRunner,
   );
 
   await handleIssueEvent(
     issueEventPayload({ action: "create", data: { id: "issue-2", description: "x" } as EntityWebhookPayloadWithIssueData["data"], updatedFrom: { description: "old" } }),
     unreachableLinear(),
-    "token",
+    noRunner,
   );
 });
 
@@ -98,13 +103,13 @@ test("handleIssueEvent stops reacting once the session is terminal", async () =>
       agentSession: { id: "session-3", issueId: "issue-3", status: "complete" } as AgentSessionEventWebhookPayload["agentSession"],
     }),
     unreachableLinear(),
-    "token",
+    noRunner,
   );
 
   await handleIssueEvent(
     issueEventPayload({ data: { id: "issue-3", description: "x" } as EntityWebhookPayloadWithIssueData["data"], updatedFrom: { description: "old" } }),
     unreachableLinear(),
-    "token",
+    noRunner,
   );
 });
 
@@ -120,9 +125,9 @@ test("a repeated delivery of the same event does not start another run", async (
     agentSession: { id: "session-dup", issueId: "issue-dup", status: "pending" } as AgentSessionEventWebhookPayload["agentSession"],
     promptContext: "do the work",
   });
-  await assert.rejects(handleAgentSessionEvent(created, linear, "token"));
-  await handleAgentSessionEvent(created, linear, "token");
-  await handleAgentSessionEvent(created, linear, "token");
+  await assert.rejects(handleAgentSessionEvent(created, linear, noRunner));
+  await handleAgentSessionEvent(created, linear, noRunner);
+  await handleAgentSessionEvent(created, linear, noRunner);
   assert.equal(thoughts, 1);
 
   const prompted = (id: string) =>
@@ -134,8 +139,8 @@ test("a repeated delivery of the same event does not start another run", async (
   // A prompted delivery builds its prompt from Linear before it claims: while
   // that fails the event stays unclaimed, so a retry is not mistaken for a repeat.
   const unreadable = { ...linear, issue: async () => { throw new Error("no issue"); } } as unknown as LinearClient;
-  await assert.rejects(handleAgentSessionEvent(prompted("act-1"), unreadable, "token"));
-  await assert.rejects(handleAgentSessionEvent(prompted("act-1"), unreadable, "token"));
+  await assert.rejects(handleAgentSessionEvent(prompted("act-1"), unreadable, noRunner));
+  await assert.rejects(handleAgentSessionEvent(prompted("act-1"), unreadable, noRunner));
   assert.equal(claimEvent("prompted:session-dup:act-1"), true, "nothing was claimed by the failures");
 });
 
