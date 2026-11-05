@@ -17,5 +17,10 @@ export -f gce_common_write_sa_key gce_common_restic_retry gce_common_restic_push
   gce_common_restic_push_container_use_state gce_common_restic_push_codex_session \
   gce_common_restic_prune gce_common_restic_push_sessions
 
-pass-cli run --env-file "$DIR/../.devcontainer/gcloud.env" -- \
+# restic.env holds only the backup's own secrets, resolved for whichever Pass
+# identity runs this (the Linear agent workspace's sees items, not vaults).
+source "$DIR/../.devcontainer/lib/pass-env.sh"
+ENV_FILE=$(pass_env "$DIR/../.devcontainer/restic.env")
+trap 'rm -f "$ENV_FILE"' EXIT
+pass-cli run --env-file "$ENV_FILE" -- \
   bash -c 'set -euo pipefail; gce_common_write_sa_key; gce_common_restic_push_sessions'

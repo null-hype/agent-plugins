@@ -17,6 +17,7 @@ import "Vaults.pkl" as spec
 local envFiles: Listing<String> = new {
   "../linear-release.env"
   "../.devcontainer/gcloud.env"
+  "../.devcontainer/restic.env"
   "../keepalive/devpod-keepalive.sh"
   "../.devcontainer/tailscale.env"
   "../.devcontainer/render.env"

@@ -27,6 +27,14 @@ templates: Mapping<String, Listing<EnvVarRef>> = new {
     new EnvVarRef { name = "RESTIC_PASSWORD"; vaultName = "infra"; itemName = "restic" }
     new EnvVarRef { name = "GITHUB_TOKEN"; vaultName = "infra"; itemName = "github.com" }
   }
+  // Only what the session backup needs (hk/claude-session-backup.sh), so an
+  // identity that may read restic is not also handed gcloud's push token.
+  ["restic"] {
+    new EnvVarRef { name = "GCP_SERVICE_ACCOUNT_KEY"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "GOOGLE_PROJECT_ID"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "RESTIC_REPOSITORY"; vaultName = "infra"; itemName = "restic" }
+    new EnvVarRef { name = "RESTIC_PASSWORD"; vaultName = "infra"; itemName = "restic" }
+  }
   ["linear-release"] {
     new EnvVarRef { name = "LINEAR_ACCESS_KEY"; vaultName = "tidelands.dev"; itemName = "linear-release" }
   }
