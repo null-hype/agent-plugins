@@ -8,6 +8,8 @@
 #   infra/cloudflare              start-cloudflared.sh
 #   tidelands.dev/agent           start-linear-agent.sh, check-linear-agent-webhook-live.sh
 #   tidelands.dev/openrouter-agent start-openrouter-agent.sh, check-linear-agent-webhook-live.sh
+#   infra/restic                  hk/claude-session-backup.sh, the pre-commit hook that
+#                                 runs when an agent creates a container-use environment
 #
 # Its token is kept in tidelands.dev/linear-agent-host, which the agent itself
 # cannot read, and in the toolbox's Render secret LINEAR_AGENT_PASS_TOKEN,
@@ -76,3 +78,4 @@ grant infra tailscale
 grant infra cloudflare
 grant tidelands.dev agent
 grant tidelands.dev openrouter-agent
+grant infra restic
