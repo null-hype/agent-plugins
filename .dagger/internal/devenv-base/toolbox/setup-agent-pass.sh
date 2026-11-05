@@ -10,9 +10,11 @@
 #   tidelands.dev/openrouter-agent start-openrouter-agent.sh, check-linear-agent-webhook-live.sh
 #
 # Its token is kept in tidelands.dev/linear-agent-host, which the agent itself
-# cannot read. The host resolves it with its own session when agent_start runs
-# tailscale-up.sh (AGENT_PASS_TOKEN_REF in host.sh), so it is stored nowhere
-# else. Run it logged in as yourself; re-running reuses what exists.
+# cannot read, and in the toolbox's Render secret LINEAR_AGENT_PASS_TOKEN,
+# which agent_start sends to the workspace's tailscale-up.sh. A token whose
+# item grants show no vaults cannot resolve that item by name on the host, so
+# the toolbox holds it. Run it logged in as yourself; re-running reuses what
+# exists.
 #
 #   bash toolbox/setup-agent-pass.sh
 set -euo pipefail
