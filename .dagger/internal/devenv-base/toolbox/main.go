@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -106,26 +107,29 @@ func newMux(token, baseURL string, tb *toolbox) *http.ServeMux {
 			log.Printf("toolbox: check reruns off; LINEAR_CHECK_WEBHOOK_SECRET is set but LINEAR_API_KEY is not")
 		}
 	}
-	// The Linear agent's OAuth app webhook can point here too: a delegation
+	// Each Linear agent's OAuth app webhook can point here too: a delegation
 	// received while the VM is stopped is kept, the host woken, and the event
-	// handed to the agent. Signed with the app's webhook secret. Off until all
-	// of its settings exist.
+	// handed to that agent. Each agent has its own route, signed with its own
+	// app's webhook secret, and all of them share one wake. Off until an
+	// agent's settings exist (agentRelayConfigs).
 	if tb != nil {
-		secret, key := os.Getenv("LINEAR_AGENT_WEBHOOK_SECRET"), os.Getenv("LINEAR_API_KEY")
-		app, url := os.Getenv("LINEAR_AGENT_APP_USER_ID"), os.Getenv("LINEAR_AGENT_WEBHOOK_URL")
-		dir := os.Getenv("LINEAR_AGENT_RELAY_DIR")
-		switch {
-		case secret == "":
-		case key == "" || app == "" || url == "" || dir == "":
-			log.Printf("toolbox: agent delegation relay off; it needs LINEAR_API_KEY, LINEAR_AGENT_APP_USER_ID, LINEAR_AGENT_WEBHOOK_URL and LINEAR_AGENT_RELAY_DIR (a persistent disk)")
-		case !writableDir(dir):
-			log.Printf("toolbox: agent delegation relay off; LINEAR_AGENT_RELAY_DIR %q is not writable", dir)
-		default:
-			relay := newDelegationRelay(tb, newLinearAPI(key), app, url, secret, dir)
-			if n := relay.resume(); n > 0 {
-				log.Printf("toolbox: resumed %d retained agent delegation(s)", n)
+		agents, problems := agentRelayConfigs(os.Getenv)
+		for _, p := range problems {
+			log.Printf("toolbox: %s", p)
+		}
+		wakeMu := &sync.Mutex{}
+		linear := newLinearAPI(os.Getenv("LINEAR_API_KEY"))
+		for _, a := range agents {
+			if !writableDir(a.dir) {
+				log.Printf("toolbox: %s: delegation relay off; relay directory %q is not writable", a.label, a.dir)
+				continue
 			}
-			mux.Handle("/linear/agent-webhook", delegationHandler(secret, relay))
+			relay := newDelegationRelay(tb, linear, a.appUserID, a.url, a.secret, a.dir)
+			relay.label, relay.wakeMu = a.label, wakeMu
+			if n := relay.resume(); n > 0 {
+				log.Printf("toolbox: %s: resumed %d retained delegation(s)", a.label, n)
+			}
+			mux.Handle(a.route, delegationHandler(a.secret, relay))
 		}
 	}
 	// No authorization server exists: Linear sends a static bearer header.

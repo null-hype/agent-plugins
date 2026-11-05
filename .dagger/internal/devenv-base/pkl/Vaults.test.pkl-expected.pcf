@@ -1,13 +1,13 @@
 examples {
   ["observed vault names"] {
-    List("anthropic.ai", "api.linear.app", "infra", "jingling057", "test", "tidelands.dev")
+    List("Legacy", "Tidelands", "Xeno QA Empty e86b5a (verified)", "anthropic.ai", "api.linear.app", "apply", "checks", "infra", "jev-judge", "jev-owner", "jev-planner", "jev-root", "jev-worker", "jingling057", "manager", "naming-zestfully-overhang", "observer", "pedometer-frying-graceless", "pink-moon", "plan", "retro", "test", "tidelands.dev")
   }
   ["observed items in each declared vault"] {
     new {
-      ["infra"] = List("SSH-tidelane", "cloudflare", "dagger.cloud", "github.com", "jules.googleapis.com", "netlify", "render.com", "restic", "stitch.withgoogle.com", "tailscale", "tidelands-1.seahorse-saurolophus.ts.net")
+      ["infra"] = List("SSH-tidelane", "aistudio.google.com", "cloudflare", "dagger.cloud", "github.com", "jules.googleapis.com", "netlify", "openrouter.ai", "render.com", "restic", "stitch.withgoogle.com", "supervisor", "tailscale", "tidelands-1.seahorse-saurolophus.ts.net", "tidelands-claims", "toolbox-check-reruns", "typesafe.ai")
     }
     new {
-      ["tidelands.dev"] = List("agent.tidelands.dev", "pass-cli")
+      ["tidelands.dev"] = List("agent", "agent2", "openrouter-agent", "pass-cli", "tidelands")
     }
     new {
       ["anthropic.ai"] = List("claude")
@@ -16,7 +16,7 @@ examples {
       ["jingling057"] = List("agent.tidelands.dev", "linear-release")
     }
     new {
-      ["test"] = List("cit-96")
+      ["test"] = List("Untitled", "Untitled (copy)", "claude-test-item", "journal", "typesafe-ai-urgency-experiment")
     }
   }
 }

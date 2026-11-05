@@ -4,8 +4,20 @@ import { LinearWebhookClient } from "@linear/sdk/webhooks";
 import type { Config } from "./config.ts";
 import { authorizeUrl, exchangeCode } from "./oauth.ts";
 import { prepareAgentSessionEvent, prepareIssueEvent } from "./session.ts";
+import { runClaude } from "./claude.ts";
+import { openRouterRunner } from "./openrouter.ts";
+import type { AgentRunner } from "./runner.ts";
 
-export function createServer(cfg: Config): http.Server {
+/** The runner for the configured runtime (AGENT_RUNTIME). */
+export function runnerFor(cfg: Config): AgentRunner {
+  if (cfg.runtime === "openrouter") {
+    if (!cfg.openrouter) throw new Error("runtime openrouter without its configuration");
+    return openRouterRunner(cfg.openrouter);
+  }
+  return (prompt, onActivity) => runClaude(prompt, cfg.claudeCodeOAuthToken, onActivity);
+}
+
+export function createServer(cfg: Config, runner: AgentRunner = runnerFor(cfg)): http.Server {
   const webhookClient = new LinearWebhookClient(cfg.linearWebhookSecret);
   const webhookHandler = webhookClient.createHandler();
 
@@ -34,7 +46,7 @@ export function createServer(cfg: Config): http.Server {
       throw new Error("no installation token configured");
     }
     const linear = new LinearClient({ accessToken: installToken, apiUrl: cfg.linearApiUrl });
-    const run = await prepareAgentSessionEvent(payload, linear, cfg.claudeCodeOAuthToken);
+    const run = await prepareAgentSessionEvent(payload, linear, runner);
     // Deliberately not awaited: the run posts its required `thought` activity
     // first and only then does the slow `claude` work.
     void run?.().catch((err) => {
@@ -48,7 +60,7 @@ export function createServer(cfg: Config): http.Server {
       throw new Error("no installation token configured");
     }
     const linear = new LinearClient({ accessToken: installToken, apiUrl: cfg.linearApiUrl });
-    const run = await prepareIssueEvent(payload, linear, cfg.claudeCodeOAuthToken);
+    const run = await prepareIssueEvent(payload, linear, runner);
     void run?.().catch((err) => {
       console.error("Issue event handling failed", err);
     });
@@ -97,8 +109,9 @@ export function createServer(cfg: Config): http.Server {
         installToken = token.access_token;
         res.writeHead(200, { "Content-Type": "text/plain" });
         res.end(
-          "Installed. Persist this token so it survives a restart:\n\n" +
-            `pass-cli item update --item-title agent.tidelands.dev --field LINEAR_INSTALL_TOKEN=${token.access_token}\n`,
+          "Installed. Persist this token so it survives a restart: it is this agent's LINEAR_INSTALL_TOKEN, " +
+            `in the Pass item its env file (${cfg.runtime === "openrouter" ? "openrouter-agent.env" : "linear-agent.env"}) reads.\n\n` +
+            `${token.access_token}\n`,
         );
       } catch (err) {
         res.writeHead(502, { "Content-Type": "text/plain" });

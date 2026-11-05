@@ -16,9 +16,10 @@
 #   status  prints the clocks as JSON, for host_status.
 #
 # Productive work is a running toolbox job (workspace up, ship, review; a
-# review ends with the restic backup), the Linear agent working an issue
-# (its claude-agent-sdk process, visible from the host), or a restic or codex
-# process. A poll, an SSH session or a tool call starts none of those, so it
+# review ends with the restic backup), a Linear agent working an issue (the
+# Claude agent's claude-agent-sdk process, or the container-use MCP server
+# either agent runs during a turn, visible from the host), or a restic or
+# codex process. A poll, an SSH session or a tool call starts none of those, so it
 # does not keep the host up.
 #
 # The lease starts at LIFECYCLE_LEASE_MIN. A tick with work in progress at or
@@ -66,7 +67,11 @@ running_jobs() {
 activity() {
   local j
   for j in $(running_jobs); do echo "job:$j"; done
-  pgrep -f claude-agent-sdk >/dev/null 2>&1 && echo "agent"
+  # Either Linear agent mid-turn: the Claude runtime's claude-agent-sdk
+  # process, or the container-use MCP server a turn of either runtime runs
+  # (the OpenRouter runtime has no other process of its own). Same pattern
+  # as host.sh's AGENT_WORK_PATTERN.
+  pgrep -f 'claude-agent-sdk|container-use stdio' >/dev/null 2>&1 && echo "agent"
   pgrep -x restic >/dev/null 2>&1 && echo "restic"
   pgrep -x codex >/dev/null 2>&1 && echo "codex"
   return 0
