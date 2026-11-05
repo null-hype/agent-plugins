@@ -21,6 +21,7 @@ local envFiles: Listing<String> = new {
   "../.devcontainer/tailscale.env"
   "../.devcontainer/render.env"
   "../.devcontainer/linear-agent.env"
+  "../.devcontainer/openrouter-agent.env"
   "../.devcontainer/linear-triage-agent.env"
   "../.devcontainer/continue-claude-session.env"
   "../.devcontainer/cloudflared.env"

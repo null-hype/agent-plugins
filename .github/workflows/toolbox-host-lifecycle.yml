@@ -48,7 +48,7 @@ jobs:
 
       - name: Log in to Proton Pass
         env:
-          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
+          PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.TOOLBOX_LIFECYCLE_PROTON_PASS_TOKEN }}
         run: |
           curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
           echo "PROTON_PASS_SESSION_DIR=/tmp/pass-session" >> "$GITHUB_ENV"
@@ -66,7 +66,9 @@ jobs:
         env:
           PROTON_PASS_AGENT_REASON: "toolbox-host lifecycle: keep the VM's idle stop and max run duration in step"
         run: |
-          pass-cli run --env-file .dagger/internal/devenv-base/.devcontainer/gcloud.env -- bash -euo pipefail -c '
+          pass-cli run --env-file <(printf '%s\n' \
+            'GCP_SERVICE_ACCOUNT_KEY=pass://infra/restic/GCP_SERVICE_ACCOUNT_KEY' \
+            'GOOGLE_PROJECT_ID=pass://infra/restic/GOOGLE_PROJECT_ID') -- bash -euo pipefail -c '
             tmp=$(mktemp -d)
             chmod 700 "$tmp"
             trap "rm -rf $tmp" EXIT
