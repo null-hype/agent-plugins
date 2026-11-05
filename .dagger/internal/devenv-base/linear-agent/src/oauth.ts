@@ -3,9 +3,9 @@ import type { Config } from "./config.ts";
 const AUTHORIZE_URL = "https://linear.app/oauth/authorize";
 const TOKEN_URL = "https://api.linear.app/oauth/token";
 
-// The scopes this agent needs: assignable so it can be delegated an issue,
-// mentionable so it can also be @-mentioned directly.
-const SCOPES = ["app:assignable", "app:mentionable"];
+// Posting agent activities requires write, independently of the scopes
+// that let users delegate issues and mention the app.
+const SCOPES = ["write", "app:assignable", "app:mentionable"];
 
 /**
  * Builds the URL an admin visits to install this agent into a workspace.
