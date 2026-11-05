@@ -69,6 +69,7 @@ status) [ "$2" = ws1 ] && echo '{"state":"Stopped"}' || exit 1 ;;
 up) printf '\033[0;1;36minfo \033[0mup output\n' ;;
 esac
 case "$*" in *--send-env\ PROTON_PASS_PERSONAL_ACCESS_TOKEN*) echo "sent ${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" >> "$HOME/devpod.calls" ;; esac
+case "$*" in *"git checkout -q --detach origin/main"*) [ -z "${FAKE_CHECKOUT_FAILS:-}" ] || exit 1 ;; esac
 `
 	os.WriteFile(filepath.Join(bin, "devpod"), []byte(fake), 0o755)
 	os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\n"), 0o755)
@@ -136,12 +137,24 @@ case "$*" in *--send-env\ PROTON_PASS_PERSONAL_ACCESS_TOKEN*) echo "sent ${PROTO
 		t.Fatalf("checkout not moved to origin/main before the scripts:\n%s", calls)
 	}
 	// tailscale-up.sh gets the workspace's own Pass agent token, never the
-	// toolbox's, and local edits are stashed before the checkout.
+	// toolbox's.
 	if !strings.Contains(string(calls), "sent agent-token") || strings.Contains(string(calls), "toolbox-token") {
 		t.Fatalf("workspace not sent its own Pass token:\n%s", calls)
 	}
-	if !strings.Contains(string(calls), "git stash push") {
-		t.Fatalf("local edits not stashed before the checkout:\n%s", calls)
+
+	// A checkout that cannot move to origin/main starts nothing.
+	os.Remove(filepath.Join(home, "devpod.calls"))
+	os.Remove(exitFile)
+	run(exports(map[string]string{"GITHUB_TOKEN": "t", "AGENT_PASS_TOKEN": "agent-token", "FAKE_CHECKOUT_FAILS": "1"}), "up", "ws1", "main", "1")
+	for i := 0; i < 100; i++ {
+		if _, err := os.Stat(exitFile); err == nil {
+			break
+		}
+		exec.Command("sleep", "0.05").Run()
+	}
+	calls, _ = os.ReadFile(filepath.Join(home, "devpod.calls"))
+	if code, _ := os.ReadFile(exitFile); strings.TrimSpace(string(code)) == "0" || strings.Contains(string(calls), "generate-env-files.sh") {
+		t.Fatalf("scripts ran after a failed checkout (exit %q):\n%s", code, calls)
 	}
 }
 

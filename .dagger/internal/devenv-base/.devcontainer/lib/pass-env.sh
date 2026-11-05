@@ -34,7 +34,9 @@ pass_env() {
       rm -f "$out"
       return 1
     fi
-    id=$(pass-cli item list --share-id "$share" --output json | jq -r --arg t "$item" '[.. | objects | select(.share_id? and (.title // .content.title) == $t) | .id] | .[0] // empty')
+    # On an item share pass-cli also logs that it may not list folders; that
+    # is expected, so its stderr is dropped and a missing item reported below.
+    id=$(pass-cli item list --share-id "$share" --output json 2>/dev/null | jq -r --arg t "$item" '[.. | objects | select(.share_id? and (.title // .content.title) == $t) | .id] | .[0] // empty')
     if [ -z "$id" ]; then
       echo "pass_env: $src: $name: item share $item lists no item $item" >&2
       rm -f "$out"
