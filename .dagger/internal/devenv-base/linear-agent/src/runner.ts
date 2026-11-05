@@ -5,9 +5,21 @@
 // OAuth, sessions, claims -- is one implementation for both agents.
 export type ActivityContent = { type: string; body: string };
 
+/**
+ * Which Linear turn a run is. The OpenRouter runtime tags its requests with
+ * it, so the traces OpenRouter broadcasts can be found by session and issue
+ * (toolbox/traces.go); the Claude runtime has its own transcripts.
+ */
+export interface TurnContext {
+  agentSessionId: string;
+  /** The issue's identifier, such as CIT-579, when the session has an issue. */
+  issue?: string;
+}
+
 export type AgentRunner = (
   prompt: string,
   onActivity?: (content: ActivityContent) => void | Promise<void>,
+  turn?: TurnContext,
 ) => Promise<string>;
 
 const MAX_ACTIVITY_BODY = 2000;

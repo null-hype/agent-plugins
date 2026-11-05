@@ -2,7 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadConfig } from "./config.ts";
 import { cheapestOpenModel, MIN_CONTEXT, resetModelCache, resolveModel, type OpenRouterModel } from "./models.ts";
-import { instructions, narrate, toolResultText } from "./openrouter.ts";
+import { callModel } from "@openrouter/agent";
+import { OpenRouter } from "@openrouter/agent/openrouter";
+// @openrouter/agent's own dependency, for a client that records the request.
+import { HTTPClient } from "@openrouter/sdk/lib/http.js";
+import { instructions, narrate, toolResultText, traceTags } from "./openrouter.ts";
 
 const linearEnv = {
   LINEAR_CLIENT_ID: "c",
@@ -118,4 +122,32 @@ test("the instructions name the checkout as environment_source and keep the ship
   assert.match(text, /environment_source "\/workspaces\/linear-agent"/);
   assert.match(text, /The supervisor ships it to the issue's branch/);
   assert.doesNotMatch(text, /Edit, Write and Bash/);
+});
+
+test("a turn's requests carry its Linear session and one trace for Broadcast", async () => {
+  assert.deepEqual(traceTags(undefined), {});
+  const tags = traceTags({ agentSessionId: "sess-1", issue: "CIT-1" });
+  assert.equal(tags.sessionId, "sess-1");
+  assert.match(tags.trace!.traceId, /^[0-9a-f]{32}$/);
+  assert.notEqual(traceTags({ agentSessionId: "sess-1" }).trace!.traceId, tags.trace!.traceId, "one trace per turn");
+
+  // What reaches OpenRouter: @openrouter/agent passes these on as session_id
+  // and trace, with the metadata flattened into trace.
+  let body: Record<string, unknown> | undefined;
+  const httpClient = new HTTPClient({
+    fetcher: async (input, init) => {
+      body = JSON.parse(await (input instanceof Request ? input : new Request(input, init)).text());
+      throw new Error("captured");
+    },
+  });
+  const result = callModel(new OpenRouter({ apiKey: "k", httpClient }), { model: "m", input: "hi", ...tags });
+  await assert.rejects(result.getText());
+  assert.equal(body?.session_id, "sess-1");
+  assert.deepEqual(body?.trace, {
+    trace_id: tags.trace!.traceId,
+    trace_name: "CIT-1 turn",
+    runtime: "openrouter",
+    linear_session: "sess-1",
+    linear_issue: "CIT-1",
+  });
 });

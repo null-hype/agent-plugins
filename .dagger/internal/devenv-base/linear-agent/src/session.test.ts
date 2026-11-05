@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { claimEvent } from "./claims.ts";
 import type { AgentRunner } from "./runner.ts";
-import { handleAgentSessionEvent, handleIssueEvent } from "./session.ts";
+import { handleAgentSessionEvent, handleIssueEvent, promptedTurn } from "./session.ts";
 
 const noRunner: AgentRunner = async () => {
   throw new Error("no model run in these tests");
@@ -148,4 +148,15 @@ test("claims survive a restart because they are files, and a different event is 
   assert.equal(claimEvent("created:s-x"), true);
   assert.equal(claimEvent("created:s-x"), false);
   assert.equal(claimEvent("created:s-y"), true);
+});
+
+test("a prompted turn leads with the new message and frames the thread as history", () => {
+  const context = "# CIT-1: Smoke\n\n## Description\nReply exactly: cold-start OK\n\n## Comments\n### OpenRouter\ncold-start OK";
+  const prompt = promptedTurn(context, "Reply with: followup confirmed");
+  const message = prompt.indexOf("Reply with: followup confirmed");
+  const background = prompt.indexOf("Reply exactly: cold-start OK");
+  assert.ok(message >= 0 && background > message, "the new message comes before the issue's own instructions");
+  assert.match(prompt.slice(0, message), /your task for this turn/);
+  assert.match(prompt.slice(message, background), /history: do not repeat them/);
+  assert.match(prompt.slice(background), /answer the new message at the top\.$/);
 });

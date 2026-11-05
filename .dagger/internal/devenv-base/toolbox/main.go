@@ -132,6 +132,22 @@ func newMux(token, baseURL string, tb *toolbox) *http.ServeMux {
 			mux.Handle(a.route, delegationHandler(a.secret, relay))
 		}
 	}
+	// OpenRouter's Broadcast can send the OpenRouter agent's traces here
+	// (traces.go). Off until OPENROUTER_TRACE_TOKEN is set and the trace
+	// directory is writable; reading them back also needs TOOLBOX_TOKEN.
+	if traceToken := os.Getenv("OPENROUTER_TRACE_TOKEN"); traceToken != "" {
+		dir := traceSinkDir(os.Getenv)
+		if dir == "" || !writableDir(dir) {
+			log.Printf("toolbox: openrouter trace sink off; it needs OPENROUTER_TRACE_DIR or LINEAR_AGENT_RELAY_DIR, writable, on a persistent disk")
+		} else {
+			sink := newTraceSink(traceToken, dir)
+			sink.prune()
+			mux.Handle("/openrouter/traces", sink)
+			if token != "" {
+				mux.Handle("/openrouter/traces/", requireBearer(token, metadataURL, http.HandlerFunc(sink.read)))
+			}
+		}
+	}
 	// No authorization server exists: Linear sends a static bearer header.
 	// Listing none tells an OAuth client there is nothing to log in with.
 	mux.HandleFunc("/.well-known/", func(w http.ResponseWriter, r *http.Request) {

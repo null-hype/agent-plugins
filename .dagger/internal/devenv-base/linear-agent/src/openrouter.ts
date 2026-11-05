@@ -3,11 +3,12 @@ import { convertMcpInputSchema } from "@openrouter/agent/mcp";
 import { OpenRouter } from "@openrouter/agent/openrouter";
 import type { Tool } from "@openrouter/agent/tool-types";
 import { Client } from "@modelcontextprotocol/client";
+import { randomBytes } from "node:crypto";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { WORKSPACE_DIR } from "./claude.ts";
 import type { OpenRouterConfig } from "./config.ts";
 import { resolveModel } from "./models.ts";
-import { describeToolUse, SHIP_CONTRACT, truncate, type ActivityContent, type AgentRunner } from "./runner.ts";
+import { describeToolUse, SHIP_CONTRACT, truncate, type ActivityContent, type AgentRunner, type TurnContext } from "./runner.ts";
 
 /**
  * The OpenRouter runtime's turn: the same job as runClaude, with an
@@ -35,12 +36,14 @@ import { describeToolUse, SHIP_CONTRACT, truncate, type ActivityContent, type Ag
  */
 export function openRouterRunner(cfg: OpenRouterConfig): AgentRunner {
   const client = new OpenRouter({ apiKey: cfg.apiKey });
-  return async (prompt, onActivity) => {
+  return async (prompt, onActivity, turn) => {
     const model = await resolveModel(cfg.model, cfg.apiKey);
+    const tags = traceTags(turn);
     const mcp = await connectContainerUse();
     try {
       const result = callModel(client, {
         model,
+        ...tags,
         instructions: instructions(WORKSPACE_DIR),
         input: prompt,
         tools: mcp.tools,
@@ -58,13 +61,42 @@ export function openRouterRunner(cfg: OpenRouterConfig): AgentRunner {
       const usage = await result.getUsage();
       console.log(
         `openrouter: ${model} turn done: ${usage.modelCalls} calls, ${usage.totalTokens} tokens` +
-          (usage.cost !== undefined ? `, $${usage.cost.toFixed(4)}` : ""),
+          (usage.cost !== undefined ? `, $${usage.cost.toFixed(4)}` : "") +
+          (tags.trace ? `, trace ${tags.trace.traceId}` : ""),
       );
       if (!text.trim()) throw new Error(`${model} ended the turn without a response`);
       return text;
     } finally {
       await mcp.close();
     }
+  };
+}
+
+/**
+ * What a turn's requests carry for OpenRouter's Broadcast, which sends a
+ * trace of every request to the toolbox's /openrouter/traces sink: the Linear
+ * session as session_id (it also keeps the session on one provider, for its
+ * prompt cache), and one trace per turn, named for the issue, with the
+ * session and issue as metadata. A random trace id: OTLP wants 16 bytes of
+ * hex, and every model call of the turn shares it.
+ */
+export function traceTags(turn: TurnContext | undefined): {
+  sessionId?: string;
+  trace?: { traceId: string; traceName: string; additionalProperties: Record<string, string> };
+} {
+  if (!turn) return {};
+  const name = turn.issue ?? turn.agentSessionId;
+  return {
+    sessionId: turn.agentSessionId,
+    trace: {
+      traceId: randomBytes(16).toString("hex"),
+      traceName: `${name} turn`,
+      additionalProperties: {
+        runtime: "openrouter",
+        linear_session: turn.agentSessionId,
+        ...(turn.issue && { linear_issue: turn.issue }),
+      },
+    },
   };
 }
 
