@@ -52,11 +52,18 @@ export DOCKER_CONFIG="$DOCKER_CONFIG_DIR"
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON="start-linear-agent: fetch webhook server secrets"
 
+# linear-agent.env sets PROTON_PASS_PERSONAL_ACCESS_TOKEN empty: the agent's
+# container-use environments read it (.container-use/environment.json), and
+# no Pass token is theirs to have. The workspace's own token is the host's to
+# send (AGENT_PASS_TOKEN_REF in toolbox/host.sh).
 ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/linear-agent.env"
 
 if pgrep -f "node dist/index.js" > /dev/null 2>&1; then
   echo "linear-agent: already running"
 else
+  . "$(dirname "${BASH_SOURCE[0]}")/lib/pass-env.sh"
+  ENV_FILE=$(pass_env "$ENV_FILE")
+  trap 'rm -f "$ENV_FILE"' EXIT
   pass-cli run --env-file "$ENV_FILE" -- bash -c '
     set -euo pipefail
     cd /app
