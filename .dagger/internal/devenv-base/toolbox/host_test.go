@@ -68,6 +68,7 @@ list) echo '[{"id":"ws1"}]' ;;
 status) [ "$2" = ws1 ] && echo '{"state":"Stopped"}' || exit 1 ;;
 up) printf '\033[0;1;36minfo \033[0mup output\n' ;;
 esac
+case "$*" in *--send-env\ PROTON_PASS_PERSONAL_ACCESS_TOKEN*) echo "sent ${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" >> "$HOME/devpod.calls" ;; esac
 `
 	os.WriteFile(filepath.Join(bin, "devpod"), []byte(fake), 0o755)
 	os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\n"), 0o755)
@@ -117,10 +118,17 @@ esac
 		t.Fatalf("token reached a devpod command line:\n%s", calls)
 	}
 
-	// An agent workspace's scripts run from origin/main.
+	// An agent workspace's scripts run from origin/main. The fake pass-cli
+	// has a session, and resolves every env file to the agent's token.
+	os.WriteFile(filepath.Join(bin, "pass-cli"), []byte(`#!/bin/bash
+case $1 in
+info) exit 0 ;;
+run) while [ "$1" != -- ]; do shift; done; shift; PROTON_PASS_PERSONAL_ACCESS_TOKEN=agent-token exec "$@" ;;
+esac
+`), 0o755)
 	os.Remove(filepath.Join(home, "devpod.calls"))
 	os.Remove(filepath.Join(home, ".toolbox/jobs/ws1.exit"))
-	run(exports(map[string]string{"GITHUB_TOKEN": "t"}), "up", "ws1", "main", "1")
+	run(exports(map[string]string{"GITHUB_TOKEN": "t", "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "toolbox-token"}), "up", "ws1", "main", "1")
 	exitFile = filepath.Join(home, ".toolbox/jobs/ws1.exit")
 	for i := 0; i < 100; i++ {
 		if _, err := os.Stat(exitFile); err == nil {
@@ -133,6 +141,14 @@ esac
 	firstScript := strings.Index(string(calls), "generate-env-files.sh")
 	if checkout < 0 || firstScript < checkout {
 		t.Fatalf("checkout not moved to origin/main before the scripts:\n%s", calls)
+	}
+	// tailscale-up.sh gets the workspace's own Pass agent token, resolved on
+	// the host from its reference, never the token the toolbox sent.
+	if !strings.Contains(string(calls), "sent agent-token") || strings.Contains(string(calls), "toolbox-token") {
+		t.Fatalf("workspace not sent its own Pass token:\n%s", calls)
+	}
+	if ref, _ := os.ReadFile(filepath.Join(home, ".toolbox/agent/pass.env")); strings.TrimSpace(string(ref)) != "PROTON_PASS_PERSONAL_ACCESS_TOKEN=pass://tidelands.dev/linear-agent-host/PROTON_PASS_PERSONAL_ACCESS_TOKEN" {
+		t.Fatalf("pass.env = %q", ref)
 	}
 }
 
