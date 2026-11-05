@@ -16,6 +16,10 @@ export LINEAR_API_KEY_REF=pass://api.linear.app/Citizen6.Librarian6.Refrain4/LIN
 export DAGGER_CLOUD_TOKEN_REF=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN
 # agent_ship's push token: can push this repository and nothing else.
 export SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN
+# The agent workspace's own Pass token: the Pass agent linear-agent-host,
+# which can view only the items its start scripts read
+# (setup-agent-pass.sh). tailscale-up.sh logs the workspace in with it.
+export AGENT_PASS_TOKEN_REF=pass://tidelands.dev/linear-agent-host/PROTON_PASS_PERSONAL_ACCESS_TOKEN
 export DEVCONTAINER_DIR=.dagger/internal/devenv-base/.devcontainer
 # A Linear agent working an issue, as seen from the host: the Claude
 # runtime's claude-agent-sdk process, or the container-use MCP server either
@@ -87,8 +91,23 @@ run_up() {
   for s in $AGENT_SCRIPTS; do
     echo "== $s"
     if [ "$s" = tailscale-up.sh ]; then
-      devpod ssh "$id" --send-env PROTON_PASS_PERSONAL_ACCESS_TOKEN \
-        --command "bash /workspaces/$id/$DEVCONTAINER_DIR/$s"
+      # The workspace gets its own agent's token, not the one the toolbox
+      # sent: the host resolves it with its own session, as ship does the
+      # push token, so it is written nowhere.
+      export PROTON_PASS_KEY_PROVIDER=fs
+      export PROTON_PASS_AGENT_REASON="agent_start: send $id its Pass agent token"
+      if ! pass-cli info >/dev/null 2>&1 && [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+        pass-cli logout --force >/dev/null 2>&1 || true
+        pass-cli login >/dev/null 2>&1 || true
+      fi
+      install -d -m 700 "$HOME/.toolbox/agent"
+      echo "PROTON_PASS_PERSONAL_ACCESS_TOKEN=$AGENT_PASS_TOKEN_REF" > "$HOME/.toolbox/agent/pass.env"
+      pass-cli run --env-file "$HOME/.toolbox/agent/pass.env" -- \
+        devpod ssh "$id" --send-env PROTON_PASS_PERSONAL_ACCESS_TOKEN \
+        --command "bash /workspaces/$id/$DEVCONTAINER_DIR/$s" || {
+        echo "== $s failed; if Pass did not resolve $AGENT_PASS_TOKEN_REF above, the host's Pass session cannot read the workspace's token" >&2
+        return 1
+      }
       # MagicDNS points the container's resolv.conf at 100.100.100.100, and
       # then public names stop resolving, so the next script's pass-cli
       # cannot reach Proton. Turned off here as well as in tailscale-up.sh,

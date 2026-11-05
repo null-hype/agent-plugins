@@ -21,14 +21,17 @@ fi
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON=${PROTON_PASS_AGENT_REASON:-"tailscale-up: fetch Tailscale auth key"}
 
-if ! pass-cli info > /dev/null 2>&1; then
-  if [ -z "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
-    echo "PROTON_PASS_PERSONAL_ACCESS_TOKEN is not set and no pass-cli session exists; cannot join tailnet." >&2
-    exit 1
-  fi
-  pass-cli logout --force
+# A sent token always replaces the session: a session whose access was
+# revoked still passes `pass-cli info`, and every later read then fails.
+if [ -n "${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+  pass-cli logout --force > /dev/null 2>&1 || true
   pass-cli login
+elif ! pass-cli info > /dev/null 2>&1; then
+  echo "PROTON_PASS_PERSONAL_ACCESS_TOKEN is not set and no pass-cli session exists; cannot join tailnet." >&2
+  exit 1
 fi
+# Which Pass identity this workspace's scripts read as, for the job log.
+echo "pass-cli: $(pass-cli info 2> /dev/null | grep -m1 'Username:' || echo 'no session')"
 
 if ! pgrep -x tailscaled > /dev/null 2>&1; then
   $SUDO mkdir -p "$STATE_DIR" "$(dirname "$SOCK")"
