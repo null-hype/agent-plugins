@@ -86,6 +86,56 @@ it contains references, not secret values. Update it when replacing item grants.
 The check launcher removes unrelated host-action secret references before Pass
 resolves the check's environment, so checks need no GitHub or Linear grant.
 
+## Agent delegations (CIT-576)
+
+Delegating an issue to the Claude agent makes Linear send an
+`AgentSessionEvent` (`created`; `prompted` for later messages) to the OAuth
+app's webhook URL, which must answer within 5 seconds. Linear retries a failed
+delivery only after 1 minute, 1 hour and 6 hours, so a stopped VM would miss
+the work. With the app's webhook URL set to `https://<toolbox>/linear/agent-webhook`,
+the toolbox verifies the event, answers 200, keeps it, runs the same wake as
+`host_wake` until the agent's webhook answers, and posts the event to the
+agent's own webhook (restamped and re-signed, since the agent rejects bodies
+older than a minute). The agent is unchanged.
+
+- Sessions: a `created` event is a delegation or a mention (Linear does not
+  say which in the action), so both wake the host. Assigning an issue to a
+  person sends no session event and wakes nothing. On arrival the toolbox reads
+  the issue's delegate from Linear. Delegated to the agent: re-read at delivery
+  and dropped if withdrawn, for `prompted` events too. Delegated to someone
+  else (a mention): not subject to that check. Linear unreachable: unknown, not
+  a mention; it is re-read at delivery (retried while unreadable), delivered if
+  the agent holds the issue then, and otherwise not started, with a comment on
+  the issue, because a mention and a withdrawn delegation cannot be told apart.
+- Dropped, never started: events for another app user, finished sessions, bad
+  signatures, bodies older than a minute, a repeated delivery or session, and a
+  session older (by Linear's `agentSession.createdAt`, not arrival) than another
+  of the same issue.
+- `Issue` events (an edited description of a delegated issue) are passed on to
+  the agent when the host is already running, and dropped when it is stopped:
+  the agent follows an edit only for a session it holds in memory, which a
+  stopped host has not.
+- Delivery is at-least-once, the run at-most-once. The agent builds the
+  event's prompt and records its claim (`LINEAR_AGENT_STATE_DIR`, default
+  `~/.linear-agent/claims`) before it answers; a failure in either is a 500, so
+  Linear or the relay retries, and an unclaimed event is not mistaken for a
+  repeat. Only the Claude run itself is detached. A repeat of a claimed event
+  is ignored, so a resend after a lost answer or a toolbox crash starts no
+  second run. If the agent dies mid-run the event is not run again; prompt the
+  session again.
+- Failure: the issue gets a comment (starting; or why it could not be taken,
+  with "delegate again to retry").
+- Durability: every accepted event is written to `LINEAR_AGENT_RELAY_DIR`
+  before the 200; if it cannot be written the answer is 500 and Linear
+  retries. Records stay as `.json` (undelivered, resumed on boot), `.done` or
+  `.failed` (pruned after a week), so a redelivery after a restart is still a
+  duplicate. The route is not registered at all without a writable directory.
+
+Off until all are set: `LINEAR_AGENT_WEBHOOK_SECRET` (the app's signing
+secret), `LINEAR_API_KEY`, `LINEAR_AGENT_APP_USER_ID`,
+`LINEAR_AGENT_WEBHOOK_URL` (the agent's `/webhooks/linear`) and
+`LINEAR_AGENT_RELAY_DIR` (a persistent disk).
+
 ## Tailscale and Codex
 
 The host is its own tailnet node, `toolbox-host`, with Tailscale SSH. The

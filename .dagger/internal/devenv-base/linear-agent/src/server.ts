@@ -3,7 +3,7 @@ import { LinearClient } from "@linear/sdk";
 import { LinearWebhookClient } from "@linear/sdk/webhooks";
 import type { Config } from "./config.ts";
 import { authorizeUrl, exchangeCode } from "./oauth.ts";
-import { handleAgentSessionEvent, handleIssueEvent } from "./session.ts";
+import { prepareAgentSessionEvent, prepareIssueEvent } from "./session.ts";
 
 export function createServer(cfg: Config): http.Server {
   const webhookClient = new LinearWebhookClient(cfg.linearWebhookSecret);
@@ -25,26 +25,31 @@ export function createServer(cfg: Config): http.Server {
   // webhook log, instead of looking identical to a working turn. See also
   // GET /healthz below, which reports the same install-token gap without
   // requiring a signed payload to probe it.
-  webhookHandler.on("AgentSessionEvent", (payload) => {
+  // Preparing an event (building its prompt, recording its claim) is awaited,
+  // so a failure there is a 500 and the delivery is retried; the Claude run
+  // that follows is detached so the answer is not held up by it.
+  webhookHandler.on("AgentSessionEvent", async (payload) => {
     if (!installToken) {
       console.error("AgentSessionEvent received before an installation token was configured");
       throw new Error("no installation token configured");
     }
-    const linear = new LinearClient({ accessToken: installToken });
-    // Deliberately not awaited: handleAgentSessionEvent posts its required
-    // `thought` activity first and only then does the slow `claude` work.
-    void handleAgentSessionEvent(payload, linear, cfg.claudeCodeOAuthToken).catch((err) => {
+    const linear = new LinearClient({ accessToken: installToken, apiUrl: cfg.linearApiUrl });
+    const run = await prepareAgentSessionEvent(payload, linear, cfg.claudeCodeOAuthToken);
+    // Deliberately not awaited: the run posts its required `thought` activity
+    // first and only then does the slow `claude` work.
+    void run?.().catch((err) => {
       console.error("AgentSessionEvent handling failed", err);
     });
   });
 
-  webhookHandler.on("Issue", (payload) => {
+  webhookHandler.on("Issue", async (payload) => {
     if (!installToken) {
       console.error("Issue event received before an installation token was configured");
       throw new Error("no installation token configured");
     }
-    const linear = new LinearClient({ accessToken: installToken });
-    void handleIssueEvent(payload, linear, cfg.claudeCodeOAuthToken).catch((err) => {
+    const linear = new LinearClient({ accessToken: installToken, apiUrl: cfg.linearApiUrl });
+    const run = await prepareIssueEvent(payload, linear, cfg.claudeCodeOAuthToken);
+    void run?.().catch((err) => {
       console.error("Issue event handling failed", err);
     });
   });
