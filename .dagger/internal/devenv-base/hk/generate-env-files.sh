@@ -12,6 +12,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 declare -A OUT=(
   [tailscale]=".devcontainer/tailscale.env"
   [gcloud]=".devcontainer/gcloud.env"
+  [restic]=".devcontainer/restic.env"
   [linear-release]="linear-release.env"
 )
 
