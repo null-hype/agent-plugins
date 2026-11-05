@@ -186,6 +186,38 @@ hand with `URL=https://openrouter-agent.tidelands.dev/webhooks/linear
 ENV_FILE=.devcontainer/openrouter-agent.env` and
 `check-linear-agent-webhook-live.sh`.
 
+Only the newest session of an issue is delivered. An older one still waiting
+for the host is dropped when a newer one arrives, and the issue gets a comment
+naming the session that will not be taken.
+
+### OpenRouter traces
+
+OpenRouter's [Broadcast](https://openrouter.ai/docs/guides/features/broadcast/webhook)
+can send a trace of every request to `/openrouter/traces`, as OTLP JSON. This
+keeps for the OpenRouter agent what `~/.claude` keeps for the Claude agent:
+what the model was sent and what it answered, for each session. The agent sets
+each request's `session_id` to its Linear agent session and gives each turn its
+own trace, named for the issue (`linear-agent/src/openrouter.ts`). The sink is
+on the toolbox, not the host, because traces arrive after the turn.
+
+- Store: each span goes to `<dir>/<session.id>.ndjson`, one OTLP payload per
+  line. Spans without a session go to `_no-session.ndjson`. A session's file
+  is removed 30 days after its last write.
+- Read: `GET /openrouter/traces/<session>` with `TOOLBOX_TOKEN`.
+- The traces contain issue text and tool output. They are kept only on the
+  disk and nothing publishes them.
+
+To turn it on:
+
+1. Set `OPENROUTER_TRACE_TOKEN` (a random secret) on the toolbox. The
+   directory is `OPENROUTER_TRACE_DIR`, or `traces/` under
+   `LINEAR_AGENT_RELAY_DIR`.
+2. In OpenRouter, go to Settings > Observability and enable Broadcast. Add a
+   Webhook destination with URL `https://<toolbox>/openrouter/traces` and
+   headers `{"Authorization": "Bearer <OPENROUTER_TRACE_TOKEN>"}`. Limit it to
+   the agent's API key. Leave Privacy Mode off if the traces should include
+   the prompts.
+
 ## Tailscale and Codex
 
 The host is its own tailnet node, `toolbox-host`, with Tailscale SSH. The

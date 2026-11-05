@@ -143,12 +143,36 @@ async function buildPrompt(
       const content = payload.agentActivity?.content as { body?: string } | undefined;
       if (!content?.body) return undefined;
       if (!issueId) return content.body;
-      const context = await buildIssuePrompt(linear, issueId);
-      return `${context}\n\n---\n\nNew message in this thread:\n\n${content.body}`;
+      return promptedTurn(await buildIssuePrompt(linear, issueId), content.body);
     }
     default:
       return undefined;
   }
+}
+
+/**
+ * A `prompted` turn: the new message first, as this turn's task, then the
+ * issue and its thread as background. The background still holds the
+ * instructions earlier turns acted on, and the agent's own replies to them;
+ * with the new message only appended after it, a model repeated the earlier
+ * reply instead of answering the new message (CIT-579 on 2026-11-05).
+ */
+export function promptedTurn(context: string, message: string): string {
+  return [
+    "The maintainer has sent a new message in this agent session. It is your task for this turn. Where it conflicts with earlier instructions in the issue or the thread, it wins.",
+    "",
+    message,
+    "",
+    "---",
+    "",
+    "Background: the issue and its thread so far. Earlier turns, your own replies included, are history: do not repeat them.",
+    "",
+    context,
+    "",
+    "---",
+    "",
+    "Now answer the new message at the top.",
+  ].join("\n");
 }
 
 // Re-derives roughly what Linear's own promptContext/"Copy as prompt"
@@ -202,15 +226,18 @@ async function runTurn(
   await postActivity(linear, agentSessionId, { type: "thought", body: "On it." });
 
   try {
-    const branch = issueId ? await linear.issue(issueId).then((issue) => issue.branchName, () => undefined) : undefined;
-    const issueRef = await syncWorkspace(WORKSPACE_DIR, branch);
+    const issue = issueId ? await linear.issue(issueId).catch(() => undefined) : undefined;
+    const issueRef = await syncWorkspace(WORKSPACE_DIR, issue?.branchName);
     const withRef = issueRef
       ? `${prompt}\n\n---\n\nThis issue's code is on ${issueRef}, not main: create container-use environments with from_git_ref "${issueRef}".`
       : prompt;
-    const result = await runner(withRef, (content) =>
-      // Best-effort narration: a failed intermediate post shouldn't abort
-      // the turn the way a failed final response/error post should.
-      postActivity(linear, agentSessionId, content).catch(() => undefined),
+    const result = await runner(
+      withRef,
+      (content) =>
+        // Best-effort narration: a failed intermediate post shouldn't abort
+        // the turn the way a failed final response/error post should.
+        postActivity(linear, agentSessionId, content).catch(() => undefined),
+      { agentSessionId, ...(issue?.identifier && { issue: issue.identifier }) },
     );
     await postActivity(linear, agentSessionId, { type: "response", body: result });
   } catch (err) {
