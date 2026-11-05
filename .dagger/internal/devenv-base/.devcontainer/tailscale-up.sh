@@ -31,7 +31,7 @@ elif ! pass-cli info > /dev/null 2>&1; then
   exit 1
 fi
 # Which Pass identity this workspace's scripts read as, for the job log.
-echo "pass-cli: $(pass-cli info 2> /dev/null | grep -m1 'Username:' || echo 'no session')"
+echo "pass-cli: $(pass-cli info 2> /dev/null | grep -m1 -E 'Username:|Personal Access Token:' || echo 'no session')"
 
 if ! pgrep -x tailscaled > /dev/null 2>&1; then
   $SUDO mkdir -p "$STATE_DIR" "$(dirname "$SOCK")"
@@ -46,7 +46,9 @@ fi
 if $SUDO tailscale --socket="$SOCK" status > /dev/null 2>&1; then
   echo "tailscale: already connected"
 else
-  TS_ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/tailscale.env"
+  . "$(dirname "${BASH_SOURCE[0]}")/lib/pass-env.sh"
+  TS_ENV_FILE=$(pass_env "$(dirname "${BASH_SOURCE[0]}")/tailscale.env")
+  trap 'rm -f "$TS_ENV_FILE"' EXIT
   export SOCK TS_HOSTNAME SUDO
   # `up` must name every non-default setting the node already holds, or it
   # refuses. A restarted container keeps its state, where the `set` below

@@ -40,6 +40,9 @@ fi
 if pgrep -f "cloudflared tunnel run" > /dev/null 2>&1; then
   echo "cloudflared: already running"
 else
+  . "$(dirname "${BASH_SOURCE[0]}")/lib/pass-env.sh"
+  ENV_FILE=$(pass_env "$ENV_FILE")
+  trap 'rm -f "$ENV_FILE"' EXIT
   pass-cli run --env-file "$ENV_FILE" -- bash -c '
     set -euo pipefail
     : "${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN not resolved from Pass}"

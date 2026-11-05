@@ -29,6 +29,10 @@ export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON="check-linear-agent-webhook-live: fetch webhook secret to smoke-test live endpoint"
 export URL
 
+. "$(dirname "${BASH_SOURCE[0]}")/lib/pass-env.sh"
+ENV_FILE=$(pass_env "$ENV_FILE")
+trap 'rm -f "$ENV_FILE"' EXIT
+
 pass-cli run --env-file "$ENV_FILE" -- bash -c '
   set -euo pipefail
   : "${LINEAR_WEBHOOK_SECRET:?LINEAR_WEBHOOK_SECRET not resolved from Pass}"
