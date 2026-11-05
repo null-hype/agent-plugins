@@ -81,11 +81,13 @@ run_up() {
   # The scripts run from the workspace's checkout, and so does every
   # container-use environment the agent creates. The agent server moves it
   # to origin/main before each turn; start the scripts from there too, not
-  # from the ref the workspace was created with.
-  # Edits left in the checkout's tracked files would stop the checkout, so
-  # they are stashed first (git stash list in the workspace has them).
-  devpod ssh "$id" --command "cd /workspaces/$id && git fetch -q origin && { git diff --quiet || git stash push -q -m 'agent_start: local edits'; } && git checkout -q --detach origin/main" </dev/null ||
-    echo "== could not move $id to origin/main; running the scripts it has" >&2
+  # from the ref the workspace was created with. If it cannot move, nothing
+  # is started: older scripts would read Pass as they used to, and fail
+  # further on with a less telling error than git's.
+  devpod ssh "$id" --command "cd /workspaces/$id && git fetch -q origin && git checkout -q --detach origin/main" </dev/null || {
+    echo "== could not move $id to origin/main (git's error is above); not starting its agents" >&2
+    return 1
+  }
   for s in $AGENT_SCRIPTS; do
     echo "== $s"
     if [ "$s" = tailscale-up.sh ]; then
@@ -98,7 +100,7 @@ run_up() {
       # MagicDNS points the container's resolv.conf at 100.100.100.100, and
       # then public names stop resolving, so the next script's pass-cli
       # cannot reach Proton. Turned off here as well as in tailscale-up.sh,
-      # in case the checkout could not be moved to origin/main above.
+      # which does it only when it joins the tailnet.
       devpod ssh "$id" --command 's=; [ "$(id -u)" = 0 ] || s=sudo
         $s tailscale --socket=/var/run/tailscale/tailscaled.sock set --accept-dns=false
         getent ahosts pass.proton.me >/dev/null || { echo "public names do not resolve in the container" >&2; exit 1; }'

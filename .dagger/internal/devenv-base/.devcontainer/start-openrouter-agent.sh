@@ -47,16 +47,13 @@ if pgrep -f "node /app/dist/index.js" > /dev/null 2>&1; then
 fi
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/pass-env.sh"
-if ! RESOLVED=$(pass_env "$ENV_FILE"); then
+RESOLVED=$(pass_env "$ENV_FILE") || RESOLVED=
+trap '[ -z "$RESOLVED" ] || rm -f "$RESOLVED"' EXIT
+if [ -z "$RESOLVED" ] || ! pass-cli run --env-file "$RESOLVED" -- true > /dev/null 2>&1; then
   echo "openrouter-agent: skipped; $ENV_FILE does not resolve from Pass (is pass://tidelands.dev/openrouter-agent set up?)"
   exit 0
 fi
-trap 'rm -f "$RESOLVED"' EXIT
 ENV_FILE=$RESOLVED
-if ! pass-cli run --env-file "$ENV_FILE" -- true > /dev/null 2>&1; then
-  echo "openrouter-agent: skipped; $ENV_FILE does not resolve from Pass (is pass://tidelands.dev/openrouter-agent set up?)"
-  exit 0
-fi
 
 pass-cli run --env-file "$ENV_FILE" -- bash -c '
   set -euo pipefail
