@@ -140,7 +140,7 @@ case "$*" in *--send-env\ PROTON_PASS_PERSONAL_ACCESS_TOKEN*) echo "sent ${PROTO
 	if !strings.Contains(string(calls), "sent agent-token") || strings.Contains(string(calls), "toolbox-token") {
 		t.Fatalf("workspace not sent its own Pass token:\n%s", calls)
 	}
-	if !strings.Contains(string(calls), "git stash push") {
+	if !strings.Contains(string(calls), "stash push -q -m") {
 		t.Fatalf("local edits not stashed before the checkout:\n%s", calls)
 	}
 }

@@ -83,8 +83,9 @@ run_up() {
   # to origin/main before each turn; start the scripts from there too, not
   # from the ref the workspace was created with.
   # Edits left in the checkout's tracked files would stop the checkout, so
-  # they are stashed first (git stash list in the workspace has them).
-  devpod ssh "$id" --command "cd /workspaces/$id && git fetch -q origin && { git diff --quiet || git stash push -q -m 'agent_start: local edits'; } && git checkout -q --detach origin/main" </dev/null ||
+  # they are listed and stashed first (git stash list in the workspace has
+  # them). The workspace has no git identity of its own, and stash needs one.
+  devpod ssh "$id" --command "cd /workspaces/$id && git fetch -q origin && { git diff --quiet HEAD || { git status --short --untracked-files=no && git -c user.name=agent_start -c user.email=agent_start@localhost stash push -q -m 'agent_start: local edits'; }; } && git checkout -q --detach origin/main" </dev/null ||
     echo "== could not move $id to origin/main; running the scripts it has" >&2
   for s in $AGENT_SCRIPTS; do
     echo "== $s"
@@ -411,7 +412,7 @@ status)
   id=$1
   jq -n --argjson ws "$(workspace_json "$id")" \
     --argjson job_exit "$(cat "$JOBS/$id.exit" 2>/dev/null || echo null)" \
-    --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' || true)" \
+    --arg log_tail "$(tail -n 80 "$JOBS/$id.log" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' || true)" \
     '$ws + {job_exit: $job_exit, log_tail: $log_tail}'
   ;;
 up)
