@@ -288,6 +288,17 @@ func TestOnlyNewestSessionOfAnIssueIsDelivered(t *testing.T) {
 	if got := h.agent.sessions(); len(got) != 1 || got[0] != "session-new" {
 		t.Fatalf("delivered %v", got)
 	}
+	// The older session was told it would be delivered; it is told it won't be.
+	eventually(t, "drop comment", func() bool {
+		h.rec.mu.Lock()
+		defer h.rec.mu.Unlock()
+		for _, c := range h.rec.calls {
+			if strings.Contains(c, "will not take session session-old") && strings.Contains(c, "d1") {
+				return true
+			}
+		}
+		return false
+	})
 }
 
 // The toolbox restarting while the VM is still booting loses nothing.

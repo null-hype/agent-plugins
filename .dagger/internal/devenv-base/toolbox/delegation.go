@@ -339,6 +339,20 @@ func (r *delegationRelay) superseded(d delegation) bool {
 	return ok && cur.id != d.Session && cur.newerThan(sessionRef{d.Session, d.Created})
 }
 
+// dropSuperseded settles an event that a newer session of its issue has
+// replaced, and says so on the issue: the "host is starting" comment has
+// usually promised it would be delivered, and without a word it reads as lost.
+func (r *delegationRelay) dropSuperseded(ctx context.Context, d delegation) {
+	log.Printf("agent delegation %s (%s): superseded by a newer session; dropped", d.Issue, d.Delivery)
+	r.settle(d, ".done")
+	cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+	if err := r.linear.comment(cctx, d.Issue, fmt.Sprintf(
+		"%s will not take session %s: a newer session on this issue replaced it, and only the newest is delivered.\n\nLinear delivery: %s", r.label, d.Session, d.Delivery)); err != nil {
+		log.Printf("agent delegation %s (%s): drop not reported: %v", d.Issue, d.Delivery, err)
+	}
+}
+
 // process wakes the host until the agent answers, then delivers. It ends in
 // the agent holding the event, in the event being dropped because it is stale,
 // or in a comment on the issue saying why it could not be delivered.
@@ -365,8 +379,7 @@ func (r *delegationRelay) drive(ctx context.Context, d delegation) error {
 	var last error
 	for {
 		if r.superseded(d) {
-			log.Printf("agent delegation %s (%s): superseded by a newer session; dropped", d.Issue, d.Delivery)
-			r.settle(d, ".done")
+			r.dropSuperseded(ctx, d)
 			return nil
 		}
 		ready, err := r.wakeStep(ctx)
@@ -449,8 +462,7 @@ func (r *delegationRelay) handOff(ctx context.Context, d delegation) (bool, erro
 		}
 	}
 	if r.superseded(d) {
-		log.Printf("agent delegation %s (%s): superseded by a newer session; dropped", d.Issue, d.Delivery)
-		r.settle(d, ".done")
+		r.dropSuperseded(ctx, d)
 		return false, nil
 	}
 	// A delivery whose answer is lost may be sent again; the agent claims each
