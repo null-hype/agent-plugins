@@ -67,8 +67,8 @@ jobs:
           PROTON_PASS_AGENT_REASON: "toolbox-host lifecycle: keep the VM's idle stop and max run duration in step"
         run: |
           pass-cli run --env-file <(printf '%s\n' \
-            'GCP_SERVICE_ACCOUNT_KEY=pass://h5u0a_SQ1f4M_hLZojw6hom_mRR6_P65oQlfSlTyYFozFywSVL2PaXhuSyI20xCeEaZGxv1o_E1sQC1Rty8O5w==/BpzgsoHEM3oB3qOlBEBuMDFIHwr89qDJWLyCBI7st7Ri42T8O_nSNMOV2e-5NV9adSLFGH2doxd6zccndXlxPA==/GCP_SERVICE_ACCOUNT_KEY' \
-            'GOOGLE_PROJECT_ID=pass://h5u0a_SQ1f4M_hLZojw6hom_mRR6_P65oQlfSlTyYFozFywSVL2PaXhuSyI20xCeEaZGxv1o_E1sQC1Rty8O5w==/BpzgsoHEM3oB3qOlBEBuMDFIHwr89qDJWLyCBI7st7Ri42T8O_nSNMOV2e-5NV9adSLFGH2doxd6zccndXlxPA==/GOOGLE_PROJECT_ID') -- bash -euo pipefail -c '
+            'GCP_SERVICE_ACCOUNT_KEY=pass://nlUW_kpz-Ax-eqf1o8hoo5HAC6f5sz7eypjTbS4xCPlJrP8IbCCJRo9HubJbXhxRRuQZ03xbRyKviAOnNCamQg==/BpzgsoHEM3oB3qOlBEBuMDFIHwr89qDJWLyCBI7st7Ri42T8O_nSNMOV2e-5NV9adSLFGH2doxd6zccndXlxPA==/GCP_SERVICE_ACCOUNT_KEY' \
+            'GOOGLE_PROJECT_ID=pass://nlUW_kpz-Ax-eqf1o8hoo5HAC6f5sz7eypjTbS4xCPlJrP8IbCCJRo9HubJbXhxRRuQZ03xbRyKviAOnNCamQg==/BpzgsoHEM3oB3qOlBEBuMDFIHwr89qDJWLyCBI7st7Ri42T8O_nSNMOV2e-5NV9adSLFGH2doxd6zccndXlxPA==/GOOGLE_PROJECT_ID') -- bash -euo pipefail -c '
             tmp=$(mktemp -d)
             chmod 700 "$tmp"
             trap "rm -rf $tmp" EXIT
