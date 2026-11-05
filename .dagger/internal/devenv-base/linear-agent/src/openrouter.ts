@@ -66,10 +66,26 @@ export function openRouterRunner(cfg: OpenRouterConfig): AgentRunner {
       );
       if (!text.trim()) throw new Error(`${model} ended the turn without a response`);
       return text;
+    } catch (err) {
+      // Linear only gets the message, which for a provider failure is
+      // OpenRouter's generic "Provider returned error"; the log keeps why.
+      console.error(`openrouter: ${model} turn failed: ${failureDetail(err)}`);
+      throw err;
     } finally {
       await mcp.close();
     }
   };
+}
+
+/**
+ * A failed turn's error as the log should keep it: the message, and for an
+ * HTTP error from OpenRouter its status and body, where OpenRouter puts the
+ * provider's own error (error.metadata: the provider and its raw reply).
+ */
+export function failureDetail(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const { statusCode, body } = err as { statusCode?: number; body?: string };
+  return statusCode ? `${err.message} (HTTP ${statusCode}: ${(body ?? "").slice(0, 2000)})` : err.message;
 }
 
 /**
