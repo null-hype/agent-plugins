@@ -122,7 +122,7 @@ func resultText(res *mcp.CallToolResult) string {
 func newTestToolbox(status string, ws ...workspace) (*toolbox, *fakeGCE, *fakeHost) {
 	g := &fakeGCE{status: status}
 	h := &fakeHost{workspaces: ws}
-	return &toolbox{gce: g, host: h, githubToken: "gh-token", passToken: "pass-token", tsAuthKey: "ts-key"}, g, h
+	return &toolbox{gce: g, host: h, githubToken: "gh-token", passToken: "pass-token", agentPassToken: "agent-pass-token", tsAuthKey: "ts-key"}, g, h
 }
 
 func TestWorkspaceUpSendsOnlyTheGitHubToken(t *testing.T) {
@@ -139,7 +139,7 @@ func TestWorkspaceUpSendsOnlyTheGitHubToken(t *testing.T) {
 	}
 }
 
-func TestAgentStartBootstrapsWithThePassToken(t *testing.T) {
+func TestAgentStartSendsTheWorkspacesOwnPassToken(t *testing.T) {
 	tb, _, h := newTestToolbox("RUNNING")
 	if res := callTool(t, tb, "agent_start", map[string]any{"ref": "feature/x"}); res.IsError {
 		t.Fatalf("agent_start: %s", resultText(res))
@@ -148,8 +148,14 @@ func TestAgentStartBootstrapsWithThePassToken(t *testing.T) {
 	if got := strings.Join(c.args, " "); got != "up linear-agent feature/x 1" {
 		t.Fatalf("args %q", got)
 	}
-	if c.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "pass-token" {
-		t.Fatal("agent_start did not forward the Proton Pass token")
+	// The workspace's own Pass token, never the toolbox's.
+	if c.env["AGENT_PASS_TOKEN"] != "agent-pass-token" || c.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "" {
+		t.Fatalf("agent_start sent %v", c.env)
+	}
+	// Without it, agent_start refuses rather than start agents that cannot read Pass.
+	tb.agentPassToken = ""
+	if res := callTool(t, tb, "agent_start", map[string]any{}); !res.IsError || !strings.Contains(resultText(res), "LINEAR_AGENT_PASS_TOKEN") {
+		t.Fatalf("agent_start without the agent token: %s", resultText(res))
 	}
 }
 
@@ -242,7 +248,7 @@ func TestHostWakeStepsToReady(t *testing.T) {
 		t.Fatalf("agent not started: %+v", out)
 	}
 	last := h.calls[len(h.calls)-1]
-	if strings.Join(last.args, " ") != "up linear-agent main 1" || last.env["PROTON_PASS_PERSONAL_ACCESS_TOKEN"] != "pass-token" {
+	if strings.Join(last.args, " ") != "up linear-agent main 1" || last.env["AGENT_PASS_TOKEN"] != "agent-pass-token" {
 		t.Fatalf("agent start call %v", last)
 	}
 

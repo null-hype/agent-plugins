@@ -58,7 +58,8 @@ name.
 | `GCP_SERVICE_ACCOUNT_KEY` | `toolbox-render` service account, admin of the host instance only |
 | `TOOLBOX_SSH_KEY` | Private key whose public half is the VM's `toolbox` ssh-keys metadata |
 | `GITHUB_TOKEN` | `pass://infra/github.com/GITHUB_TOKEN`, for cloning the private repo, and with Codespaces lifecycle admin for the codespace tools |
-| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Logs in the host's pass-cli when it has no session. That session resolves the agent workspace's own token, `tidelands.dev/linear-agent-host` (the Pass agent `setup-agent-pass.sh` makes, which can view only the four items the workspace's start scripts read), for its `tailscale-up.sh`; gives Codex's curl the Linear key in `codex_review`; and resolves `agent_ship`'s push token |
+| `PROTON_PASS_PERSONAL_ACCESS_TOKEN` | Logs in the host's pass-cli when it has no session: gives Codex's curl the Linear key in `codex_review`, and resolves `agent_ship`'s push token |
+| `LINEAR_AGENT_PASS_TOKEN` | The agent workspace's own Pass token, from `tidelands.dev/linear-agent-host`: the Pass agent `setup-agent-pass.sh` makes, which can view only the four items the workspace's start scripts read. `agent_start` sends it to the workspace's `tailscale-up.sh`, and refuses without it |
 | `TS_AUTHKEY` | `pass://infra/tailscale/TS_AUTHKEY`, joins the host itself to the tailnet (optional) |
 | `LINEAR_CHECK_WEBHOOK_SECRET` | The signing secret of the Linear data-change webhook for [check reruns](#check-reruns) (optional) |
 | `LINEAR_API_KEY` | `pass://api.linear.app/Citizen6.Librarian6.Refrain4/LINEAR_API_KEY`: the rerun controller's comments and state changes. Only the toolbox holds it; the host and the checks never see it (optional; reruns stay off without it) |

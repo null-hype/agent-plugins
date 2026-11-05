@@ -201,7 +201,9 @@ func loadToolbox(ctx context.Context) (*toolbox, error) {
 		codespaces:  &codespaces{client: http.DefaultClient, url: "https://api.github.com/user/codespaces", token: os.Getenv("GITHUB_TOKEN"), gh: "/usr/local/bin/gh"},
 		githubToken: os.Getenv("GITHUB_TOKEN"),
 		passToken:   os.Getenv("PROTON_PASS_PERSONAL_ACCESS_TOKEN"),
-		tsAuthKey:   os.Getenv("TS_AUTHKEY"),
+		// Optional: without it agent_start refuses, and the other tools work.
+		agentPassToken: os.Getenv("LINEAR_AGENT_PASS_TOKEN"),
+		tsAuthKey:      os.Getenv("TS_AUTHKEY"),
 	}, nil
 }
 

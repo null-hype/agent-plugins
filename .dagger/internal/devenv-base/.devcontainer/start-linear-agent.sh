@@ -54,8 +54,8 @@ export PROTON_PASS_AGENT_REASON="start-linear-agent: fetch webhook server secret
 
 # linear-agent.env sets PROTON_PASS_PERSONAL_ACCESS_TOKEN empty: the agent's
 # container-use environments read it (.container-use/environment.json), and
-# no Pass token is theirs to have. The workspace's own token is the host's to
-# send (AGENT_PASS_TOKEN_REF in toolbox/host.sh).
+# no Pass token is theirs to have. The workspace's own token is the toolbox's
+# to send (LINEAR_AGENT_PASS_TOKEN, toolbox/README.md).
 ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/linear-agent.env"
 
 if pgrep -f "node dist/index.js" > /dev/null 2>&1; then
