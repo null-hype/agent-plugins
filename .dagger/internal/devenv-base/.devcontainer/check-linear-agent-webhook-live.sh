@@ -20,7 +20,10 @@
 set -euo pipefail
 
 URL=${URL:-https://agent.tidelands.dev/webhooks/linear}
-ENV_FILE="$(dirname "${BASH_SOURCE[0]}")/linear-agent.env"
+# Both overridable, so the same check covers the OpenRouter agent:
+#   URL=https://openrouter-agent.tidelands.dev/webhooks/linear \
+#   ENV_FILE=.devcontainer/openrouter-agent.env bash .devcontainer/check-linear-agent-webhook-live.sh
+ENV_FILE=${ENV_FILE:-"$(dirname "${BASH_SOURCE[0]}")/linear-agent.env"}
 
 export PROTON_PASS_KEY_PROVIDER=${PROTON_PASS_KEY_PROVIDER:-fs}
 export PROTON_PASS_AGENT_REASON="check-linear-agent-webhook-live: fetch webhook secret to smoke-test live endpoint"
