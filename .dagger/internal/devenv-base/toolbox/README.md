@@ -157,8 +157,11 @@ settings are set:
 Its events are kept in `<LINEAR_AGENT_RELAY_DIR>/<name>`.
 
 The second agent today is `openrouter`: the same linear-agent server with
-`AGENT_RUNTIME=openrouter` (an open-weight model on OpenRouter, the
-cheapest with tool calling unless `OPENROUTER_MODEL` names one, with the
+`AGENT_RUNTIME=openrouter` (an open-weight model on OpenRouter:
+`OPENROUTER_MODEL` in `openrouter-agent.env`, a model that has completed a
+real agent turn, since the cheapest with tool calling changes with the
+catalog and may fail the agent's requests, CIT-587; the cheapest is used
+only when it is unset; with the
 same container-use tool surface and work contract as Claude), started by
 `start-openrouter-agent.sh` on port 8081 from `openrouter-agent.env` in the
 same `linear-agent` workspace. To turn it on:

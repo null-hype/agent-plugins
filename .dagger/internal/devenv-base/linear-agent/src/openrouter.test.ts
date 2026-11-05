@@ -6,7 +6,7 @@ import { callModel } from "@openrouter/agent";
 import { OpenRouter } from "@openrouter/agent/openrouter";
 // @openrouter/agent's own dependency, for a client that records the request.
 import { HTTPClient } from "@openrouter/sdk/lib/http.js";
-import { instructions, narrate, toolResultText, traceTags } from "./openrouter.ts";
+import { failureDetail, instructions, narrate, toolResultText, traceTags } from "./openrouter.ts";
 
 const linearEnv = {
   LINEAR_CLIENT_ID: "c",
@@ -150,4 +150,22 @@ test("a turn's requests carry its Linear session and one trace for Broadcast", a
     linear_session: "sess-1",
     linear_issue: "CIT-1",
   });
+});
+
+test("a provider failure keeps OpenRouter's error detail for the log", async () => {
+  const errorBody = JSON.stringify({
+    error: { code: 502, message: "Provider returned error", metadata: { provider_name: "Some Provider", raw: "context window exceeded" } },
+  });
+  const httpClient = new HTTPClient({
+    fetcher: async () => new Response(errorBody, { status: 502, headers: { "content-type": "application/json" } }),
+  });
+  const client = new OpenRouter({ apiKey: "k", httpClient, retryConfig: { strategy: "none" } });
+  const result = callModel(client, { model: "m", input: "hi" });
+  const err = await result.getText().then(() => undefined, (e: unknown) => e);
+  const detail = failureDetail(err);
+  assert.match(detail, /Provider returned error/);
+  assert.match(detail, /HTTP 502/);
+  assert.match(detail, /Some Provider/);
+  assert.match(detail, /context window exceeded/);
+  assert.equal(failureDetail(new Error("plain")), "plain");
 });
