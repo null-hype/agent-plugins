@@ -1,0 +1,56 @@
+amends "Article.pkl"
+
+slug = "omarchy"
+title = "Next up: reason verdicts in Omarchy"
+dek = "Xeno's verdicts live in Herdr today. The next step puts them on each agent's window, so an off-target agent is visible from any workspace."
+published = "2026-11-04"
+
+evidence {
+  new {
+    what = "Verdicts on windows, in the bar and as notifications"
+    state = "Not yet"
+    note = "This is a plan. Nothing described here is built."
+  }
+  new {
+    what = "The verdicts themselves"
+    state = "Recorded"
+    note = "From the xeno article: four recorded cases, one missed prediction."
+  }
+}
+
+sections {
+  new {
+    blocks {
+      "Xeno gives each agent thread one verdict: whether its work fits the reasons it gave for its access, and achieved them. Today that verdict appears on the agent's pane in Herdr and as a finding in the editor. Both mean looking in the right place."
+      "When several agents run at once, they are spread across windows and workspaces. Omarchy, an Arch Linux setup built on the Hyprland window manager, is where I work, so that is where I'll try putting the verdict next."
+    }
+  }
+  new {
+    heading = "Where the verdict goes"
+    blocks {
+      "Each agent already runs in its own terminal window, so the window is the natural place for its verdict:"
+      new Code {
+        text = """
+          window border   the agent's verdict, visible on every workspace
+          status bar      a count across agents; click to reach the worst
+          notification    only when a thread becomes unfulfilled,
+                          unmatched or unverified
+          """
+      }
+      "On-reason stays quiet. Uncertain is amber. Unfulfilled, unmatched and unverified are red. Nothing else earns a notification."
+    }
+  }
+  new {
+    heading = "One source of state"
+    blocks {
+      "Xeno already writes each verdict, with its evidence, when Claude's Stop hook runs. The desktop only reads it. If the window border started working out its own status, there would be two answers to the same question, and eventually they would disagree."
+      "So this is a view, like the editor finding: it changes where the verdict is seen, not how it is reached."
+    }
+  }
+  new {
+    heading = "How it will be checked"
+    blocks {
+      "Like the other checks on this site, it gets a prediction registered before it runs, and the result is published here either way."
+    }
+  }
+}

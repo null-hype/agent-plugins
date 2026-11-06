@@ -1,45 +1,45 @@
 import type { ReactNode } from 'react';
 import ClaimPreregistration from './ClaimPreregistration';
 import type { ClaimPreregistration as PreregistrationArtifact } from '../lib/claimPreregistration';
-import CheckBadge from './CheckBadge';
-import { claimVerdict } from '../lib/claimVerdict';
-import EvidenceLines from './EvidenceLines';
-import { TidelandsFooter, TidelandsHeader } from './TidelandsChrome';
-import './Tidelands.css';
+import TidelandsContact from './TidelandsContact';
+import { PredictionNotes, type Paragraph } from './TidelandsReport';
+import './TidelandsHero.css';
+import './TidelandsReport.css';
+import './ClaimReport.css';
 
 export type ClaimReportView = {
   identifier: string;
-  title: string;
-  description: ReactNode;
-  preregistration: ReactNode;
-  verdict: ReactNode;
-  exit: number | string;
   check: string;
+  title: string;
+  verdict: ReactNode;
   trace: ReactNode;
-  snapshot: ReactNode;
-  runKey: string;
-  delivery: string;
-  visibility: ReactNode;
-  xenoName: string;
-  xenoType: string;
+  preregistration: ReactNode;
+  /** Where the name links: relative on the site, absolute where the page is published elsewhere. */
+  home?: string;
+  /** For a reader: what the check predicts and how it could have failed. */
+  summary?: ReactNode;
+  /** What was predicted for this check, and where that stands. */
+  prediction?: ReactNode;
 };
 
-// The publisher exports this same component to a Go HTML template. Slots keep
-// optional evidence server-rendered; Monaco enhances the source without React hydration.
-export function ClaimReportView({ identifier, title, description, preregistration, verdict, exit, check, trace, snapshot, runKey, delivery, visibility, xenoName, xenoType }: ClaimReportView) {
-  return <div className="td-page">
-    <TidelandsHeader report />
-    <main className="td-main">
-      <header className="td-report-hero"><p className="td-eyebrow">Claim report / {identifier}</p><h1>{title}</h1><div className="td-report-status">{verdict}<p>Dagger exit {exit} · <code>{check}</code></p></div><p className="td-report-visibility">{visibility}</p></header>
-      <div className="td-report-grid">
-        <div className="td-report-primary">{preregistration}<section className="td-panel" aria-labelledby="claim-heading"><div className="td-panel-heading"><h2 id="claim-heading">The claim</h2><span>Linear issue description</span></div>{description}<p className="td-report-description-note">Issue text as supplied for this rerun.</p></section></div>
-        <aside className="td-report-side" aria-label="Rerun evidence">
-          <section className="td-panel" aria-labelledby="rerun-heading"><div className="td-panel-heading"><h2 id="rerun-heading">Latest rerun</h2><span>Evidence</span></div><div className="td-panel-body"><dl className="td-report-facts"><dt>Dagger trace</dt><dd>{trace}</dd><dt id="restic-snapshot">Restic snapshot</dt><dd>{snapshot}</dd><dt>Run key</dt><dd><code>{runKey}</code></dd></dl><details className="td-report-detail"><summary>Run details</summary><dl className="td-report-facts"><dt>Linear delivery</dt><dd><code>{delivery}</code></dd><dt>Check</dt><dd><code>{check}</code></dd></dl></details></div></section>
-          <section className="td-panel" id="xeno-status" data-status={xenoType} aria-labelledby="xeno-heading"><div className="td-panel-heading"><h2 id="xeno-heading">Issue status</h2><CheckBadge kind={`workflow-${xenoType}`}>{xenoName}</CheckBadge></div><div className="td-panel-body"><p className="td-report-note">Linear issue status when this run completed. The check verdict above comes only from the Dagger exit code.</p></div></section>
-        </aside>
-      </div>
+// The publisher exports this same component to a Go HTML template, so every
+// field is a slot Go fills. One check's report: what was claimed, its verdict,
+// and the trace to follow it.
+export function ClaimReportView({ identifier, check, title, verdict, trace, preregistration, home = 'https://www.tidelands.dev/', summary, prediction }: ClaimReportView) {
+  return <div className="td-claim">
+    <header className="td-hero-bar"><a href={home}>Richard Anthony</a></header>
+    <main>
+      <section className="td-report" aria-labelledby="claim-title">
+        <p className="td-report-id">{identifier} · {check}</p>
+        <h1 id="claim-title">{title}</h1>
+        {summary && <p className="td-claim-summary">{summary}</p>}
+        {prediction && <div className="td-claim-prediction">{prediction}</div>}
+        <p className="td-claim-verdict">{verdict}</p>
+        <p>{trace}</p>
+        {preregistration}
+      </section>
+      <TidelandsContact />
     </main>
-    <TidelandsFooter />
   </div>;
 }
 
@@ -54,7 +54,17 @@ export type CompletedClaim = {
   preregistration?: PreregistrationArtifact | null;
 };
 
-export default function ClaimReport({ claim }: { claim: CompletedClaim }) {
-  const isPublic = claim.issue.labels?.nodes.some(({ name }) => name === 'public');
-  return <ClaimReportView identifier={claim.issue.identifier} title={claim.issue.title} preregistration={<ClaimPreregistration artifact={claim.preregistration} />} description={<EvidenceLines text={claim.issue.description || 'No description supplied.'} />} verdict={<CheckBadge kind={claimVerdict(claim.exit).kind}>{claimVerdict(claim.exit).label}</CheckBadge>} exit={claim.exit} check={claim.check} trace={claim.trace ? <a href={claim.trace} rel="noreferrer">Open trace ↗</a> : 'Unavailable'} snapshot={claim.snapshot.id ? <><code>{claim.snapshot.id}</code>{claim.snapshot.url && <> · <a href={claim.snapshot.url} rel="noreferrer">Snapshot evidence ↗</a></>}</> : 'Unavailable for this rerun'} runKey={claim.snapshot.run_key} delivery={claim.delivery} xenoName={claim.issue.state?.name || 'Unavailable'} xenoType={claim.issue.state?.name ? claim.issue.state.type || 'unknown' : 'unknown'} visibility={isPublic ? 'Public report. Later reruns replace the result at this URL.' : 'Unlisted report · noindex. Anyone with this link can view it. Later reruns replace the result at this URL.'} />;
+/** `paragraph` is the check's entry in the homepage report, when it has one. */
+export default function ClaimReport({ claim, home, paragraph }: { claim: CompletedClaim; home?: string; paragraph?: Paragraph }) {
+  return <ClaimReportView
+    home={home}
+    summary={paragraph?.why}
+    prediction={paragraph?.prediction !== undefined ? <PredictionNotes p={paragraph} /> : undefined}
+    identifier={claim.issue.identifier}
+    check={claim.check}
+    title={claim.issue.title}
+    verdict={claim.exit === 0 ? 'Passed' : 'Failed'}
+    trace={claim.trace ? <a href={claim.trace} rel="noreferrer">Trace ↗</a> : 'No trace'}
+    preregistration={claim.preregistration ? <ClaimPreregistration artifact={claim.preregistration} /> : null}
+  />;
 }

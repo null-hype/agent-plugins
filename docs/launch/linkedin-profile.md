@@ -40,7 +40,7 @@ Our synthetic Budget Authority fixture evaluates airfare 890 and ground 400 sepa
 
 🤝 Engaging & Contact:
 • Public Collaboration: Open an issue on GitHub for open discussions and reproducible tests.
-• Private Inquiries (Consulting, Advisory, Research Collaboration, Funding): Reach me directly at public.rant@pm.me. (Please outline your workflow context; do not send credentials or unredacted secrets in initial outreach).
+• Private Inquiries (Consulting, Advisory, Research Collaboration, Funding): Reach me directly at richard@tidelands.dev. (Please outline your workflow context; do not send credentials or unredacted secrets in initial outreach).
 ```
 
 ---
@@ -88,4 +88,4 @@ Our synthetic Budget Authority fixture evaluates airfare 890 and ground 400 sepa
 - **Website:** `https://null-hype.tidelands.dev`
 - **GitHub:** `https://github.com/null-hype`
 - **Source:** `https://github.com/null-hype/agent-plugins`
-- **Contact:** `public.rant@pm.me`
+- **Contact:** `richard@tidelands.dev`

@@ -88,7 +88,7 @@ func TestClaimPublishesAndOverwrites(t *testing.T) {
 				t.Fatalf("private URL=%s HEADs=%d", first, heads)
 			}
 			body := objects["/claims"+strings.TrimPrefix(first, srv.URL)]
-			for _, part := range []string{"Red", "Dagger exit 1", "Registered Delivery", "Updated claim description", "linear-inf-6", "abcdef0123456789", "Snapshot evidence", `id="xeno-status"`, `"xeno":null`} {
+			for _, part := range []string{"Failed", "Registered Delivery", "registered-delivery", "Trace ↗", "Updated claim description", "linear-inf-6", "abcdef0123456789", `"xeno":null`} {
 				if !strings.Contains(body, part) {
 					t.Errorf("missing %q", part)
 				}
@@ -188,19 +188,19 @@ func TestClaimReportEvidenceStates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, text := range []string{"No description supplied.", "Unavailable for this rerun", "linear-inf-6", "delivery-1", `data-status="unknown"`, fmt.Sprintf("Dagger exit %d", exit)} {
+		for _, text := range []string{"No trace", "linear-inf-6", "delivery-1"} {
 			if !bytes.Contains(body, []byte(text)) {
 				t.Errorf("exit %d: missing %q", exit, text)
 			}
 		}
-		want := "Red · Failed"
+		want := "Failed"
 		if exit == 0 {
-			want = "Green · Passed"
+			want = "Passed"
 		}
 		if !bytes.Contains(body, []byte(want)) {
 			t.Errorf("exit %d: missing verdict %q", exit, want)
 		}
-		if bytes.Contains(body, []byte(`name="robots"`)) || bytes.Contains(body, []byte("Snapshot evidence")) || bytes.Contains(body, []byte("Open trace")) {
+		if bytes.Contains(body, []byte(`name="robots"`)) || bytes.Contains(body, []byte("Trace ↗")) {
 			t.Errorf("exit %d: public report fabricated evidence or received private metadata", exit)
 		}
 		if bytes.Count(body, []byte("<script")) != 2 || bytes.Contains(body, []byte("<script src=")) {
@@ -468,11 +468,11 @@ func TestClaimXenoUsesIssueStatus(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		name, kind := "Unavailable", "unknown"
+		xeno := `"xeno":null`
 		if state != nil {
-			name, kind = state.Name, state.Type
+			xeno = `"xeno":{"id":"` + state.ID + `","name":"` + state.Name + `","type":"` + state.Type + `"}`
 		}
-		for _, text := range []string{"Red · Failed", name, `data-status="` + kind + `"`} {
+		for _, text := range []string{"Failed", xeno} {
 			if !bytes.Contains(body, []byte(text)) {
 				t.Errorf("missing %q", text)
 			}

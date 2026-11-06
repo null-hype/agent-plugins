@@ -1,0 +1,28 @@
+/// The liar and its two controls: the preregistration only. A run's answers
+/// come in as `-p answers=…`; the liar's one recorded run is runs/worlds.json.
+amends "Report.pkl"
+
+registration {
+  item = "checks/godel-this-sentence-is-false"
+  role = "Viewer"
+  written = "2026-11-03T00:00:00.000Z"
+}
+title = "This sentence is false."
+
+questions {
+  ["five-words"] {
+    text = "This sentence has five words."
+    prediction = 0.9
+    truth = 1.0
+  }
+  ["three-words"] {
+    text = "This sentence has three words."
+    prediction = 0.05
+    truth = 0.0
+  }
+  ["liar"] {
+    text = "This sentence is false."
+    prediction = 0.5
+    requires { "five-words"; "three-words" }
+  }
+}

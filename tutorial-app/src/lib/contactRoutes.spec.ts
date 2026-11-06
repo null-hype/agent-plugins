@@ -20,7 +20,7 @@ describe('Contact and Conversion Paths (CIT-166, CIT-259, CIT-165)', () => {
     const readmePath = path.resolve(rootDir, 'README.md');
     const content = fs.readFileSync(readmePath, 'utf8');
     expect(content).toContain('https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml');
-    expect(content).toContain('public.rant@pm.me');
+    expect(content).toContain('richard@tidelands.dev');
     expect(content).toContain('do not send credentials, API keys, or unredacted secrets');
   });
 
@@ -28,7 +28,7 @@ describe('Contact and Conversion Paths (CIT-166, CIT-259, CIT-165)', () => {
     const profileReadmePath = path.resolve(rootDir, 'profile/README.md');
     const content = fs.readFileSync(profileReadmePath, 'utf8');
     expect(content).toContain('https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml');
-    expect(content).toContain('public.rant@pm.me');
+    expect(content).toContain('richard@tidelands.dev');
     expect(content).toContain('This profile is not a portfolio of promises; it is a log of evidence.');
   });
 
@@ -36,7 +36,7 @@ describe('Contact and Conversion Paths (CIT-166, CIT-259, CIT-165)', () => {
     const landingPath = path.resolve(tutorialDir, 'src/content/tutorial/part-0/overview/start/content.mdx');
     const content = fs.readFileSync(landingPath, 'utf8');
     expect(content).toContain('https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml');
-    expect(content).toContain('public.rant@pm.me');
+    expect(content).toContain('richard@tidelands.dev');
     expect(content).toContain('/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one');
   });
 
@@ -52,7 +52,7 @@ describe('Contact and Conversion Paths (CIT-166, CIT-259, CIT-165)', () => {
     const securityPath = path.resolve(rootDir, 'SECURITY.md');
     expect(fs.existsSync(securityPath)).toBe(true);
     const content = fs.readFileSync(securityPath, 'utf8');
-    expect(content).toContain('public.rant@pm.me');
+    expect(content).toContain('richard@tidelands.dev');
     expect(content).toContain('Safe Harbor');
   });
 });

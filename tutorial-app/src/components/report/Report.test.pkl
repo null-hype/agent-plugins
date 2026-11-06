@@ -1,0 +1,62 @@
+/// The scoring function's own positive and negative controls: the liar report
+/// under each outcome a run can have. Runs are supplied the way a check
+/// supplies them, as `run`, never by editing the preregistration.
+amends "pkl:test"
+
+import "pkl:json"
+import "Liar.pkl"
+
+local function run(answers: String) = (Liar) {
+  run = new json.Parser { useMapping = true }.parse(answers) as Mapping<String, Listing<Number>>
+  runStarted = "2026-11-03T01:00:00.000Z"
+}
+
+local recorded = run(read("runs/worlds.json").text)
+local function ids(r): List<String> = r.warnings.toMap().values.flatMap((fs) -> fs.toList().map((f) -> f.id))
+
+local controlsHeld = #"{"five-words":[0.95,0.93,0.97],"three-words":[0.02,0.03,0.01]"#
+
+facts {
+  ["before any run: everything is not run"] {
+    Liar.statuses.toMap().values.every((s) -> s == "Not run")
+  }
+  ["as recorded: the controls have not run, so the liar can't be read"] {
+    recorded.statuses["five-words"] == "Not run"
+    recorded.statuses["liar"] == "Inconclusive"
+    recorded.brier == null
+  }
+  ["controls held and Jev answered as predicted: held"] {
+    let (r = run(controlsHeld + #","liar":[0.5,0.48,0.52]}"#))
+      r.statuses["five-words"] == "Held" && r.statuses["three-words"] == "Held"
+        && r.statuses["liar"] == "Held" && r.brier!! < 0.001
+  }
+  ["controls held and Jev did not answer as predicted: missed, and scored"] {
+    let (r = run(controlsHeld + #","liar":[0.13,0.12,0.12]}"#))
+      r.statuses["liar"] == "Missed" && (r.brier!! - 0.1419).abs < 0.001
+  }
+  ["Jev got a control wrong: the control missed and the liar can't be read"] {
+    let (r = run(#"{"five-words":[0.2,0.25,0.15],"three-words":[0.02,0.03,0.01],"liar":[0.5,0.5,0.5]}"#))
+      r.statuses["five-words"] == "Missed" && r.statuses["liar"] == "Inconclusive" && r.brier == null
+  }
+  ["the registration changed after the run started: tampered"] {
+    let (r = (recorded) { registration { written = "2026-11-03T02:00:00.000Z" } })
+      r.statuses.toMap().values.every((s) -> s == "Tampered")
+  }
+  ["the judge could change the registration: tampered"] {
+    let (r = (recorded) { registration { role = "Owner" } })
+      r.statuses["liar"] == "Tampered"
+  }
+
+  ["findings: a claim with controls and a registration has none"] {
+    ids(Liar).isEmpty
+  }
+  ["findings: a claim with no controls is unfalsified"] {
+    ids((Liar) { questions { ["liar"] { requires = new Listing {} } } }).contains("liar/unfalsified")
+  }
+  ["findings: a prediction with no registration is an error"] {
+    ids((Liar) { registration = null }).contains("liar/unregistered")
+  }
+  ["findings: tampering is an error on every question"] {
+    ids((recorded) { registration { role = "Owner" } }).filter((i) -> i.endsWith("/tampered")).length == 3
+  }
+}

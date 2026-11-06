@@ -1,0 +1,45 @@
+/// The homepage report: one entry per published check, in the order they
+/// should be read. To publish a check, add its completed claim to checks/ and
+/// an entry here; its page is /checks/<id>/. `pkl eval Home.pkl` renders
+/// report.json.
+amends "Report.pkl"
+
+import "pkl:json"
+
+intro {
+  "I'm a security researcher. My recent work is on checking what AI coding agents claim to have done."
+  "Before an agent runs, I record what should happen. Afterwards, a check compares that record with what did happen. This page is generated from those records, so failed checks are listed alongside passed ones."
+  "Based in Sydney. Available for senior engineering roles and consulting."
+}
+
+title = "Checks"
+
+questions {
+  ["INF-6"] {
+    text = "An agent's work is judged against predictions registered before its plan was approved."
+    href = "/checks/INF-6/"
+    prediction = 1.0
+    registered = "2026-11-03T05:45:00Z"
+    previously = earlier("INF-6", registered!!)
+    why = "The judgement runs on a frozen snapshot of the run, not on the repository as it is now, so nothing changed afterwards can affect the result. The check fails if the judgement reads live state."
+  }
+}
+
+// Each check's result is its completed claim's exit code: 1 green, 0 red.
+// A claim that ran before its question's prediction was registered is not a
+// test of that prediction, so it is left out.
+run {
+  for (id, q in questions) {
+    when (q.registered == null || claim(id).ran > q.registered!!) {
+      [id] = new Listing { if (claim(id).exit == 0) 1 else 0 }
+    }
+  }
+}
+
+local function claim(id: String): Dynamic = new json.Parser {}.parse(read("checks/\(id).json")) as Dynamic
+
+/// A claim that ran before the prediction was registered, as a reader sees it.
+local function earlier(id: String, registered: String): String? =
+  let (c = claim(id))
+    if (c.ran > registered) null
+    else "An earlier run \(if (c.exit == 0) "passed" else "failed") on \(c.ran), before the prediction was registered."
