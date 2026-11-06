@@ -1,0 +1,15 @@
+/// A ghost thread: the turns a session is expected to have, written before
+/// anything runs. The observed thread comes from the trace sink (Sink.pkl),
+/// and the two are compared turn by turn.
+amends "Thread.pkl"
+
+title = "Built from a notebook"
+
+turns {
+  new {
+    messages {
+      new UserMessage { messageId = "m1"; content { new { text = "What does this notebook do?" } } }
+      new AgentMessage { messageId = "m2"; content { new { text = "It builds this thread from a Pkl ghost." } } }
+    }
+  }
+}

@@ -27,3 +27,15 @@ describe('the articles', () => {
     });
   }
 });
+
+// A thread's Delta records are what its Pkl renders: the ghost written ahead
+// of a run, and a trace sink session read by Sink.pkl.
+describe('the threads', () => {
+  it('the ghost is what ghost.pkl renders, as committed', () => {
+    expect(readFileSync(here('./threads/ghost.jsonl'), 'utf8')).toBe(pkl('eval', here('./threads/ghost.pkl')));
+  });
+
+  it('are read by a Thread.pkl and Sink.pkl that pass their own tests', () => {
+    expect(pkl('test', here('./threads/Threads.test.pkl'))).toContain('100.0% tests pass');
+  });
+});

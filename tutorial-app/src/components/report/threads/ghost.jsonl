@@ -1,0 +1,5 @@
+{"schemaVersion":1,"sequence":1,"update":{"sessionUpdate":"session_info_update","title":"Built from a notebook"}}
+{"schemaVersion":1,"sequence":2,"turnSequence":2,"update":{"sessionUpdate":"state_update","state":"running"}}
+{"schemaVersion":1,"sequence":3,"turnSequence":2,"update":{"sessionUpdate":"user_message","messageId":"m1","content":[{"type":"text","text":"What does this notebook do?"}]}}
+{"schemaVersion":1,"sequence":4,"turnSequence":2,"update":{"sessionUpdate":"agent_message","messageId":"m2","content":[{"type":"text","text":"It builds this thread from a Pkl ghost."}]}}
+{"schemaVersion":1,"sequence":5,"turnSequence":2,"update":{"sessionUpdate":"state_update","state":"idle"}}
