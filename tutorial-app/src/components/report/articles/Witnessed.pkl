@@ -1,0 +1,48 @@
+/// The article the system wrote about itself. A cheap model wrote it and Jev
+/// judged it, both through OpenRouter, so both are in the toolbox's trace sink;
+/// this page is rendered from the sink's copy of the author's session, not from
+/// anything kept along the way. `pkl eval Witnessed.pkl`.
+amends "Article.pkl"
+
+import "../threads/Sink.pkl"
+
+/// The author's sink session, relative to threads/.
+local author = (Sink) { sink = read?("prop:author") ?? "sink/article-witnessed-1.ndjson" }
+local turn = author.turns.toList().findLast((t) -> t.by == "agent")
+local written: String = turn.messages.toList().findLast((m) -> m is Sink.AgentMessage).content[0].text
+
+/// The draft's first line is the title, the next the summary, then paragraphs
+/// separated by blank lines. A "Title:" or "Summary:" label is dropped.
+local function unlabel(line: String, label: String): String =
+  let (l = line.trim()) if (l.startsWith(label)) l.drop(label.length).trim() else l
+local lines: List<String> = written.split("\n")
+local headed: List<String> = lines.filter((l) -> !l.isBlank).take(2)
+local body: String = lines.dropWhile((l) -> l.isBlank).drop(1).dropWhile((l) -> l.isBlank).drop(1).join("\n")
+
+slug = "witnessed"
+title = unlabel(headed[0], "Title:")
+dek = unlabel(headed[1], "Summary:")
+published = "2026-11-06"
+
+evidence {
+  new {
+    what = "The text"
+    state = "Recorded"
+    note = "Written by \(turn.span.model) through OpenRouter, and published from the trace sink's copy: trace \(turn.span.traceId), span \(turn.span.spanId)."
+  }
+  new {
+    what = "Its three claims"
+    state = "Not yet"
+    note = "Jev judged them through OpenRouter; its verdicts are in the sink and are shown here once Sink.pkl reads decision spans."
+  }
+}
+
+sections {
+  new {
+    blocks {
+      for (p in body.split(Regex(#"\n\s*\n"#)).map((p) -> p.trim().replaceAll("\n", " ")).filter((p) -> !p.isEmpty)) {
+        p
+      }
+    }
+  }
+}
