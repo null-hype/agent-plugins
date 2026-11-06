@@ -1,0 +1,44 @@
+/// Thread.pkl's numbering and Sink.pkl's reading of a trace sink session.
+/// The sink fixtures are synthetic: OTLP in the shape the toolbox sink stores
+/// (see its traces_test.go), with made-up ids.
+amends "pkl:test"
+
+import "pkl:test"
+import "ghost.pkl"
+import "Sink.pkl"
+
+local session = (Sink) { sink = "sink/synthetic-session.ndjson" }
+local updates = (records: List<Dynamic>) -> records.map((r) -> r.update.sessionUpdate)
+
+facts {
+  ["the ghost is one participant: title, then one turn bracketed by running and idle"] {
+    ghost.participants == List("agent")
+    updates.apply(ghost.records("agent")) == List("session_info_update", "state_update", "user_message", "agent_message", "state_update")
+    ghost.records("agent").map((r) -> r.sequence) == List(1, 2, 3, 4, 5)
+    ghost.records("agent").drop(1).every((r) -> r.turnSequence == 2)
+  }
+
+  ["a sink session's model calls are turns in start order, not file order"] {
+    session.turns.toList().map((t) -> t.span.spanId) == List("s1", "s2")
+  }
+  ["a span with no prompt or completion is not a turn"] {
+    session.turns.length == 2
+  }
+  ["each turn keeps the span it was observed in"] {
+    let (t = session.turns[0])
+      t.span.traceId == "t1" && t.span.model == "openai/gpt-6-luna" && t.span.start == 1793930662000000000
+  }
+  ["TypeSafe's models are Jev; any other model is the agent"] {
+    session.participants == List("agent", "jev")
+  }
+  ["the first participant opens the thread; the next numbers its own records from 1"] {
+    session.records("agent").first.update.sessionUpdate == "session_info_update"
+    session.records("jev").map((r) -> r.sequence) == List(1, 2, 3, 4)
+    session.records("jev").every((r) -> r.turnSequence == 1)
+    updates.apply(session.records("jev")).contains("session_info_update") == false
+  }
+
+  ["a file holding two sessions is not one thread"] {
+    test.catch(() -> (Sink) { sink = "sink/synthetic-two-sessions.ndjson" }.title).contains("length <= 1")
+  }
+}
