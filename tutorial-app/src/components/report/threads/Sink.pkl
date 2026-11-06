@@ -1,0 +1,70 @@
+/// A session from the toolbox's OpenRouter trace sink, read as a thread:
+/// `pkl eval -m out/ -p sink=<session.ndjson> Sink.pkl`.
+///
+/// The sink keeps OpenRouter Broadcast's OTLP, one payload per line, grouped
+/// by `session.id` (.dagger/internal/devenv-base/toolbox/traces.go). Each span
+/// with a prompt or a completion is a model call and becomes one turn, in
+/// start order, taken by the participant its model belongs to: Jev for
+/// TypeSafe's models, the agent for any other. The span's ids stay with the
+/// turn, so every rendering can cite where it was observed.
+///
+/// Decision spans from OpenRouter's decisions endpoint have not been seen in
+/// the sink yet; until a real one is, only `gen_ai.prompt` and
+/// `gen_ai.completion` are read.
+extends "Thread.pkl"
+
+import "pkl:json"
+
+/// The session file, as the sink's GET /openrouter/traces/<session> serves it:
+/// `-p sink=<path>`, or set by a module that amends this one.
+hidden sink: String = read?("prop:sink") ?? ""
+
+local payloads: List<Dynamic> =
+  read(sink).text.split("\n").filter((l) -> !l.isBlank).map((l) -> new json.Parser {}.parse(l) as Dynamic)
+
+local spans: List<Dynamic> =
+  payloads.flatMap((p) ->
+    p.resourceSpans.toList().flatMap((rs) ->
+      rs.scopeSpans.toList().flatMap((ss) -> ss.spans.toList())))
+
+local function attribute(span: Dynamic, key: String): String? =
+  let (found = span.attributes.toList().findOrNull((a) -> a.key == key))
+    if (found == null) null else found.value.getPropertyOrNull("stringValue") as String?
+
+local calls: List<Dynamic> =
+  spans
+    .filter((s) -> (attribute(s, "gen_ai.prompt") ?? "") != "" || (attribute(s, "gen_ai.completion") ?? "") != "")
+    .sortBy((s) -> s.startTimeUnixNano.toInt())
+
+local function participant(model: String): String =
+  if (model.startsWith("typesafe/")) "jev" else "agent"
+
+local sessionIds: List<String> = calls.map((s) -> attribute(s, "session.id") ?? "").filter((s) -> s != "").distinct
+
+/// A thread is one sink session.
+local session: List<String>(length <= 1) = sessionIds
+title = "Session \(if (session.isEmpty) "_no-session" else session.first)"
+
+turns {
+  for (s in calls) {
+    let (prompt = attribute(s, "gen_ai.prompt") ?? "")
+    let (completion = attribute(s, "gen_ai.completion") ?? "")
+      new {
+        by = participant(attribute(s, "gen_ai.request.model") ?? "")
+        span {
+          traceId = s.traceId
+          spanId = s.spanId
+          model = attribute(s, "gen_ai.request.model") ?? "unknown"
+          start = s.startTimeUnixNano.toInt()
+        }
+        messages {
+          when (prompt != "") {
+            new UserMessage { messageId = "\(s.spanId)-prompt"; content { new { text = prompt } } }
+          }
+          when (completion != "") {
+            new AgentMessage { messageId = "\(s.spanId)"; content { new { text = completion } } }
+          }
+        }
+      }
+  }
+}

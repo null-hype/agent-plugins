@@ -1,0 +1,91 @@
+/// A conversation as typed turns, each taken by one participant: an agent, or
+/// a judge such as Jev. A module that amends this one renders the JSON Lines
+/// `delta thread append` takes, one ACP session update per line.
+///
+/// Delta numbers records per producer, so each participant gets its own file
+/// with its own sequence: `pkl eval -m <dir>` writes `<participant>.jsonl` for
+/// each, and appending each file with its own `--source` gives one thread in
+/// which the participants take turns. With one participant, `pkl eval` prints
+/// that participant's records.
+open module Thread
+
+class Text {
+  fixed type = "text"
+  text: String(!isEmpty)
+}
+
+class UserMessage {
+  fixed sessionUpdate = "user_message"
+  messageId: String(!isEmpty)
+  content: Listing<Text>(!isEmpty)
+}
+
+class AgentMessage {
+  fixed sessionUpdate = "agent_message"
+  messageId: String(!isEmpty)
+  content: Listing<Text>(!isEmpty)
+}
+
+typealias Message = UserMessage | AgentMessage
+
+/// Where a turn was observed, when it was: the OpenRouter Broadcast span in
+/// the trace sink. Kept for the renderings that cite it; Delta's records
+/// carry no such field.
+class Span {
+  traceId: String(!isEmpty)
+  spanId: String(!isEmpty)
+  model: String(!isEmpty)
+  /// Unix nanoseconds, as the span gives it.
+  start: Int
+}
+
+/// One turn: Delta brackets its messages with `running` and `idle`.
+class Turn {
+  /// Who takes the turn; also the producer name the turn is appended under.
+  by: String(matches(Regex("[a-z0-9-]+"))) = "agent"
+  messages: Listing<Message>(!isEmpty)
+  hidden span: Span?
+}
+
+title: String(!isEmpty)
+turns: Listing<Turn>(!isEmpty)
+
+// ---- Records ----
+
+/// The participants, in the order they first take a turn. The first one
+/// opens the thread, so it also records the title.
+hidden participants: List<String> = turns.toList().map((t) -> t.by).distinct
+
+local function rec(seq: Int, turn: Int?, u: Any): Dynamic = new {
+  schemaVersion = 1
+  sequence = seq
+  when (turn != null) { turnSequence = turn }
+  update = u
+}
+
+/// One participant's records, numbered within that participant: the title
+/// first if it opens the thread, then each of its turns as `running`, its
+/// messages, `idle`.
+function records(by: String): List<Dynamic> =
+  let (opens = by == participants.first)
+  let (mine = turns.toList().filter((t) -> t.by == by))
+  let (first = if (opens) 2 else 1)
+  let (starts = mine.fold(List(first), (acc, t) -> acc.add(acc.last + t.messages.length + 2)))
+    (if (opens) List(rec(1, null, new Dynamic { sessionUpdate = "session_info_update"; title = module.title })) else List())
+    + mine.flatMapIndexed((i, t) ->
+        let (s = starts[i])
+          List(rec(s, s, new Dynamic { sessionUpdate = "state_update"; state = "running" }))
+          + t.messages.toList().mapIndexed((j, m) -> rec(s + 1 + j, s, m))
+          + List(rec(s + 1 + t.messages.length, s, new Dynamic { sessionUpdate = "state_update"; state = "idle" })))
+
+local function jsonl(records: List<Dynamic>): String =
+  records.map((r) -> new JsonRenderer { indent = ""; omitNullProperties = true }.renderValue(r)).join("\n") + "\n"
+
+output {
+  text = jsonl(records(participants.first))
+  files {
+    for (p in participants) {
+      ["\(p).jsonl"] { text = jsonl(records(p)) }
+    }
+  }
+}
