@@ -1,7 +1,8 @@
 import './TidelandsArticle.css';
 
 // An article, as its report/articles/<Name>.pkl renders it to JSON.
-export type Block = string | { text: string };
+export type Table = { columns: string[]; rows: string[][] };
+export type Block = string | { text: string } | Table;
 export type Article = {
   slug: string;
   title: string;
@@ -27,7 +28,12 @@ export function ArticleView({ article, home = '/' }: { article: Article; home?: 
       {s.heading && <h2>{s.heading}</h2>}
       {s.blocks.map((b, j) => typeof b === 'string'
         ? <p key={j}>{b}</p>
-        : <pre key={j}><code>{b.text}</code></pre>)}
+        : 'columns' in b
+          ? <div key={j} className="td-article-table"><table>
+              <thead><tr>{b.columns.map(c => <th key={c} scope="col">{c}</th>)}</tr></thead>
+              <tbody>{b.rows.map((r, k) => <tr key={k}>{r.map((v, m) => <td key={m}>{v}</td>)}</tr>)}</tbody>
+            </table></div>
+          : <pre key={j}><code>{b.text}</code></pre>)}
     </section>)}
   </article>;
 }

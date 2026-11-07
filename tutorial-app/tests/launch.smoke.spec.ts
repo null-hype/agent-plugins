@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -52,6 +52,23 @@ test('each check on the homepage opens its claim page on the same deploy, and co
     await page.getByRole('link', { name: 'Richard Anthony', exact: true }).click();
     expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+});
+
+test('each article prints to a PDF', async ({ page, isMobile }, testInfo) => {
+  // Chromium prints once per article; the phone project would print the same pages.
+  test.skip(isMobile, 'Printed once, from the desktop project');
+  const dir = new URL('../src/components/report/articles/', import.meta.url);
+  const names = (await readdir(fileURLToPath(dir))).filter(name => name.endsWith('.json'));
+  const articles = await Promise.all(names.map(async name => JSON.parse(await readFile(fileURLToPath(new URL(name, dir)), 'utf8'))));
+  for (const article of articles) {
+    await page.goto(`/articles/${article.slug}/`);
+    await page.emulateMedia({ media: 'print' });
+    await expect(page.getByRole('heading', { level: 1, name: article.title, exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Richard Anthony', exact: true })).toBeHidden();
+    const path = testInfo.outputPath(`${article.slug}.pdf`);
+    await page.pdf({ path, format: 'A4', printBackground: true });
+    await testInfo.attach(`${article.slug}.pdf`, { path, contentType: 'application/pdf' });
   }
 });
 
