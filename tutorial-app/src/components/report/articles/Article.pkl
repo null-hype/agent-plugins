@@ -25,8 +25,14 @@ class Code {
   text: String(!isEmpty)
 }
 
-/// A paragraph, or a block of code.
-typealias Block = String | Code
+/// A table: a header row, then rows of the same width.
+class Table {
+  columns: Listing<String>(!isEmpty)
+  rows: Listing<Listing<String>>(toList().every((r) -> r.length == columns.length))
+}
+
+/// A paragraph, a block of code, or a table.
+typealias Block = String | Code | Table
 
 class Section {
   heading: String?
