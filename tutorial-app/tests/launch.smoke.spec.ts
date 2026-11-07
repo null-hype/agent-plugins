@@ -66,6 +66,7 @@ test('each article prints to a PDF', async ({ page, isMobile }, testInfo) => {
     await page.emulateMedia({ media: 'print' });
     await expect(page.getByRole('heading', { level: 1, name: article.title, exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Richard Anthony', exact: true })).toBeHidden();
+    if (article.watermark) await expect(page.getByRole('note', { name: `${article.watermark.severity}: ${article.watermark.message}` })).toBeVisible();
     const path = testInfo.outputPath(`${article.slug}.pdf`);
     await page.pdf({ path, format: 'A4', printBackground: true });
     await testInfo.attach(`${article.slug}.pdf`, { path, contentType: 'application/pdf' });

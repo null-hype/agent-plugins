@@ -11,6 +11,17 @@ dek: String(!isEmpty)
 /// UTC date, YYYY-MM-DD.
 published: String(matches(Regex(#"\d{4}-\d{2}-\d{2}"#)))
 
+/// A diagnostic drawn across every page of the article, on screen and in
+/// print, like an editor's warning over the whole document: what the page
+/// must not be taken for.
+class Diagnostic {
+  severity: "warning" = "warning"
+  /// What raised it.
+  source: String(!isEmpty)
+  message: String(!isEmpty)
+}
+watermark: Diagnostic?
+
 /// What the article rests on and how far each part has been checked, for a
 /// reader, before they read it.
 class Evidence {

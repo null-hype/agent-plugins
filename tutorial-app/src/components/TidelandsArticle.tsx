@@ -9,11 +9,18 @@ export type Article = {
   dek: string;
   published: string;
   evidence: { what: string; state: string; note: string }[];
+  watermark?: { severity: 'warning'; source: string; message: string } | null;
   sections: { heading?: string; blocks: Block[] }[];
 };
 
 export function ArticleView({ article, home = '/' }: { article: Article; home?: string }) {
-  return <article className="td-article">
+  const w = article.watermark;
+  return <article className={w ? 'td-article td-article-watermarked' : 'td-article'}>
+    {w && <div className="td-article-watermark" role="note" aria-label={`${w.severity}: ${w.message}`}>
+      <span className="td-article-watermark-diagnostic">
+        <span aria-hidden="true">⚠</span> {w.severity}<span className="td-article-watermark-source">[{w.source}]</span>: {w.message}
+      </span>
+    </div>}
     <p className="td-article-home"><a href={home}>Richard Anthony</a></p>
     <h1>{article.title}</h1>
     <p className="td-article-dek">{article.dek}</p>
