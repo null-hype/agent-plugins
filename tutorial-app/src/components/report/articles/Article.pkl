@@ -11,6 +11,17 @@ dek: String(!isEmpty)
 /// UTC date, YYYY-MM-DD.
 published: String(matches(Regex(#"\d{4}-\d{2}-\d{2}"#)))
 
+/// A diagnostic drawn across every page of the article, on screen and in
+/// print, like an editor's warning over the whole document: what the page
+/// must not be taken for.
+class Diagnostic {
+  severity: "warning" = "warning"
+  /// What raised it.
+  source: String(!isEmpty)
+  message: String(!isEmpty)
+}
+watermark: Diagnostic?
+
 /// What the article rests on and how far each part has been checked, for a
 /// reader, before they read it.
 class Evidence {
@@ -25,8 +36,36 @@ class Code {
   text: String(!isEmpty)
 }
 
-/// A paragraph, or a block of code.
-typealias Block = String | Code
+/// A table: a header row, then rows of the same width.
+class Table {
+  columns: Listing<String>(!isEmpty)
+  rows: Listing<Listing<String>>(toList().every((r) -> r.length == columns.length))
+}
+
+/// A paragraph, a block of code, or a table.
+/// A heatmap: how well each row (a reason) fits each column (a thread), as
+/// xeno scores it. A cell with nothing to compare is empty.
+class Heatmap {
+  fixed kind: "heatmap" = "heatmap"
+  columns: Listing<String>(!isEmpty)
+  rows: Listing<HeatmapRow>(toList().every((r) -> r.cells.length == columns.length))
+}
+
+class HeatmapRow {
+  label: String
+  cells: Listing<Score?>
+}
+
+/// One judgment: how well the thread fits the reason, and, when scored,
+/// whether it achieved it. The band uses xeno's cut-offs.
+class Score {
+  fit: Float(isBetween(0, 1))
+  achieved: Float(isBetween(0, 1))?
+  fixed band: "supports" | "uncertain" | "rejects" =
+    if (fit >= 0.8) "supports" else if (fit <= 0.2) "rejects" else "uncertain"
+}
+
+typealias Block = String | Code | Table | Heatmap
 
 class Section {
   heading: String?

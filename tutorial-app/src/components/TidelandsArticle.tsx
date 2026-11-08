@@ -1,18 +1,28 @@
 import './TidelandsArticle.css';
 
 // An article, as its report/articles/<Name>.pkl renders it to JSON.
-export type Block = string | { text: string };
+export type Table = { columns: string[]; rows: string[][] };
+export type Score = { fit: number; achieved?: number | null; band: 'supports' | 'uncertain' | 'rejects' };
+export type Heatmap = { kind: 'heatmap'; columns: string[]; rows: { label: string; cells: (Score | null)[] }[] };
+export type Block = string | { text: string } | Table | Heatmap;
 export type Article = {
   slug: string;
   title: string;
   dek: string;
   published: string;
   evidence: { what: string; state: string; note: string }[];
+  watermark?: { severity: 'warning'; source: string; message: string } | null;
   sections: { heading?: string; blocks: Block[] }[];
 };
 
 export function ArticleView({ article, home = '/' }: { article: Article; home?: string }) {
-  return <article className="td-article">
+  const w = article.watermark;
+  return <article className={w ? 'td-article td-article-watermarked' : 'td-article'}>
+    {w && <div className="td-article-watermark" role="note" aria-label={`${w.severity}: ${w.message}`}>
+      <span className="td-article-watermark-diagnostic">
+        <span aria-hidden="true">⚠</span> {w.severity}<span className="td-article-watermark-source">[{w.source}]</span>: {w.message}
+      </span>
+    </div>}
     <p className="td-article-home"><a href={home}>Richard Anthony</a></p>
     <h1>{article.title}</h1>
     <p className="td-article-dek">{article.dek}</p>
@@ -27,7 +37,22 @@ export function ArticleView({ article, home = '/' }: { article: Article; home?: 
       {s.heading && <h2>{s.heading}</h2>}
       {s.blocks.map((b, j) => typeof b === 'string'
         ? <p key={j}>{b}</p>
-        : <pre key={j}><code>{b.text}</code></pre>)}
+        : 'kind' in b && b.kind === 'heatmap'
+          ? <div key={j} className="td-article-table td-article-heatmap"><table>
+              <thead><tr><th scope="col" />{b.columns.map(c => <th key={c} scope="col">{c}</th>)}</tr></thead>
+              <tbody>{b.rows.map((r, k) => <tr key={k}><th scope="row">{r.label}</th>{r.cells.map((c, m) => c
+                ? <td key={m} className={`td-band-${c.band}`} title={c.band}>
+                    <span className="td-score-fit">{c.fit.toFixed(2)}</span>
+                    {c.achieved != null && <span className="td-score-achieved">achieved {c.achieved.toFixed(2)}</span>}
+                  </td>
+                : <td key={m} />)}</tr>)}</tbody>
+            </table></div>
+        : 'columns' in b
+          ? <div key={j} className="td-article-table"><table>
+              <thead><tr>{b.columns.map(c => <th key={c} scope="col">{c}</th>)}</tr></thead>
+              <tbody>{b.rows.map((r, k) => <tr key={k}>{r.map((v, m) => <td key={m}>{v}</td>)}</tr>)}</tbody>
+            </table></div>
+          : <pre key={j}><code>{b.text}</code></pre>)}
     </section>)}
   </article>;
 }
