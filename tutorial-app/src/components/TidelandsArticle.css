@@ -20,6 +20,16 @@
 .td-article th, .td-article td { padding: 6px 8px; border-bottom: 1px solid #ccc; text-align: left; vertical-align: top; }
 .td-article th { border-bottom: 2px solid #000; }
 @media (min-width: 720px) { .td-article { padding: 32px; } .td-article h1 { font-size: 2.5rem; } }
+/* A heatmap: each cell coloured by xeno's band, fit large, achievement below. */
+.td-article-heatmap th[scope="row"] { font-weight: 400; max-width: 22em; }
+.td-article-heatmap td { text-align: center; min-width: 5.5em; }
+.td-score-fit { display: block; font-size: 1.1rem; font-weight: 700; }
+.td-score-achieved { display: block; font-size: 0.75rem; opacity: 0.75; }
+.td-band-supports { background: #d8f0dd; }
+.td-band-uncertain { background: #fbecc4; }
+.td-band-rejects { background: #f8d6d4; }
+@media print { .td-article-heatmap td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
 /* A document-wide diagnostic, drawn like an editor warning: amber, a wavy
    underline, and the title squiggled the way a flagged range would be. */
 .td-article-watermarked { position: relative; }

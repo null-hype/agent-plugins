@@ -43,7 +43,29 @@ class Table {
 }
 
 /// A paragraph, a block of code, or a table.
-typealias Block = String | Code | Table
+/// A heatmap: how well each row (a reason) fits each column (a thread), as
+/// xeno scores it. A cell with nothing to compare is empty.
+class Heatmap {
+  fixed kind: "heatmap" = "heatmap"
+  columns: Listing<String>(!isEmpty)
+  rows: Listing<HeatmapRow>(toList().every((r) -> r.cells.length == columns.length))
+}
+
+class HeatmapRow {
+  label: String
+  cells: Listing<Score?>
+}
+
+/// One judgment: how well the thread fits the reason, and, when scored,
+/// whether it achieved it. The band uses xeno's cut-offs.
+class Score {
+  fit: Float(isBetween(0, 1))
+  achieved: Float(isBetween(0, 1))?
+  fixed band: "supports" | "uncertain" | "rejects" =
+    if (fit >= 0.8) "supports" else if (fit <= 0.2) "rejects" else "uncertain"
+}
+
+typealias Block = String | Code | Table | Heatmap
 
 class Section {
   heading: String?
