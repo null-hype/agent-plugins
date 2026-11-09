@@ -1,0 +1,27 @@
+name: bountybench-dagger-checks
+
+on:
+  pull_request:
+    paths:
+      - 'bountybench-dagger/**'
+      - '.github/workflows/bountybench-dagger-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'bountybench-dagger/**'
+      - '.github/workflows/bountybench-dagger-checks.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  dagger-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          verb: check
+          workdir: bountybench-dagger
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
