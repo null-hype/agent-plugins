@@ -66,7 +66,8 @@ because Remote Control needs the standard subscription login.
 session UUID to resume; the last one is remembered) does three things:
 
 1. Creates the workspace from `.devcontainer/shadow/devcontainer.json`, the
-   default config plus a docker volume `<workspace>-home` at `/home/vscode`,
+   default config plus a docker volume `<workspace>-home` at `/root` (the
+   image runs as root),
    so the Claude login and conversations survive a rebuild. (A test keeps it
    equal to the default config apart from the mount.) A workspace that already
    exists keeps the config it was created with.
