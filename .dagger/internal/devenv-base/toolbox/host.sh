@@ -17,6 +17,12 @@ export DAGGER_CLOUD_TOKEN_REF=pass://infra/dagger.cloud/DAGGER_CLOUD_TOKEN
 # agent_ship's push token: can push this repository and nothing else.
 export SHIP_PUSH_PAT_REF=pass://infra/github.com/GITHUB_TOKEN
 export DEVCONTAINER_DIR=.dagger/internal/devenv-base/.devcontainer
+# A shadow workspace is created from this config, which is the default one plus
+# a docker volume <workspace>-home mounted at the container user's home, so the
+# Claude login and conversation survive a rebuild. It reads the workspace's
+# name from SHADOW_WORKSPACE (devcontainer.json's ${localEnv:...}), exported
+# by run_up.
+export SHADOW_DEVCONTAINER=.devcontainer/shadow/devcontainer.json
 # A Linear agent working an issue, as seen from the host: the Claude
 # runtime's claude-agent-sdk process, or the container-use MCP server either
 # runtime starts for the length of a turn (the OpenRouter runtime has no
@@ -68,14 +74,29 @@ api() {
 
 run_up() {
   set -euo pipefail
-  local id=$1 ref=$2 agent=$3 s
+  local id=$1 ref=$2 agent=$3 shadow=${4:-0} s cfg=.devcontainer/devcontainer.json
   git_auth
+  # Needed on every devpod up of a shadow workspace, not only the first: the
+  # config's mount is resolved each time the container is (re)created.
+  if [ "$shadow" = 1 ]; then
+    cfg=$SHADOW_DEVCONTAINER
+    export SHADOW_WORKSPACE=$id
+  fi
   if [ "$(devpod status "$id" --output json 2>/dev/null | jq -r '.state // empty')" = "" ]; then
     devpod up "$id" --id "$id" --source "git:$REPO@$ref" --provider docker --ide none \
-      --devcontainer-path .devcontainer/devcontainer.json
+      --devcontainer-path "$cfg"
   else
     echo "== $id exists; starting it (ref $ref is only used on creation)"
     devpod up "$id" --ide none
+  fi
+  if [ "$shadow" = 1 ]; then
+    # From the workspace's own checkout (the ref it was created from), unlike
+    # the agent's scripts: no origin/main move, so a branch can test the script.
+    # SHADOW_SESSION_ID, if the toolbox sent one, is a Claude session UUID, not
+    # a secret, so it may show on devpod's command line.
+    echo "== start-shadow.sh"
+    devpod ssh "$id" ${SHADOW_SESSION_ID:+--set-env "SHADOW_SESSION_ID=$SHADOW_SESSION_ID"} \
+      --command "bash /workspaces/$id/$DEVCONTAINER_DIR/start-shadow.sh" </dev/null
   fi
   [ "$agent" = 1 ] || return 0
   # The scripts run from the workspace's checkout, and so does every
@@ -108,6 +129,57 @@ run_up() {
       devpod ssh "$id" --command "bash /workspaces/$id/$DEVCONTAINER_DIR/$s"
     fi
   done
+}
+
+# Runs a script in a workspace as `bash -s -- args`, for the shadow actions,
+# cut off after secs. The script travels in the command, as for
+# ship_in_workspace; the args must be plain tokens (the toolbox validates names
+# and numbers; text is base64). devpod ssh on a stopped workspace would start
+# it, so callers check its state first. --silent keeps devpod's own log lines
+# out of the output.
+in_workspace() { # ws secs script args...
+  local ws=$1 secs=$2 script=$3 q
+  shift 3
+  q=$(printf ' %q' "$@")
+  timeout "$secs" devpod ssh "$ws" --silent --start-services=false --agent-forwarding=false \
+    --command "echo $(printf %s "$script" | base64 -w0) | base64 -d | bash -s --$q" </dev/null
+}
+
+# Cheap and read-only: what workspace_status reports as `shadow`. Herdr and
+# Claude live in the container's ~/.local/bin, which a non-login shell lacks.
+# logged_in is "unknown" when claude is missing or its status cannot be read.
+SHADOW_PROBE='export PATH="$HOME/.local/bin:$PATH"
+ws=$1 sess=false pane=false login=\"unknown\"
+if herdr session list --json 2>/dev/null | jq -e --arg n "$ws" ".sessions[]? | select(.name == \$n and .running)" >/dev/null 2>&1; then
+  sess=true
+  herdr --session "$ws" pane list 2>/dev/null | jq -e "[.result.panes[]? | select(.agent == \"claude\")] | length > 0" >/dev/null 2>&1 && pane=true
+fi
+if command -v claude >/dev/null 2>&1; then
+  l=$(timeout 15 env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude auth status --json 2>/dev/null | jq -c "if has(\"loggedIn\") then .loggedIn else \"unknown\" end" 2>/dev/null) || l=
+  [ -z "$l" ] || login=$l
+fi
+jq -n --argjson sess "$sess" --argjson pane "$pane" --argjson login "$login" \
+  --argjson st "$(cat "$HOME/.shadow/$ws.json" 2>/dev/null || echo null)" \
+  "{herdr_session: \$sess, claude_pane: \$pane, logged_in: \$login, start: \$st}"'
+
+# The shadow object of workspace_status. Only for a workspace that workspace_up
+# made with shadow=true, and only while it runs and its up job is done: it never
+# starts one. A probe that fails is reported, not hidden.
+shadow_status() { # id
+  local id=$1 probe="" why=""
+  if [ "$(state "$id")" != Running ]; then
+    why="the workspace is not running"
+  elif job_running "$id"; then
+    why="the workspace's up job is still running"
+  elif ! probe=$(in_workspace "$id" 40 "$SHADOW_PROBE" "$id" 2>/dev/null) || ! jq -e . >/dev/null 2>&1 <<<"$probe"; then
+    probe="" why="could not probe the workspace"
+  fi
+  # The attach command is for a person on the tailnet with SSH access to the
+  # host. devpod ssh opening a TTY for herdr's TUI was not tested.
+  jq -n --arg id "$id" --arg why "$why" --argjson probe "${probe:-null}" '
+    ($probe // {herdr_session: null, claude_pane: null, logged_in: "unknown", start: null})
+    + {attach: ("ssh -t toolbox@toolbox-host devpod ssh \($id) --start-services=false --agent-forwarding=false --command " + ("herdr --session \($id)" | @sh))}
+    + (if $why != "" then {detail: $why} else {} end)'
 }
 
 # Reviews the PR with the host's Codex login, so AGENTS.md sets the criteria,
@@ -411,17 +483,22 @@ list)
   ;;
 status)
   id=$1
+  shadow=null
+  if [ -f "$JOBS/$id.shadow" ]; then shadow=$(shadow_status "$id"); fi
   jq -n --argjson ws "$(workspace_json "$id")" \
     --argjson job_exit "$(cat "$JOBS/$id.exit" 2>/dev/null || echo null)" \
     --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' || true)" \
-    '$ws + {job_exit: $job_exit, log_tail: $log_tail}'
+    --argjson shadow "$shadow" \
+    '$ws + {job_exit: $job_exit, log_tail: $log_tail} + (if $shadow != null then {shadow: $shadow} else {} end)'
   ;;
 up)
-  id=$1 ref=$2 agent=$3
+  id=$1 ref=$2 agent=$3 shadow=${4:-0}
   refuse_if_busy "$id"
   rm -f "$JOBS/$id.exit"
+  # Marks the workspace as a shadow, for status; delete removes it with the job.
+  if [ "$shadow" = 1 ]; then touch "$JOBS/$id.shadow"; fi
   setsid nohup bash -c "$(declare -f git_auth run_up)"'
-    (run_up "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$id" "$ref" "$agent" \
+    (run_up "$@"); echo $? > "'"$JOBS/$id.exit"'"' _ "$id" "$ref" "$agent" "$shadow" \
     > "$JOBS/$id.log" 2>&1 < /dev/null &
   echo $! > "$JOBS/$id.pid"
   workspace_json "$id"
@@ -547,6 +624,31 @@ review-status)
     --arg findings "$(cat "$JOBS/$id.md" 2>/dev/null || true)" \
     --arg log_tail "$(tail -n 40 "$JOBS/$id.log" 2>/dev/null || true)" \
     '{job_running: $job_running, job_exit: $job_exit, findings: $findings, log_tail: $log_tail}'
+  ;;
+shadow-list)
+  # The workspace's Herdr session: its agents and panes, as Herdr prints them.
+  ws=$1
+  [ "$(state "$ws")" = Running ] || { echo "workspace $ws is not running; workspace_up starts it" >&2; exit 1; }
+  out=$(in_workspace "$ws" 60 'export PATH="$HOME/.local/bin:$PATH"
+herdr --session "$1" agent list
+herdr --session "$1" pane list' "$ws")
+  jq -s '{agents: .[0].result.agents, panes: .[1].result.panes}' <<<"$out"
+  ;;
+shadow-read)
+  ws=$1 target=$2 lines=$3
+  [ "$(state "$ws")" = Running ] || { echo "workspace $ws is not running; workspace_up starts it" >&2; exit 1; }
+  out=$(in_workspace "$ws" 60 'export PATH="$HOME/.local/bin:$PATH"
+herdr --session "$1" pane read "$2" --source recent-unwrapped --lines "$3"' "$ws" "$target" "$lines")
+  jq -n --arg target "$target" --arg text "$out" '{target: $target, text: $text}'
+  ;;
+shadow-prompt)
+  # text64 is the prompt, base64: it must not meet a shell. timeout is in
+  # milliseconds, for herdr; the host's own cut-off is a little longer.
+  ws=$1 target=$2 timeout_ms=$3 text64=$4
+  [ "$(state "$ws")" = Running ] || { echo "workspace $ws is not running; workspace_up starts it" >&2; exit 1; }
+  out=$(in_workspace "$ws" $((timeout_ms / 1000 + 20)) 'export PATH="$HOME/.local/bin:$PATH"
+herdr --session "$1" agent prompt "$2" "$(printf %s "$4" | base64 -d)" --wait --timeout "$3"' "$ws" "$target" "$timeout_ms" "$text64")
+  jq -c . <<<"$out" 2>/dev/null || jq -n --arg out "$out" '{output: $out}'
   ;;
 stop)
   refuse_if_busy "$1"
