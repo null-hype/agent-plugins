@@ -79,7 +79,7 @@ func (f *fakeHost) Run(_ context.Context, env map[string]string, args ...string)
 			f.checkStatus = f.checkStatus[1:]
 		}
 		return []byte(st), nil
-	case "up", "stop", "delete", "review", "review-status", "ship", "ship-status", "check":
+	case "up", "stop", "delete", "review", "review-status", "ship", "ship-status", "check", "shadow-list", "shadow-read", "shadow-prompt":
 		return []byte(`{}`), nil
 	}
 	return nil, fmt.Errorf("unexpected action %s", args[0])
