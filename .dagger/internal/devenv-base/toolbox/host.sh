@@ -153,6 +153,9 @@ ws=$1 sess=false pane=false login=\"unknown\"
 if herdr session list --json 2>/dev/null | jq -e --arg n "$ws" ".sessions[]? | select(.name == \$n and .running)" >/dev/null 2>&1; then
   sess=true
   herdr --session "$ws" pane list 2>/dev/null | jq -e "[.result.panes[]? | select(.agent == \"claude\")] | length > 0" >/dev/null 2>&1 && pane=true
+  # The Herdr label may be missing or differ (e.g. on the login screen): a
+  # Claude process for this workspace counts too, as in start-shadow.sh.
+  [ "$pane" = true ] || ! pgrep -u "$(id -u)" -f -- "--remote-control $ws" >/dev/null 2>&1 || pane=true
 fi
 if command -v claude >/dev/null 2>&1; then
   l=$(timeout 15 env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude auth status --json 2>/dev/null | jq -c "if has(\"loggedIn\") then .loggedIn else \"unknown\" end" 2>/dev/null) || l=

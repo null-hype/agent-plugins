@@ -256,14 +256,18 @@ func TestShadowConfigIsTheDefaultPlusTheHomeVolume(t *testing.T) {
 
 func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 
-// TestStartShadow runs start-shadow.sh against fake herdr, claude and the
-// tools it needs, twice: the second run must change nothing.
-func TestStartShadow(t *testing.T) {
+// fakeShadowHome sets up a home for start-shadow.sh with fake herdr and claude.
+// The fake herdr keeps a session, one pane and what runs in it. When claude is
+// "run" into the pane it sets the agent label, unless FAKE_NO_LABEL is set, and
+// starts a process whose command line holds --remote-control <ws>, as Claude's
+// would; FAKE_FOREGROUND is the pane's foreground before that (default bash).
+func fakeShadowHome(t *testing.T) (home, state string, run func(env ...string) (string, error)) {
+	t.Helper()
 	script, err := os.ReadFile("../.devcontainer/start-shadow.sh")
 	if err != nil {
 		t.Skipf("%v", err)
 	}
-	for _, tool := range []string{"bash", "jq", "sha256sum", "setsid", "flock"} {
+	for _, tool := range []string{"bash", "jq", "sha256sum", "setsid", "flock", "pgrep"} {
 		if _, err := exec.LookPath(tool); err != nil {
 			t.Skipf("%s not installed", tool)
 		}
@@ -271,17 +275,16 @@ func TestStartShadow(t *testing.T) {
 	if _, err := os.Stat("/proc/mounts"); err != nil {
 		t.Skip("no /proc/mounts")
 	}
-	home := t.TempDir()
+	home = t.TempDir()
 	ws := filepath.Join(home, "workspaces/shadow-ws")
 	dir := filepath.Join(ws, ".dagger/internal/devenv-base/.devcontainer")
 	os.MkdirAll(dir, 0o755)
 	os.WriteFile(filepath.Join(dir, "start-shadow.sh"), script, 0o755)
 	bin := filepath.Join(home, ".local/bin")
 	os.MkdirAll(bin, 0o755)
-	state := filepath.Join(home, "fake-herdr")
+	state = filepath.Join(home, "fake-herdr")
 	os.MkdirAll(state, 0o755)
 	write := func(name, body string) { os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/bash\n"+body), 0o755) }
-	// A fake herdr keeping a session, one pane and whether Claude runs in it.
 	write("herdr", `S=`+state+`
 echo "herdr $*" >> $S/calls
 case "$*" in
@@ -289,22 +292,34 @@ case "$*" in
 "session list --json") if [ -f $S/session ]; then echo '{"sessions":[{"name":"shadow-ws","running":true}]}'; else echo '{"sessions":[]}'; fi ;;
 "--session shadow-ws server") touch $S/session; echo "env: ${CLAUDE_CODE_OAUTH_TOKEN:-unset}" > $S/server.env; sleep 30 ;;
 "--session shadow-ws pane list") if [ -f $S/pane ]; then jq -n --arg a "$(cat $S/agent 2>/dev/null)" '{result:{panes:[{pane_id:"w1:p1",agent:(if $a=="" then null else $a end)}]}}'; else echo '{"result":{"panes":[]}}'; fi ;;
+"--session shadow-ws pane process-info --pane w1:p1") jq -n --arg n "$(cat $S/fg 2>/dev/null || echo ${FAKE_FOREGROUND:-bash})" '{result:{process_info:{foreground_processes:[{name:$n}]}}}' ;;
 "--session shadow-ws workspace create"*) touch $S/pane; echo '{"result":{"root_pane":{"pane_id":"w1:p1"}}}' ;;
-"--session shadow-ws pane run w1:p1 "*) echo "$6 $7 $8 $9 ${10} ${11} ${12} ${13}" > $S/run; echo claude > $S/agent ;;
+"--session shadow-ws pane run w1:p1 "*)
+  echo "$6" > $S/run; echo claude > $S/fg
+  [ -n "${FAKE_NO_LABEL:-}" ] || echo claude > $S/agent
+  setsid nohup bash -c 'sleep 30; :' _ --remote-control shadow-ws >/dev/null 2>&1 </dev/null 9>&- &
+  ;;
 esac`)
 	write("claude", `echo "{\"loggedIn\": ${FAKE_LOGGED_IN:-true}}"`)
-	run := func(env ...string) (string, error) {
+	run = func(env ...string) (string, error) {
 		cmd := exec.Command("bash", filepath.Join(dir, "start-shadow.sh"))
 		cmd.Env = append([]string{"HOME=" + home, "PATH=" + bin + ":" + os.Getenv("PATH"), "CLAUDE_CODE_OAUTH_TOKEN=secret"}, env...)
 		out, err := cmd.CombinedOutput()
 		return string(out), err
 	}
+	t.Cleanup(func() { exec.Command("pkill", "-f", "shadow-ws").Run(); exec.Command("pkill", "-f", "sleep 30").Run() })
+	return home, state, run
+}
+
+// TestStartShadow runs start-shadow.sh twice: the second run must change nothing.
+func TestStartShadow(t *testing.T) {
+	home, state, run := fakeShadowHome(t)
 	id := "0b8a1c2e-0000-4000-8000-123456789abc"
 	if out, err := run("SHADOW_SESSION_ID=" + id); err != nil {
 		t.Fatalf("first run: %v\n%s", err, out)
 	}
 	ran, _ := os.ReadFile(filepath.Join(state, "run"))
-	if want := "env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude --resume " + id + " --remote-control shadow-ws"; !strings.Contains(string(ran), "claude --resume "+id+" --remote-control shadow-ws") {
+	if want := "env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude --resume " + id + " --remote-control shadow-ws"; strings.TrimSpace(string(ran)) != want {
 		t.Fatalf("claude ran as %q, want %q", ran, want)
 	}
 	if env, _ := os.ReadFile(filepath.Join(state, "server.env")); !strings.Contains(string(env), "unset") {
@@ -340,5 +355,47 @@ esac`)
 	if out, err := run("SHADOW_SESSION_ID=nope"); err == nil {
 		t.Fatalf("a bad session id was accepted:\n%s", out)
 	}
-	exec.Command("pkill", "-f", "sleep 30").Run()
+}
+
+// Herdr may not label Claude (the label was never confirmed): a Claude process
+// for the workspace must still stop a second run from typing the launch command
+// into the live Claude as a prompt.
+func TestStartShadowWithoutAgentLabelDoesNotRelaunch(t *testing.T) {
+	_, state, run := fakeShadowHome(t)
+	// The first run starts Claude; its process counts as running without a label.
+	if out, err := run("FAKE_NO_LABEL=1"); err != nil {
+		t.Fatalf("first run: %v\n%s", err, out)
+	}
+	before, _ := os.ReadFile(filepath.Join(state, "calls"))
+	if !strings.Contains(string(before), "pane run") {
+		t.Fatalf("the first run never started claude:\n%s", before)
+	}
+	// The pane's foreground is now claude and Herdr gives it no label.
+	if out, err := run("FAKE_NO_LABEL=1"); err != nil {
+		t.Fatalf("second run: %v\n%s", err, out)
+	}
+	after, _ := os.ReadFile(filepath.Join(state, "calls"))
+	if extra := strings.TrimPrefix(string(after), string(before)); strings.Contains(extra, "pane run") {
+		t.Fatalf("the second run typed into the live claude:\n%s", extra)
+	}
+}
+
+// With no label and no Claude process, a pane whose foreground is not a shell
+// is not typed into either: the run fails and says why.
+func TestStartShadowRefusesANonShellPane(t *testing.T) {
+	home, state, run := fakeShadowHome(t)
+	os.WriteFile(filepath.Join(state, "pane"), nil, 0o644)
+	os.WriteFile(filepath.Join(state, "session"), nil, 0o644)
+	out, err := run("FAKE_FOREGROUND=node")
+	if err == nil || !strings.Contains(out, "not an idle shell") {
+		t.Fatalf("run = %v\n%s", err, out)
+	}
+	if calls, _ := os.ReadFile(filepath.Join(state, "calls")); strings.Contains(string(calls), "pane run") {
+		t.Fatalf("typed into a non-shell pane:\n%s", calls)
+	}
+	var st struct{ State, Detail string }
+	b, _ := os.ReadFile(filepath.Join(home, ".shadow/shadow-ws.json"))
+	if json.Unmarshal(b, &st); st.State != "failed" || st.Detail == "" {
+		t.Fatalf("state = %s", b)
+	}
 }
