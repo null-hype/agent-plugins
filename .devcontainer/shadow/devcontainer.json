@@ -13,7 +13,7 @@
         {
             "type": "volume",
             "source": "${localEnv:SHADOW_WORKSPACE}-home",
-            "target": "/home/vscode"
+            "target": "/root"
         }
     ],
     "updateContentCommand": "npm install -g @devcontainers/cli"

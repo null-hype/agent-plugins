@@ -199,11 +199,13 @@ else
 fi
 
 login=$(login_state)
-if [ "$login" = false ]; then
+if [ "$login" != true ]; then
   # Left up on purpose: attach and run /login there. Claude may not be
-  # detected as an agent while it shows its login screen.
-  record needs-login "Claude is not logged in: attach to the pane and log in (claude auth login); ${DETAIL}"
-  echo "start-shadow: claude is not logged in; recorded needs-login"
+  # detected as an agent while it shows its login screen. "unknown" counts as
+  # not logged in: in the first live run, a fresh Claude still in its first-run
+  # setup gave no readable status, then loggedIn false.
+  record needs-login "Claude is not logged in (status: $login): attach to the pane and log in (claude auth login); ${DETAIL}"
+  echo "start-shadow: claude is not logged in ($login); recorded needs-login"
   exit 0
 fi
 claude_running || fail "claude was started in pane $pane but Herdr does not report it as an agent"

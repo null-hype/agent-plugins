@@ -242,7 +242,7 @@ func TestShadowConfigIsTheDefaultPlusTheHomeVolume(t *testing.T) {
 		t.Fatalf("mounts = %v", shadow["mounts"])
 	}
 	m, _ := mounts[0].(map[string]any)
-	if m["type"] != "volume" || m["source"] != "${localEnv:SHADOW_WORKSPACE}-home" || m["target"] != "/home/vscode" {
+	if m["type"] != "volume" || m["source"] != "${localEnv:SHADOW_WORKSPACE}-home" || m["target"] != "/root" {
 		t.Fatalf("home mount = %v", m)
 	}
 	delete(shadow, "mounts")
