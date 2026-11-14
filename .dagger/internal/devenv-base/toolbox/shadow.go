@@ -22,6 +22,8 @@ var (
 	shadowTargetRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:_-]{0,39}$`)
 	// A Claude session id, as `claude --resume` takes.
 	sessionIDRE = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
+	// A Delta thread join link, as delta.dev/docs/cli/claude-code shows it.
+	deltaThreadRE = regexp.MustCompile(`^https://delta\.dev/join/thread_[A-Za-z0-9_-]{1,100}$`)
 )
 
 const (
@@ -62,11 +64,15 @@ func checkShadowTarget(target string) (string, error) {
 
 // upShadow is workspace_up for a shadow: host.sh creates the workspace from
 // the config that mounts a home volume, then runs start-shadow.sh. A session id
-// is optional; start-shadow.sh remembers the last one it was given.
-func (t *toolbox) upShadow(ctx context.Context, name, ref, sessionID string) ([]byte, error) {
+// is optional; start-shadow.sh remembers the last one it was given. A Delta thread
+// link is optional too: Claude joins it once.
+func (t *toolbox) upShadow(ctx context.Context, name, ref, sessionID, deltaThread string) ([]byte, error) {
 	env := map[string]string{"GITHUB_TOKEN": t.githubToken}
 	if sessionID != "" {
 		env["SHADOW_SESSION_ID"] = sessionID
+	}
+	if deltaThread != "" {
+		env["SHADOW_DELTA_THREAD"] = deltaThread
 	}
 	return t.host.Run(ctx, env, "up", name, ref, "0", "1")
 }
