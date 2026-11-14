@@ -93,9 +93,11 @@ run_up() {
     # From the workspace's own checkout (the ref it was created from), unlike
     # the agent's scripts: no origin/main move, so a branch can test the script.
     # SHADOW_SESSION_ID, if the toolbox sent one, is a Claude session UUID, not
-    # a secret, so it may show on devpod's command line.
+    # a secret, so it may show on devpod's command line; so may the Delta join
+    # link (joining still needs the account to be on the thread's team).
     echo "== start-shadow.sh"
     devpod ssh "$id" ${SHADOW_SESSION_ID:+--set-env "SHADOW_SESSION_ID=$SHADOW_SESSION_ID"} \
+      ${SHADOW_DELTA_THREAD:+--set-env "SHADOW_DELTA_THREAD=$SHADOW_DELTA_THREAD"} \
       --command "bash /workspaces/$id/$DEVCONTAINER_DIR/start-shadow.sh" </dev/null
   fi
   [ "$agent" = 1 ] || return 0
@@ -147,7 +149,8 @@ in_workspace() { # ws secs script args...
 
 # Cheap and read-only: what workspace_status reports as `shadow`. Herdr and
 # Claude live in the container's ~/.local/bin, which a non-login shell lacks.
-# logged_in is "unknown" when claude is missing or its status cannot be read.
+# logged_in and delta_signed_in are "unknown" when the CLI is missing or its
+# status cannot be determined.
 SHADOW_PROBE='export PATH="$HOME/.local/bin:$PATH"
 ws=$1 sess=false pane=false login=\"unknown\"
 if herdr session list --json 2>/dev/null | jq -e --arg n "$ws" ".sessions[]? | select(.name == \$n and .running)" >/dev/null 2>&1; then
@@ -161,9 +164,14 @@ if command -v claude >/dev/null 2>&1; then
   l=$(timeout 15 env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude auth status --json 2>/dev/null | jq -c "if has(\"loggedIn\") then .loggedIn else \"unknown\" end" 2>/dev/null) || l=
   [ -z "$l" ] || login=$l
 fi
-jq -n --argjson sess "$sess" --argjson pane "$pane" --argjson login "$login" \
+delta=\"unknown\"
+if command -v delta >/dev/null 2>&1; then
+  timeout 15 delta auth status >/dev/null 2>&1
+  case $? in 0) delta=true ;; 1) delta=false ;; esac
+fi
+jq -n --argjson sess "$sess" --argjson pane "$pane" --argjson login "$login" --argjson delta "$delta" \
   --argjson st "$(cat "$HOME/.shadow/$ws.json" 2>/dev/null || echo null)" \
-  "{herdr_session: \$sess, claude_pane: \$pane, logged_in: \$login, start: \$st}"'
+  "{herdr_session: \$sess, claude_pane: \$pane, logged_in: \$login, delta_signed_in: \$delta, start: \$st}"'
 
 # The shadow object of workspace_status. Only for a workspace that workspace_up
 # made with shadow=true, and only while it runs and its up job is done: it never
@@ -177,11 +185,20 @@ shadow_status() { # id
   elif ! probe=$(in_workspace "$id" 40 "$SHADOW_PROBE" "$id" 2>/dev/null) || ! jq -e . >/dev/null 2>&1 <<<"$probe"; then
     probe="" why="could not probe the workspace"
   fi
-  # The attach command is for a person on the tailnet with SSH access to the
-  # host. devpod ssh opening a TTY for herdr's TUI was not tested.
+  # The attach command is run on a person's own machine; it was confirmed live.
+  # Herdr is not on PATH in a non-login devpod ssh command, hence the full path
+  # (the image runs as root), and devpod runs as the host's toolbox user.
   jq -n --arg id "$id" --arg why "$why" --argjson probe "${probe:-null}" '
-    ($probe // {herdr_session: null, claude_pane: null, logged_in: "unknown", start: null})
-    + {attach: ("ssh -t toolbox@toolbox-host devpod ssh \($id) --start-services=false --agent-forwarding=false --command " + ("herdr --session \($id)" | @sh))}
+    ($probe // {herdr_session: null, claude_pane: null, logged_in: "unknown", delta_signed_in: "unknown", start: null})
+    # state is the live answer; start is only what start-shadow.sh last wrote,
+    # which goes stale (a login after it ran does not update it).
+    | . + {state: (if .herdr_session == null then "unknown"
+        elif .herdr_session != true then "no-herdr-session"
+        elif .claude_pane != true then "no-claude"
+        elif .logged_in != true then "needs-login"
+        elif .delta_signed_in == false then "needs-delta-login"
+        else "running" end)}
+    + {attach: ("gcloud compute ssh toolbox-host --zone us-central1-a --project caldav-444421 -- -t " + ("sudo -u toolbox -H devpod ssh \($id) --command \"/root/.local/bin/herdr --session \($id)\"" | @sh))}
     + (if $why != "" then {detail: $why} else {} end)'
 }
 

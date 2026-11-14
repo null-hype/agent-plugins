@@ -24,6 +24,11 @@
 # ~/.shadow/<workspace>.session-id): the Claude session to resume. Without
 # one, Claude starts a fresh session.
 #
+# SHADOW_DELTA_THREAD (optional): a https://delta.dev/join/thread_... link. Once
+# Claude is running, logged in and Delta is signed in, the script sends
+# `/delta join <link>` to Claude once per link (joined links are kept in the
+# state file). Never logs in to Delta either: "needs-delta-login" is recorded.
+#
 # Every Herdr, Claude and installer flag below was read from herdr.dev/llms.txt
 # (v0.9.5) or `claude --help` (2.1.323) except where a comment says otherwise.
 set -euo pipefail
@@ -61,10 +66,13 @@ fi
 
 command -v jq >/dev/null 2>&1 || { echo "start-shadow: jq is required" >&2; exit 1; }
 
+DELTA_STATE=unknown
+JOINED=$(jq -c '.joined // []' "$STATE_FILE" 2>/dev/null || echo '[]')
 # Records where this run got to. workspace_status reads it.
 record() { # state [detail]
-  jq -n --arg state "$1" --arg detail "${2:-$DETAIL}" --arg at "$(date -u +%FT%TZ)" \
-    '{state: $state, detail: $detail, updated: $at}' > "$STATE_FILE.tmp"
+  jq -n --arg state "$1" --arg detail "${2:-$DETAIL}" --arg delta "$DELTA_STATE" --argjson joined "$JOINED" \
+    --arg at "$(date -u +%FT%TZ)" \
+    '{state: $state, detail: $detail, delta: $delta, joined: $joined, updated: $at}' > "$STATE_FILE.tmp"
   mv "$STATE_FILE.tmp" "$STATE_FILE"
 }
 fail() { echo "start-shadow: $1" >&2; record failed "$1"; exit 1; }
@@ -97,11 +105,43 @@ if ! command -v claude >/dev/null 2>&1; then
   curl -fsSL https://claude.ai/install.sh | bash || fail "could not install Claude Code"
 fi
 
-# TODO: the Delta CLI and the Claude Delta plugin are not installed here. The
-# only Delta CLI found is the one bundled in Delta.app on macOS
-# (/Applications/Delta.app/Contents/MacOS/delta); no documented
-# non-interactive Linux install or plugin install was found. Add it here once
-# one exists, so the shadow can join Delta threads.
+# ---- Delta CLI: the documented unattended install (delta.dev/docs/installation) --
+# `sh delta-install.sh --non-interactive` neither prompts nor edits shell config;
+# it links ~/.local/bin/delta and needs python3 on Linux.
+if [ ! -x "$HOME/.local/bin/delta" ]; then
+  command -v python3 >/dev/null 2>&1 || fail "the Delta installer needs python3, which is missing"
+  delta_tmp=$(mktemp -d)
+  curl -fsSL https://delta.dev/install.sh -o "$delta_tmp/delta-install.sh" || { rm -rf "$delta_tmp"; fail "could not download the Delta installer"; }
+  sh "$delta_tmp/delta-install.sh" --non-interactive || { rm -rf "$delta_tmp"; fail "the Delta installer failed"; }
+  rm -rf "$delta_tmp"
+  [ -x "$HOME/.local/bin/delta" ] || fail "the Delta installer did not link ~/.local/bin/delta"
+  echo "start-shadow: installed the Delta CLI"
+fi
+
+# ---- The Delta plugin for Claude Code (delta.dev/docs/cli/claude-code) --------
+# Before Claude starts, so a new Claude loads it. A Claude that is already
+# running only gets it after /reload-plugins or a restart.
+if ! claude plugin list --json 2>/dev/null | jq -e 'any(.[]?; .id == "delta@zed-industries")' >/dev/null 2>&1; then
+  claude plugin marketplace add zed-industries/delta-claude || fail "could not add the delta-claude marketplace"
+  claude plugin install delta@zed-industries || fail "could not install the delta plugin"
+  echo "start-shadow: installed the delta plugin"
+fi
+
+# ---- First-run prompts ---------------------------------------------------------
+# Documented user settings (code.claude.com/docs/en/settings-reference): theme,
+# and tui, which, once saved, stops the startup dialog offering the fullscreen
+# renderer. "default" is the classic renderer, which reads better through
+# herdr pane read. Only keys that are not set yet are written. Claude's
+# onboarding and the folder-trust dialog have no documented key and are not
+# touched; a person answers them once when attaching.
+mkdir -p "$HOME/.claude"
+[ -s "$HOME/.claude/settings.json" ] || echo '{}' > "$HOME/.claude/settings.json"
+if jq '. + {theme: (.theme // "dark"), tui: (.tui // "default")}' "$HOME/.claude/settings.json" > "$HOME/.claude/settings.json.tmp" 2>/dev/null; then
+  mv "$HOME/.claude/settings.json.tmp" "$HOME/.claude/settings.json"
+else
+  rm -f "$HOME/.claude/settings.json.tmp"
+  echo "start-shadow: ~/.claude/settings.json is not valid JSON; left alone" >&2
+fi
 
 # ---- Does $HOME persist? ------------------------------------------------------
 if ! awk -v h="$HOME" '$2 == h { found = 1 } END { exit !found }' /proc/mounts; then
@@ -117,6 +157,11 @@ if [ -n "$SESSION_ID" ]; then
 elif [ -s "$SESSION_FILE" ]; then
   SESSION_ID=$(head -n1 "$SESSION_FILE")
   [[ $SESSION_ID =~ ^[0-9a-fA-F-]{36}$ ]] || fail "$SESSION_FILE does not hold a session UUID"
+fi
+
+DELTA_THREAD=${SHADOW_DELTA_THREAD:-}
+if [ -n "$DELTA_THREAD" ] && ! [[ $DELTA_THREAD =~ ^https://delta\.dev/join/thread_[A-Za-z0-9_-]{1,100}$ ]]; then
+  fail "SHADOW_DELTA_THREAD is not a https://delta.dev/join/thread_... link"
 fi
 
 # ---- The Herdr server for this workspace -----------------------------------------
@@ -143,8 +188,10 @@ else
 fi
 
 # ---- A pane for Claude ----------------------------------------------------------
-# Server restarts restore the layout as plain shells, so a pane with no agent in
-# it is where Claude goes; there is exactly one pane, w1:p1 on a fresh session.
+# There is exactly one pane, w1:p1 on a fresh session. After a server restart
+# Herdr restores it and may itself resume Claude there (without
+# --remote-control, which is handled below); a pane that is a plain shell is
+# where Claude goes.
 pane_json=$(H pane list)
 pane=$(jq -r '.result.panes[0].pane_id // empty' <<< "$pane_json")
 if [ -z "$pane" ]; then
@@ -153,21 +200,54 @@ if [ -z "$pane" ]; then
 fi
 
 claude_running() {
-  # Two independent signals, either is enough. Herdr's agent label for a Claude
-  # pane is "claude" (the agent kind name in the CLI reference; not confirmed
-  # against a live Claude pane, and Herdr may not label Claude while it shows
-  # its login screen), so a Claude process for this workspace counts as well.
+  # Two independent signals, either is enough: the Herdr agent label "claude"
+  # (confirmed on a live Claude pane), and a Claude process for this workspace.
   H pane list | jq -e --arg p "$pane" '.result.panes[] | select(.pane_id == $p and .agent == "claude")' >/dev/null 2>&1 ||
     pgrep -u "$(id -u)" -f -- "--remote-control $WS" >/dev/null 2>&1
 }
 # True only when the pane's foreground is nothing but shells, so typing a
 # command into it cannot land in another program. `pane process-info --pane`
-# lists the foreground processes (herdr pane process-info --help); if it cannot
-# be read, the answer is no.
+# lists the foreground processes; if it cannot be read, the answer is no.
 pane_is_idle_shell() {
   H pane process-info --pane "$pane" 2>/dev/null | jq -e '
     .result.process_info.foreground_processes
     | (length > 0) and all(.name | IN("bash", "zsh", "sh", "dash", "fish"))' >/dev/null 2>&1
+}
+# The command line of a Claude in the pane's foreground, if there is one.
+claude_cmdline() {
+  H pane process-info --pane "$pane" 2>/dev/null | jq -r '
+    [.result.process_info.foreground_processes[]?
+     | select(.name == "claude" or ((.argv0 // "") | test("(^|/)claude$")))
+     | .cmdline][0] // empty' 2>/dev/null || true
+}
+wait_for_shell() { # seconds
+  for _ in $(seq 1 "$1"); do
+    pane_is_idle_shell && return 0
+    sleep 1
+  done
+  return 1
+}
+# Claude's session id as Herdr reports it (agent_session.value of the pane),
+# kept so a restart or a rebuilt container resumes the same conversation.
+save_session_id() {
+  local id
+  id=$(H pane list 2>/dev/null | jq -r --arg p "$pane" '
+    [.result.panes[]? | select(.pane_id == $p) | .agent_session
+     | if type == "object" then (.value // .id // empty) elif type == "string" then . else empty end][0] // empty' 2>/dev/null || true)
+  if [[ $id =~ ^[0-9a-fA-F-]{36}$ ]]; then
+    SESSION_ID=$id
+    printf '%s\n' "$id" > "$SESSION_FILE"
+  fi
+}
+# Ends a Claude that was verified to be in the pane's foreground: /exit, then
+# Ctrl+C twice if it is stuck (a first-run dialog swallows the text), and waits
+# for the pane to be a plain shell again.
+stop_claude() {
+  H pane send-text "$pane" "/exit" > /dev/null
+  H pane send-keys "$pane" enter > /dev/null
+  wait_for_shell "${SHADOW_STOP_WAIT:-20}" && return 0
+  H pane send-keys "$pane" ctrl+c ctrl+c > /dev/null
+  wait_for_shell "${SHADOW_STOP_WAIT:-20}"
 }
 login_state() { # true, false or unknown
   local out
@@ -175,16 +255,34 @@ login_state() { # true, false or unknown
   jq -r 'if has("loggedIn") then (.loggedIn | tostring) else "unknown" end' <<< "$out" 2>/dev/null || echo unknown
 }
 
-other=$(jq -r --arg p "$pane" '.result.panes[] | select(.pane_id == $p) | .agent // empty' <<< "$pane_json")
-if claude_running; then
-  echo "start-shadow: claude already runs in pane $pane"
-elif [ -n "$other" ]; then
-  fail "pane $pane runs $other, not claude; not touching it"
-elif ! pane_is_idle_shell; then
-  # Claude may be there under a label or process name not recognised above;
-  # typing the launch command into it would reach it as a prompt.
-  fail "pane $pane is not an idle shell and no claude for $WS was detected; not typing into it (see: herdr --session $WS pane read $pane)"
-else
+running=false
+claude_running && running=true
+if $running; then
+  cmdline=$(claude_cmdline)
+  if [ -n "$cmdline" ] && [[ $cmdline != *"--remote-control $WS"* ]]; then
+    # Herdr restores a pane after a server restart and resumes Claude by itself,
+    # without --remote-control: restart it properly in the same pane.
+    echo "start-shadow: claude in pane $pane has no --remote-control $WS ($cmdline); restarting it"
+    save_session_id
+    stop_claude || fail "could not stop the claude in pane $pane to restart it with --remote-control; not typing into it further (see: herdr --session $WS pane read $pane)"
+    running=false
+    pane_json=$(H pane list)
+  elif [ -z "$cmdline" ]; then
+    DETAIL="could not read the pane's process, so --remote-control $WS is not verified. $DETAIL"
+    echo "start-shadow: claude runs in pane $pane (command line not verified)"
+  else
+    echo "start-shadow: claude already runs in pane $pane"
+  fi
+fi
+if ! $running; then
+  other=$(jq -r --arg p "$pane" '.result.panes[] | select(.pane_id == $p) | .agent // empty' <<< "$pane_json")
+  if [ -n "$other" ]; then
+    fail "pane $pane runs $other, not claude; not touching it"
+  elif ! pane_is_idle_shell; then
+    # Claude may be there under a label or process name not recognised above;
+    # typing the launch command into it would reach it as a prompt.
+    fail "pane $pane is not an idle shell and no claude for $WS was detected; not typing into it (see: herdr --session $WS pane read $pane)"
+  fi
   if [ -n "$SESSION_ID" ]; then
     cmd="env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude --resume $SESSION_ID --remote-control $WS"
   else
@@ -197,6 +295,7 @@ else
     sleep 0.5
   done
 fi
+save_session_id
 
 login=$(login_state)
 if [ "$login" != true ]; then
@@ -209,5 +308,31 @@ if [ "$login" != true ]; then
   exit 0
 fi
 claude_running || fail "claude was started in pane $pane but Herdr does not report it as an agent"
+
+# `delta auth status` exits 0 signed in, 1 known negative, 2 undetermined
+# (`delta auth status --help`); it never opens a browser. Never logged in here.
+if timeout 20 delta auth status > /dev/null 2>&1; then
+  DELTA_STATE=signed-in
+else
+  DELTA_STATE=needs-login
+  record needs-delta-login "attach and run: delta auth login (device sign-in). ${DETAIL}"
+  echo "start-shadow: delta is not signed in; recorded needs-delta-login"
+  exit 0
+fi
+
+# ---- Join a Delta thread, once per link --------------------------------------------
+if [ -n "$DELTA_THREAD" ] && ! jq -e --arg t "$DELTA_THREAD" 'index($t) != null' <<< "$JOINED" > /dev/null; then
+  echo "start-shadow: asking claude to join $DELTA_THREAD"
+  if H agent prompt "$pane" "/delta join $DELTA_THREAD" --wait --timeout 120000 > /dev/null; then
+    JOINED=$(jq -c --arg t "$DELTA_THREAD" '. + [$t]' <<< "$JOINED")
+    # The join may move Claude to a new session in the thread's checkout; and it
+    # may ask to trust that folder, which only a person can answer.
+    DETAIL="joined $DELTA_THREAD; if Claude asks to trust the new folder, attach and answer. $DETAIL"
+    save_session_id
+  else
+    DETAIL="/delta join $DELTA_THREAD was not confirmed (it is retried on the next run): herdr --session $WS pane read $pane shows where Claude is. $DETAIL"
+    echo "start-shadow: the join was not confirmed" >&2
+  fi
+fi
 record running "$DETAIL"
-echo "start-shadow: running (logged in: $login)"
+echo "start-shadow: running (claude logged in: $login, delta: $DELTA_STATE)"

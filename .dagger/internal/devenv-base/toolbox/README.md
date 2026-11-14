@@ -62,33 +62,55 @@ session is named after the workspace, with Claude running as
 (`w1:p1`), with `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY` unset,
 because Remote Control needs the standard subscription login.
 
-`workspace_up` with `shadow: true` (and optionally `session_id`, the Claude
-session UUID to resume; the last one is remembered) does three things:
+`workspace_up` with `shadow: true` (optionally `session_id`, the Claude session
+UUID to resume, and `delta_thread`, a `https://delta.dev/join/thread_...` link)
+does three things:
 
 1. Creates the workspace from `.devcontainer/shadow/devcontainer.json`, the
    default config plus a docker volume `<workspace>-home` at `/root` (the
-   image runs as root),
-   so the Claude login and conversations survive a rebuild. (A test keeps it
-   equal to the default config apart from the mount.) A workspace that already
-   exists keeps the config it was created with.
-2. Runs `.devcontainer/start-shadow.sh` from the workspace's checkout: installs
-   a pinned, checksummed Herdr if missing, starts the Herdr server and Claude
-   only if they are not running, and records its state in
-   `~/.shadow/<workspace>.json`. Safe to run again.
+   image runs as root), so the Claude and Delta logins and conversations
+   survive a rebuild. (A test keeps it equal to the default config apart from
+   the mount.) A workspace that already exists keeps the config it was
+   created with.
+2. Runs `.devcontainer/start-shadow.sh` from the workspace's checkout. Safe to
+   run again. It:
+   - installs what is missing: a pinned, checksummed Herdr; Claude Code; the
+     Delta CLI (`delta-install.sh --non-interactive`, needs python3); and the
+     Delta plugin (`claude plugin marketplace add zed-industries/delta-claude`,
+     `claude plugin install delta@zed-industries`). A Claude that is already
+     running only sees a new plugin after `/reload-plugins`;
+   - writes `theme` and `tui` to `~/.claude/settings.json` if unset, the
+     documented settings that stop the theme and "try the fullscreen
+     renderer?" prompts (`tui: default`, the classic renderer, which also
+     reads better through `shadow_read`). Claude's login screen and its
+     folder-trust dialog have no documented setting; a person answers them
+     once;
+   - starts the Herdr server and Claude only if they are not running. A Claude
+     that Herdr resumed by itself after a server restart, without
+     `--remote-control`, is stopped (`/exit`, then Ctrl+C twice) and started
+     again properly; a pane that is not a plain shell is never typed into;
+   - remembers Claude's session UUID (from Herdr) in
+     `~/.shadow/<workspace>.session-id`, so a restart or rebuild resumes it;
+   - never logs in, to Claude or to Delta. It records `needs-login` or
+     `needs-delta-login` (attach and run `delta auth login`) in
+     `~/.shadow/<workspace>.json`;
+   - with `delta_thread`, once both are signed in, sends `/delta join <link>`
+     to Claude, once per link (joined links are in the state file). Joining may
+     ask to trust the thread's folder, which only a person can answer.
 3. Marks the workspace, so `workspace_status` adds a `shadow` object while it
-   runs: `herdr_session`, `claude_pane`, `logged_in` (`true`, `false` or
-   `"unknown"`), `start` (the script's last state: `running`, `needs-login`,
-   `failed`...) and `attach`, the command a person on the tailnet uses. The
-   script never logs in: a shadow that is not logged in stays up as
-   `needs-login` until someone logs in at its terminal.
+   runs: `herdr_session`, `claude_pane`, `logged_in` and `delta_signed_in`
+   (`true`, `false` or `"unknown"`), `state` (live: `running`, `needs-login`,
+   `needs-delta-login`, `no-claude`, `no-herdr-session`), `start` (what
+   `start-shadow.sh` last recorded, which goes stale after a login) and
+   `attach`, the `gcloud compute ssh` command a person runs on their own
+   machine to open the Herdr TUI.
 
 `shadow_list`, `shadow_read` and `shadow_prompt` run Herdr in the workspace
 through `devpod ssh` and need the workspace running. They never start it.
 `target` is a Herdr pane id or agent name (default `w1:p1`). A prompt that
 times out may still have been delivered: read the pane before retrying.
 
-Not done: the Delta CLI and the Claude Delta plugin (no documented
-non-interactive Linux install), and the keepalive does not start shadows.
+The keepalive does not start shadows.
 
 ## Secrets
 
