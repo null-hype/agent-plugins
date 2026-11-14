@@ -153,10 +153,21 @@ if [ -z "$pane" ]; then
 fi
 
 claude_running() {
-  # The agent label Herdr reports for a Claude pane is "claude" (the agent kind
-  # name in the CLI reference; the exact label of pane list's "agent" field was
-  # not confirmed against a live Claude pane).
-  H pane list | jq -e --arg p "$pane" '.result.panes[] | select(.pane_id == $p and .agent == "claude")' >/dev/null
+  # Two independent signals, either is enough. Herdr's agent label for a Claude
+  # pane is "claude" (the agent kind name in the CLI reference; not confirmed
+  # against a live Claude pane, and Herdr may not label Claude while it shows
+  # its login screen), so a Claude process for this workspace counts as well.
+  H pane list | jq -e --arg p "$pane" '.result.panes[] | select(.pane_id == $p and .agent == "claude")' >/dev/null 2>&1 ||
+    pgrep -u "$(id -u)" -f -- "--remote-control $WS" >/dev/null 2>&1
+}
+# True only when the pane's foreground is nothing but shells, so typing a
+# command into it cannot land in another program. `pane process-info --pane`
+# lists the foreground processes (herdr pane process-info --help); if it cannot
+# be read, the answer is no.
+pane_is_idle_shell() {
+  H pane process-info --pane "$pane" 2>/dev/null | jq -e '
+    .result.process_info.foreground_processes
+    | (length > 0) and all(.name | IN("bash", "zsh", "sh", "dash", "fish"))' >/dev/null 2>&1
 }
 login_state() { # true, false or unknown
   local out
@@ -169,6 +180,10 @@ if claude_running; then
   echo "start-shadow: claude already runs in pane $pane"
 elif [ -n "$other" ]; then
   fail "pane $pane runs $other, not claude; not touching it"
+elif ! pane_is_idle_shell; then
+  # Claude may be there under a label or process name not recognised above;
+  # typing the launch command into it would reach it as a prompt.
+  fail "pane $pane is not an idle shell and no claude for $WS was detected; not typing into it (see: herdr --session $WS pane read $pane)"
 else
   if [ -n "$SESSION_ID" ]; then
     cmd="env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY claude --resume $SESSION_ID --remote-control $WS"
