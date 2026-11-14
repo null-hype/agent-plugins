@@ -50,6 +50,10 @@ type codespaceIn struct {
 type upIn struct {
 	Name string `json:"name" jsonschema:"workspace name: lowercase letters, digits and dashes, e.g. an issue identifier like cit-430"`
 	Ref  string `json:"ref,omitempty" jsonschema:"git branch, tag or commit of agent-plugins to create the workspace from; default main"`
+	// Shadow makes the workspace a claude-shadow (see shadow.go). SessionID is
+	// the Claude session it resumes, remembered for later starts.
+	Shadow    bool   `json:"shadow,omitempty" jsonschema:"make the workspace a claude-shadow: a persistent Claude Code session kept by Herdr, with a home volume that survives rebuilds; reach it with shadow_list, shadow_read and shadow_prompt"`
+	SessionID string `json:"session_id,omitempty" jsonschema:"with shadow: the Claude session UUID to resume (claude --resume); default the last one used, else a fresh session"`
 }
 
 type refIn struct {
@@ -318,6 +322,7 @@ func (t *toolbox) up(ctx context.Context, name, ref string, agent bool) ([]byte,
 func (t *toolbox) addTools(s *mcp.Server) {
 	s.AddReceivingMiddleware(limitToolCalls)
 	t.addCodespaceTools(s)
+	t.addShadowTools(s)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "host_status",
 		Description: "Report the GCE host VM's status and IP, whether it is ready for workspace tools, and its tailnet node. A ready host joins the tailnet (with Tailscale SSH) if it has not yet.",
@@ -372,7 +377,7 @@ func (t *toolbox) addTools(s *mcp.Server) {
 	})
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "workspace_status",
-		Description: "Report one workspace's state, its latest job's exit code (null while running), and the end of the job's log.",
+		Description: "Report one workspace's state, its latest job's exit code (null while running), and the end of the job's log. For a shadow workspace also a shadow object: whether its Herdr session and Claude pane are up, whether Claude is logged in (true, false or \"unknown\"), the start script's last recorded state, and the command a person uses to attach.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in nameIn) (*mcp.CallToolResult, any, error) {
 		if err := checkName(in.Name); err != nil {
 			return nil, nil, err
@@ -387,7 +392,9 @@ func (t *toolbox) addTools(s *mcp.Server) {
 		Name: "workspace_up",
 		Description: "Create a DevPod workspace from the agent-plugins repo, or start it if it exists. " +
 			"Returns at once; creation takes several minutes, so poll workspace_status. " +
-			"Name it after the issue, e.g. cit-430. Not for the Linear agent's own workspace: use agent_start.",
+			"Name it after the issue, e.g. cit-430. Not for the Linear agent's own workspace: use agent_start. " +
+			"With shadow true the workspace becomes a claude-shadow: after it is up, Herdr and a Claude Code session run in it, and workspace_status reports a shadow object (session present, Claude pane running, logged in). " +
+			"A shadow that is not logged in stays up as needs-login until a person logs in at its terminal.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in upIn) (*mcp.CallToolResult, any, error) {
 		if err := checkName(in.Name); err != nil {
 			return nil, nil, err
@@ -399,7 +406,18 @@ func (t *toolbox) addTools(s *mcp.Server) {
 		if err != nil {
 			return nil, nil, err
 		}
-		b, err := t.up(ctx, in.Name, ref, false)
+		if in.SessionID != "" && !in.Shadow {
+			return nil, nil, fmt.Errorf("session_id only applies with shadow true")
+		}
+		if in.SessionID != "" && !sessionIDRE.MatchString(in.SessionID) {
+			return nil, nil, fmt.Errorf("session_id %q is not a Claude session UUID", in.SessionID)
+		}
+		var b []byte
+		if in.Shadow {
+			b, err = t.upShadow(ctx, in.Name, ref, in.SessionID)
+		} else {
+			b, err = t.up(ctx, in.Name, ref, false)
+		}
 		if err != nil {
 			return nil, nil, err
 		}

@@ -29,9 +29,12 @@ the Render service keeps none. Each tool call pipes `host.sh` over SSH.
 | `host_start` | Start the VM |
 | `host_stop` | Stop every running workspace, then the VM; refuses while any job (workspace, ship, review) runs or the Linear agent is working an issue |
 | `workspace_list` | Workspaces with their state |
-| `workspace_up` | Create (from agent-plugins at `ref`, default `main`) or start a workspace |
+| `workspace_up` | Create (from agent-plugins at `ref`, default `main`) or start a workspace; with `shadow` true, make it a [claude-shadow](#claude-shadow) |
 | `agent_start` | `workspace_up` for `linear-agent`, then the keepalive's bootstrap scripts |
-| `workspace_status` | State, latest job's exit code and log tail |
+| `workspace_status` | State, latest job's exit code and log tail; for a shadow, also its `shadow` object |
+| `shadow_list` | The agents and panes of a shadow's Herdr session (read-only) |
+| `shadow_read` | The last `lines` (1 to 500, default 80) rows of a shadow pane's terminal (read-only) |
+| `shadow_prompt` | Send a prompt to a shadow and wait up to `timeout_ms` (5000 to 110000, default 90000) for it to finish |
 | `workspace_stop` / `workspace_delete` | Stop or delete a workspace |
 | `codex_review` | Codex reviews a PR (optional `model`) against `AGENTS.md` with the host's login and creates a container-use environment on the host and a CIT Triage issue for each finding, pushing the environment's branch under the issue's branch name |
 | `agent_ship` | Ship the Linear agent's container-use environment (its sandbox cannot push): Codex on the host runs `container-use merge` for it in a worktree of the `linear-agent` workspace, then `git push` to the issue's Linear branch (`branch`), without force. Returns at once |
@@ -49,6 +52,42 @@ cut off at 150 seconds.
 Only one workspace runs the Linear agent: a second Cloudflare connector on
 the same tunnel would take half the webhooks. `workspace_up` refuses that
 name.
+
+## Claude-shadow
+
+A claude-shadow is a persistent interactive Claude Code session in a
+workspace, kept by [Herdr](https://herdr.dev/llms.txt): a Herdr server whose
+session is named after the workspace, with Claude running as
+`claude [--resume <session>] --remote-control <workspace>` in its first pane
+(`w1:p1`), with `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY` unset,
+because Remote Control needs the standard subscription login.
+
+`workspace_up` with `shadow: true` (and optionally `session_id`, the Claude
+session UUID to resume; the last one is remembered) does three things:
+
+1. Creates the workspace from `.devcontainer/shadow/devcontainer.json`, the
+   default config plus a docker volume `<workspace>-home` at `/home/vscode`,
+   so the Claude login and conversations survive a rebuild. (A test keeps it
+   equal to the default config apart from the mount.) A workspace that already
+   exists keeps the config it was created with.
+2. Runs `.devcontainer/start-shadow.sh` from the workspace's checkout: installs
+   a pinned, checksummed Herdr if missing, starts the Herdr server and Claude
+   only if they are not running, and records its state in
+   `~/.shadow/<workspace>.json`. Safe to run again.
+3. Marks the workspace, so `workspace_status` adds a `shadow` object while it
+   runs: `herdr_session`, `claude_pane`, `logged_in` (`true`, `false` or
+   `"unknown"`), `start` (the script's last state: `running`, `needs-login`,
+   `failed`...) and `attach`, the command a person on the tailnet uses. The
+   script never logs in: a shadow that is not logged in stays up as
+   `needs-login` until someone logs in at its terminal.
+
+`shadow_list`, `shadow_read` and `shadow_prompt` run Herdr in the workspace
+through `devpod ssh` and need the workspace running. They never start it.
+`target` is a Herdr pane id or agent name (default `w1:p1`). A prompt that
+times out may still have been delivered: read the pane before retrying.
+
+Not done: the Delta CLI and the Claude Delta plugin (no documented
+non-interactive Linux install), and the keepalive does not start shadows.
 
 ## Secrets
 
