@@ -11,7 +11,7 @@ Source: Zenodo record 23755352 (v1.0.1), "yoars" corpus, licensed CC BY 4.0. Run
 
     python3 -I ../../pkl_thread.py --summarize pairs/msg5484-summarize.json --full pairs/msg5484-full.json out-5484
 
-delta-zero flags nearly everything here (39 and 126 findings): a one-paragraph message cannot carry a whole session, and most of the session is file reads and retries. The findings below were found by reading the findings against what the receiver needed. The run passes its acceptance check 6/6, so neither loss changed the outcome; both are named as limits, not failures.
+delta-zero flags nearly everything here (39 findings for 5484, 126 for 5492): a one-paragraph message cannot carry a whole session, and most of the session is file reads and retries. The two losses below were found by reading those findings against what the receiver needed; each sits inside a flagged message (`m35-dropped` in `out-5484`, `m115-dropped` in `out-5492`). The run passes its acceptance check 6/6, so neither loss changed the outcome: both are latent.
 
 ## Findings
 

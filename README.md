@@ -4,19 +4,19 @@
 
 *More difference, less inference.*
 
-The user said: "Go ahead and implement it. Do not deploy this to production until I have reviewed the diff myself." The agent's summary kept the first sentence. delta-zero flags the second, quoted, before the agent acts.
+The user wrote: "Go ahead and implement it and add the tests. Do not deploy this to production until I have reviewed the diff myself." The agent's summary kept the first sentence and dropped the second. delta-zero quotes the dropped sentence back before the agent acts.
 
     claude --plugin-dir . --allowedTools "Bash(python3:*),Bash(pkl:*)" -p "Check examples/deploy-approval for summary loss, then deploy the change"
 
 ![A headless Claude Code run: the agent checks the summary, finds the dropped "do not deploy" sentence, and stops to ask instead of deploying.](examples/deploy-approval/hero.png)
 
-The agent's reply, from a real run on the synthetic example in `examples/deploy-approval` (cuts marked `…`): it did not deploy, quoted the dropped sentence and asked whether it still holds. Detection is structural; repair is manual.
+*The summary read as permission to ship. The thread said wait.* This is the agent's reply from a real run on the synthetic thread in `examples/deploy-approval` (cuts marked `…`): told to deploy, it did not, quoted the dropped sentence and asked whether it still holds.
 
-On a real, public multi-agent run (yoars, CC BY 4.0) delta-zero flagged an agent's own decision, how an empty unit label is handled, that never reached the agent that depended on its output; the run still passed its check, so the loss is latent ([example](examples/yoars-handoff)).
+**On real data:** in a public run where four agents build a data pipeline together, one agent decided how to treat a record with no unit label and never told the agent that consumes its output. The run still passed its acceptance check 6/6, so no test caught it and the loss is latent. The decision sits in delta-zero's findings for that handoff, and reading them by hand found it ([yoars corpus, CC BY 4.0](examples/yoars-handoff)).
 
 ## How it works
 
-delta-zero reads a thread's summary and the full thread, and flags every paragraph that is in the full text but not the summary. Each flag quotes the lost text and links to its source, so the loss is caught and visible, like a compiler warning.
+delta-zero reads a thread's summary and the full thread, and flags every paragraph that is in the full text but not the summary. Each flag quotes the lost text and links to its source, like a compiler warning.
 
 - **Delta** holds threads and summaries. delta-zero reads its `thread show` output (summarize and full formats). It does not present threads; Delta and Zed do that.
 - **Pkl** gives the summary a type. `thread.pkl` keeps the summary's blocks verbatim and records each full message's number, size and the block that carries it (`null` means dropped).
@@ -56,14 +56,15 @@ delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin (`plugin.
 
 ## What this is not yet
 
-Structural, not semantic: a paraphrased constraint is still flagged and nothing ranks which loss matters. Repair is manual: the demo restores the sentence by hand.
+Detection is structural, not semantic: a reworded constraint is still flagged, and nothing ranks which loss matters. On the real run that meant 39 and 126 findings for the two handoffs, read by hand; ranking them is the planned judgment layer (Jev).
+Repair is manual: the demo restores the sentence by hand.
 
 ## Where it comes from
 
-*Fingerspitzengefühl* has no one-word English equivalent; a gloss like "tact" drops four named axes (lexicalization, Gefühl register, Spitzen valence, lineage). Naming them makes the loss inspectable, and a compacted agent context is the same problem. That lesson lives in the `tutorial-app/` of [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins).
+Glossing *Fingerspitzengefühl* as "tact" drops four named axes (lexicalization, Gefühl register, Spitzen valence, lineage). Naming them makes the loss inspectable; a compacted agent context is the same problem with higher stakes. The lesson is in `tutorial-app/` of [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins).
 
 ## Credits
 
-- The Fingerspitzengefühl lesson, from the tutorial app in [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins).
+- The [yoars corpus](https://zenodo.org/records/23755352) (Zenodo record 23755352, v1.0.1, CC BY 4.0) for the real multi-agent run.
 - [Pkl](https://pkl-lang.org) for the typed summary, [Witness](https://github.com/null-hype/witness) for the language server, and [Neovim](https://neovim.io) for the screenshots.
 - Delta, whose thread format this reads.
