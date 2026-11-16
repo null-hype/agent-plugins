@@ -14,9 +14,9 @@ Placement: directly after the hero, before "Two passing changes. One failing com
 
 **Limits (small print):** Synthetic thread. The detector checks whether text is present, not what it means. Judging which losses matter and repairing the summary automatically are the next experiment, not built.
 
-**Links:** "Run the demo" -> https://github.com/null-hype/delta-pkl · "The lesson" -> https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/src/content/tutorial/part-1/chapter-1/lesson-2
+**Links:** "Run the demo" -> https://github.com/null-hype/delta-zero · "The lesson" -> https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/src/content/tutorial/part-1/chapter-1/lesson-2
 
-**Image:** the before screenshot. Needs `delta-pkl/examples/deploy-approval/screenshot.png` copied to the tutorial-app `public/` folder as `compaction-loss.png`.
+**Image:** the before screenshot. Needs `delta-zero/examples/deploy-approval/screenshot.png` copied to the tutorial-app `public/` folder as `compaction-loss.png`.
 
 ## Change to `tutorial-app/src/components/TidelandsHome.tsx` (not applied)
 
@@ -40,7 +40,7 @@ The `td-panel`, `td-section`, `td-section-intro`, `td-eyebrow`, `td-muted` and `
 +          <figcaption className="td-muted" style={{ padding: '12px 20px' }}>The summary says "go ahead and implement it". The diagnostic quotes the sentence it dropped: do not deploy until the diff is reviewed.</figcaption>
 +        </figure>
 +        <p className="td-muted">It started in the tutorial: a gloss of <em>Fingerspitzengefühl</em> loses named axes (lexicalization, Gefühl register, Spitzen valence, lineage), and compaction loses meaning the same way. Synthetic thread. The detector checks whether text is present, not what it means; judging which losses matter and automatic repair are the next experiment, not built.</p>
-+        <div className="td-actions"><a className="td-button" href="https://github.com/null-hype/delta-pkl">Run the demo ↗</a><a href="https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/src/content/tutorial/part-1/chapter-1/lesson-2">The lesson ↗</a></div>
++        <div className="td-actions"><a className="td-button" href="https://github.com/null-hype/delta-zero">Run the demo ↗</a><a href="https://github.com/null-hype/agent-plugins/tree/main/tutorial-app/src/content/tutorial/part-1/chapter-1/lesson-2">The lesson ↗</a></div>
 +      </section>
        <section className="td-section" id="try-a-check" aria-labelledby="try-title">
          <div className="td-section-intro"><p className="td-eyebrow">From the Storybook / Integration check</p><h2 id="try-title">Two passing changes. One failing combination.</h2><p className="td-muted">Evaluate the integration, inspect the disagreement, then repair and check it again. This is an interactive synthetic example; it does not run or approve a real delivery.</p></div>

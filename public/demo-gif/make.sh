@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild public/delta-pkl-demo.gif from real nvim sessions on the synthetic example.
+# Rebuild public/delta-zero-demo.gif from real nvim sessions on the synthetic example.
 # Needs: nvim 0.11+, witness on PATH, tmux, ffmpeg, node with playwright-core
 # (set PLAYWRIGHT_NODE_MODULES to its node_modules dir if it is not in ~/.local/lib/node_modules/@playwright/cli/node_modules).
 set -euo pipefail
@@ -14,5 +14,5 @@ cap 2 "2. Go-to-definition opens the full text the summary lost." d
 nv e out-repaired; cap 3 "3. One sentence restored in the summary: the finding on line 27 is gone." e
 $T kill-server
 for i in 1 2 3; do node "$here/shot.mjs" "$work/f/$i.html" 1180 540; done
-ffmpeg -y -loglevel error -framerate 1/3 -i "$work/f/%d.png" -vf "scale=1000:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse" -loop 0 "$here/../delta-pkl-demo.gif"
-echo "wrote $here/../delta-pkl-demo.gif"
+ffmpeg -y -loglevel error -framerate 1/3 -i "$work/f/%d.png" -vf "scale=1000:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse" -loop 0 "$here/../delta-zero-demo.gif"
+echo "wrote $here/../delta-zero-demo.gif"
