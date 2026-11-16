@@ -41,6 +41,14 @@ Then repair it. `summarize-repaired.json` differs by one sentence in block 2:
 
 Now only the pytest-log finding remains (line 33). With Delta installed, `python3 -I pkl_thread.py <thread> <out>` does the same on a real thread.
 
+## Install as a plugin
+
+delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin: `plugin.json` at the root and one Agent Skills skill, `skills/check-summary-loss`, which tells an agent how to run `pkl_thread.py` and report what a summary dropped.
+
+- `plugin.json` validates against the 1.0.0 plugin schema (checked with Ajv), and the skill's frontmatter follows the Agent Skills specification (checked by hand against each rule; no `skills-ref` validator was run).
+- Tested in one client only: Claude Code 2.1.325, loaded with `claude --plugin-dir <path to this repo>`. There the skill appeared as `delta-zero:check-summary-loss` and a headless run on `examples/deploy-approval` produced the two findings. No other client was tested.
+- The plugin format cannot declare dependencies: the host needs Python 3 and Pkl, and the `delta` CLI for real threads. The Neovim/Witness view is outside the plugin.
+
 ## How it works
 
 - **Delta** holds threads and summaries. delta-zero reads its `thread show` output (summarize and full formats). It does not present threads; Delta and Zed do that.

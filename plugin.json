@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "delta-zero",
+  "version": "0.1.0",
+  "description": "Shows what an agent's summary lost: runs a structural check of a Delta thread's summary against the full thread and reports each dropped paragraph, quoted.",
+  "keywords": ["summarization", "compaction", "context-loss", "delta"]
+}
