@@ -12,16 +12,14 @@ from message 4, which it rightly should.
     python3 -I ../../pkl_thread.py --summarize summarize.json --full full.json out
     pkl eval out/thread.pkl > /dev/null      # the summary is a type-checked Pkl module
 
-Neovim 0.11+ with the witness language server on PATH, loading
-`witness/nvim/witness.lua` with `filetypes = { 'pkl' }` added to its
-`vim.lsp.config('witness', ...)`. (witness.lua ships without `pkl` in its
-filetypes.) The generated files are checked in under `out/` and `out-repaired/`.
-NOT verified in a real Neovim: it was not installed where this was built. The
-same diagnostics were confirmed over raw LSP (see "What was verified").
+Neovim 0.11+ with the witness language server on PATH. `editor/init.lua` loads
+witness.lua and adds the `pkl` filetype it ships without. Verified in Neovim
+0.11.4 headless with `editor/check.lua`: `out/` shows lines 27 and 33,
+`out-repaired/` shows only line 33.
 
 ## Script
 
-1. **Open the file** (0:00). `cd out && nvim thread.pkl`. Say: this is the
+1. **Open the file** (0:00). `cd out && nvim -u ../../../editor/init.lua thread.pkl`. Say: this is the
    summary an agent would carry forward after compaction, as a Pkl module. Each
    summary block is a typed record. The full thread is not in the file.
 
