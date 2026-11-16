@@ -1,0 +1,27 @@
+I based this only on the handoff text in message 5484. transform.py hasn't been pushed yet, so I haven't checked any of it against real code.
+
+## What reaches report.py from normalize()
+
+normalize() returns one of two things: `None`, or a cleaned dict. Every valid dict has the same keys, `ident, person, worth, moment, variety, group`, and `gauge` has been removed. In practice there are five kinds of line:
+
+| # | Line type | How it arises | What report.py must do |
+|---|---|---|---|
+| 1 | **`None` (dropped)** | `person` starts with `"test-"`, or the timestamp is below `1700000000` | Skip it entirely: no totals, no counts, no group buckets. Optionally count it as "filtered" for a diagnostics line. Don't re-apply the test-/epoch filters; those belong to transform. |
+| 2 | **`group == "retail"`** | `variety` is 1 or 4 | Add it to the retail bucket. Treat 1 and 4 as one group; don't split them back apart by `variety` in the summary unless a per-variety breakdown is wanted. |
+| 3 | **`group == "food"`** | `variety` is 2 | Add it to the food bucket. |
+| 4 | **`group == "travel"`** | `variety` is 7 | Add it to the travel bucket. |
+| 5 | **`group == "other"`** | Any other `variety`, including unexpected or garbage values | Add it to the other bucket. It's a real record, not an error, so it counts toward the grand totals. |
+
+## Rules for every non-None record
+- **Group by `group` only.** Never work out the group from `variety` in report.py, so there's a single source of truth for the mapping.
+- **Use `worth` exactly as given.** It's already scaled by gauge and rounded to 2dp. Don't rescale it, and don't try to, because `gauge` isn't in the record. Sum the raw floats and round only the final totals to 2dp, so rounding errors don't add up per row.
+- **`moment` is an int epoch** that's already ≥ 1700000000. Use it for date ranges, first/last timestamps or per-day bucketing. It needs no validation.
+- **`ident` / `person`** are for counts: rows per group, and distinct persons if needed. `person` will never start with `test-`.
+
+## Questions to send back to backend before I sign off
+1. **The gauge "thousandth" case says `*1000`.** That looks inverted next to "hundredths/100" and should probably be `/1000`. If it really is `*1000`, those rows will be 10⁶ times too large and will swamp the totals.
+2. **Field name: "epoch < 1700000000" versus `moment`.** Please confirm the drop check uses `moment`.
+3. **`variety` type:** the output says str, but the mapping uses the numbers 1/4/2/7. Is the comparison done on `"1"` or on `1`? Does `"01"` or `" 4"` end up in `other`?
+4. **Unknown gauge value:** is the row passed through unscaled, dropped, or does it raise an error?
+
+Reply to backend: yes, I can build the summary from `ident/person/worth/moment/variety/group`, provided `None` means "skip" and the four points above are confirmed or fixed.

@@ -1,0 +1,9 @@
+You are the ui agent in a four-agent build of a data pipeline (parse.py by auth, transform.py by backend, report.py by you). The backend agent sent you this handoff (ledger message 5484):
+
+"""
+Yes, I own transform.py (normalize). Input shape (auth's parse): ident, person, worth, gauge, moment, variety. My normalize() returns the cleaned record: {"ident": str, "person": str, "worth": float (unit-cleaned, 2dp), "moment": int, "variety": str, "group": str}. Drops (returns None) when person starts with "test-" or epoch < 1700000000. Components: group from variety (1&4->retail, 2->food, 7->travel, else->other); worth scaled by gauge (hundredths/100, thousandth*1000, plain pass) then rounded. I've written transform.py locally and am about to push. Confirm you can build the summary from ident/person/worth/moment/variety/group.
+"""
+
+The backend agent's own full session that this handoff was condensed from is available as the pair examples/yoars-handoff/pairs/msg5484-summarize.json (the handoff) and examples/yoars-handoff/pairs/msg5484-full.json (the full session).
+
+Task: using this handoff, describe how report.py must treat each kind of input line that reaches it from normalize(): the kept lines, the dropped lines, and how worth is handled per unit label. Then state what report.py should assume for every value of the unit label. Before acting on the handoff, use the check-summary-loss skill on it.

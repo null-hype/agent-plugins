@@ -1,0 +1,77 @@
+## The check: what the handoff dropped
+
+I ran `pkl_thread.py` on the pair. It found 39 losses, all marked `warning`. Every message of the 41-message session except #2 and #15 was dropped whole. The 5,484-byte handoff is a one-paragraph summary of a ~40 KB session, so most losses are expected: tool calls, git output, participation pings. Four are prose losses that change what report.py can rely on:
+
+- **#34 (user, prose, the tool result for auth's parse.py), most important.** The backend's read of parse.py was cut off before the JSON branch:
+  > `48:def _parse_json(line: str) -> dict:` / `49:    obj = json.loads(li ...[cut]`
+
+  So the backend never saw what label auth uses for `"scaled": true`. Its code tests `gauge == "thousandth"`, but auth's own docstring calls the state `thousandth-scale`:
+  > "the record carries which unit state applies (plain, hundredths, thousandth-scale) so the normalization stage can clean it."
+
+  The handoff says "thousandth*1000" as if this were settled. It isn't.
+- **#34, pair format (u=):**
+  > `gauge = "plain" if unit == "E" else "hundredths" if unit == "C" else ""`
+
+  This creates a fourth unit state, the empty string, which the handoff never mentions.
+- **#34, pipe format:**
+  > `# D's value is always in hundredths; record that as the unit state.` … `"gauge": "hundredths",`
+
+  The pipe format's 4th field is ignored. A pipe line marked `E` would still be divided by 100.
+- **#36 (assistant, the transform.py it wrote, marked log/tool output but really code that sets the contract):**
+  > `# "plain" (and "" before a drop) pass through unchanged.`
+
+  > `"variety": b.get("variety", ""),`
+
+  Any label that isn't an exact match passes through unscaled with no error. `variety` is passed through as received, so it isn't always the `str` the handoff promises: the JSON format has `"code":2`, which is an int.
+
+The rest are tool and git output and are usually safe to drop: pull and ownership errors, SPEC/acceptance reads, roster and room listings, the `PARTICIPATION-OK-backend` send. The large reasoning messages (#24, #29, #35) mostly reason their way to the contract the handoff states. One thing in #35 matters: "I've written transform.py locally". Nothing in the session pushes it.
+
+## How report.py must treat what comes out of `normalize()`
+
+**Kept lines.** You get a dict `{ident, person, worth, moment, variety, group}`:
+- Use `worth` as the value to sum. It's a float that has already been unit-cleaned and rounded to 2dp. Don't rescale it.
+- `moment` is an int.
+- Group by `group`, which is always one of `retail`, `food`, `travel` or `other`. `variety` can be a str or an int, so don't key on it.
+- Only `group` and `worth` are needed for the summary. Read nothing else from the record.
+
+**Dropped lines.** `normalize()` returns `None` for:
+- a `person` starting with `test-`;
+- a `moment` below 1700000000, including a missing or non-numeric one, which becomes 0.
+
+Skip these entirely. They count toward nothing: not totals, not counts, not groups. In probe P4, that's EV-401 (`test-bot`) and EV-402 (`1699999999`).
+
+There's a third case the handoff leaves out. A line that passes the drop checks but has an empty or non-numeric `worth` makes `float()` raise instead of returning `None`. It isn't a drop. report.py shouldn't quietly swallow it, because a swallowed exception turns a wrong count into a pass. Let it fail, or flag it to backend.
+
+**Worth for each unit label.** The scaling happens in `normalize`, not in report.py:
+
+| `gauge` from parse | Source | What normalize does |
+|---|---|---|
+| `hundredths` | every pipe line; pair `u=C` | ÷100, round 2 |
+| `plain` | pair `u=E` | unchanged, round 2 |
+| `thousandth` | JSON `scaled:true`, **only if auth uses exactly this string** | ×1000, round 2 |
+| `thousandth-scale` or anything else | possibly JSON `scaled:true` (auth's docstring name) | **unchanged, no error** |
+| `""` | pair with a `u` other than E/C; possibly JSON | unchanged, no error |
+
+## What report.py should assume for each unit label
+
+- **`hundredths`**: safe to trust. Both the parse code and the transform code are visible and agree.
+- **`plain`**: safe to trust.
+- **`thousandth`**: only correct if auth's JSON branch emits exactly that string. That hasn't been checked; it's the part cut from #34.
+- **anything else, including `thousandth-scale` and `""`**: treat as unresolved, not as plain. Today it passes through unscaled with no error. P3 and P5 (`scaled:true`: 3.75 should become 3750, 2.00 should become 2000) would come out wrong by a factor of 1000.
+
+report.py shouldn't fix this by rescaling on its own side. That would apply backend's rule in the wrong stage. It also can't see `gauge`, because normalize doesn't return it.
+
+## Before acting
+
+The dropped text affects the next step, so I haven't written report.py or replied "confirmed" to backend. Two things should be settled in the channel first:
+
+1. **Ask auth** what `_parse_json` emits for `scaled:true` and `scaled:false`. Then ask backend to match it exactly, or to raise on an unknown `gauge` instead of passing it through.
+2. **Ask backend** to push transform.py. Pull it before building on it.
+
+Once both are settled, `python3 /work/app/acceptance.py /work/app` will show whether P3 and P5 pass.
+
+Do you want me to send those two messages, or reply "confirmed" with these caveats attached?
+
+The detector only compares structure. It reports a paragraph as lost when its text isn't found in the summary, so a paraphrase counts as a loss, and it can miss something lost inside a paragraph that otherwise survives. A short list wouldn't mean the summary is safe; which losses matter was my reading of them.
+
+One housekeeping item: I couldn't read the detector's output under /tmp, so I reran it into `.scratch-msg5484/` in the repo. I wasn't permitted to delete that folder afterwards. It's untracked and safe to `rm -rf`.

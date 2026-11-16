@@ -12,7 +12,7 @@ The user wrote: "Go ahead and implement it and add the tests. Do not deploy this
 
 *The summary read as permission to ship. The thread said wait.* This is the agent's reply from a real run on the synthetic thread in `examples/deploy-approval` (cuts marked `…`): told to deploy, it did not, quoted the dropped sentence and asked whether it still holds.
 
-**On real data:** in a public run where four agents build a data pipeline together, one agent decided how to treat a record with no unit label and never told the agent that consumes its output. The run still passed its acceptance check 6/6, so no test caught it and the loss is latent. The decision sits in delta-zero's findings for that handoff, and reading them by hand found it ([yoars corpus, CC BY 4.0](examples/yoars-handoff)).
+**On real data:** in a public run where four agents build a data pipeline together, the backend agent decided that a line with an unknown or empty unit label passes through unscaled, and its handoff to the ui agent said only "plain pass". The run still passed its acceptance check 6/6, so no test caught it. With the plugin, the receiving agent ran the check itself, quoted the decision from the backend's session ("'plain' (and '' before a drop) pass through unchanged"), and held back its confirmation. Without it, a plain agent given the handoff alone asked what happens to an unknown unit, but could not know the answer. One run each, nobody read the findings by hand ([yoars corpus, CC BY 4.0](examples/yoars-handoff/AGENT-RUN.md)).
 
 ## How it works
 
@@ -56,7 +56,7 @@ delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin (`plugin.
 
 ## What this is not yet
 
-Detection is structural, not semantic: a reworded constraint is still flagged, and nothing ranks which loss matters. On the real run that meant 39 and 126 findings for the two handoffs, read by hand; ranking them is the planned judgment layer (Jev).
+Detection is structural, not semantic: a reworded constraint is still flagged, and nothing ranks which loss matters. On the real run that meant 39 and 126 findings for the two handoffs; the agent ranked the 39 itself in one run and was not swamped, but nothing in delta-zero ranks them, and that is the planned judgment layer (Jev). It also cannot catch an agent misreading a handoff that kept the decision.
 Repair is manual: the demo restores the sentence by hand.
 
 ## Where it comes from

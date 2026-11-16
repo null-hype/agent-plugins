@@ -1,0 +1,32 @@
+I've only seen the handoff. transform.py isn't in my workspace, and backend says it hasn't been pushed yet, so everything below is the contract as described in message 5484, not checked against code.
+
+## How report.py treats each kind of line from normalize()
+
+**Kept lines** (normalize returns a dict)
+- Each one has exactly `ident` (str), `person` (str), `worth` (float, 2dp), `moment` (int), `variety` (str) and `group` (str).
+- `gauge` is **not** in the output. report.py never sees the unit label.
+- `group` is already worked out (1 and 4 → retail, 2 → food, 7 → travel, anything else → other). report.py should group on `group` as given and not map `variety` again.
+- `worth` is already scaled and rounded. report.py should add it up as is and round only the final totals to 2dp for display.
+
+**Dropped lines** (normalize returns `None`)
+- These are `person` starting with `test-`, or `moment` below 1700000000.
+- report.py should skip every `None` without logging it as an error.
+- Dropped lines don't count toward any total, group or average. If the summary shows a "dropped" count, it can only be a plain number. normalize returns a bare `None`, so report.py can't tell which rule dropped a line.
+
+**Worth per unit label** (applied in transform.py, before report.py)
+| gauge | what transform does | what report.py gets |
+|---|---|---|
+| hundredths | worth / 100 | scaled float, 2dp |
+| thousandth | worth × 1000 (as written) | scaled float, 2dp |
+| plain | passed through unchanged | float, 2dp |
+
+## What report.py should assume for every unit label value
+
+report.py should assume `worth` is already final for every gauge value. It should never scale again, because it can't: the label is stripped before the record reaches it. The table only covers the three labels backend named. The handoff doesn't say what happens with any other gauge value (a typo, different case, empty, or missing). Such a record might pass through unscaled, be dropped, or raise an error. Until backend answers, I'll treat every kept `worth` as correct and won't guess at other labels.
+
+## Questions to send backend before I confirm
+1. **What happens with a gauge value outside hundredths, thousandth and plain?** Is it passed through, dropped (`None`), or an error? Is it really "plain" only, or "anything else passes"?
+2. **Is "thousandth × 1000" right?** If the raw value is in thousandths, it should be divided by 1000, the same way hundredths are divided by 100. Multiplying would make those amounts a million times too big in every total.
+3. **Small type checks:** is `variety` a string like `"1"`, so the mapping compares strings? Is `moment` a Unix timestamp in seconds?
+
+Apart from those, yes: I can build the summary from ident, person, worth, moment, variety and group. I'll send backend that confirmation along with the questions above, and recheck all of this once transform.py is pushed.

@@ -1,0 +1,41 @@
+**Short answer:** report.py should count only the records `normalize()` actually returns, skip every `None`, and use the `worth` and `group` values it gets without changing them. I shouldn't confirm the handoff as is, though. The full session shows two cases the handoff leaves out: one where a value goes through without being converted, and one where `normalize()` crashes.
+
+## Summary-loss check (msg5484)
+
+I ran the check-summary-loss detector on the two files. It reported 39 findings: almost every message of the full session is missing from the handoff, because the handoff is a short rewrite. Most of the losses are tool calls and command output, which are usually safe to drop. Three dropped pieces matter for report.py:
+
+- **The three input line formats** (from the `parse.py` and `transform.py` text in the session). The handoff only says "scaled by gauge". It never says which format gets which gauge:
+  - pipe lines `A|B|C|D|E|F` are always `"hundredths"`. The 4th field (`C`/`E`) is ignored. The backend noted: *"what if it could be E for pipe too? … auth's call."*
+  - key=value lines: `u=E` → `"plain"`, `u=C` → `"hundredths"`, **anything else → `""`**.
+  - JSON lines: `scaled:true` → `"thousandth"` (×1000), `scaled:false` → `"plain"`. This comes from the backend's notes; the JSON part of `parse.py` was cut off in the copy I could see.
+- **What happens with an empty gauge.** The code in `transform.py` says *"'plain' (and '' before a drop) pass through unchanged."* The backend assumed this case "will be dropped anyway since epoch/person empty". The code doesn't do that. A key=value line with a valid person and time but a missing or unknown `u=` gets **kept, with `worth` not converted**.
+- **Field types.** `moment` is turned into an int and `worth` into a float. `variety` and `ident` are passed on exactly as `parse` gave them. For pipe and key=value lines that means `variety` is a string such as `"4"`.
+
+Nothing that was dropped forbids or holds back work on report.py. One thing to note: the handoff says transform.py is "about to push", so I need to pull before relying on it.
+
+## How report.py must treat each kind of line
+
+| Line reaching `run()` | What `normalize()` returns | What report.py should do |
+|---|---|---|
+| Pipe line, kept | `worth` = raw ÷ 100 (`2450` → `24.5`) | Count it, using `worth` as given. Don't apply the `C`/`E` letter again. |
+| key=value, `u=E` | `worth` unchanged | Count it as is. |
+| key=value, `u=C` | `worth` ÷ 100 | Count it as is. |
+| key=value, other or missing `u` | Kept, **`worth` not converted** | The handoff doesn't cover this. Ask the backend and auth agents whether it should be dropped. Don't silently count it. |
+| JSON, `scaled:true` | `worth` × 1000 (`3.75` → `3750.0`) | Count it as is. |
+| JSON, `scaled:false` | `worth` unchanged | Count it as is. |
+| `person` starts with `test-` | `None` | Skip it: don't count it anywhere, totals included. |
+| Time below 1700000000, or not a number | `None` (a bad time becomes 0, which is dropped) | Skip it. |
+| `parse_line` returned `None` | `None` | Skip it. |
+| Valid time but `worth` empty or not a number | **Crash**: `float()` raises `ValueError`, it doesn't return `None` | The handoff doesn't cover this. Either guard the call in `run()` or ask the backend to return `None`. Blank or broken lines that make `parse_line` itself fail aren't covered by anyone's material I've seen. |
+
+For every record that is kept:
+- Group by the `group` field the backend already computed (`retail`/`food`/`travel`/`other`). Don't re-map `variety`, whose type depends on the line format.
+- `worth` is already rounded to 2 decimals. Only round sums for display.
+
+The six test groups in `acceptance.py` cover pipe, key=value `u=E`, JSON with `scaled` true and false, and both kinds of drop. None of them covers `u=C`, an empty gauge, or a non-numeric amount, so passing the check won't prove those rows are right.
+
+**Limits of the check:** the detector compares text structurally, not by meaning. Something paraphrased in the handoff still shows up as lost, and a loss inside a paragraph that otherwise survived can be missed. Its silence isn't proof the handoff is safe. Also, what the summary must contain is in my own (ui) material, which isn't in these files, so this covers how lines are handled, not what the output should include.
+
+**Next step:** reply to the backend that I can build from those six fields, but only once the empty-gauge and non-numeric-amount cases are settled. The empty-gauge question also goes to auth.
+
+The detector output is in `.scratch-msg5484/` in the repo; you can delete it.

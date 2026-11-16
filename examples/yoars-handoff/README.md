@@ -11,7 +11,7 @@ Source: Zenodo record 23755352 (v1.0.1), "yoars" corpus, licensed CC BY 4.0. Run
 
     python3 -I ../../pkl_thread.py --summarize pairs/msg5484-summarize.json --full pairs/msg5484-full.json out-5484
 
-delta-zero flags nearly everything here (39 findings for 5484, 126 for 5492): a one-paragraph message cannot carry a whole session, and most of the session is file reads and retries. The two losses below were found by reading those findings against what the receiver needed; each sits inside a flagged message (`m35-dropped` in `out-5484`, `m115-dropped` in `out-5492`). The run passes its acceptance check 6/6, so neither loss changed the outcome: both are latent.
+delta-zero flags nearly everything here (39 findings for 5484, 126 for 5492): a one-paragraph message cannot carry a whole session, and most of the session is file reads and retries. The two losses below sit inside flagged messages (`m35-dropped` in `out-5484`, `m115-dropped` in `out-5492`). I first found them by reading the findings against what the receiver needed. For 5484 the real agent loop was then run (`AGENT-RUN.md`): a receiving agent with the plugin ranked the 39 findings itself, quoted the empty-unit decision and held back its confirmation; one without it only asked about the gap. 5492 was not run with an agent. The run passes its acceptance check 6/6, so neither loss changed the outcome: both are latent.
 
 ## Findings
 
