@@ -25,3 +25,15 @@ opens its PR with auto-merge on
 suspend, pause or delete the cron or the Render Workflow without the
 maintainer's explicit OK in that conversation, not even to stop a host or
 save money. Fix what they run instead.
+
+## Changing a workstation
+
+Anything a dev container needs at build or start (a CLI, a login, a daemon,
+resuming Claude) goes in a Feature under `src/` with its test, and in the
+`devcontainer.json` that builds the workspace. Never fix a running container
+by hand over SSH: the next start loses it. Before writing anything, look for
+it in `src/`, in unmerged branches (`git log --all -G <name>`) and in the
+toolbox's tools. Credentials come from Pass: a workspace logs in as its own
+Pass agent (`pass-cli agent create`, no grants), and the maintainer grants it
+items. The `pass-cli` Feature's `color start` logs in Pass and `gh` on every
+start.
