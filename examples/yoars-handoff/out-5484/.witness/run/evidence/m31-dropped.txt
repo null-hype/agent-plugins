@@ -1,0 +1,14 @@
+[result] ok 2 files +73 -0
+---FILES---
+total 32
+drwxrwxr-x 4 bun  bun  4096 Aug 27 22:51 .
+drwxrwxr-x 4 bun  bun  4096 Aug 27 22:50 ..
+drwxrwxr-x 8 bun  bun  4096 Aug 27 22:51 .git
+-rw-rw-r-- 1 bun  bun  2010 Aug 27 22:50 SPEC.md
+drwxr-xr-x 2 root root 4096 Aug 27 22:51 __pycache__
+-rw-rw-r-- 1 bun  bun  4957 Aug 27 22:50 acceptance.py
+-rw-r--r-- 1 root root 2259 Aug 27 22:51 parse.py
+---LOG---
+1b20109 parse: three source formats to records with unit-state label
+35b8efd bootstrap: the shared task, the acceptance check, and what each of you owns
+[raw output: artifact://5]

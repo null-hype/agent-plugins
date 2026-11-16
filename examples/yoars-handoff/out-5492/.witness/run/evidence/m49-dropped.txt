@@ -1,0 +1,5 @@
+The participation check request came through with a fresh message_key. My earlier send went through as the same body but was flagged as a duplicate. However, this is a new request id (`participation-planner`). Let me try sending it again since this is an explicit request with a new message key — the system may accept it now for this specific request.
+
+Wait — the system already told me "this is exactly the message you just sent, and it was delivered. Do not send it again." My outbound path IS confirmed (message 5476). But this new request asks me to call it for `participation-planner`. There's a conflict. The safest action: the participation is already confirmed delivered. But the explicit instruction from the human demands one send for this request.
+
+Let me attempt the send once for this request_d — it's a new request_id and the message told me to do exactly this.

@@ -1,0 +1,1 @@
+[tool] yoars_room {"limit": 30, "i": "Read full recent channel"}

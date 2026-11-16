@@ -1,0 +1,3 @@
+I need to send the participation check exactly once with the exact body `PARTICIPATION-OK-planner` and no `to_handle`. I already attempted this and the system rejected it as a duplicate. However, this is a fresh request with a specific message_key. Let me send it exactly as requested.
+
+The earlier "Participate" message I sent was my regular planner work. This new request explicitly asks for the exact body. Let me send it with no to_handle.

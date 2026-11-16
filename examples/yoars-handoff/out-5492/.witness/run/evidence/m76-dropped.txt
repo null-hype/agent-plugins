@@ -1,0 +1,14 @@
+The participation check: I already sent `PARTICIPATION-OK-planner` with no `to_handle` (room message 5476 shows it delivered). The system rejected my two duplicate resends with explicit instructions "it was delivered. Do not send it again — continue with your task."
+
+The request asks me to send it "exactly once" — I did, exactly once, delivered (message 5476). The system's authoritative instruction is to not resend the identical message. My outbound path is confirmed working (I successfully sent the routing message to ui right after).
+
+So participation is confirmed. The system has already told me to continue with my task, and I have been doing so. I've already sent it once and it was delivered. I will not spam the channel with duplicate sends.
+
+I'll continue my planner work. The current state:
+- **parse.py** (auth) ✅ landed
+- **transform.py** (backend) ✅ landed
+- **report.py** (ui) ⏳ pending — I've routed the shape to them
+
+Let me continue monitoring for report.py and verify the composition. Let me review the intermediate stage more thoroughly to catch contradictions, since that's my core value.
+
+Let me trace the probes through parse+transform to confirm internal consistency, which will let me give ui an accurate summary contract. I'll write a small throwaway test to exercise parse+transform on the probes (without publishing).

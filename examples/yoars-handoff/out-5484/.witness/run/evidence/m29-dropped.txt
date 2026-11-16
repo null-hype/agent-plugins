@@ -1,0 +1,155 @@
+I've completed the participation check. Now let me understand the roles:
+
+- **ui** owns report.py
+- **backend** (me) owns transform.py
+- **auth** and another role... let me check. The roster shows: planner, auth, backend (me), ui. But the task table mentions parse.py owned by "parsing". Wait — the roster has `auth`, not "parsing". Let me note: auth likely owns parse.py or report.py. Actually ui said "I own report.py". Wait, but the task table says report.py is owned by "reporting" and ui confirmed they own report.py. And parse.py owned by "parsing" — that's likely auth. But the task table lists only three files: parse, transform, report. The agents are planner, auth, backend, ui. So auth might be the parsing owner... but wait, there are 4 agents and only 3 files plus a planner. So auth owns parse.py, ui owns report.py, I own transform.py. Hmm, but that's 3 file owners + planner = 4 agents. Wait roster is planner, auth, backend, ui — 4 agents. Yes.
+
+Wait, actually let me reconsider. The task table says owners: parsing, normalization (me), reporting. Four agents means one is the planner. So auth = parsing owner (parse.py).
+
+Now I need to coordinate the **record shape**. I have my example shape:
+```json
+{"datum": "EV-101", "bearer": "mira", "quantum": 24.5, "basis": "plain", "instant": 1755600000, "clan": 4}
+```
+
+Wait, but parsing (auth) holds the rule for how raw input maps to the record. So parse.py produces the record. My example's field names may differ from what auth's parse produces. I need to agree on one shape.
+
+Let me think about what my transform needs from the record:
+- The small integer class (`clan` in my example) — the value to map to a group.
+- The person (`bearer`) — to check `test-` prefix.
+- The epoch (`instant`) — to check < 1700000000.
+- The amount value (`quantum`) and its unit label (`basis`) — for unit conversion.
+
+The parsing owner (auth) defines the raw→record mapping. The reporting owner (ui) defines the summary. I sit in the middle.
+
+Key: I don't own how the record is built (that's auth's parse_line). I receive whatever shape the team agrees on, and I apply my cleaning rules. So I need to know what field names the agreed shape uses.
+
+This requires coordination. Let me look at what the probes tell me about the shape, and work with the team.
+
+Actually, let me think carefully. The record shape must be settled by the team. My example uses: `datum, bearer, quantum, basis, instant, clan`. The probes give hints:
+
+**P1 format A:** `EV-101|mira|2450|C|1755600000|4`
+- id=EV-101, person=mira, amount=2450 (hundredths → 24.50), unit=C, epoch=1755600000, class=4.
+
+Wait — in my example, `quantum: 24.5, basis: "plain"`. So `quantum` is already the cleaned value and `basis` says it's plain. But P1 raw has `2450` with unit `C`. So the parse stage converts `2450|C` into... what? Does parse already divide by 100, or does it pass raw + label to transform?
+
+Hmm, rule 1 (units) is MY rule — I do the unit conversion. So parse passes the raw value and the unit label, and I do the scaling.
+
+But wait — my example record shows `quantum: 24.5, basis: "plain"`. That's already a plain (cleaned) value of 24.5. But if raw is `2450|C` where C means hundredths, then the record would have `quantum: 2450, basis: "hundredths"`? Or does parse pre-clean?
+
+This is ambiguous and depends on coordination between me (transform owner) and auth (parse owner). The record shape agreement is exactly what the team must settle. Let me not guess — I should coordinate.
+
+Actually, let me re-read my rules. Rule 1: "Values **labelled as** hundredths are divided by 100; values labelled thousandth-scale are multiplied by 1000; plain values pass through." So the record carries a **label** (`basis` in my example) indicating the unit scale. The label values would be something like "hundredths"/"thousandths"/"plain" or abbreviated.
+
+In my example, `basis: "plain"` and `quantum: 24.5`. So a plain value passes through → 24.5 stays 24.5. Good, consistent.
+
+The parse owner decides how raw unit labels (C, E, scaled:true/false) map to the `basis` label. I need coherence with auth.
+
+Let me now think about what's truly in my control vs. needing others:
+- I control the transform stage internals.
+- The field names of the record shape — I need to agree with auth (parse) and ui (report).
+
+I should coordinate via the channel. But also, I can look at the probes to understand the whole picture and propose a shape.
+
+Let me examine all probes to understand the field meanings across the three formats:
+
+**P1 (format A, pipe-delimited):** `EV-101|mira|2450|C|1755600000|4`
+Fields: id=EV-101, person=mira, value=2450, unit=C, epoch=1755600000, class=4.
+
+**P2 (format B, key=value):** `id=EV-201 who=lena amt=89.50 u=E when=1755607200 k=7`
+Fields: id=EV-201, who=lena, amt=89.50, u=E, when=1755607200, k=7.
+
+**P3 (format C, JSON):** `{"ref":"EV-301","actor":"nadia","value":3.75,"scaled":true,"at":1755614400,"code":2}`
+Fields: ref, actor, value, scaled, at, code.
+
+All three carry the same six pieces: an id, a person, an amount, a unit/label, an epoch, a class code.
+
+Now units across probes:
+- P1: `2450|C` — unit C. In my record I'd label it. 
+- P2: `amt=89.50 u=E` — unit E.
+- P3: `value=3.75 scaled=true` — boolean scaled.
+
+Hmm, three different unit encodings. Parse (auth) presumably normalizes all into the shared record with a consistent label. My job: interpret the label.
+
+But here's the crux: I don't know exactly what label auth will put in the record. This is the coordination problem the task deliberately creates.
+
+The task says: "The record shape is not specified anywhere, and no slice is authoritative about it... You must end up with one shape; whose names it uses is yours to settle."
+
+So the shape (field names AND what each holds) must be coordinated across the three owners. Since I can't see auth's parse or ui's report yet (they haven't pushed anything except bootstrap), I should coordinate on the channel.
+
+Let me check whether anyone has pushed anything / discussed the shape.
+
+Let me look at what's been pushed and discuss. Actually — let me think about my obligations independent of coordination. I can write a robust transform.py that:
+1. Uses my agreed field names from the example, OR
+2. Coordinates first.
+
+The right move: coordinate on the shape with auth and ui. But I also want to make forward progress. Let me examine the probes more to infer the likely shape and propose it, then coordinate.
+
+Let me infer the unit rules across probes by reverse-engineering the expected digests. Actually, I can't easily reverse digests (that's the point). But I CAN reason about which stage does what.
+
+Wait — actually, I realize I can verify my understanding by running the acceptance check IF I had all three stages. But I don't have parse.py or report.py. Those are owned by auth and ui.
+
+Let me focus: I can only build transform.py and coordinate. The probes will only pass when ALL three stages agree on the shape AND each applies its rules. So I need the whole team.
+
+Let me think about what transform needs and propose the shape. Let me also consider: since I'm "backend" and there's "auth", maybe auth isn't parsing. Let me re-examine. The roster said auth has "no stated role". But ui explicitly said "I own report.py". So:
+- ui = report.py owner (reporting)
+- backend (me) = transform.py owner (normalization)
+- auth = parse.py owner (parsing) — by elimination
+- planner = planner
+
+Now, the record shape. My example uses names: datum, bearer, quantum, basis, instant, clan.
+
+Let me consider what the shape should be. I'll propose it on the channel and coordinate with auth (who builds parse→record) and ui (who consumes record→summary).
+
+Let me first check if anyone has pushed anything new since bootstrap.
+
+Let me also reconsider — maybe I shouldn't over-engineer the coordination. The task explicitly frames this as a team coordination exercise. I should reach out.
+
+Let me look at the git log / fetch to see current state, then coordinate with the team via the channel.
+
+Actually, let me think about what I can establish on my own and what I genuinely need:
+
+1. **My cleaning rules** (units, drops, classes) — I fully own these. I can implement them once I know the field names of the shape.
+
+2. **The field names** — I must agree with auth and ui.
+
+So the dependency is on the shape. Let me coordinate.
+
+Let me propose a concrete shape and ask auth/ui to confirm or propose. Since the task says inventing new names is a perfectly good answer, and nobody's slice is authoritative, I'll propose using the field names that make sense and are consistent.
+
+Given my example uses `datum, bearer, quantum, basis, instant, clan`, and the meaning is:
+- datum → the record/event id
+- bearer → the person
+- quantum → the amount value
+- basis → the unit scale label (plain/hundredths/thousandths)
+- instant → epoch time
+- clan → class code
+
+I'll propose this shape as the canonical one. But I should coordinate rather than dictate, since parse produces it and report consumes it.
+
+Hmm, but wait. Let me reconsider the unit label question more carefully, because it's the crux of my stage and depends on how auth encodes units.
+
+In the raw inputs:
+- P1: `2450|C` → C
+- P2: `amt=89.50 u=E` → E
+- P3: `value=3.75 scaled=true / false` → boolean
+
+Auth's parse must map these to a consistent label. What labels make sense? My rules mention "hundredths", "thousandth-scale", "plain". So the canonical label set I'd use is probably `hundredths`, `thousandths`/`per-mille`, `plain`. But auth might encode differently.
+
+Actually — let me reconsider whether parse should do the unit conversion or whether the record holds the raw value + label and transform does it.
+
+My rule says: "Values labelled as hundredths are divided by 100." This strongly implies the record carries a **raw value** and a **label**, and I apply the scale. So parse should NOT pre-scale; it should pass raw value + label.
+
+But then in my example, `quantum: 24.5, basis: "plain"` — a plain value, no scaling needed. That's consistent: 24.5 is already the "raw" value and it's plain.
+
+OK so the shape is: amount value + unit scale label. The label tells me how to scale the value.
+
+Now, how does auth encode the scale label? Options:
+(a) Three states: hundredths / thousandths / plain
+(b) A multiplier
+(c) Keep raw unit letters (C, E, scaled bool)
+
+Since my rules are phrased in terms of "hundredths" and "thousandth-scale", I'll need auth to map to those, or I need to handle whatever encoding auth uses. This is the coordination crux.
+
+I think the cleanest is to coordinate with auth on the exact label values. Let me reach out.
+
+Let me first check git state / whether auth has published parse.py yet, so I can see the actual shape.

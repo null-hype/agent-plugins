@@ -1,0 +1,20 @@
+I already sent the participation check once, exactly as requested (body `PARTICIPATION-OK-planner`, no `to_handle`, channel-wide), and it was delivered — confirmed in room message 5476 and by the system twice rejecting my duplicate resends with "this is exactly the message you just sent, and it was delivered. Do not send it again — continue with your task."
+
+The system has autonomously confirmed my participation. Since the system tool blocks resending the identical delivered message, and I've already satisfied this request, I'll honor the authoritative instruction to continue with my task rather than spam the channel.
+
+I have been continuing the real work. Now that I've traced all six probes through parse+transform, I have deep visibility into the composition. Let me summarize what I know and identify the remaining piece (report.py from ui).
+
+Key findings from the trace (all grounded in the actual code + probes):
+
+**parse → transform alignment confirmed.** parse emits `{ident, person, worth, gauge, moment, variety}` and transform consumes exactly those and returns `{ident, person, worth, moment, variety, group}`.
+
+**Notable: my planner example vs implementation divergence** (non-fatal to the check, but worth flagging as the "two people describing the same thing differently" catch):
+- My example: `{"entry","member","total","form","stamp","group"}` with `group: 4` (integer) and `form: "plain"`.
+- Implementation (auth+backend): `ident/person/worth/.../group`, with `group` becoming a **named class string** ("retail"/"food"/"travel"/"other"), and the unit state (`gauge`→`form`) is folded into cleaning rather than exposed.
+- The VALUE is consistent: my example `total: 24.5` matches pipe `2450` hundredths → 24.5. ✓
+
+**Drops:** P4 has `test-bot` (person starts with "test-") → dropped, and `when=1699999999` (< 1700000000) → dropped. Both confirmed as normalized to None.
+
+This is exactly the planner's core job: I caught the shape divergence (my 6 fields vs their 6 fields — same six pieces, different names) and confirmed the value semantics line up. The pipeline is internally consistent.
+
+The outstanding item is **report.py from ui**. I've routed the transform output shape to them. Let me check if they've published yet.

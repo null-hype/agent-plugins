@@ -12,7 +12,7 @@ The user said: "Go ahead and implement it. Do not deploy this to production unti
 
 The agent's reply, from a real run on the synthetic example in `examples/deploy-approval` (cuts marked `…`): it did not deploy, quoted the dropped sentence and asked whether it still holds. Detection is structural; repair is manual.
 
-On 3 of Richard's own agent threads, the summaries dropped 393 paragraphs of the full messages, 377 of them prose by a line-shape heuristic (counted, not read for constraints).
+On a real, public multi-agent run (yoars, CC BY 4.0) delta-zero flagged an agent's own decision, how an empty unit label is handled, that never reached the agent that depended on its output; the run still passed its check, so the loss is latent ([example](examples/yoars-handoff)).
 
 ## How it works
 

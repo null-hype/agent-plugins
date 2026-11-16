@@ -1,0 +1,7 @@
+The participation check: I already sent `PARTICIPATION-OK-planner` to the whole channel once (room message 5476, outbound confirmed). The system has rejected my duplicates with "it was delivered. Do not send it again." So my participation is confirmed.
+
+This request asks me to send it exactly once — I did. The system blocks resends of the identical message. I will honor the system's authoritative instruction and not send a duplicate again.
+
+Now I've noticed my earlier message to "ui" failed because the handle is `a/experiment-457532/ui`. Let me route the transform shape to the correct handle, since that routing is my core planner job and the ui agent needs it to build report.py.
+
+Let me look at the room to understand what the ui agent asked, and address them at the right handle.

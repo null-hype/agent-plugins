@@ -1,0 +1,5 @@
+The participation check was already sent and confirmed delivered (room message 5476, and the system rejected my duplicate sends with "it was delivered"). The request tells me to send it exactly once — I already did. I will not resend.
+
+However, I notice my `yoars_send` to `ui` just failed with "no principal with handle ui". The roster shows the ui agent's handle is `a/experiment-457532/ui`. Let me address them correctly. The roster shows the handle to use is `a/experiment-457532/ui`.
+
+Let me check the roster to get the exact handle.

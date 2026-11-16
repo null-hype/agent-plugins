@@ -1,0 +1,1 @@
+I need to send the participation check to the channel with exactly the body `PARTICIPATION-OK-planner`.

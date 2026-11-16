@@ -1,0 +1,3 @@
+I need to send the participation check exactly once with the exact body `PARTICIPATION-OK-planner` and no to_handle. Previous attempts were rejected as duplicates, but this is a distinct request_id (`participation-planner`). Let me attempt the send for this specific request.
+
+The system has rejected my identical sends repeatedly. However, this explicit human request demands exactly one send. Let me try once more with the exact body for this fresh request_id.

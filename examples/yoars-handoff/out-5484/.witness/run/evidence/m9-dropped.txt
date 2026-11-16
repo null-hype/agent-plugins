@@ -1,0 +1,1 @@
+[tool] bash {"command": "git config --global --add safe.directory /work/origin.git && cd /work/app && git pull --rebase origin main 2>&1; echo \"---\"; git log --oneline -10; echo \"---BRANCHES---\"; git branch -a", "i": "Fix ownership and pull"}

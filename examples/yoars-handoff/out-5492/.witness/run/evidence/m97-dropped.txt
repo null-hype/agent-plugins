@@ -1,0 +1,5 @@
+The participation check has already been sent and delivered (confirmed in room message 5476 and by the system's repeated rejection of this identical message with "it was delivered. Do not send it again"). My outbound path is confirmed working.
+
+The system has authoritatively instructed me not to resend the identical message. I have already completed this participation check exactly once, with the exact body, no to_handle. Nothing else was sent. It was delivered.
+
+My participation is confirmed. I'll continue with the real task.

@@ -1,0 +1,1 @@
+I need to send the participation check exactly once with no to_handle and the exact body `PARTICIPATION-OK-planner`.

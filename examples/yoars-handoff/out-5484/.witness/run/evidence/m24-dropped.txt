@@ -1,0 +1,34 @@
+I've completed the participation check (sent the exact body to the channel). Now I need to work on my actual task: building `transform.py`.
+
+My stage's rules (normalization):
+1. **Units** — hundredths ÷ 100, thousandth-scale × 1000, plain pass through. Round cleaned value to 2 decimals.
+2. **Drops** — drop if person starts with `test-`, or epoch < `1700000000`.
+3. **Classes** — 1,4→retail; 2→food; 7→travel; else→other. Attach group to record.
+
+My example record (the shape between stages):
+```json
+{"datum": "EV-101", "bearer": "mira", "quantum": 24.5, "basis": "plain", "instant": 1755600000, "clan": 4}
+```
+
+Field names in my example: `datum`, `bearer`, `quantum`, `basis`, `instant`, `clan`.
+
+The other stages (parse and report) each have their own example record with different field names. Looking at the probe data to infer:
+
+- **P1**: `EV-101|mira|2450|C|1755600000|4` — format A. Fields likely: id, person, amount, unit?, epoch, class.
+- **P2**: `id=EV-201 who=lena amt=89.50 u=E when=1755607200 k=7` — format B with named fields.
+- **P3**: json records.
+
+The parity owner (report) will produce the summary. I own transform.py — the middle stage. The key question is: what field shape does the record between stages have?
+
+I need to agree on **one shape** with the parsing and reporting owners. Let me check the yoars channel to see what discussions have happened about the record shape, and see the roster.
+
+Let me look at the channel context: this is where the team coordinates on the record shape. Let me check the room for any discussion.
+
+Let me think about my stage carefully. My rules operate on:
+- **Units** — a value that could be labelled as hundredths/thousandth-scale/plain. In my example, `basis: "plain"`, `quantum: 24.5`. The label is `basis`, the value is `quantum`.
+- **Drops** — person (`bearer`) starts with `test-`; epoch (`instant`) < `1700000000`.
+- **Classes** — small integer (`clan`) maps to group.
+
+So my record shape should keep these fields. But I must reconcile with other owners' shapes. The parsing owner produces the record; the reporting owner consumes it. I sit in the middle — I receive a record from parse and pass it to report.
+
+The critical task: I must coordinate on the shape. Let me look at the yoars channel to understand the agreement, and communicate with the planner/parsing/reporting owners.

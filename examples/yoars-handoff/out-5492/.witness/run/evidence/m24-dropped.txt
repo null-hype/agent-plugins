@@ -1,0 +1,6 @@
+I've sent the participation check. The channel context tells me the roster:
+- **auth** owns parsing (parse.py) — already published `parse.py`
+- **backend** owns normalization (transform.py)
+- **ui** owns reporting (report.py)
+
+The channel message says I was spawned by the participation request. My real task is the pipeline. Let me fetch the auth changes that just landed and read what they published.

@@ -1,0 +1,104 @@
+I need to call `yoars_send` with `PARTICIPATION-OK-planner`. I see in the room messages that this was already sent at [5476], but let me make sure I've done it properly for this turn's request. Actually, looking at the room history, message 5476 shows "you (inform): PARTICIPATION-OK-planner" — it was already sent.
+
+Let me verify by checking receipts aren't needed — the message was already confirmed sent. Now I can proceed with the real work. But this message asks me to confirm the outbound path. Message 5476 in the room shows it was already sent. I'll consider it done and move to the real planning work.
+
+Let me now analyze the situation. I'm the planner. I have auth's parse.py. The parse.py uses field names: `ident, person, worth, gauge, moment, variety`. My example record (planner's) uses: `entry, member, total, form, stamp, group`.
+
+The parse.py says:
+- Format A (pipe): `worth` in **hundredths**, gauge="hundredths", form code is `variety`... wait let me re-read.
+
+Wait, parse.py has a bug/semantic issue. Let me map carefully.
+
+For the pipe format `EV-101|mira|2450|C|1755600000|4`:
+- parts[0]=EV-101 → ident
+- parts[1]=mira → person
+- parts[2]=2450 → worth
+- parts[4]=1755600000 → moment
+- parts[5]=4 → variety
+
+Wait but where's the form code "C"? parts[3]="C" is **dropped** in `_parse_pipe`! The pipe parser doesn't read parts[3] at all. Hmm. But the docstring says "D's value is always in hundredths" — D is parts[3]="C". Confusing comment.
+
+Actually the comment says "D's value is always in hundredths" referring to parts[3] which is the form code C, and it maps to gauge="hundredths" hardcoded. OK that's fine — pipe format always hundredths.
+
+But wait, my example record shows form "plain" for EV-101 (C). And total 24.5 for worth 2450. So:
+- Format A: worth in hundredths (2450 → 24.5, ÷100), gauge="hundredths". The form code C → "plain" per MY example. Interesting — the C form code maps to "plain" form in my example. Actually my example: `"form": "plain"`. So in the unified record, form="plain" while the pipe gauge says hundredths.
+
+Hmm, these are two different concepts: `form` (plain vs something) and `gauge` (unit scale). My example's `total: 24.5` is the cleaned value. So normalization must convert worth → total using gauge.
+
+Let me reconsider. Parse.py is auth's work. My job as planner is to review and coordinate. The key issue: **the record shape between stages must be ONE shape.** auth chose `ident/person/worth/gauge/moment/variety`. My example uses `entry/member/total/form/stamp/group`. These differ but that's fine as long as it's one shape — and normalization+reporting must use the SAME names as parse produces. So I need to coordinate that backend (transform) and ui (report) align on auth's chosen names, OR they all agree on a common shape.
+
+Wait — but who decides the shape? The task says "whose names it uses is yours to settle." As planner I should settle it and make sure everyone agrees. auth already published with `ident/person/worth/gauge/moment/variety`. 
+
+Let me think about correctness concerns in parse.py:
+
+1. **Pipe format drops parts[3] (the form code "C").** In my example, EV-101 has form "plain". The C code should map to form. But parse.py hardcodes gauge="hundredths" and drops C entirely. Actually wait — is there a form concept beyond pipe? Let me check the probes.
+
+Probe P1: `EV-101|mira|2450|C|...|4` — all format A have "C" in position 3.
+Probe P2: format B all `u=E`.
+Probe P3: all JSON, scaled true/false.
+Probe P4: EV-401 form C, EV-402 format B u=E, EV-403 form C.
+Probe P5: EV-501 form C, EV-502 JSON scaled true.
+Probe P6: all format A form C + one format B u=E.
+
+So format A always has C. Format B always u=E (plain gauge). JSON scaled varies.
+
+Now for normalization (backend's job), the key question is what rules drop or clean. Let me think about what normalization needs: convert worth based on gauge. And what's the "total"/form.
+
+Actually, my job as planner isn't to write the modules — I own no module. My job is to plan, route, review, and catch contradictions. Let me focus on that.
+
+Key risks to flag:
+1. **Record shape contradiction**: My example uses `total` (already cleaned, 24.5), but parse.py emits `worth` (raw, 2450) with a `gauge`. The cleaning happens where? My example has `total: 24.5` — that's the value between stages. So the record between stages carries the CLEANED total. But parse.py emits RAW worth. This means normalization (transform) must do the cleaning (worth→total), OR the shape is inconsistent between what my example shows and what parse emits.
+
+The task says the example record is what's passed between stages. My example shows `total: 24.5` (cleaned), `form: "plain"`. So the inter-stage record should have already-cleaned values. auth's parse.py emits raw `worth` + `gauge` and leaves cleaning to normalization. 
+
+Is that a contradiction? It depends on where cleaning occurs. The parse owner's material defines parsing; normalization's material defines cleaning. auth put "unit-state label" in parse so normalization can clean. My example is just illustrative — it shows the eventual shape.
+
+2. **parse.py drops the form code "C" from pipe.** If "form" (plain/other) matters to the summary, this is a bug. In all probes pipe uses C. What does C mean? In format B, u=E. In my example, form="plain". So C→plain, E→plain. Both plain. But there might be a non-plain form that should be dropped or treated differently. There's no C-variation in probes (all pipe are C). So form may only matter via "is it plain or something".
+
+Actually wait — let me reconsider what "form" is. My example `form: "plain"`. Maybe there's a "scaled" form for JSON? No, JSON has scaled boolean. Hmm.
+
+Let me not overthink parse. My main deliverables:
+1. Since parse.py is published and auth picked the shape, I need backend+ui to align to one shape.
+2. Review parse.py for correctness issues.
+3. Create a plan/todo.
+4. Coordinate the shape and catch contradictions.
+
+Let me look at what the six probes need to produce. The report (ui) defines the summary. I can't know the expected numbers but I can help ensure consistency.
+
+Actually, my value as planner: catch two people describing the same thing differently. Potential contradictions:
+- My example `total` (cleaned) vs parse `worth` (raw) — where does cleaning happen?
+- "form" and "gauge" may describe the same unit concept differently.
+
+Let me check the probes more carefully to understand what summary must contain. The digest only checks numbers. The report likely sums totals per group or similar. Given group (variety/code/k) is the grouping key, and total is the value.
+
+Let me think about P6: 
+- EV-601 rosa 1000 C k=1
+- EV-602 rosa 1000 C k=4
+- EV-603 rosa 10.00 E k=9
+All same member rosa. worth: 1000, 1000, 10.00. 
+
+If cleaning via gauge: pipe hundredths → 10.00, 10.00; format B plain → 10.00. So all three = 10.00. Grouped differently (1,4,9). If summary is per-group sums or a total.
+
+Hmm, this is getting deep. As planner I should route these specifics. Let me set up a todo and start coordinating by fetching/reading and messaging owners.
+
+Actually, let me reconsider — there's a subtlety in probe P4: EV-402 has `when=1699999999`. Compare to others around 1755... This is an out-of-range/old timestamp → likely a **drop rule** in normalization (some records must not be counted). That's backend's transform rule. As planner I should note/prod backend.
+
+Also the "scaled" field is dropped by parse.py's json branch — it's converted to gauge. Fine.
+
+Let me plan. I'll create a todo list, then coordinate via messages. I need to verify the composition works. Since I own no module, I mainly coordinate.
+
+Let me look at what record shape we need to settle. The critical coordination: normalize (backend) and report (ui) must match parse's output fields. auth chose: ident, person, worth, gauge, moment, variety. Let me confirm this is a reasonable unified shape and push backend/ui to adopt it.
+
+But wait — my example has 6 fields: entry, member, total, form, stamp, group. parse has 6: ident, person, worth, gauge, moment, variety. Same 6 pieces, different names. The task: "They carry the same six pieces of information beyond nothing — and they do not use the same field names." So yes, 6 pieces. parse maps them. Good.
+
+So the unified shape = parse's choice (already published, first mover). backend's normalize must consume `ident/person/worth/gauge/moment/variety` and produce... what? For the report to work, normalize must output a record with cleaned total + grouping key. But what names? The report (ui) and transform (backend) must agree. 
+
+Since normalize returns "the cleaned record", the cleaned record presumably has `total` (cleaned) + `form`/`group`. Hmm. But db — let me not guess the exact names; I should ask ui and backend to coordinate on shape, and I provide my example as the canonical target: `{entry, member, total, form, stamp, group}`.
+
+Actually, let me think about my constraints: I should be efficient. Let me first read the channel to see if backend/ui have said anything. I already read the room (nothing from backend/ui beyond participation). Let me check if there are more messages now, then coordinate.
+
+Let me create the plan.The participation check is already confirmed in the room (message 5476). I've read auth's parse.py. Now let me plan and coordinate.
+
+Let me first note the key finding: auth (parsing) published `parse.py` using field names `ident/person/worth/gauge/moment/variety`, while my planner example uses `entry/member/total/form/stamp/group`. I need to settle one shape and route to backend + ui.
+
+Let me set up a todo and check the room for more updates.

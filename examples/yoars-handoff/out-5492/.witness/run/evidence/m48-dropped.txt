@@ -1,0 +1,10 @@
+[result] ok 3 files +71 -0
+---
+f0aeaa9 normalize: clean or drop one record per normalization rules
+1b20109 parse: three source formats to records with unit-state label
+35b8efd bootstrap: the shared task, the acceptance check, and what each of you owns
+---FILES---
+-rw-rw-r-- 1 bun  bun  4957 Aug 27 22:50 acceptance.py
+-rw-r--r-- 1 root root 2259 Aug 27 22:51 parse.py
+-rw-r--r-- 1 root root 1963 Aug 27 22:52 transform.py
+[raw output: artifact://11]

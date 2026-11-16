@@ -1,0 +1,26 @@
+[result] [acceptance.py#3671]
+28:
+29:PROBES: dict[str, list[str]] = {
+30:    "P1": ["EV-101|mira|2450|C|1755600000|4",
+31:           "EV-102|tomas|180000|C|1755603600|2"],
+32:    "P2": ["id=EV-201 who=lena amt=89.50 u=E when=1755607200 k=7",
+33:           "id=EV-202 who=piotr amt=12.25 u=E when=1755610800 k=1"],
+34:    "P3": ['{"ref":"EV-301","actor":"nadia","value":3.75,"scaled":true,"at":1755614400,"code":2}',
+35:           '{"ref":"EV-302","actor":"omar","value":41.00,"scaled":false,"at":1755618000,"code":9}'],
+36:    "P4": ["EV-401|test-bot|900|C|1755621600|4",
+37:           "id=EV-402 who=ana amt=5.00 u=E when=1699999999 k=2",
+38:           "EV-403|jules|7300|C|1755625200|1"],
+39:    "P5": ["EV-501|kim|125|C|1755628800|7",
+40:           '{"ref":"EV-502","actor":"kim","value":2.00,"scaled":true,"at":1755632400,"code":7}'],
+41:    "P6": ["EV-601|rosa|1000|C|1755636000|1",
+42:           "EV-602|rosa|1000|C|1755639600|4",
+43:           "id=EV-603 who=rosa amt=10.00 u=E when=1755643200 k=9"],
+44:}
+45:
+46:DIGESTS = {
+47:    "P1": "aeb7c30863a3f7a31d715407754131d0a2243bfc062e982ac2155d5b98ec202e",
+48:    "P2": "9a18e4d5c7f03dc673788d80dd4692acdd44cdc61ddeb0b1bf7e6f9d0530a8e3",
+49:    "P3": "51a1d37187237e8f55ee27ececba6cbd6f3946f520d59c75dee3d858177e714a",
+50:    "P4": "f8fe80d4ff61762949e0b9786a336fe2734b12d3e84f6f43c050786c1304bcf6",
+51:    "P5": "a68318b3a52e315a13fdabd48ec07acccba46116d5fadc480b1f74e5449224af",
+52:    "P6": "5edb7a30efad4d947a51bffa161483d9ca3713e778fbbda4499e8ebdec ...[cut]

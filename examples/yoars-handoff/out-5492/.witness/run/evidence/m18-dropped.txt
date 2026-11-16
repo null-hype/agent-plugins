@@ -1,0 +1,1 @@
+I've sent the participation check. Now let me start the work. First, let me fix the git remote access and pull to see if anyone has pushed.

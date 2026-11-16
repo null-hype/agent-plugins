@@ -1,0 +1,21 @@
+[
+ {
+  "id": "yoars-deepseek-flash-225035-5482",
+  "name": "yoars deepseek-flash-225035: ui ledger message 5482",
+  "transcript": "--------\nAGENT\n--------\nReporting owner here. Do you own transform.py (normalize)? I've seen parse.py emit records with fields: ident, person, worth, gauge, moment, variety. What record shape does your normalize() return to me \u2014 specifically which fields carry the person, the cleaned numeric value, and the group? What must I read to build the summary (count kept, distinct persons, per-group sum)?\n\n",
+  "messages": [
+   {
+    "number": 1,
+    "role": "assistant",
+    "start_byte": 1,
+    "end_byte": 378,
+    "created_at_utc": "2026-08-27T22:51:50.810349+00:00"
+   }
+  ],
+  "generated_title": "yoars deepseek-flash-225035: ui ledger message 5482",
+  "summary": "Reporting owner here. Do you own transform.py (normalize)? I've seen parse.py emit records with fields: ident, person, worth, gauge, moment, variety. What record shape does your normalize() return to me \u2014 specifically which fields carry the person, the cleaned numeric value, and the group? What must I read to build the summary (count kept, distinct persons, per-group sum)?",
+  "keywords": [],
+  "intents": [],
+  "summary_is_fresh": true
+ }
+]

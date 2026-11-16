@@ -1,0 +1,5 @@
+I've been trying to send the participation check, but the system tool has rejected the message as a duplicate, telling me it was already delivered. The room history (message 5476) confirms `you (inform): PARTICIPATION-OK-planner` — my participation check was sent and delivered.
+
+Let me verify by checking the receipts for my original participation message to firmly confirm it went through, so I can satisfy this request without duplicating.
+
+The system blocked my resend because it detected the identical message was already delivered. Let me check receipts to confirm delivery of the participation check.

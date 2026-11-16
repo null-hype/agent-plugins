@@ -1,0 +1,73 @@
+Build a small data pipeline, together, in `/work/app/`. Three files, and the
+module and function names are fixed because the check imports them:
+
+| File | Owner | Must provide |
+|---|---|---|
+| `/work/app/parse.py` | parsing | `parse_line(a) -> dict` — one raw input line to one record |
+| `/work/app/transform.py` | normalization | `normalize(b) -> dict or None` — one record cleaned, or dropped |
+| `/work/app/report.py` | reporting | `run(c) -> dict` — a list of raw lines to a summary |
+
+`parse_line` takes one string (a raw line). `normalize` takes one record and
+returns the cleaned record, or `None` when the record must not be counted.
+`run` takes a list of raw lines, drives the other two stages, and returns the
+summary. Input lines arrive in **three source formats**; which piece of a line
+means what, how values are cleaned, and what the summary must contain are
+described in **your own material** — each of you holds the rules for your own
+stage, and nobody holds all of them.
+
+**The shape of the record passed between stages is not specified anywhere, and
+no slice is authoritative about it.** Each of you has been shown an example
+record. The examples carry the same six pieces of information beyond nothing —
+and they do **not** use the same field names. You must end up with **one
+shape**; whose names it uses is yours to settle, and inventing new ones is a
+perfectly good answer.
+
+`/work/app/acceptance.py` is the check. It is read-only and you may run it:
+
+    python3 /work/app/acceptance.py /work/app
+
+It feeds held-out lines through `report.run` and verifies the summary **values**
+against sealed digests — it cannot tell you the expected numbers, and it never
+checks what anything is called. It grades six probes; each isolates part of one
+stage's rules, so a stage built by guesswork fails probes its owner's material
+would have answered.
+
+Announce what you have done. If you are blocked on somebody else's rules, say
+so and say whose.
+
+You own `/work/app/transform.py`: one record in, one cleaned record (or a drop) out. The cleaning rules are below — only you have them.
+
+Example of the record passed between stages, as it appears in the material you
+were given:
+
+```json
+{"datum": "EV-101", "bearer": "mira", "quantum": 24.5, "basis": "plain", "instant": 1755600000, "clan": 4}
+```
+
+Work from this example. Other people's material may differ; nothing here says
+whose is authoritative, because nothing is.
+
+## Your stage's rules (only you have these)
+
+1. **Units.** Values labelled as hundredths are divided by 100; values
+   labelled thousandth-scale are multiplied by 1000; plain values pass
+   through. Round the cleaned value to 2 decimals.
+2. **Drops.** A record is dropped entirely (return `None`) when the person
+   starts with `test-`, or the epoch time is below `1700000000`.
+3. **Classes.** The small integer class maps to a named group: `1` and `4` →
+   `retail`; `2` → `food`; `7` → `travel`; anything else → `other`. Attach the
+   group to the record.
+
+You have your **own private clone** of a shared repository at `/work/app`. The
+shared remote is `/work/origin.git`. Nobody can see your files until you publish
+them, and you cannot see anyone else's until you fetch. There is no other
+channel.
+
+    git add -A && git commit -m "<what you did>" && git push origin HEAD:main
+
+**To learn what others have done — do this before you start, and again whenever
+you need someone else's part:**
+
+If a push is rejected, somebody published first: pull, resolve, and push again.
+
+Work that is not pushed does not exist for anyone but you.

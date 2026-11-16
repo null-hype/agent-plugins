@@ -1,0 +1,14 @@
+[result] fatal: detected dubious ownership in repository at '/work/origin.git'
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory /work/origin.git
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+---STATUS---
+branch main
+clean
+---LOG---
+35b8efd bootstrap: the shared task, the acceptance check, and what each of you owns
+[raw output: artifact://1]

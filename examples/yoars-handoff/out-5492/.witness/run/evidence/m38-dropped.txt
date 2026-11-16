@@ -1,0 +1,88 @@
+The participation check was already sent (confirmed in room message 5476 and the rejected duplicate). The system tells me not to send it again. My outbound path is confirmed. Now I proceed with the real task.
+
+Let me continue my work. The ui agent (report.py owner) is asking backend (transform.py owner) about the record shape. Let me route the shape coordination and share my planner example as the canonical target.
+
+Let me look at what I know:
+- **auth** (parse.py): emits `ident, person, worth, gauge, moment, variety`
+- **ui** (report.py): just asked backend what shape normalize returns
+- **backend** (transform.py): not published yet
+
+My planner example: `{"entry", "member", "total", "form", "stamp", "group"}`.
+
+The critical coordination point: auth's parse.py emits **raw** `worth` (+ `gauge` for unit state), while my example shows **cleaned** `total`. So the cleaning (worth→total) must happen in normalize (backend). I need to make sure everyone agrees on one shape.
+
+Since auth already published first with `ident/person/worth/gauge/moment/variety`, and that's a complete 6-field shape, the cleanest path is for **backend + ui to adopt auth's names**. But my example shows `total` (cleaned) — so normalize must convert `worth`→`total`... but then the shape changes names at the boundary between transform and report.
+
+Wait — this is exactly the kind of contradiction I must catch. Let me think carefully.
+
+The task says the record shape between stages is ONE shape. My example is the canonical record: `{entry, member, total, form, stamp, group}`. The example is what's "passed between stages."
+
+But auth's parse emits `{ident, person, worth, gauge, moment, variety}` — raw values with unit-state label, NOT cleaned. And my example shows cleaned `total`.
+
+So there are two possible designs:
+1. **Parse emits raw + gauge; normalize cleans to `total` and downstream uses `total/form/stamp/group`** — two different shapes between parse→transform and transform→report. This CONTRADICTS "one shape passed between stages."
+2. **Parse emits the canonical shape directly** (already cleaned) — but auth chose raw+unit-label, deferring cleaning to normalize.
+
+The task says "one shape" and my example is that shape. So the ideal: parse emits the canonical 6-field cleaned shape. auth's choice of `worth+gauge` defers cleaning, which means the record between parse and transform is NOT my canonical shape.
+
+But also: the acceptance check only verifies summary numbers through report.run — it doesn't statically check the shape. The "one shape" is the team's settlement. As planner, I should push everyone to one canonical shape.
+
+Given the ambiguity, my best move as planner: **propose the canonical shape explicitly** and route it. Since my example carries `total` (cleaned) + `form` + `stamp` + `group`, and the six pieces are entry/member/total/form/stamp/group — I'll declare this the settlement and ask backend+ui to align.
+
+But the wrinkle: auth's parse passes gauge so normalize can clean. If we want ONE shape, either:
+- (A) normalize consumes auth's raw shape and produces the canonical cleaned shape → but then two shapes exist.
+- (B) Everyone uses auth's raw shape and the "total/form/stamp/group" equivalence is just interpretation.
+
+Actually, re-reading the task: "They carry the same six pieces of information." My example's six pieces: entry, member, total, form, stamp, group. auth's six pieces: ident, person, worth, gauge, moment, variety. These are the SAME six pieces under different names:
+- entry≈ident
+- member≈person
+- total≈worth (but total is cleaned, worth is raw)
+- form≈gauge
+- stamp≈moment
+- group≈variety
+
+So they're parallel. The settlement just needs ONE set of names and one meaning for cleaning placement.
+
+I think the pragmatic planning decision: the pipeline must work end to end through report.run. The names don't matter to the check. What matters is that normalize (backend) produces a record that report (ui) can sum, and the VALUES are correct per the sealed digests.
+
+My concrete plan as planner:
+1. Declare the canonical inter-stage shape to coordinate all three. I'll propose my example's names as the authoritative settlement (I'm the one told to settle it, and my example is the natural candidate). But allow that cleaning placement matters.
+2. Route: tell backend (transform) to consume parse's output OR the canonical shape, produce the canonical cleaned shape with `total`...
+3. Tell ui (report) the summary must be computed from the canonical shape.
+
+Wait, let me reconsider whether my example is the "canonical" shape or just one example. The task to me: "whose names it uses is yours to settle." As planner, I settle it. My example is my strongest lever. I'll settle on my example's names: `entry, member, total, form, stamp, group`.
+
+But there's tension: auth already implemented with different names and pushed. To avoid breaking auth's work, the cleanest is to settle on ONE shape that all three implement. Since auth's parse.py is already written and pushed, maybe backend+ui should adapt to auth's names rather than forcing auth to rewrite. But auth's parse drops form code "C" and emits raw worth — which may or may not be correct per auth's parsing material.
+
+I don't have auth's material rules (I only have the example + probes). I CAN however reason about correctness via the probes and my example.
+
+Let me focus: as planner, my concrete valuable contributions right now are:
+1. Route the shape settlement to all three (especially ui, who is blocked waiting on backend's shape).
+2. Review parse.py for correctness against the probes (catch contradictions).
+3. Push backend to publish transform.py and ui to publish report.py.
+
+Let me analyze parse.py correctness against the probes using my example:
+
+**My example** (from format A pipe): `EV-101|mira|2450|C|1755600000|4` → `{entry:EV-101, member:mira, total:24.5, form:plain, stamp:1755600000, group:4}`.
+
+So `2450` → `24.5` (÷100), `C` → form `plain`. auth's `_parse_pipe` emits `worth="2450"` (raw string!), `gauge="hundredths"`, and **drops parts[3]="C"** entirely. Also worth is a string, moment is a string, variety is a string — all strings, not typed.
+
+So auth's parse does NOT convert 2450→24.5, and DOES NOT capture the form code C. It leaves worth as raw string. So normalization MUST do the ÷100 conversion (to produce total 24.5) and must know the form. But the form code "C" was dropped by parse, so normalize can't recover "plain".
+
+Hmm, but is form even needed? My example has form:"plain". All probes' pipe lines have "C" in position 3 → form "plain". Format B has u=E → "plain". Format C JSON has scaled true/false. So "form" might distinguish scaled vs plain. 
+
+Actually wait — let me reconsider the JSON branch. `_parse_json`: `gauge = "thousandth" if scaled else "plain"`, `worth = obj["value"]`. So scaled=true → thousandth scale. For P3: `{"value":3.75, "scaled":true}` → worth=3.75, gauge=thousandth. If thousandth scale means ÷1000? Then 3.75 thousandth-scale → 0.00375? That seems odd. Or maybe thousandth means worth is already in final units and something else.
+
+This is getting into every stage's rules which I don't fully hold. As planner I should NOT guess the cleaning math (that's backend/material). Instead I coordinate and verify against the check.
+
+Let me step back about my deliverables:
+1. **Settle the shape** — propose the canonical one, route to all.
+2. **Route** each stage's rules to owner and give them my example as a cross-check.
+3. **Verify** the composition via acceptance.py once all three land.
+4. **Catch contradictions** — e.g., auth drops the form code; backend may need it; ui needs cleaned totals.
+
+Let me now message the channel with the shape settlement and routing. I'll address ui (who asked) and note backend needs to publish.
+
+Actually, let me first check if backend or ui have said more since I last looked. Let me re-read the room and also check for any new artifact updates (transform.py might be landing).
+
+Let me pull the repo to see current state, and check the room.

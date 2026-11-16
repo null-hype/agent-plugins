@@ -1,0 +1,67 @@
+I'm the planner. My example record: `{"entry": "EV-101", "member": "mira", "total": 24.5, "form": "plain", "stamp": 1755600000, "group": 4}`.
+
+Let me map the probes to understand the three source formats and infer the rules. Let me look at what the probes reveal.
+
+**Source formats:**
+- Format A (pipe): `EV-101|mira|2450|C|1755600000|4` — entry|member|amount|form|stamp|group
+- Format B (kv): `id=EV-201 who=lena amt=89.50 u=E when=1755607200 k=7` — id|who|amt|u|when|k
+- Format C (JSON): `{"ref":"EV-301","actor":"nadia","value":3.75,"scaled":true,"at":1755614400,"code":2}` — ref|actor|value|scaled|at|code
+
+My example record uses names from Format A: `entry`, `member`, `total`, `form`, `stamp`, `group`. But the probe shows Format A amount is `2450` → my example total 24.5. So there's scaling/units.
+
+**Format A probe:**
+- `EV-101|mira|2450|C|1755600000|4` → my example shows `total: 24.5` for EV-101, `mira`, stamp 1755600000, group 4, form "plain". So `2450` → `24.5` (÷100), and `C` → form "plain". So format A amount is in cents, form "C" means plain.
+- P1 second line: `EV-102|tomas|180000|C|1755603600|2` → 1800.00 (÷100).
+
+So my planner slice's example is authoritative for the conversion? Wait — my example IS derived from format A (EV-101). So the parsing stage (format A owner... actually parsing owns all three parse formats) must convert.
+
+Let me think about who owns what. The planner owns no module. So I need to route. But I should plan the workflow and coordinate.
+
+Let me think about the six probes to understand each stage's rules as deeply as I can, since I'm the planner and I hold an example.
+
+**My example record** corresponds to Format A line `EV-101|mira|2450|C|1755600000|4`:
+- entry: EV-101
+- member: mira
+- total: 24.5 (amount 2450 → 24.5, ÷100)
+- form: plain (C → plain)
+- stamp: 1755600000
+- group: 4
+
+So the "plain" record for format A has these names. This is my planner slice's example.
+
+Now, the record shape must unify across formats. The three formats carry the same six pieces. Let me map:
+
+Format A fields: entry, member, amount(cents), form_code, stamp, group
+Format B fields: id, who, amt, u, when, k
+Format C fields: ref, actor, value, scaled, at, code
+
+Unified shape (my example names): entry, member, total, form, stamp, group.
+
+Now I need the parsing/normalization/report rules. Let me infer from probes as best I can and route to owners.
+
+Let me think about what differentiates each stage:
+
+**Parsing** (parse.py owner): converts three raw formats → a record. Concerns: 
+- Format A: amount in cents (÷100), form code C→plain
+- Format B: amt already decimal (89.50), u=E (form?), 
+- Format C: value decimal, scaled boolean
+
+**Normalization** (transform.py owner): cleans record or drops (returns None). 
+- The unit/scaling. P1 mentions 180000→1800.00 unit rule mentioned in acceptance docstring. But that's parsing.
+- Drop rules: e.g., invalid stamps, specific form codes, specific groups? 
+
+**Reporting** (report.py owner): the summary values — counts, sums by group, etc.
+
+Let me look closer at probes. Since digest only checks numbers sorted, the report likely produces numbers like counts, sums.
+
+Let me examine patterns. P1: two format-A lines, both form C. P2: two format-B lines both u=E. P3: two format-C lines. P4: mix — EV-401 form C, EV-402 (with timestamp 1699999999 - old), EV-403 form C. P5: EV-501 form C + EV-502 JSON. P6: three rosa lines — EV-601 form C k=1, EV-602 form C k=4, EV-603 JSON.
+
+Notice P6: three records but maybe some dropped. EV-601 group k=1, EV-602 group k=4, EV-603 JSON code=9 group. All same member "rosa". 
+
+Group field: format A group numeric (4,2,1,7,4,1,9...), format B k numeric, format C code numeric.
+
+The digest numbers are sorted and deduped? No — `numbers` returns all, sorted. So counts/sums matter.
+
+I can't reverse the digest without the actual rules and likely many combinations. But I CAN use my deep understanding to build a working pipeline IF I can determine each stage's rules. However, each stage's rules belong to its owner's private material. My job as planner: coordinate, route, review.
+
+But wait — I should check: is there any existing code from others? Let me check git and pull to see what others have pushed.

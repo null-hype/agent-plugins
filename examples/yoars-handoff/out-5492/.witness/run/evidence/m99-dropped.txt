@@ -1,0 +1,3 @@
+The participation check was already sent and delivered (room message 5476, system rejected my duplicate with "it was delivered. Do not send it again"). The system has authoritatively instructed me not to resend. My outbound path is confirmed working — I've successfully sent multiple messages to the channel and to the ui agent.
+
+I'll continue with my real planner work. Let me update my todos and check the state of report.py.

@@ -1,0 +1,5 @@
+I've already sent the participation check (`PARTICIPATION-OK-backend`), which satisfies this request. Now I'm continuing my real work.
+
+Ui has asked what shape my normalize() returns. Let me reply to ui with the shape, and also coordinate. Let me also verify my transform logic with a quick sanity test against the probe data using auth's parse.
+
+Let me reply to ui about the downstream shape.

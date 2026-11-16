@@ -1,0 +1,1769 @@
+{
+  "version": 1,
+  "findings": [
+    {
+      "id": "m1-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 20,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 1 (user, 3.2 KB) dropped entirely, prose: \"Build a small data pipeline, together, in `/work/app/`. Thre\u2026\" (+16 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m1-dropped.txt"
+      ]
+    },
+    {
+      "id": "m2-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 21,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 2 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && ls -la && git statu\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m2-dropped.txt"
+      ]
+    },
+    {
+      "id": "m3-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 22,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 3 (assistant) dropped entirely, log/tool output: \"[tool] read {\"path\": \"/work/app/acceptance.py\", \"i\": \"Read a\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m3-dropped.txt"
+      ]
+    },
+    {
+      "id": "m4-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 23,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 4 (user, 1.5 KB) dropped entirely, prose: \"[result] [acceptance.py#3671] 1:#!/usr/bin/env python3 2:\"\"\"\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m4-dropped.txt"
+      ]
+    },
+    {
+      "id": "m5-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 24,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 5 (user) dropped entirely, prose: \"[result] total 24 drwxrwxr-x 3 bun bun 4096 Aug 27 22:50 . d\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m5-dropped.txt"
+      ]
+    },
+    {
+      "id": "m6-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 25,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 6 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read SPEC and acceptance details\", \"path\"\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m6-dropped.txt"
+      ]
+    },
+    {
+      "id": "m7-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 26,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 7 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read probes/digests\", \"path\": \"/work/app/\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m7-dropped.txt"
+      ]
+    },
+    {
+      "id": "m8-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 27,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 8 (user, 1.5 KB) dropped entirely, prose: \"[result] [SPEC.md#690C] 1:# The task (everyone gets this par\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m8-dropped.txt"
+      ]
+    },
+    {
+      "id": "m9-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 28,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 9 (user, 1.5 KB) dropped entirely, prose: \"[result] [acceptance.py#3671] 28: 29:PROBES: dict[str, list[\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m9-dropped.txt"
+      ]
+    },
+    {
+      "id": "m10-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 29,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 10 (assistant, 4.2 KB) dropped entirely, prose: \"I'm the planner. My example record: `{\"entry\": \"EV-101\", \"me\u2026\" (+24 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m10-dropped.txt"
+      ]
+    },
+    {
+      "id": "m11-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 30,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 11 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m11-dropped.txt"
+      ]
+    },
+    {
+      "id": "m13-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 32,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 13 (user) dropped entirely, prose: \"[result] h/experiment-457532 [human] a/experiment-457532/pla\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m13-dropped.txt"
+      ]
+    },
+    {
+      "id": "m14-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 33,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 14 (user) dropped entirely, prose: \"[result] fatal: detected dubious ownership in repository at\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m14-dropped.txt"
+      ]
+    },
+    {
+      "id": "m15-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 34,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 15 (assistant) dropped entirely, prose: \"I need to send the participation check first. Let me do that\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m15-dropped.txt"
+      ]
+    },
+    {
+      "id": "m16-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 35,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 16 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m16-dropped.txt"
+      ]
+    },
+    {
+      "id": "m18-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 37,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 18 (assistant) dropped entirely, prose: \"I've sent the participation check. Now let me start the work\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m18-dropped.txt"
+      ]
+    },
+    {
+      "id": "m19-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 38,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 19 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"git config --global --add safe.dire\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m19-dropped.txt"
+      ]
+    },
+    {
+      "id": "m20-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 39,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 20 (user) dropped entirely, prose: \"[result] ok (up-to-date) --- 35b8efd bootstrap: the shared t\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m20-dropped.txt"
+      ]
+    },
+    {
+      "id": "m21-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 40,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 21 (assistant) dropped entirely, prose: \"The channel context confirms roles: **ui owns report.py** (t\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m21-dropped.txt"
+      ]
+    },
+    {
+      "id": "m22-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 41,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 22 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Read channel history\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m22-dropped.txt"
+      ]
+    },
+    {
+      "id": "m23-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 42,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 23 (user, 1.5 KB) dropped entirely, prose: \"[result] [5467] p_01m12pp17njm3yckft1fyerc76 (artifact_updat\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m23-dropped.txt"
+      ]
+    },
+    {
+      "id": "m24-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 43,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 24 (assistant) dropped entirely, prose: \"I've sent the participation check. The channel context tells\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m24-dropped.txt"
+      ]
+    },
+    {
+      "id": "m25-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 44,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 25 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m25-dropped.txt"
+      ]
+    },
+    {
+      "id": "m26-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 45,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 26 (user) dropped entirely, prose: \"[result] ok 2 files +73 -0 --- 1b20109 parse: three source f\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m26-dropped.txt"
+      ]
+    },
+    {
+      "id": "m27-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 46,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 27 (assistant) dropped entirely, prose: \"I've already sent the participation check (message 5476 conf\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m27-dropped.txt"
+      ]
+    },
+    {
+      "id": "m28-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 47,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 28 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read auth's parse.py\", \"path\": \"/work/app\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m28-dropped.txt"
+      ]
+    },
+    {
+      "id": "m29-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 48,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 29 (user, 1.5 KB) dropped entirely, prose: \"[result] [parse.py#DBD2] 1:\"\"\"parse_line: one raw source lin\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m29-dropped.txt"
+      ]
+    },
+    {
+      "id": "m30-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 49,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 30 (assistant, 9.5 KB) dropped entirely, prose: \"I need to call `yoars_send` with `PARTICIPATION-OK-planner`.\u2026\" (+40 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m30-dropped.txt"
+      ]
+    },
+    {
+      "id": "m31-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 50,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 31 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Plan pipeline coordination\", \"op\": \"init\"\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m31-dropped.txt"
+      ]
+    },
+    {
+      "id": "m32-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 51,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 32 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check for new messages\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m32-dropped.txt"
+      ]
+    },
+    {
+      "id": "m33-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 52,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 33 (user) dropped entirely, prose: \"[result] Remaining items (6): - Review parse.py against chec\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m33-dropped.txt"
+      ]
+    },
+    {
+      "id": "m34-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 53,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 34 (user, 1.5 KB) dropped entirely, prose: \"[result] [5469] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m34-dropped.txt"
+      ]
+    },
+    {
+      "id": "m35-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 54,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 35 (assistant) dropped entirely, prose: \"I need to send the participation check to the channel with e\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m35-dropped.txt"
+      ]
+    },
+    {
+      "id": "m36-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 55,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 36 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m36-dropped.txt"
+      ]
+    },
+    {
+      "id": "m37-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 56,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 37 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m37-dropped.txt"
+      ]
+    },
+    {
+      "id": "m38-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 57,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 38 (assistant, 7.9 KB) dropped entirely, prose: \"The participation check was already sent (confirmed in room\u2026\" (+32 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m38-dropped.txt"
+      ]
+    },
+    {
+      "id": "m39-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 58,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 39 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m39-dropped.txt"
+      ]
+    },
+    {
+      "id": "m40-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 59,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 40 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check channel for updates\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m40-dropped.txt"
+      ]
+    },
+    {
+      "id": "m41-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 60,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 41 (user, 1.5 KB) dropped entirely, prose: \"[result] [5470] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m41-dropped.txt"
+      ]
+    },
+    {
+      "id": "m42-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 61,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 42 (user) dropped entirely, prose: \"[result] ok (up-to-date) --- 1b20109 parse: three source for\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m42-dropped.txt"
+      ]
+    },
+    {
+      "id": "m43-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 62,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 43 (assistant) dropped entirely, prose: \"The participation check is confirmed already sent (message 5\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m43-dropped.txt"
+      ]
+    },
+    {
+      "id": "m44-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 63,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 44 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Get latest room state\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m44-dropped.txt"
+      ]
+    },
+    {
+      "id": "m45-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 64,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 45 (user, 1.5 KB) dropped entirely, prose: \"[result] [5471] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m45-dropped.txt"
+      ]
+    },
+    {
+      "id": "m46-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 65,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 46 (assistant) dropped entirely, prose: \"The participation check was already sent (message 5476, outb\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m46-dropped.txt"
+      ]
+    },
+    {
+      "id": "m47-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 66,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 47 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m47-dropped.txt"
+      ]
+    },
+    {
+      "id": "m48-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 67,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 48 (user) dropped entirely, prose: \"[result] ok 3 files +71 -0 --- f0aeaa9 normalize: clean or d\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m48-dropped.txt"
+      ]
+    },
+    {
+      "id": "m49-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 68,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 49 (assistant) dropped entirely, prose: \"The participation check request came through with a fresh me\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m49-dropped.txt"
+      ]
+    },
+    {
+      "id": "m50-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 69,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 50 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m50-dropped.txt"
+      ]
+    },
+    {
+      "id": "m51-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 70,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 51 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m51-dropped.txt"
+      ]
+    },
+    {
+      "id": "m52-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 71,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 52 (assistant) dropped entirely, prose: \"The participation check was already sent and confirmed deliv\u2026\" (+3 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m52-dropped.txt"
+      ]
+    },
+    {
+      "id": "m53-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 72,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 53 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read backend's transform.py\", \"path\": \"/w\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m53-dropped.txt"
+      ]
+    },
+    {
+      "id": "m54-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 73,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 54 (user, 1.5 KB) dropped entirely, prose: \"[result] [transform.py#692B] 1:\"\"\"normalize: one record in,\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m54-dropped.txt"
+      ]
+    },
+    {
+      "id": "m55-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 74,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 55 (assistant, 6.2 KB) dropped entirely, prose: \"The participation check is already confirmed delivered \u2014 the\u2026\" (+25 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m55-dropped.txt"
+      ]
+    },
+    {
+      "id": "m56-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 75,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 56 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check for report.py status\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m56-dropped.txt"
+      ]
+    },
+    {
+      "id": "m57-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 76,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 57 (user, 1.5 KB) dropped entirely, prose: \"[result] [5471] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m57-dropped.txt"
+      ]
+    },
+    {
+      "id": "m58-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 77,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 58 (assistant) dropped entirely, prose: \"The participation check has already been sent and confirmed\u2026\" (+4 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m58-dropped.txt"
+      ]
+    },
+    {
+      "id": "m59-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 78,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 59 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark review progress\", \"op\": \"done\", \"tas\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m59-dropped.txt"
+      ]
+    },
+    {
+      "id": "m60-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 79,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 60 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark transform reviewed\", \"op\": \"done\", \"\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m60-dropped.txt"
+      ]
+    },
+    {
+      "id": "m61-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 80,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 61 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"Planner here. parse.py (auth) an\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m61-dropped.txt"
+      ]
+    },
+    {
+      "id": "m62-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 81,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 62 (user) dropped entirely, prose: \"[result] Remaining items (5): - Review transform.py when lan\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m62-dropped.txt"
+      ]
+    },
+    {
+      "id": "m63-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 82,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 63 (user) dropped entirely, prose: \"[result] Remaining items (4): - Review report.py when landed\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m63-dropped.txt"
+      ]
+    },
+    {
+      "id": "m64-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 83,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 64 (user) dropped entirely, log/tool output: \"[result] yoars2 POST /channels/ch_01m12pp1fewnynnq0pg2bytnxj\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m64-dropped.txt"
+      ]
+    },
+    {
+      "id": "m65-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 84,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 65 (assistant) dropped entirely, prose: \"The participation check was already sent and confirmed deliv\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m65-dropped.txt"
+      ]
+    },
+    {
+      "id": "m66-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 85,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 66 (assistant) dropped entirely, log/tool output: \"[tool] yoars_roster {\"i\": \"Get exact agent handles\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m66-dropped.txt"
+      ]
+    },
+    {
+      "id": "m67-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 86,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 67 (user) dropped entirely, prose: \"[result] h/experiment-457532 [human] a/experiment-457532/pla\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m67-dropped.txt"
+      ]
+    },
+    {
+      "id": "m68-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 87,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 68 (assistant) dropped entirely, prose: \"The participation check: I already sent `PARTICIPATION-OK-pl\u2026\" (+3 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m68-dropped.txt"
+      ]
+    },
+    {
+      "id": "m69-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 88,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 69 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"Planner here. parse.py (auth) an\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m69-dropped.txt"
+      ]
+    },
+    {
+      "id": "m70-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 89,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 70 (user) dropped entirely, prose: \"[result] Sent to a/experiment-457532/ui.\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m70-dropped.txt"
+      ]
+    },
+    {
+      "id": "m71-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 90,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 71 (assistant, 1.2 KB) dropped entirely, prose: \"The participation check: I already sent the exact body `PART\u2026\" (+4 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m71-dropped.txt"
+      ]
+    },
+    {
+      "id": "m72-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 91,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 72 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m72-dropped.txt"
+      ]
+    },
+    {
+      "id": "m73-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 92,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 73 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check room for report updates\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m73-dropped.txt"
+      ]
+    },
+    {
+      "id": "m74-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 93,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 74 (user, 1.5 KB) dropped entirely, prose: \"[result] [5472] p_01m12pp1xwfx8g1sbw4e6azc1d (inform): PAR [\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m74-dropped.txt"
+      ]
+    },
+    {
+      "id": "m75-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 94,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 75 (user) dropped entirely, prose: \"[result] ok (up-to-date) --- f0aeaa9 normalize: clean or dro\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m75-dropped.txt"
+      ]
+    },
+    {
+      "id": "m76-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 95,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 76 (assistant, 1.3 KB) dropped entirely, prose: \"The participation check: I already sent `PARTICIPATION-OK-pl\u2026\" (+5 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m76-dropped.txt"
+      ]
+    },
+    {
+      "id": "m77-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 96,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 77 (assistant, 1.2 KB) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && python3 -c \\\"\\nimpo\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m77-dropped.txt"
+      ]
+    },
+    {
+      "id": "m78-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 97,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 78 (user, 1.5 KB) dropped entirely, prose: \"[result] P1 parse: {'ident': 'EV-101', 'person': 'mira', 'wo\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m78-dropped.txt"
+      ]
+    },
+    {
+      "id": "m79-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 98,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 79 (assistant, 2.2 KB) dropped entirely, prose: \"I already sent the participation check once, exactly as requ\u2026\" (+8 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m79-dropped.txt"
+      ]
+    },
+    {
+      "id": "m80-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 99,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 80 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m80-dropped.txt"
+      ]
+    },
+    {
+      "id": "m81-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 100,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 81 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check channel for report status\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m81-dropped.txt"
+      ]
+    },
+    {
+      "id": "m82-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 101,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 82 (user, 1.5 KB) dropped entirely, prose: \"[result] [5472] p_01m12pp1xwfx8g1sbw4e6azc1d (inform): PAR [\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m82-dropped.txt"
+      ]
+    },
+    {
+      "id": "m83-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 102,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 83 (user) dropped entirely, prose: \"[result] error: cannot pull with rebase: You have unstaged c\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m83-dropped.txt"
+      ]
+    },
+    {
+      "id": "m84-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 103,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 84 (assistant) dropped entirely, prose: \"I've been trying to send the participation check, but the sy\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m84-dropped.txt"
+      ]
+    },
+    {
+      "id": "m85-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 104,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 85 (assistant) dropped entirely, log/tool output: \"[tool] yoars_receipts {\"i\": \"Confirm original participation\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m85-dropped.txt"
+      ]
+    },
+    {
+      "id": "m86-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 105,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 86 (user) dropped entirely, log/tool output: \"[result] yoars2 GET /messages/participation-planner/receipts\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m86-dropped.txt"
+      ]
+    },
+    {
+      "id": "m87-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 106,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 87 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with the\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m87-dropped.txt"
+      ]
+    },
+    {
+      "id": "m88-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 107,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 88 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m88-dropped.txt"
+      ]
+    },
+    {
+      "id": "m90-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 109,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 90 (assistant) dropped entirely, prose: \"The message tells me to send `PARTICIPATION-OK-planner` with\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m90-dropped.txt"
+      ]
+    },
+    {
+      "id": "m91-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 110,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 91 (assistant) dropped entirely, log/tool output: \"[tool] yoars_reply {\"body\": \"Participation confirmed: sent P\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m91-dropped.txt"
+      ]
+    },
+    {
+      "id": "m93-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 112,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 93 (assistant) dropped entirely, prose: \"I've already sent the participation check to the channel and\u2026\" (+3 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m93-dropped.txt"
+      ]
+    },
+    {
+      "id": "m94-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 113,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 94 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with no\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m94-dropped.txt"
+      ]
+    },
+    {
+      "id": "m95-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 114,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 95 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m95-dropped.txt"
+      ]
+    },
+    {
+      "id": "m96-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 115,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 96 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m96-dropped.txt"
+      ]
+    },
+    {
+      "id": "m97-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 116,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 97 (assistant) dropped entirely, prose: \"The participation check has already been sent and delivered\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m97-dropped.txt"
+      ]
+    },
+    {
+      "id": "m98-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 117,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 98 (user) dropped entirely, prose: \"<system-reminder> You stopped with 4 incomplete todo item(s)\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m98-dropped.txt"
+      ]
+    },
+    {
+      "id": "m99-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 118,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 99 (assistant) dropped entirely, prose: \"The participation check was already sent and delivered (room\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m99-dropped.txt"
+      ]
+    },
+    {
+      "id": "m100-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 119,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 100 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"View current todos\", \"op\": \"view\"}\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m100-dropped.txt"
+      ]
+    },
+    {
+      "id": "m101-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 120,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 101 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git status --short;\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m101-dropped.txt"
+      ]
+    },
+    {
+      "id": "m102-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 121,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 102 (user) dropped entirely, prose: \"[result] Remaining items (4): - Review report.py when landed\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m102-dropped.txt"
+      ]
+    },
+    {
+      "id": "m103-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 122,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 103 (user) dropped entirely, prose: \"[result] staged 0, unstaged 2, untracked 0 M __pycache__/par\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m103-dropped.txt"
+      ]
+    },
+    {
+      "id": "m104-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 123,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 104 (assistant) dropped entirely, prose: \"The participation check has already been sent with the exact\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m104-dropped.txt"
+      ]
+    },
+    {
+      "id": "m105-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 124,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 105 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m105-dropped.txt"
+      ]
+    },
+    {
+      "id": "m106-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 125,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 106 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m106-dropped.txt"
+      ]
+    },
+    {
+      "id": "m107-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 126,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 107 (assistant) dropped entirely, prose: \"The participation check has already been sent with the exact\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m107-dropped.txt"
+      ]
+    },
+    {
+      "id": "m108-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 127,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 108 (user) dropped entirely, prose: \"<system-reminder> You stopped with 4 incomplete todo item(s)\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m108-dropped.txt"
+      ]
+    },
+    {
+      "id": "m109-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 128,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 109 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with the\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m109-dropped.txt"
+      ]
+    },
+    {
+      "id": "m110-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 129,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 110 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m110-dropped.txt"
+      ]
+    },
+    {
+      "id": "m111-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 130,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 111 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m111-dropped.txt"
+      ]
+    },
+    {
+      "id": "m112-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 131,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 112 (assistant) dropped entirely, prose: \"The participation check has already been sent and delivered\u2026\" (+3 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m112-dropped.txt"
+      ]
+    },
+    {
+      "id": "m113-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 132,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 113 (user) dropped entirely, prose: \"<system-reminder> You stopped with 4 incomplete todo item(s)\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m113-dropped.txt"
+      ]
+    },
+    {
+      "id": "m114-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 133,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 114 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with the\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m114-dropped.txt"
+      ]
+    },
+    {
+      "id": "m115-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 134,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 115 (assistant) dropped entirely, prose: \"Now I have the real kickoff. My mission as planner: agree in\u2026\" (+3 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m115-dropped.txt"
+      ]
+    },
+    {
+      "id": "m116-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 135,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 116 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git stash list; ech\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m116-dropped.txt"
+      ]
+    },
+    {
+      "id": "m117-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 136,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 117 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"limit\": 30, \"i\": \"Read full recent chann\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m117-dropped.txt"
+      ]
+    },
+    {
+      "id": "m118-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 137,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 118 (user, 1.5 KB) dropped entirely, prose: \"[result] [5467] p_01m12pp17njm3yckft1fyerc76 (artifact_updat\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m118-dropped.txt"
+      ]
+    },
+    {
+      "id": "m119-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 138,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 119 (user, 1.0 KB) dropped entirely, prose: \"[result] ---status--- staged 0, unstaged 2, untracked 0 M __\u2026\" (+2 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m119-dropped.txt"
+      ]
+    },
+    {
+      "id": "m120-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 139,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 120 (assistant) dropped entirely, prose: \"All three modules are now landed (parse, transform, report).\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m120-dropped.txt"
+      ]
+    },
+    {
+      "id": "m121-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 140,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 121 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read ui's report.py\", \"path\": \"/work/app/\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m121-dropped.txt"
+      ]
+    },
+    {
+      "id": "m122-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 141,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 122 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && python3 acceptance.\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m122-dropped.txt"
+      ]
+    },
+    {
+      "id": "m123-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 142,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 123 (user, 1.4 KB) dropped entirely, prose: \"[result] [report.py#95AB] 1:\"\"\"report.run: a list of raw lin\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m123-dropped.txt"
+      ]
+    },
+    {
+      "id": "m125-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 144,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 125 (assistant) dropped entirely, prose: \"The acceptance check passes 6/6. All three modules are lande\u2026\" (+1 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m125-dropped.txt"
+      ]
+    },
+    {
+      "id": "m126-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 145,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 126 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark report reviewed and acceptance run\",\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m126-dropped.txt"
+      ]
+    },
+    {
+      "id": "m127-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 146,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 127 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark acceptance run done\", \"op\": \"done\",\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m127-dropped.txt"
+      ]
+    },
+    {
+      "id": "m128-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 147,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 128 (user) dropped entirely, prose: \"[result] Remaining items (3): - Run acceptance.py [in_progre\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m128-dropped.txt"
+      ]
+    },
+    {
+      "id": "m129-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 148,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 129 (user) dropped entirely, prose: \"[result] Remaining items (2): - Catch shape/rule contradicti\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m129-dropped.txt"
+      ]
+    },
+    {
+      "id": "m130-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 149,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 130 (assistant, 1.7 KB) dropped entirely, prose: \"I've completed the review phase. All three modules landed, t\u2026\" (+5 more)",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m130-dropped.txt"
+      ]
+    },
+    {
+      "id": "m131-dropped",
+      "location": {
+        "file": "thread.pkl",
+        "line": 150,
+        "column": 3
+      },
+      "severity": "warning",
+      "message": "message 131 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark resolve tasks done\", \"op\": \"done\", \"\u2026\"",
+      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "evidence": [
+        "evidence/m131-dropped.txt"
+      ]
+    }
+  ]
+}

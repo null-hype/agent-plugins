@@ -1,0 +1,3 @@
+The message tells me to send `PARTICIPATION-OK-planner` with no to_handle, and send nothing else. My send just succeeded. Now I should reply to this request to confirm, without doing anything else. The instruction says "Send nothing else, write no files, and do not use any other messaging tool." Let me reply to the request.
+
+The request says "Send nothing else." I've sent the participation check successfully. I should reply confirming my outbound path works. The instruction "do not use any other messaging tool" means I should only use yoars_send/yoars_reply. Let me confirm via a reply to the request.

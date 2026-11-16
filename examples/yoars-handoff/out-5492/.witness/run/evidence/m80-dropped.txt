@@ -1,0 +1,1 @@
+[tool] bash {"command": "cd /work/app && git pull --rebase origin main 2>&1; echo \"---\"; git log --oneline -8; echo \"---FILES---\"; ls -la *.py", "i": "Check for report.py landing"}

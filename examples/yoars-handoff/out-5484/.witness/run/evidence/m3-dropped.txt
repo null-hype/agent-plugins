@@ -1,0 +1,1 @@
+[tool] bash {"command": "cd /work/app && git pull --rebase origin main 2>&1; echo \"---STATUS---\"; git status; echo \"---LOG---\"; git log --oneline -10", "i": "Check repo state"}

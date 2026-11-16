@@ -1,0 +1,12 @@
+<system-reminder>
+You stopped with 4 incomplete todo item(s):
+- Review
+  - Review report.py when landed
+  - Run acceptance.py
+- Resolve
+  - Catch shape/rule contradictions
+  - Publish coordination findings
+
+Please continue working on these tasks or mark them complete if finished.
+(Reminder 3/3)
+</system-reminder>

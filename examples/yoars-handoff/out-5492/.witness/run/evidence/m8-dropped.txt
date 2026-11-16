@@ -1,0 +1,26 @@
+[result] [SPEC.md#690C]
+1:# The task (everyone gets this part)
+2:
+3:Build a small data pipeline, together, in `/work/app/`. Three files, and the
+4:module and function names are fixed because the check imports them:
+5:
+6:| File | Owner | Must provide |
+7:|---|---|---|
+8:| `/work/app/parse.py` | parsing | `parse_line(a) -> dict` — one raw input line to one record |
+9:| `/work/app/transform.py` | normalization | `normalize(b) -> dict or None` — one record cleaned, or dropped |
+10:| `/work/app/report.py` | reporting | `run(c) -> dict` — a list of raw lines to a summary |
+11:
+12:`parse_line` takes one string (a raw line). `normalize` takes one record and
+13:returns the cleaned record, or `None` when the record must not be counted.
+14:`run` takes a list of raw lines, drives the other two stages, and returns the
+15:summary. Input lines arrive in **three source formats**; which piece of a line
+16:means what, how values are cleaned, and what the summary must contain are
+17:described in **your own material** — each of you holds the rules for your own
+18:stage, and nobody holds all of them.
+19:
+20:**The shape of the record passed between stages is not specified anywhere, and
+21:no slice is authoritative about it.** Each of you has been shown an example
+22:record. The examples carry the same six pieces of information beyond nothing —
+23:and they do **not** use the same field names. You must end up with **one
+24:shape**; whose names it uses is yours to settle, and inventing new ones is a
+25:perfec ...[cut]

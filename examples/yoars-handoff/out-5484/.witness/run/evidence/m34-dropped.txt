@@ -1,0 +1,50 @@
+[result] [parse.py#DBD2]
+1:"""parse_line: one raw source line to one record.
+2:
+3:Three source formats are distinguished per line, and passed through with
+4:values as given; the record carries which unit state applies (plain,
+5:hundredths, thousandth-scale) so the normalization stage can clean it.
+6:"""
+7:from __future__ import annotations
+8:
+9:import json
+10:from typing import Any
+11:
+12:
+13:def _pipe_parts(line: str) -> list[str]:
+14:    # A|B|C|D|E|F
+15:    return line.split("|")
+16:
+17:
+18:def _parse_pipe(parts: list[str]) -> dict:
+19:    # D's value is always in hundredths; record that as the unit state.
+20:    return {
+21:        "ident": parts[0],
+22:        "person": parts[1],
+23:        "worth": parts[2],
+24:        "gauge": "hundredths",
+25:        "moment": parts[4],
+26:        "variety": parts[5],
+27:    }
+28:
+29:
+30:def _parse_pair(line: str) -> dict:
+31:    pairs = {}
+32:    for token in line.split():
+33:        key, _, value = token.partition("=")
+34:        pairs[key] = value
+35:    # u: E means plain units, C means hundredths.
+36:    unit = pairs.get("u", "")
+37:    gauge = "plain" if unit == "E" else "hundredths" if unit == "C" else ""
+38:    return {
+39:        "ident": pairs.get("id", ""),
+40:        "person": pairs.get("who", ""),
+41:        "worth": pairs.get("amt", ""),
+42:        "gauge": gauge,
+43:        "moment": pairs.get("when", ""),
+44:        "variety": pairs.get("k", ""),
+45:    }
+46:
+47:
+48:def _parse_json(line: str) -> dict:
+49:    obj = json.loads(li ...[cut]

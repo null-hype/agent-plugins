@@ -1,0 +1,97 @@
+I've already sent the participation check. Now let me continue my real work: building transform.py with the record shape that auth's parse.py produces.
+
+Auth's parse.py produces records with these field names:
+- `ident` — the id (e.g. "EV-101")
+- `person` — the person
+- `worth` — the amount value (as string)
+- `gauge` — unit state: `"hundredths"`, `"plain"`, `"thousandth"`, or `""`
+- `moment` — epoch time (as string)
+- `variety` — class code (as string)
+
+My example record used different names (`datum, bearer, quantum, basis, instant, clan`), but auth has published this shape, and it's what parse produces. The record shape is the team's to settle — auth has settled on these names and published parse.py. So transform.py (mine) must consume this shape and pass it along.
+
+Wait, but I need to coordinate. The reporting owner (ui) also needs to consume the shape. Let me think about the coordination here.
+
+My rules:
+1. **Units** — hundredths ÷100, thousandth-scale ×1000, plain pass through. Round to 2 decimals.
+2. **Drops** — person starts with `test-`, or epoch < `1700000000` → drop (None).
+3. **Classes** — 1,4→retail; 2→food; 7→travel; else→other. Attach group.
+
+So in my transform, operating on auth's shape:
+- `worth` is the value, `gauge` is the unit label.
+- `person` for test- check.
+- `moment` for epoch check.
+- `variety` for class mapping.
+
+But I need to decide: what do I output as the record? The reporting owner (ui) consumes my output. I must coordinate with ui on the shape I pass forward.
+
+The key coordination: both parse (auth) → transform (me) → report (ui). The transformed record I pass to report should carry the cleaned values and the computed class group. Ui's report needs to aggregate into a summary.
+
+I need to coordinate the shape with ui. But also, my responsibility is to clean the record. The cleanest approach: keep the same field shape, but replace `worth` with a *cleaned numeric* value, add the group, and drop invalid records. But I need to know what ui expects.
+
+Let me think about what I control and what I need. Since ui will write report.py that consumes my output, I should coordinate. Let me message ui and auth about the shape.
+
+Actually, let me reconsider. This is a coordination exercise. The important thing:
+1. I publish my transform.py.
+2. I need to agree on the shape with ui (report owner).
+
+Let me reason about what the shape should be after my transform. The parse record has: ident, person, worth (raw string), gauge, moment, variety.
+
+After transformation, I should produce a cleaned record that report can aggregate. Reasonable: 
+- Clean the worth → numeric value (rounded to 2 decimals).
+- Map variety → group.
+- Keep ident, person, moment.
+
+But report (ui) might want specific fields. I need ui's input on what it needs for the summary.
+
+Let me look at what the acceptance check aggregates — it extracts all numbers from the summary. So ui's report will sum/aggregate numeric values. Most likely ui wants the cleaned numeric worth plus possibly counts by group.
+
+Let me coordinate with ui. I'll broadcast the shape I'll produce and ask them to confirm what they consume. Meanwhile, I can implement my transform.
+
+Actually, let me be efficient. Let me message the channel to coordinate the shape, then implement.
+
+Let me first reason about the units carefully with auth's gauge labels:
+- gauge `"hundredths"` → worth ÷ 100
+- gauge `"thousandth"` → worth × 1000
+- gauge `"plain"` → pass
+- gauge `""` → ? (empty line case, will be dropped anyway since epoch/person empty)
+
+Wait, in P1, worth is `2450` with gauge hundredths → 2450/100 = 24.50. Matches my example's quantum 24.5. Good.
+
+In P2, amt=89.50 u=E → gauge plain → 89.50. 
+In P3, value=3.75 scaled=true → gauge thousandth → 3.75*1000 = 3750.
+Also P3 EV-502 value=2.00 scaled=true → 2000.00.
+P3 EV-302 value=41.00 scaled=false → plain → 41.00.
+P2 EV-202 amt=12.25 u=E → 12.25.
+
+Hmm wait, let me reconsider P2's unit. auth's _parse_pair: `u=E` → plain, `u=C` → hundredths. But in P1 (pipe) it's always hundredths regardless of the C. Hmm, in P1 the D field is `C` but auth hardcodes gauge="hundredths". Actually the D field value "C" in P1 is the 4th field. auth ignores it and hardcodes hundredths. OK.
+
+Wait, but actually looking at probe P1: `EV-101|mira|2450|C|1755600000|4`. The "C" is the unit {C or E}. auth always treats pipe format D as hundredths. Hmm, but what if it could be E for pipe too? The probe data all uses C for pipe format. Fine, auth's call.
+
+Now the classes: variety → group: 1,4→retail; 2→food; 7→travel; else→other.
+
+Now drops: person starts with test-, epoch < 1700000000.
+
+Let me check P4:
+- `EV-401|test-bot|900|C|1755621600|4` → person=test-bot → DROP.
+- `id=EV-402 who=ana amt=5.00 u=E when=1699999999 k=2` → epoch 1699999999 < 1700000000 → DROP.
+- `EV-403|jules|7300|C|1755625200|1` → kept: 7300 hundredths → 73.00, class 1→retail.
+
+Now it's about what report (ui) does with my output. I need to coordinate the shape. Let me message ui.
+
+Let me think about the summary. Looking at the probes, ui's report aggregates. The digest is over all numbers in the summary sorted. So likely ui produces counts and sums.
+
+I need to know what shape ui consumes. Let me coordinate via the channel. I'll publish my transform AND coordinate the shape with ui.
+
+Let me send a message to ui asking about the downstream shape they need, and propose mine. Actually, the most productive: propose the output shape clearly and ask ui to confirm or adjust. Let me do that, and implement transform.py in parallel.
+
+Let me write transform.py now based on auth's shape, producing a cleaned record. I'll keep the same field names but clean the values:
+- `worth` → float cleaned number
+- `group` → computed class group
+- keep ident, person, moment as... hmm, moment as int?
+
+I'll broadcast to ui what I produce and coordinate. Let me message now.
+
+Let me first announce my status to the channel and ask ui about downstream shape.
+
+Actually, let me implement first so I have something concrete, then coordinate, then adjust as needed.

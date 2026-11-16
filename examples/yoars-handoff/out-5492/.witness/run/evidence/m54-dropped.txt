@@ -1,0 +1,48 @@
+[result] [transform.py#692B]
+1:"""normalize: one record in, one cleaned record (or a drop) out.
+2:
+3:Consumes the record shape produced by parse_line (ident/person/worth/gauge/
+4:moment/variety), applies the normalization rules, and passes the cleaned
+5:record forward to the reporting stage:
+6:
+7:1. Units.  hundredths -> /100 ; thousandth -> *1000 ; plain -> pass ;
+8:   the cleaned value is rounded to 2 decimals.
+9:2. Drops.   person starts with "test-"  or  epoch < 1700000000 -> None.
+10:3. Classes. the small integer class maps to a named group:
+11:   1 & 4 -> retail ; 2 -> food ; 7 -> travel ; anything else -> other.
+12:   The group is attached to the record.
+13:"""
+14:from __future__ import annotations
+15:
+16:from typing import Any, Optional
+17:
+18:
+19:def _clean_worth(worth: Any, gauge: str) -> float:
+20:    """Apply the unit rule and round to 2 decimals."""
+21:    value = float(worth)
+22:    if gauge == "hundredths":
+23:        value /= 100.0
+24:    elif gauge == "thousandth":
+25:        value *= 1000.0
+26:    # "plain" (and "" before a drop) pass through unchanged.
+27:    return round(value, 2)
+28:
+29:
+30:_GROUP_MAP = {
+31:    1: "retail",
+32:    2: "food",
+33:    4: "retail",
+34:    7: "travel",
+35:}
+36:
+37:
+38:def _group(variety: Any) -> str:
+39:    try:
+40:        code = int(variety)
+41:    except (TypeError, ValueError):
+42:        return "other"
+43:    return _GROUP_MAP.get(code, "other")
+44:
+45:
+46:def normalize(b: dict) -> Optional[dict]:
+47:    """Clean one record, or re ...[cut]

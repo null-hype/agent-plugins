@@ -1,0 +1,1 @@
+[tool] yoars_reply {"body": "Participation confirmed: sent PARTICIPATION-OK-planner to the whole channel (no to_handle). Outbound path works.", "i": "Confirm participation sent", "communication_kind": "inform"}

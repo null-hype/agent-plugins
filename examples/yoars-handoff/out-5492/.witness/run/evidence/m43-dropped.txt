@@ -1,0 +1,5 @@
+The participation check is confirmed already sent (message 5476, and the duplicate was rejected). The system explicitly told me not to resend. Let me continue the real work.
+
+Now I have both parse (auth) and normalize (backend) shapes. Let me see backend's full message. The ui agent asked backend for the shape; backend replied (snapshot truncated). Let me pull the withheld portion of backend's message and check for new updates.
+
+Let me get the full picture. The room shows backend (p_01m12pp1yq...) started replying. Its message [5484] is truncated. Let me pull it and check the room again.

@@ -1,0 +1,5 @@
+The participation check was already sent (message 5476, outbound confirmed), and the system rejected the duplicate telling me not to resend. So my outbound path is confirmed. I've been continuing the real task.
+
+Now both parse (auth, 1b20109) and transform (backend, f0aeaa9) have landed. ui (report.py) is still pending. Let me fetch backend's transform.py and review it against my example and the probes, and catch contradictions.
+
+Let me pull the latest and read transform.py.

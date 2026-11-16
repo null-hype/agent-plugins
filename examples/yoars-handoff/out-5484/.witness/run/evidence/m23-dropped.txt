@@ -1,0 +1,30 @@
+[result] [acceptance.py#3671]
+83:
+84:def main() -> int:
+85:    app = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+86:    sys.path.insert(0, str(app))
+87:    try:
+88:        report = load(app, "report")
+89:    except Exception as exc:                                     # noqa: BLE001
+90:        print(f"FAIL  report.py could not be loaded: {type(exc).__name__}: {exc}")
+91:        return 1
+92:    passed, failed = [], []
+93:    for name, lines in PROBES.items():
+94:        try:
+95:            summary = report.run(list(lines))
+96:        except Exception as exc:                                 # noqa: BLE001
+97:            failed.append(f"{name} (raised {type(exc).__name__})")
+98:            continue
+99:        (passed if digest_of(summary) == DIGESTS[name] else failed).append(name)
+100:    # The serialized boundary, as in the todo task: parse.py must write
+101:    # `parsed.json` for the last batch it handled, and the field names there
+102:    # must be the ones the pipeline actually passes between stages — checked
+103:    # as name-set equality against a record `report.run` received, reported as
+104:    # a count, never as names. Skipped (not failed) when the team's composition
+105:    # never materializes records as dicts; the probes above still bind them.
+106:    print(f"{'PASS' if not failed else 'GRADE'}  {len(passed)}/6 probes reproduced"
+107:          + (f"; failed: {', '.join(sorted(failed))}" if failed else ""))
+108:    return 0 if not failed else 1
+109:
+110:
+111:if ...[cut]

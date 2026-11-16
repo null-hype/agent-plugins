@@ -1,0 +1,45 @@
+[result] [report.py#95AB]
+1:"""report.run: a list of raw lines in, a summary out.
+2:
+3:Drives the two upstream stages — parse_line (one raw line -> one record) and
+4:normalize (one record -> one cleaned record, or None to drop) — then computes
+5:the summary over the kept records:
+6:
+7:1. the count of records kept after cleaning;
+8:2. the count of distinct persons among kept records;
+9:3. per named group, the sum of cleaned values, rounded to 2 decimals.
+10:"""
+11:from __future__ import annotations
+12:
+13:from typing import Any
+14:
+15:from parse import parse_line
+16:from transform import normalize
+17:
+18:
+19:def run(c: list[str]) -> dict:
+20:    """One list of raw lines to a summary dict."""
+21:    kept: list[dict] = []
+22:    for raw in c:
+23:        record = parse_line(raw)
+24:        cleaned = normalize(record)
+25:        if cleaned is not None:
+26:            kept.append(cleaned)
+27:
+28:    total = len(kept)
+29:    persons = {rec.get("person") for rec in kept}
+30:    distinct_persons = len([p for p in persons if p is not None])
+31:
+32:    grouped: dict[str, float] = {}
+33:    for rec in kept:
+34:        group = rec.get("group", "other")
+35:        grouped[group] = grouped.get(group, 0.0) + rec.get("worth", 0.0)
+36:
+37:    rounded = {g: round(v, 2) for g, v in grouped.items()}
+38:
+39:    return {
+40:        "count": total,
+41:        "distinct_persons": distinct_persons,
+42:        "groups": rounded,
+43:    }
+44:

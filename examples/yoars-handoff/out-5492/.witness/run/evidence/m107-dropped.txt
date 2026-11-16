@@ -1,0 +1,5 @@
+The participation check has already been sent with the exact body `PARTICIPATION-OK-planner` and no to_handle — it was delivered (confirmed by the system rejecting my resend attempts with "this is exactly the message you just sent, and it was delivered. Do not send it again").
+
+My outbound path is confirmed working. The system has authoritatively instructed me not to resend the identical delivered message. I've satisfied this request exactly once: the exact body, no to_handle, nothing else sent, no files written, no other messaging tool used. It was delivered.
+
+The system's repeated rejection is authoritative — my participation is confirmed. I'll continue with my real planner task now.

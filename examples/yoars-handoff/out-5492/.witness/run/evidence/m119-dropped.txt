@@ -1,0 +1,25 @@
+[result] ---status---
+staged 0, unstaged 2, untracked 0
+M __pycache__/parse.cpython-313.pyc
+M __pycache__/transform.cpython-313.pyc
+---pull---
+ok stashed
+ok 4 files +43 -0
+---log---
+7e83bd3 report: run drives parse+normalize, produces summary
+f0aeaa9 normalize: clean or drop one record per normalization rules
+1b20109 parse: three source formats to records with unit-state label
+35b8efd bootstrap: the shared task, the acceptance check, and what each of you owns
+---files---
+-rw-rw-r-- 1 bun  bun  4957 Aug 27 22:50 acceptance.py
+-rw-r--r-- 1 root root 2259 Aug 27 22:51 parse.py
+-rw-r--r-- 1 root root 1293 Aug 27 22:54 report.py
+-rw-r--r-- 1 root root 1963 Aug 27 22:52 transform.py
+---diff parse/transform present---
+"""parse_line: one raw source line to one record.
+
+Three source formats are distinguished per line, and passed through with
+"""normalize: one record in, one cleaned record (or a drop) out.
+
+Consumes the record shape produced by parse_line (ident/person/worth/gauge/
+[raw output: artifact://19]

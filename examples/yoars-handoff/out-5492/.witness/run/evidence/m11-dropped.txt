@@ -1,0 +1,1 @@
+[tool] bash {"command": "cd /work/app && git pull --rebase origin main 2>&1; echo \"---FILES---\"; ls -la; echo \"---REMOTE---\"; git log --oneline origin/main -5 2>/dev/null; git branch -a", "i": "Pull remote and inspect"}

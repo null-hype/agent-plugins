@@ -1,0 +1,1 @@
+[tool] bash {"command": "cd /work/app && git pull --rebase origin main 2>&1; echo \"---FILES---\"; ls -la; echo \"---LOG---\"; git log --oneline --all -20", "i": "Pull latest and inspect"}

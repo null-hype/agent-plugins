@@ -1,0 +1,21 @@
+[
+ {
+  "id": "yoars-deepseek-flash-225035-5486",
+  "name": "yoars deepseek-flash-225035: planner ledger message 5486",
+  "transcript": "--------\nAGENT\n--------\nPlanner here. parse.py (auth) and transform.py (backend) are both landed and the shapes line up: parse emits {ident, person, worth, gauge, moment, variety}; transform consumes that and returns {ident, person, worth:float, moment:int, variety, group}. Your report.run(list_of_raw_lines) should drive parse_line then normalize then summarize. The record normalize returns to you has: worth already cleaned (hundredths->/100, thousandth->*1000, plain pass; rounded 2dp), group is a named class string (class code 1/4->retail, 2->food, 7->travel, else other), and normalize drops (returns None) anyone whose person starts with \"test-\" or whose moment < 1700000000. Build the summary on that record shape, push report.py, and I'll run acceptance.py against the composition.\n\n",
+  "messages": [
+   {
+    "number": 1,
+    "role": "assistant",
+    "start_byte": 1,
+    "end_byte": 769,
+    "created_at_utc": "2026-08-27T22:53:05.219159+00:00"
+   }
+  ],
+  "generated_title": "yoars deepseek-flash-225035: planner ledger message 5486",
+  "summary": "Planner here. parse.py (auth) and transform.py (backend) are both landed and the shapes line up: parse emits {ident, person, worth, gauge, moment, variety}; transform consumes that and returns {ident, person, worth:float, moment:int, variety, group}. Your report.run(list_of_raw_lines) should drive parse_line then normalize then summarize. The record normalize returns to you has: worth already cleaned (hundredths->/100, thousandth->*1000, plain pass; rounded 2dp), group is a named class string (class code 1/4->retail, 2->food, 7->travel, else other), and normalize drops (returns None) anyone whose person starts with \"test-\" or whose moment < 1700000000. Build the summary on that record shape, push report.py, and I'll run acceptance.py against the composition.",
+  "keywords": [],
+  "intents": [],
+  "summary_is_fresh": true
+ }
+]

@@ -1,0 +1,17 @@
+[result] P1
+   parse: {'ident': 'EV-101', 'person': 'mira', 'worth': '2450', 'gauge': 'hundredths', 'moment': '1755600000', 'variety': '4'}
+   norm: {'ident': 'EV-101', 'person': 'mira', 'worth': 24.5, 'moment': 1755600000, 'variety': '4', 'group': 'retail'}
+   parse: {'ident': 'EV-102', 'person': 'tomas', 'worth': '180000', 'gauge': 'hundredths', 'moment': '1755603600', 'variety': '2'}
+   norm: {'ident': 'EV-102', 'person': 'tomas', 'worth': 1800.0, 'moment': 1755603600, 'variety': '2', 'group': 'food'}
+P2
+   parse: {'ident': 'EV-201', 'person': 'lena', 'worth': '89.50', 'gauge': 'plain', 'moment': '1755607200', 'variety': '7'}
+   norm: {'ident': 'EV-201', 'person': 'lena', 'worth': 89.5, 'moment': 1755607200, 'variety': '7', 'group': 'travel'}
+   parse: {'ident': 'EV-202', 'person': 'piotr', 'worth': '12.25', 'gauge': 'plain', 'moment': '1755610800', 'variety': '1'}
+   norm: {'ident': 'EV-202', 'person': 'piotr', 'worth': 12.25, 'moment': 1755610800, 'variety': '1', 'group': 'retail'}
+P3
+   parse: {'ident': 'EV-301', 'person': 'nadia', 'worth': 3.75, 'gauge': 'thousandth', 'moment': 1755614400, 'variety': 2}
+   norm: {'ident': 'EV-301', 'person': 'nadia', 'worth': 3750.0, 'moment': 1755614400, 'variety': 2, 'group': 'food'}
+   parse: {'ident': 'EV-302', 'person': 'omar', 'worth': 41.0, 'gauge': 'plain', 'moment': 1755618000, 'variety': 9}
+   norm: {'ident': 'EV-302', 'person': 'omar', 'worth': 41.0, 'moment': 1755618000, 'variety': 9, 'group': 'other'}
+P4
+   parse: {'ident': 'EV-401 ...[cut]

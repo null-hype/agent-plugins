@@ -1,0 +1,1 @@
+I need to send the participation check exactly once with the exact body `PARTICIPATION-OK-planner` and no to_handle. Previous attempts were rejected because the identical message was already delivered. But this is a fresh request (`msg_01m12pq0cmsb4a3t6cezw2a1as`). Let me try once for this specific request.

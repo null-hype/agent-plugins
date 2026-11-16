@@ -1,0 +1,1 @@
+[tool] read {"i": "Read spec", "path": "/work/app/SPEC.md"}

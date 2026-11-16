@@ -1,0 +1,3 @@
+The channel context confirms roles: **ui owns report.py** (the reporting stage). The other two agents (auth, backend) map to parsing and normalization. Let me pull the channel history to see their examples and identity.
+
+I already sent the participation check. Now let me check the room and pull any artifact updates.

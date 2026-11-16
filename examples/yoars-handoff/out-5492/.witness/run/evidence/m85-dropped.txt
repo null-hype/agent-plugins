@@ -1,0 +1,1 @@
+[tool] yoars_receipts {"i": "Confirm original participation delivery", "message_key": "participation-planner"}

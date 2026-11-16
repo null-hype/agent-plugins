@@ -1,0 +1,1 @@
+[tool] bash {"command": "cd /work/app && python3 acceptance.py /work/app 2>&1 || true", "i": "Run acceptance check"}

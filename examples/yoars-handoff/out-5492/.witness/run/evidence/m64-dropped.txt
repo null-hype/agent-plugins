@@ -1,0 +1,1 @@
+[result] yoars2 POST /channels/ch_01m12pp1fewnynnq0pg2bytnxj/messages failed (422): {"detail":"no principal with handle ui"}

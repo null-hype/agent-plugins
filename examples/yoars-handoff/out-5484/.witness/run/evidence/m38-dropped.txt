@@ -1,0 +1,5 @@
+I've already sent the participation check (`PARTICIPATION-OK-backend`). Now continuing my real work — the transform.py stage.
+
+Let me coordinate with ui (report owner) about the downstream shape my transform produces, since ui needs to consume it for the summary. Let me also verify my transform logic against a quick sanity test.
+
+Let me check the channel for any shape discussion and reach out to ui.

@@ -1,0 +1,1 @@
+I've already sent the participation check. Now the real task: I own transform.py. Auth has published parse.py. Let me read it to learn the record shape auth produces.

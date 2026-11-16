@@ -1,0 +1,3 @@
+I've sent the participation confirmation as required. Now let me do my real work — understand the acceptance check and build transform.py.
+
+Let me examine the acceptance check to understand how it drives the pipeline.

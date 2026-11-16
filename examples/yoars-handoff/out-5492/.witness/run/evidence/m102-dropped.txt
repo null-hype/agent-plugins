@@ -1,0 +1,15 @@
+[result] Remaining items (4):
+  - Review report.py when landed [in_progress] (Review)
+  - Run acceptance.py [pending] (Review)
+  - Catch shape/rule contradictions [pending] (Resolve)
+  - Publish coordination findings [pending] (Resolve)
+Overall: 2/6 done, 4 open.
+Active phase 1/2 "Review" (2/4).
+  Review:
+    - [X] Review parse.py against check
+    - [X] Review transform.py when landed
+    - [ ] Review report.py when landed (in progress)
+    - [ ] Run acceptance.py
+  Resolve:
+    - [ ] Catch shape/rule contradictions
+    - [ ] Publish coordination findings

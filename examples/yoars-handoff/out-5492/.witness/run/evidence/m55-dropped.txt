@@ -1,0 +1,60 @@
+The participation check is already confirmed delivered — the system rejected my duplicate send twice, telling me "this is exactly the message you just sent, and it was delivered. Do not send it again — continue with your task." My outbound path is confirmed (message 5476 in the room).
+
+I have already been continuing my real task: reviewing the landed parse.py and transform.py against the check. Both are now landed. I'm the planner, so I need to review them, catch contradictions, route the report stage (still pending from ui), and verify against acceptance.py.
+
+Let me continue. I've reviewed parse.py and transform.py. Now let me analyze the record shape and value flow carefully, since contradictions are my core job.
+
+Key observation: **there's a shape/value mismatch between my planner example and what auth/backend built.**
+
+My planner example record: `{"entry": "EV-101", "member": "mira", "total": 24.5, "form": "plain", "stamp": 1755600000, "group": 4}`
+
+auth's parse.py emits: `{ident, person, worth, gauge, moment, variety}` — raw strings, with a `gauge` label for units.
+backend's transform.py consumes that and emits: `{ident, person, worth(float), moment, variety, group}`.
+
+Now let me trace the VALUE of my example through the pipeline:
+
+My example corresponds to probe line: `EV-101|mira|2450|C|1755600000|4`
+- parse: ident=EV-101, person=mira, worth="2450", gauge="hundredths", moment="1755600000", variety="4"
+- transform: person not "test-", moment 1755600000 ≥ 1700000000, worth = 2450/100 = 24.5, group: code 4 → "retail"
+
+My example says `total: 24.5` ✓ (worth cleaned to 24.5), `group: 4` where my group is the **integer 4** but backend's group is the **string "retail"**. And my example's `form: "plain"` doesn't appear in backend's output (it maps gauge→cleaning rather than exposing form).
+
+Now, these are different shape settlements. But the check only verifies summary **numbers** — it doesn't check names. So the shape difference isn't fatal to passing. What matters is whether the report stage (ui) consumes backend's output shape and produces the right summary values.
+
+My core value now as planner:
+1. Verify the value semantics are consistent so the summary computes correct numbers.
+2. Route to ui: the report must consume transform's output shape `{ident, person, worth, moment, variety, group}`.
+3. Run acceptance.py once report.py lands.
+
+Let me examine the unit rules for potential contradictions. There's a subtle one:
+
+**backend's `_clean_worth`**: `hundredths -> /100 ; thousandth -> *1000 ; plain -> pass`.
+
+Let me verify with the probes:
+- Format A (pipe): gauge="hundredths" always. `EV-102|tomas|180000|C|...` → 180000/100 = 1800.00. The acceptance docstring itself says "the 180000 -> 1800.00 pair reveals a unit rule" ✓ consistent.
+- Format B: u=E → gauge="plain". `amt=89.50` → 89.50 ✓.
+- Format C: scaled=true → gauge="thousandth". `{"value":3.75,"scaled":true}` → 3.75 * 1000 = 3750.00. And `{"value":41.00,"scaled":false}` → plain → 41.00.
+
+This is backend's material — I trust their unit rule. But is `thousandth -> *1000` right? Let me check my example: my example's `total: 24.5` for pipe (hundredths, 2450/100=24.5) ✓. Good, hundredths confirmed by MY example too.
+
+Now the group mapping. My example `group: 4`. backend maps code 4 → "retail". But my example shows `group: 4` (the raw integer), not "retail". This is a **contradiction between my example and backend's implementation**. However — group isn't a number in the summary necessarily; the summary might group by this. As planner I should flag it but note it's not check-fatal unless the report relies on it.
+
+Actually, wait. This matters a lot. The summary is built from these records. If the report groups/sums by "group", and backend outputs "retail" vs my example's integer 4, the report just needs to consume whatever backend emits. Consistency within the pipeline is what matters, not matching my example's exact literal value. My example is illustrative of the six pieces, not authoritative about group's value type.
+
+Let me focus on the real risk: does the pipeline compose and produce correct numbers? I need report.py from ui. Let me coordinate.
+
+Let me also verify parse.py doesn't have a bug that breaks values. In `_parse_pipe`, **parts[3] (the "C" form code) is dropped** and gauge hardcoded to "hundredths". That's fine since all pipe lines use C → hundredths. But wait, what if pipe position 3 could be something other than C? Backend says "C means hundredths". All probes use C in pipe. The docstring comment says "D's value is always in hundredths." So consistent.
+
+But there's a real concern in parse's `_parse_pipe`: it drops position 3 entirely and doesn't verify it. Since backend hardcodes pipe→hundredths regardless (via gauge label from parse), and parse always sets "hundredths" for pipe, this is consistent between auth and backend. Good — no contradiction there.
+
+Let me check: does parse's JSON branch handle the `scaled` field, and does backend's thousandth rule match? parse: `gauge = "thousandth" if obj.get("scaled") else "plain"`. backend: thousandth → *1000. This is auth+backend agreeing on the scaled meaning. My example doesn't cover JSON so I can't cross-check, but they're internally consistent.
+
+Now, one thing I should verify: **does parse.py preserve the form/gauge such that backend reads what parse writes?** parse writes `gauge` key ✓, backend reads `b.get("gauge")` ✓. parse writes `worth`, `moment`, `variety`, `person`, `ident` ✓ — backend reads all these ✓. The shapes match perfectly between parse and transform. Good — auth and backend are aligned on the same field names.
+
+So the pipeline parse→transform is coherent. Now I need report.py to consume `{ident, person, worth, moment, variety, group}` and produce the right summary.
+
+Let me now check the room for ui's status and route the shape to them, and also flag the my-example-vs-implementation group/form divergence as a (non-fatal) note.
+
+Let me look at what the report needs to produce. I don't know ui's material, so I route: give them the exact output shape of transform so their summary can be correct.
+
+Let me send a coordination message to ui with the incoming record shape, and check if report.py has landed yet.

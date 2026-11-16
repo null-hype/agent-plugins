@@ -1,0 +1,151 @@
+amends "Thread.pkl"
+
+id = "yoars-deepseek-flash-225035-5492"
+name = "yoars deepseek-flash-225035: planner ledger message 5492"
+summary = #"""
+  Planner status: composition is GREEN — python3 acceptance.py /work/app = PASS 6/6. All three modules landed and the shapes line up end to end (parse {ident,person,worth,gauge,moment,variety} -> transform {ident,person,worth,float,moment,variety,group} -> report {count,distinct_persons,groups}). Contradiction review: my example record used different names (entry/member/total/form/stamp/group, group as int) than the landed shape (ident/person/worth/gauge/moment/variety, group as named class). Same six pieces, different names, values consistent — the expected divergence, not a bug. No action needed; the check only seals summary values, and it passes all six probes. Team's done.
+  """#
+summaryIsFresh = true
+
+blocks {
+  new { // block 0
+    role = "AGENT"
+    text = #"""
+      Planner status: composition is GREEN — python3 acceptance.py /work/app = PASS 6/6. All three modules landed and the shapes line up end to end (parse {ident,person,worth,gauge,moment,variety} -> transform {ident,person,worth,float,moment,variety,group} -> report {count,distinct_persons,groups}). Contradiction review: my example record used different names (entry/member/total/form/stamp/group, group as int) than the landed shape (ident/person/worth/gauge/moment/variety, group as named class). Same six pieces, different names, values consistent — the expected divergence, not a bug. No action needed; the check only seals summary values, and it passes all six probes. Team's done.
+      """#
+  }
+}
+
+messages {
+  new { number = 1; role = "user"; createdAt = "2026-08-27T22:51:04.486Z"; fullBytes = 3228; block = null }
+  new { number = 2; role = "assistant"; createdAt = "2026-08-27T22:51:04.689Z"; fullBytes = 125; block = null }
+  new { number = 3; role = "assistant"; createdAt = "2026-08-27T22:51:04.689Z"; fullBytes = 77; block = null }
+  new { number = 4; role = "user"; createdAt = "2026-08-27T22:51:04.707Z"; fullBytes = 1528; block = null }
+  new { number = 5; role = "user"; createdAt = "2026-08-27T22:51:04.810Z"; fullBytes = 399; block = null }
+  new { number = 6; role = "assistant"; createdAt = "2026-08-27T22:51:05.589Z"; fullBytes = 82; block = null }
+  new { number = 7; role = "assistant"; createdAt = "2026-08-27T22:51:05.589Z"; fullBytes = 82; block = null }
+  new { number = 8; role = "user"; createdAt = "2026-08-27T22:51:05.595Z"; fullBytes = 1528; block = null }
+  new { number = 9; role = "user"; createdAt = "2026-08-27T22:51:05.599Z"; fullBytes = 1518; block = null }
+  new { number = 10; role = "assistant"; createdAt = "2026-08-27T22:51:23.070Z"; fullBytes = 4291; block = null }
+  new { number = 11; role = "assistant"; createdAt = "2026-08-27T22:51:23.070Z"; fullBytes = 223; block = null }
+  new { number = 12; role = "assistant"; createdAt = "2026-08-27T22:51:23.070Z"; fullBytes = 22; block = null }
+  new { number = 13; role = "user"; createdAt = "2026-08-27T22:51:23.134Z"; fullBytes = 148; block = null }
+  new { number = 14; role = "user"; createdAt = "2026-08-27T22:51:23.290Z"; fullBytes = 715; block = null }
+  new { number = 15; role = "assistant"; createdAt = "2026-08-27T22:51:24.286Z"; fullBytes = 61; block = null }
+  new { number = 16; role = "assistant"; createdAt = "2026-08-27T22:51:24.286Z"; fullBytes = 87; block = null }
+  new { number = 17; role = "user"; createdAt = "2026-08-27T22:51:24.364Z"; fullBytes = 29; block = null }
+  new { number = 18; role = "assistant"; createdAt = "2026-08-27T22:51:25.805Z"; fullBytes = 139; block = null }
+  new { number = 19; role = "assistant"; createdAt = "2026-08-27T22:51:25.805Z"; fullBytes = 232; block = null }
+  new { number = 20; role = "user"; createdAt = "2026-08-27T22:51:26.494Z"; fullBytes = 165; block = null }
+  new { number = 21; role = "assistant"; createdAt = "2026-08-27T22:51:28.186Z"; fullBytes = 317; block = null }
+  new { number = 22; role = "assistant"; createdAt = "2026-08-27T22:51:28.186Z"; fullBytes = 47; block = null }
+  new { number = 23; role = "user"; createdAt = "2026-08-27T22:51:28.215Z"; fullBytes = 1528; block = null }
+  new { number = 24; role = "assistant"; createdAt = "2026-08-27T22:51:30.157Z"; fullBytes = 404; block = null }
+  new { number = 25; role = "assistant"; createdAt = "2026-08-27T22:51:30.157Z"; fullBytes = 176; block = null }
+  new { number = 26; role = "user"; createdAt = "2026-08-27T22:51:31.421Z"; fullBytes = 597; block = null }
+  new { number = 27; role = "assistant"; createdAt = "2026-08-27T22:51:32.492Z"; fullBytes = 153; block = null }
+  new { number = 28; role = "assistant"; createdAt = "2026-08-27T22:51:32.492Z"; fullBytes = 71; block = null }
+  new { number = 29; role = "user"; createdAt = "2026-08-27T22:51:32.514Z"; fullBytes = 1518; block = null }
+  new { number = 30; role = "assistant"; createdAt = "2026-08-27T22:52:08.056Z"; fullBytes = 9779; block = null }
+  new { number = 31; role = "assistant"; createdAt = "2026-08-27T22:52:08.056Z"; fullBytes = 325; block = null }
+  new { number = 32; role = "assistant"; createdAt = "2026-08-27T22:52:08.056Z"; fullBytes = 49; block = null }
+  new { number = 33; role = "user"; createdAt = "2026-08-27T22:52:08.116Z"; fullBytes = 670; block = null }
+  new { number = 34; role = "user"; createdAt = "2026-08-27T22:52:08.177Z"; fullBytes = 1526; block = null }
+  new { number = 35; role = "assistant"; createdAt = "2026-08-27T22:52:09.346Z"; fullBytes = 103; block = null }
+  new { number = 36; role = "assistant"; createdAt = "2026-08-27T22:52:09.346Z"; fullBytes = 87; block = null }
+  new { number = 37; role = "user"; createdAt = "2026-08-27T22:52:09.347Z"; fullBytes = 133; block = null }
+  new { number = 38; role = "assistant"; createdAt = "2026-08-27T22:52:28.599Z"; fullBytes = 8117; block = null }
+  new { number = 39; role = "assistant"; createdAt = "2026-08-27T22:52:28.599Z"; fullBytes = 196; block = null }
+  new { number = 40; role = "assistant"; createdAt = "2026-08-27T22:52:28.599Z"; fullBytes = 52; block = null }
+  new { number = 41; role = "user"; createdAt = "2026-08-27T22:52:28.667Z"; fullBytes = 1526; block = null }
+  new { number = 42; role = "user"; createdAt = "2026-08-27T22:52:29.185Z"; fullBytes = 351; block = null }
+  new { number = 43; role = "assistant"; createdAt = "2026-08-27T22:52:31.074Z"; fullBytes = 594; block = null }
+  new { number = 44; role = "assistant"; createdAt = "2026-08-27T22:52:31.074Z"; fullBytes = 48; block = null }
+  new { number = 45; role = "user"; createdAt = "2026-08-27T22:52:31.111Z"; fullBytes = 1526; block = null }
+  new { number = 46; role = "assistant"; createdAt = "2026-08-27T22:52:32.862Z"; fullBytes = 479; block = null }
+  new { number = 47; role = "assistant"; createdAt = "2026-08-27T22:52:32.862Z"; fullBytes = 185; block = null }
+  new { number = 48; role = "user"; createdAt = "2026-08-27T22:52:34.119Z"; fullBytes = 476; block = null }
+  new { number = 49; role = "assistant"; createdAt = "2026-08-27T22:52:37.773Z"; fullBytes = 882; block = null }
+  new { number = 50; role = "assistant"; createdAt = "2026-08-27T22:52:37.773Z"; fullBytes = 104; block = null }
+  new { number = 51; role = "user"; createdAt = "2026-08-27T22:52:37.777Z"; fullBytes = 133; block = null }
+  new { number = 52; role = "assistant"; createdAt = "2026-08-27T22:52:40.298Z"; fullBytes = 753; block = null }
+  new { number = 53; role = "assistant"; createdAt = "2026-08-27T22:52:40.298Z"; fullBytes = 82; block = null }
+  new { number = 54; role = "user"; createdAt = "2026-08-27T22:52:40.330Z"; fullBytes = 1518; block = null }
+  new { number = 55; role = "assistant"; createdAt = "2026-08-27T22:52:52.950Z"; fullBytes = 6310; block = null }
+  new { number = 56; role = "assistant"; createdAt = "2026-08-27T22:52:52.950Z"; fullBytes = 53; block = null }
+  new { number = 57; role = "user"; createdAt = "2026-08-27T22:52:52.978Z"; fullBytes = 1526; block = null }
+  new { number = 58; role = "assistant"; createdAt = "2026-08-27T22:52:57.022Z"; fullBytes = 945; block = null }
+  new { number = 59; role = "assistant"; createdAt = "2026-08-27T22:52:57.022Z"; fullBytes = 96; block = null }
+  new { number = 60; role = "assistant"; createdAt = "2026-08-27T22:52:57.022Z"; fullBytes = 101; block = null }
+  new { number = 61; role = "assistant"; createdAt = "2026-08-27T22:52:57.022Z"; fullBytes = 851; block = null }
+  new { number = 62; role = "user"; createdAt = "2026-08-27T22:52:57.028Z"; fullBytes = 617; block = null }
+  new { number = 63; role = "user"; createdAt = "2026-08-27T22:52:57.031Z"; fullBytes = 562; block = null }
+  new { number = 64; role = "user"; createdAt = "2026-08-27T22:52:57.064Z"; fullBytes = 124; block = null }
+  new { number = 65; role = "assistant"; createdAt = "2026-08-27T22:53:00.879Z"; fullBytes = 540; block = null }
+  new { number = 66; role = "assistant"; createdAt = "2026-08-27T22:53:00.879Z"; fullBytes = 52; block = null }
+  new { number = 67; role = "user"; createdAt = "2026-08-27T22:53:00.915Z"; fullBytes = 148; block = null }
+  new { number = 68; role = "assistant"; createdAt = "2026-08-27T22:53:05.196Z"; fullBytes = 791; block = null }
+  new { number = 69; role = "assistant"; createdAt = "2026-08-27T22:53:05.196Z"; fullBytes = 888; block = null }
+  new { number = 70; role = "user"; createdAt = "2026-08-27T22:53:05.254Z"; fullBytes = 40; block = null }
+  new { number = 71; role = "assistant"; createdAt = "2026-08-27T22:53:11.674Z"; fullBytes = 1189; block = null }
+  new { number = 72; role = "assistant"; createdAt = "2026-08-27T22:53:11.674Z"; fullBytes = 305; block = null }
+  new { number = 73; role = "assistant"; createdAt = "2026-08-27T22:53:11.674Z"; fullBytes = 56; block = null }
+  new { number = 74; role = "user"; createdAt = "2026-08-27T22:53:11.741Z"; fullBytes = 1526; block = null }
+  new { number = 75; role = "user"; createdAt = "2026-08-27T22:53:12.427Z"; fullBytes = 524; block = null }
+  new { number = 76; role = "assistant"; createdAt = "2026-08-27T22:53:18.056Z"; fullBytes = 1360; block = null }
+  new { number = 77; role = "assistant"; createdAt = "2026-08-27T22:53:18.056Z"; fullBytes = 1277; block = null }
+  new { number = 78; role = "user"; createdAt = "2026-08-27T22:53:18.182Z"; fullBytes = 1518; block = null }
+  new { number = 79; role = "assistant"; createdAt = "2026-08-27T22:53:25.346Z"; fullBytes = 2299; block = null }
+  new { number = 80; role = "assistant"; createdAt = "2026-08-27T22:53:25.346Z"; fullBytes = 184; block = null }
+  new { number = 81; role = "assistant"; createdAt = "2026-08-27T22:53:25.346Z"; fullBytes = 58; block = null }
+  new { number = 82; role = "user"; createdAt = "2026-08-27T22:53:25.400Z"; fullBytes = 1526; block = null }
+  new { number = 83; role = "user"; createdAt = "2026-08-27T22:53:25.500Z"; fullBytes = 525; block = null }
+  new { number = 84; role = "assistant"; createdAt = "2026-08-27T22:53:27.501Z"; fullBytes = 609; block = null }
+  new { number = 85; role = "assistant"; createdAt = "2026-08-27T22:53:27.501Z"; fullBytes = 110; block = null }
+  new { number = 86; role = "user"; createdAt = "2026-08-27T22:53:27.524Z"; fullBytes = 103; block = null }
+  new { number = 87; role = "assistant"; createdAt = "2026-08-27T22:53:28.892Z"; fullBytes = 443; block = null }
+  new { number = 88; role = "assistant"; createdAt = "2026-08-27T22:53:28.892Z"; fullBytes = 87; block = null }
+  new { number = 89; role = "user"; createdAt = "2026-08-27T22:53:28.931Z"; fullBytes = 29; block = null }
+  new { number = 90; role = "assistant"; createdAt = "2026-08-27T22:53:30.761Z"; fullBytes = 607; block = null }
+  new { number = 91; role = "assistant"; createdAt = "2026-08-27T22:53:30.761Z"; fullBytes = 210; block = null }
+  new { number = 92; role = "user"; createdAt = "2026-08-27T22:53:30.846Z"; fullBytes = 17; block = null }
+  new { number = 93; role = "assistant"; createdAt = "2026-08-27T22:53:34.080Z"; fullBytes = 831; block = null }
+  new { number = 94; role = "assistant"; createdAt = "2026-08-27T22:53:34.733Z"; fullBytes = 116; block = null }
+  new { number = 95; role = "assistant"; createdAt = "2026-08-27T22:53:34.733Z"; fullBytes = 98; block = null }
+  new { number = 96; role = "user"; createdAt = "2026-08-27T22:53:34.735Z"; fullBytes = 133; block = null }
+  new { number = 97; role = "assistant"; createdAt = "2026-08-27T22:53:35.830Z"; fullBytes = 532; block = null }
+  new { number = 98; role = "user"; createdAt = "2026-08-27T22:53:35.853Z"; fullBytes = 314; block = null }
+  new { number = 99; role = "assistant"; createdAt = "2026-08-27T22:53:37.282Z"; fullBytes = 429; block = null }
+  new { number = 100; role = "assistant"; createdAt = "2026-08-27T22:53:37.282Z"; fullBytes = 53; block = null }
+  new { number = 101; role = "assistant"; createdAt = "2026-08-27T22:53:37.282Z"; fullBytes = 280; block = null }
+  new { number = 102; role = "user"; createdAt = "2026-08-27T22:53:37.288Z"; fullBytes = 562; block = null }
+  new { number = 103; role = "user"; createdAt = "2026-08-27T22:53:37.507Z"; fullBytes = 684; block = null }
+  new { number = 104; role = "assistant"; createdAt = "2026-08-27T22:53:39.963Z"; fullBytes = 780; block = null }
+  new { number = 105; role = "assistant"; createdAt = "2026-08-27T22:53:39.963Z"; fullBytes = 87; block = null }
+  new { number = 106; role = "user"; createdAt = "2026-08-27T22:53:39.965Z"; fullBytes = 133; block = null }
+  new { number = 107; role = "assistant"; createdAt = "2026-08-27T22:53:41.283Z"; fullBytes = 698; block = null }
+  new { number = 108; role = "user"; createdAt = "2026-08-27T22:53:41.288Z"; fullBytes = 314; block = null }
+  new { number = 109; role = "assistant"; createdAt = "2026-08-27T22:53:42.448Z"; fullBytes = 308; block = null }
+  new { number = 110; role = "assistant"; createdAt = "2026-08-27T22:53:42.448Z"; fullBytes = 98; block = null }
+  new { number = 111; role = "user"; createdAt = "2026-08-27T22:53:42.450Z"; fullBytes = 133; block = null }
+  new { number = 112; role = "assistant"; createdAt = "2026-08-27T22:53:44.345Z"; fullBytes = 854; block = null }
+  new { number = 113; role = "user"; createdAt = "2026-08-27T22:53:44.349Z"; fullBytes = 314; block = null }
+  new { number = 114; role = "assistant"; createdAt = "2026-08-27T22:53:45.275Z"; fullBytes = 462; block = null }
+  new { number = 115; role = "assistant"; createdAt = "2026-08-27T22:54:33.806Z"; fullBytes = 713; block = null }
+  new { number = 116; role = "assistant"; createdAt = "2026-08-27T22:54:33.806Z"; fullBytes = 399; block = null }
+  new { number = 117; role = "assistant"; createdAt = "2026-08-27T22:54:33.806Z"; fullBytes = 64; block = null }
+  new { number = 118; role = "user"; createdAt = "2026-08-27T22:54:33.822Z"; fullBytes = 1528; block = null }
+  new { number = 119; role = "user"; createdAt = "2026-08-27T22:54:35.892Z"; fullBytes = 1040; block = null }
+  new { number = 120; role = "assistant"; createdAt = "2026-08-27T22:54:37.021Z"; fullBytes = 134; block = null }
+  new { number = 121; role = "assistant"; createdAt = "2026-08-27T22:54:37.021Z"; fullBytes = 71; block = null }
+  new { number = 122; role = "assistant"; createdAt = "2026-08-27T22:54:37.021Z"; fullBytes = 116; block = null }
+  new { number = 123; role = "user"; createdAt = "2026-08-27T22:54:37.089Z"; fullBytes = 1442; block = null }
+  new { number = 124; role = "user"; createdAt = "2026-08-27T22:54:37.164Z"; fullBytes = 62; block = null }
+  new { number = 125; role = "assistant"; createdAt = "2026-08-27T22:54:38.938Z"; fullBytes = 479; block = null }
+  new { number = 126; role = "assistant"; createdAt = "2026-08-27T22:54:38.938Z"; fullBytes = 114; block = null }
+  new { number = 127; role = "assistant"; createdAt = "2026-08-27T22:54:38.938Z"; fullBytes = 88; block = null }
+  new { number = 128; role = "user"; createdAt = "2026-08-27T22:54:38.942Z"; fullBytes = 510; block = null }
+  new { number = 129; role = "user"; createdAt = "2026-08-27T22:54:38.988Z"; fullBytes = 470; block = null }
+  new { number = 130; role = "assistant"; createdAt = "2026-08-27T22:54:44.007Z"; fullBytes = 1693; block = null }
+  new { number = 131; role = "assistant"; createdAt = "2026-08-27T22:54:44.007Z"; fullBytes = 78; block = null }
+}

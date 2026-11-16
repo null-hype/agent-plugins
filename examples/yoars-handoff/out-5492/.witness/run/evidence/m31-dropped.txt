@@ -1,0 +1,1 @@
+[tool] todo {"i": "Plan pipeline coordination", "op": "init", "list": [{"phase": "Review", "items": ["Review parse.py against check", "Review transform.py when landed", "Review report.py when landed", "Run acceptance.py"]}, {"phase": "Resolve", "items": ["Catch shape/rule contradictions", "Publish coordination findings"]}]}

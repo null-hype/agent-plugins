@@ -1,0 +1,6 @@
+[result] ok (up-to-date)
+---
+35b8efd bootstrap: the shared task, the acceptance check, and what each of you owns
+---BRANCHES---
+* main
+[raw output: artifact://3]

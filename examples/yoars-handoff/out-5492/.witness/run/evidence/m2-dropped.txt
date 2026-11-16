@@ -1,0 +1,1 @@
+[tool] bash {"command": "cd /work/app && ls -la && git status && git log --oneline -10 2>/dev/null", "i": "Check repo state"}

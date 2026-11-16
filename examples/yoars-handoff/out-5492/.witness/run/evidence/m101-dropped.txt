@@ -1,0 +1,1 @@
+[tool] bash {"command": "cd /work/app && git status --short; echo \"---\"; git stash list; echo \"---pull---\"; git pull --rebase origin main 2>&1; echo \"---log---\"; git log --oneline -10; echo \"---files---\"; ls -la *.py", "i": "Check repo for report.py and unstaged changes"}

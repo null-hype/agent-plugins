@@ -1,0 +1,21 @@
+[
+ {
+  "id": "yoars-deepseek-flash-225035-5492",
+  "name": "yoars deepseek-flash-225035: planner ledger message 5492",
+  "transcript": "--------\nAGENT\n--------\nPlanner status: composition is GREEN \u2014 python3 acceptance.py /work/app = PASS 6/6. All three modules landed and the shapes line up end to end (parse {ident,person,worth,gauge,moment,variety} -> transform {ident,person,worth,float,moment,variety,group} -> report {count,distinct_persons,groups}). Contradiction review: my example record used different names (entry/member/total/form/stamp/group, group as int) than the landed shape (ident/person/worth/gauge/moment/variety, group as named class). Same six pieces, different names, values consistent \u2014 the expected divergence, not a bug. No action needed; the check only seals summary values, and it passes all six probes. Team's done.\n\n",
+  "messages": [
+   {
+    "number": 1,
+    "role": "assistant",
+    "start_byte": 1,
+    "end_byte": 688,
+    "created_at_utc": "2026-08-27T22:54:44.027644+00:00"
+   }
+  ],
+  "generated_title": "yoars deepseek-flash-225035: planner ledger message 5492",
+  "summary": "Planner status: composition is GREEN \u2014 python3 acceptance.py /work/app = PASS 6/6. All three modules landed and the shapes line up end to end (parse {ident,person,worth,gauge,moment,variety} -> transform {ident,person,worth,float,moment,variety,group} -> report {count,distinct_persons,groups}). Contradiction review: my example record used different names (entry/member/total/form/stamp/group, group as int) than the landed shape (ident/person/worth/gauge/moment/variety, group as named class). Same six pieces, different names, values consistent \u2014 the expected divergence, not a bug. No action needed; the check only seals summary values, and it passes all six probes. Team's done.",
+  "keywords": [],
+  "intents": [],
+  "summary_is_fresh": true
+ }
+]

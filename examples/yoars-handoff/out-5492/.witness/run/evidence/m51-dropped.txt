@@ -1,0 +1,1 @@
+[result] Not sent: this is exactly the message you just sent, and it was delivered. Do not send it again — continue with your task.

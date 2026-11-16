@@ -1,0 +1,10 @@
+[result] total 24
+drwxrwxr-x 3 bun bun 4096 Aug 27 22:50 .
+drwxrwxr-x 4 bun bun 4096 Aug 27 22:50 ..
+drwxrwxr-x 8 bun bun 4096 Aug 27 22:50 .git
+-rw-rw-r-- 1 bun bun 2010 Aug 27 22:50 SPEC.md
+-rw-rw-r-- 1 bun bun 4957 Aug 27 22:50 acceptance.py
+branch main
+clean
+35b8efd bootstrap: the shared task, the acceptance check, and what each of you owns
+[raw output: artifact://1]

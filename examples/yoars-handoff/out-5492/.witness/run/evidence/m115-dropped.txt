@@ -1,0 +1,7 @@
+Now I have the real kickoff. My mission as planner: agree interfaces before anyone writes code, route each stage's rules to its owner, review what lands against the check, and catch contradictions.
+
+The participation check was already confirmed sent and delivered (room message 5476 + system rejects of duplicates). Outbound works. Now I begin the real planner job.
+
+Let me check the current state of the repo — parse.py and transform.py are already landed (contrary to "agree before code"), so I need to review what's there and get ui to land report.py, plus verify.
+
+Let me first re-read the acceptance.py and SPEC carefully (already did), then check current repo state and the room for what others have said.
