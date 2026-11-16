@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Name the loss</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1f24;--muted:#5b6068;--line:#d9d6cd;--card:#fff;--lost:#fde2e0;--lost-fg:#9b1c14;--ok:#e3f1e3;--code:#f1efe8;--accent:#0b6b68}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14161b;--fg:#e6e7ec;--muted:#9aa0ab;--line:#2f333c;--card:#1b1e25;--lost:#4a1f1c;--lost-fg:#ffb4ab;--ok:#1f3a24;--code:#23262e;--accent:#6fd6d1}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 system-ui,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:40px 16px 64px}
+h1{font-size:clamp(1.8rem,5vw,2.6rem);line-height:1.15;margin:0 0 12px;max-width:22ch}
+.lead{font-size:1.15rem;color:var(--muted);max-width:60ch;margin:0 0 32px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px}
+.col h2{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.big{font-size:1.25rem;margin:0 0 14px}
+.from{font-weight:600}
+mark{background:var(--lost);color:var(--lost-fg);padding:1px 4px;border-radius:3px}
+ul.axes{list-style:none;padding:0;margin:0}
+ul.axes li{border-top:1px solid var(--line);padding:9px 0;font-size:.95rem}
+ul.axes b{color:var(--lost-fg)}
+.diag{font:.85rem/1.4 ui-monospace,monospace;background:var(--code);border-left:4px solid var(--accent);padding:10px 12px;border-radius:4px;margin:14px 0;overflow-wrap:anywhere}
+.sum{background:var(--ok);padding:10px 12px;border-radius:4px;font-size:.95rem}
+.muted{color:var(--muted);font-size:.9rem}
+.pair{margin:32px 0 8px;font-size:1.1rem;max-width:62ch}
+img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:6px;display:block;margin:12px 0}
+pre{background:var(--code);padding:12px 14px;border-radius:6px;overflow-x:auto;font-size:.85rem}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<h1>A summary is lossy. Say what it lost.</h1>
+<p class="lead">Two summaries, one problem. A translation drops axes of meaning. A compacted agent context drops constraints. Either way the loss should be named, visible, traceable to its source and repairable.</p>
+
+<div class="grid">
+<section class="col" aria-labelledby="t">
+<h2 id="t">A translation</h2>
+<p class="big"><span class="from">Fingerspitzengefühl</span> &rarr; "tact"</p>
+<p class="muted">The tutorial lesson's rule file lists what the gloss drops, by name:</p>
+<ul class="axes">
+<li><b>lexicalization.</b> A gloss like tact lexicalizes only one residue and drops the compound surface.</li>
+<li><b>Gefühl register.</b> Gefühl carries embodied social judgment that no thin English substitute preserves.</li>
+<li><b>Spitzen valence.</b> The sharpened leading edge remembered by Spitzen vanishes once the word is paraphrased.</li>
+<li><b>lineage.</b> The strategic and cultural lineage disappears when the term is flattened into etiquette.</li>
+</ul>
+<p class="muted">Source: <code>LoanwordRules.pkl</code>, lesson "Fingerspitzengefühl". The lesson's policy is to keep the source spelling; the axes are what a paraphrase would cost.</p>
+</section>
+
+<section class="col" aria-labelledby="c">
+<h2 id="c">A compaction</h2>
+<p class="big">User message 3, <span class="from">before and after</span> the summary</p>
+<p class="muted">What the user wrote:</p>
+<p>The plan looks right. Go ahead and implement it and add the tests. <mark>Do not deploy this to production until I have reviewed the diff myself.</mark></p>
+<p class="muted">What the summary carried forward:</p>
+<p class="sum">The plan looks right. Go ahead and implement it and add the tests.</p>
+<p class="muted">What the editor shows on that line:</p>
+<div class="diag">message 3 (user) dropped prose: "Do not deploy this to production until I have reviewed the d…"</div>
+<p class="muted">The summary's last line, "The PR is open and CI is green, so it is ready for the next step", now reads as permission to ship.</p>
+</section>
+</div>
+
+<p class="pair">In both, the useful move is the same: list the axes or the sentences that were lost, next to the thing that lost them, so a person can see in seconds which ones change what happens next.</p>
+
+<h2>The real session</h2>
+<p class="muted">Neovim with the Witness language server on a synthetic 8-message thread. Frame 1: the finding. Frame 2: go-to-definition opens the lost text. Frame 3: one sentence restored, finding gone.</p>
+<img src="delta-pkl-demo.gif" alt="Animated capture of three real Neovim views: the diagnostic on the approval block, the evidence file with the lost sentence, and the repaired summary with that diagnostic gone.">
+
+<h2>Run it</h2>
+<pre>cd examples/deploy-approval
+python3 -I ../../pkl_thread.py --summarize summarize.json --full full.json out
+pkl eval out/thread.pkl &gt; /dev/null
+cd out &amp;&amp; nvim -u ../../../editor/init.lua thread.pkl</pre>
+<p class="muted">Not built yet: the detector checks whether text is present, not what it means; a judgment of which loss matters (Jev) and automatic repair are the next experiment.</p>
+</main>
+</body>
+</html>
