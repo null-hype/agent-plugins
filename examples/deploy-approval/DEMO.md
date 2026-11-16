@@ -24,31 +24,37 @@ witness.lua and adds the `pkl` filetype it ships without. Verified in Neovim
    summary block is a typed record. The full thread is not in the file.
 
 2. **Show the diagnostic** (0:20). Line 27, block 2 (the user's approval):
-   `message 3: 1 of 2 paragraphs ... are not in the summary`. Read the block
-   above it: "The plan looks right. Go ahead and implement it and add the
-   tests." Say: read alone, this summary reads as permission to ship.
+   `message 3 (user) dropped prose: "Do not deploy this to production until I have reviewed the d…"`.
+   The diagnostic quotes the lost text, so the important loss is readable
+   without opening anything. Read the block below it: "The plan looks right. Go
+   ahead and implement it and add the tests." Say: read alone, this summary
+   reads as permission to ship. (`screenshot.png` is this view.)
 
 3. **Jump to the evidence** (0:45). Go-to-definition (`gd` or
    `vim.lsp.buf.definition()`) on line 27 opens
-   `.witness/run/evidence/m3-partial.txt`:
+   `.witness/run/evidence/m3-partial.txt`, the full lost text with its
+   original line breaks:
    "Do not deploy this to production until I have reviewed the diff myself."
    That is the sentence the summary lost, and it is the one that matters. The
    final summary line, "CI is green, so it is ready for the next step", is now
    misleading.
 
-4. **Contrast with the harmless omission** (1:05). Line 33, block 3, same
-   kind of diagnostic: message 4 lost one paragraph. Go-to-definition shows a
-   five-line pytest log. Losing that is correct; the summary says "ran tests
-   (5 passed)". Say: the two diagnostics look the same (both `information`).
-   A human decides which loss matters, in seconds, because the evidence is one
-   jump away. The detector does not rank them.
+4. **Contrast with the harmless omission** (1:05). Line 33, block 3:
+   `message 4 (assistant) dropped log/tool output: "$ pytest tests/test_retry.py -v tests/test_retry.py::test_fi…"`.
+   Go-to-definition shows the five-line pytest log. Losing that is correct; the
+   summary says "ran tests (5 passed)". Say: both are `information`; the
+   detector only labels a paragraph "log/tool output" by a line-shape
+   heuristic (commands, `[tool]` lines, test ids, PASSED/FAILED), and the label
+   is not a judgment of importance. A human decides which loss matters, in
+   seconds, because the quoted text is right there.
 
 5. **Apply the repair** (1:25). Diff `summarize.json` against
    `summarize-repaired.json`: one sentence added to block 2, "Do not deploy
    this to production until I have reviewed the diff myself." Regenerate
    (`python3 -I ../../pkl_thread.py --summarize summarize-repaired.json --full
    full.json out-repaired`), open `out-repaired/thread.pkl`: the line-27
-   diagnostic is gone, the line-33 one (harmless log) remains.
+   diagnostic is gone, the line-33 one (harmless log) remains
+   (`screenshot-repaired.png`).
 
 6. **State the limit** (1:45). The detector is structural: it checks whether
    each paragraph's first 120 characters appear in the summary. It has no
@@ -60,9 +66,10 @@ witness.lua and adds the `pkl` filetype it ships without. Verified in Neovim
 
 ## What was verified (when this was written)
 
-- `pkl eval` passes on `out/thread.pkl` and `out-repaired/thread.pkl`.
-- Over raw LSP (`lsp_probe.py` against the witness server), `out/thread.pkl`
-  gives diagnostics at line 27 (message 3) and line 33 (message 4);
-  `out-repaired/thread.pkl` gives only line 33. Go-to-definition on line 27
-  returns `evidence/m3-partial.txt`.
-- Not verified: anything in a real Neovim.
+- `pkl eval` passes on `out/thread.pkl`, `out-repaired/thread.pkl` and the
+  private thread-6 output.
+- Neovim 0.11.4, headless, `editor/check.lua`: `out/` gives line 27 and line 33;
+  `out-repaired/` gives only line 33.
+- Over raw LSP, go-to-definition on line 27 returns `evidence/m3-partial.txt`.
+- `screenshot.png` and `screenshot-repaired.png` are a tmux capture of a real
+  nvim session (ANSI converted to HTML, rendered in Chromium), not a mock-up.

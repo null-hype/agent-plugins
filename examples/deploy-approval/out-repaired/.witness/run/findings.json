@@ -9,7 +9,7 @@
         "column": 3
       },
       "severity": "information",
-      "message": "message 4: 1 of 2 paragraphs (0.3 of 0.5 KB, tool output included) are not in the summary",
+      "message": "message 4 (assistant) dropped log/tool output: \"$ pytest tests/test_retry.py -v tests/test_retry.py::test_fi\u2026\"",
       "sourceHash": "sha256:abbc0373b6ed4abd9ff8804883df410d1eb748738af5ca494a7355665256edef",
       "evidence": [
         "evidence/m4-partial.txt"

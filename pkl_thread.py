@@ -29,7 +29,32 @@ def norm(s):
 
 
 def paragraphs(text):
-    return [p for p in (norm(x) for x in re.split(r"\n\s*\n", text)) if len(p) >= 40]
+    """(original, normalised) per paragraph of 40+ characters. Matching uses the
+    normalised form; evidence keeps the original line breaks."""
+    out = [(x.strip("\n"), norm(x)) for x in re.split(r"\n\s*\n", text)]
+    return [(r, n) for r, n in out if len(n) >= 40]
+
+
+_LOGLINE = re.compile(r"^\s*(\$ |\[tool\]|>>> |\d{4}-\d\d-\d\d|[\w./-]+::\S+|[\w./-]+:\d+[: ])"
+                      r"|\b(PASSED|FAILED|ERROR|WARN(ING)?|passed|failed)\b")
+
+
+def looks_like_log(raw):
+    """Heuristic only: most lines look like a command, a [tool] line, a timestamp,
+    a test id or a pass/fail line. It says nothing about importance."""
+    lines = [l for l in raw.split("\n") if l.strip()]
+    return bool(lines) and sum(bool(_LOGLINE.search(l)) for l in lines) * 2 >= len(lines)
+
+
+def quote(raw, n=60):
+    t = norm(raw)
+    return '"' + (t[:n].rstrip() + "…" if len(t) > n else t) + '"'
+
+
+def lost_label(raws):
+    """`log/tool output: "first 60 chars…" (+N more)` for the lost paragraphs."""
+    kind = "log/tool output" if looks_like_log(raws[0]) else "prose"
+    return f'{kind}: {quote(raws[0])}' + (f" (+{len(raws) - 1} more)" if len(raws) > 1 else "")
 
 
 def pkl_str(s, indent):
@@ -46,15 +71,16 @@ def analyse(summ, full):
     msgs = []
     for m in full["messages"]:
         text = buf[int(m["start_byte"]):int(m["end_byte"])].decode(errors="replace")
-        paras = paragraphs(text)
+        pairs = paragraphs(text)
+        paras = [n for _, n in pairs]
         hit = [next((i for i, b in enumerate(nblocks) if p[:120] in b), None) for p in paras]
         present = [h for h in hit if h is not None]
         msgs.append(dict(
             number=int(m["number"]), role=m["role"], created=m["created_at_utc"], text=text,
             paras=paras, block=min(present) if present else None,
-            lost=[p for p, h in zip(paras, hit) if h is None],
+            lost=[r for (r, _), h in zip(pairs, hit) if h is None],
             # Opening kept, whole paragraph not: the summary cut it.
-            cut=[(h, p) for p, h in zip(paras, hit) if h is not None and p not in nblocks[h]]))
+            cut=[(h, r) for (r, p), h in zip(pairs, hit) if h is not None and p not in nblocks[h]]))
     return blocks, msgs
 
 
@@ -103,21 +129,20 @@ def findings(summ, msgs, where, sha, run):
     last = 0
     for m in msgs:
         n, kb = m["number"], len(m["text"].encode()) / 1024
+        size = f", {kb:.1f} KB" if kb >= 1 else ""
+        who = f'message {n} ({m["role"]}{size})'
         if m["block"] is not None:
             last = m["block"]
         if m["block"] is None and m["paras"]:
             add(f"m{n}-dropped", where["omit"].get(last, where["msg"][n]), "warning",
-                f"message {n} ({m['role']}, {kb:.1f} KB) is not in the summary", m["text"])
+                f"{who} dropped entirely, {lost_label(m['lost'])}", "\n\n".join(m["lost"]))
         elif m["lost"]:
-            lost_kb = sum(len(p.encode()) for p in m["lost"]) / 1024
             add(f"m{n}-partial", where["block"][m["block"]], "information",
-                f"message {n}: {len(m['lost'])} of {len(m['paras'])} paragraphs "
-                f"({lost_kb:.1f} of {kb:.1f} KB, tool output included) are not in the summary",
-                "\n\n".join(m["lost"]))
+                f"{who} dropped {lost_label(m['lost'])}", "\n\n".join(m["lost"]))
         for i, (h, p) in enumerate(m["cut"]):
             at = where["omit"][h] - 2 if h in where["omit"] else where["block"][h]
             add(f"m{n}-cut{i}", at, "error",
-                f"message {n}: the summary cuts this paragraph mid-sentence", p)
+                f"{who}: the summary cuts this paragraph mid-sentence: {quote(p)}", p)
     return out
 
 
