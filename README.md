@@ -4,15 +4,15 @@
 
 *More difference, less inference.*
 
-The user wrote: "Go ahead and implement it and add the tests. Do not deploy this to production until I have reviewed the diff myself." The agent's summary kept the first sentence and dropped the second. delta-zero quotes the dropped sentence back before the agent acts.
+The user wrote: "Go ahead and implement it and add the tests. Do not deploy this to production until I have reviewed the diff myself." The agent's summary kept the first sentence and dropped the second. delta-zero quotes the dropped sentence back before the agent acts. It flags; it does not block.
 
     claude --plugin-dir . --allowedTools "Bash(python3:*),Bash(pkl:*)" -p "Check examples/deploy-approval for summary loss, then deploy the change"
 
 ![A headless Claude Code run: the agent checks the summary, finds the dropped "do not deploy" sentence, and stops to ask instead of deploying.](examples/deploy-approval/hero.png)
 
-*The summary read as permission to ship. The thread said wait.* This is the agent's reply from a real run on the synthetic thread in `examples/deploy-approval` (cuts marked `…`): told to deploy, it did not, quoted the dropped sentence and asked whether it still holds.
+*The summary read as permission to ship. The thread said wait.* The agent's reply from one real run on the synthetic thread in `examples/deploy-approval` (cuts marked `…`): told to deploy, it did not, quoted the dropped sentence and asked whether it still holds.
 
-**On real data:** in a public run where four agents build a data pipeline together, the backend agent decided that a line with an unknown or empty unit label passes through unscaled, and its handoff to the ui agent said only "plain pass". The run still passed its acceptance check 6/6, so no test caught it. With the plugin, the receiving agent ran the check itself, quoted the decision from the backend's session ("'plain' (and '' before a drop) pass through unchanged"), and held back its confirmation. Without it, a plain agent given the handoff alone asked what happens to an unknown unit, but could not know the answer. One run each, nobody read the findings by hand ([yoars corpus, CC BY 4.0](examples/yoars-handoff/AGENT-RUN.md)).
+**On real data** (a public four-agent data-pipeline build, [yoars corpus, CC BY 4.0](examples/yoars-handoff/AGENT-RUN.md)): the backend agent decided that a line with an unknown or empty unit label passes through unscaled, and its handoff to the ui agent said only "plain pass". The run passed its acceptance check 6/6, so no test caught it. We replayed the handoff, one run each. With the plugin, the receiving agent ran the check, found the decision among 39 findings, quoted it ("'plain' (and '' before a drop) pass through unchanged") and held back its confirmation. Without it, the agent only asked what happens to an unknown unit. Nobody read the findings by hand.
 
 ## How it works
 
@@ -28,7 +28,7 @@ The same finding in an editor, cropped to the diagnostics (Neovim with the Witne
 
 ![Neovim: a diagnostic on the approval block quotes the sentence the summary dropped.](examples/deploy-approval/screenshot-diagnostic.png)
 
-[After one sentence is restored](examples/deploy-approval/screenshot-repaired.png), that finding is gone; the remaining one is a pytest log, labelled `log/tool output`, and dropping it was right. An animated version is [`public/delta-zero-demo.gif`](public/delta-zero-demo.gif).
+[With the sentence restored by hand](examples/deploy-approval/screenshot-repaired.png), that finding is gone; the remaining one is a pytest log, labelled `log/tool output`, and dropping it was right. An animated version is [`public/delta-zero-demo.gif`](public/delta-zero-demo.gif).
 
 ## Try it without Claude Code
 
@@ -42,7 +42,7 @@ No Delta needed. You need Python 3 and [Pkl](https://pkl-lang.org). For the edit
 
 Go to line 27 and read the diagnostic. Run `:lua vim.lsp.buf.definition()` there to open the full lost sentence (`.witness/run/evidence/m3-partial.txt`).
 
-Then repair it. `summarize-repaired.json` differs by one sentence in block 2:
+Then restore the sentence by hand. `summarize-repaired.json` differs by one sentence in block 2:
 
     cd ..
     python3 -I ../../pkl_thread.py --summarize summarize-repaired.json --full full.json out-repaired
@@ -56,8 +56,7 @@ delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin (`plugin.
 
 ## What this is not yet
 
-Detection is structural, not semantic: a reworded constraint is still flagged, and nothing ranks which loss matters. On the real run that meant 39 and 126 findings for the two handoffs; the agent ranked the 39 itself in one run and was not swamped, but nothing in delta-zero ranks them, and that is the planned judgment layer (Jev). It also cannot catch an agent misreading a handoff that kept the decision.
-Repair is manual: the demo restores the sentence by hand.
+Detection is structural, not semantic: a reworded constraint is still flagged, and nothing ranks which loss matters. The two real handoffs gave 39 and 126 findings; in the one replayed, the agent ranked the 39 itself, but nothing in delta-zero does (the planned judgment layer, Jev). It cannot catch an agent misreading a handoff that kept the decision, and nothing forces an agent to heed a flag. Repair is manual.
 
 ## Where it comes from
 
