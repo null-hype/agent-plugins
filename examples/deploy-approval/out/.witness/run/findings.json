@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "findings": [
+    {
+      "id": "m3-partial",
+      "location": {
+        "file": "thread.pkl",
+        "line": 27,
+        "column": 3
+      },
+      "severity": "information",
+      "message": "message 3: 1 of 2 paragraphs (0.1 of 0.1 KB, tool output included) are not in the summary",
+      "sourceHash": "sha256:646cde89c38b42747b2ac41e55c30a052e6cd2b6b53526b350911c5b010ee281",
+      "evidence": [
+        "evidence/m3-partial.txt"
+      ]
+    },
+    {
+      "id": "m4-partial",
+      "location": {
+        "file": "thread.pkl",
+        "line": 33,
+        "column": 3
+      },
+      "severity": "information",
+      "message": "message 4: 1 of 2 paragraphs (0.3 of 0.5 KB, tool output included) are not in the summary",
+      "sourceHash": "sha256:646cde89c38b42747b2ac41e55c30a052e6cd2b6b53526b350911c5b010ee281",
+      "evidence": [
+        "evidence/m4-partial.txt"
+      ]
+    }
+  ]
+}

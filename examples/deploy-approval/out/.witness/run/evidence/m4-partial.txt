@@ -1,0 +1,1 @@
+$ pytest tests/test_retry.py -v tests/test_retry.py::test_first_attempt_has_no_delay PASSED tests/test_retry.py::test_delay_doubles_each_attempt PASSED tests/test_retry.py::test_delay_is_capped_at_60s PASSED tests/test_retry.py::test_jitter_stays_within_bounds PASSED tests/test_retry.py::test_gives_up_after_max_attempts PASSED 5 passed in 0.41s
