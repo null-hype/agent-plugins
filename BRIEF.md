@@ -6,7 +6,7 @@ Read this first. It is the single source of truth; don't re-derive it.
 
 **One sentence:** delta-zero turns what an agent's summary lost into editor diagnostics,
 each quoting the lost text and linking to its source, so the losses that change the next
-action get repaired before the agent acts.
+action are caught before the agent acts. Repair is manual.
 
 ## The idea
 - A summary is always lossy. In agent workflows, compaction throws context away right
@@ -32,7 +32,7 @@ evidence.
 - `examples/deploy-approval/`: a synthetic 8-message thread, with before/after outputs and
   screenshots from real Neovim, and DEMO.md.
 - `editor/init.lua`: a Neovim config that attaches the Witness LSP to `.pkl` files.
-- `public/`: round-1 drafts (AUDIT, profile README, explainer.html, demo GIF, tidelands diff).
+- `public/`: profile README, explainer.html, demo GIF. `notes/`: internal notes (AUDIT, AGENT-PLUGINS-ORG, tidelands-section).
   They say "Xanadu" or "delta-pkl"; both names are superseded by delta-zero.
 - `thread6/`: private and gitignored. Never publish or quote it.
 

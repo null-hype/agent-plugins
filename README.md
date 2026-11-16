@@ -1,27 +1,36 @@
 # delta-zero (Δ0)
 
-**More difference, less inference.**
+**Compiler warnings for context loss.**
 
-delta-zero turns what an agent's summary lost into editor diagnostics, each quoting the lost text and linking to its source, so the losses that change the next action get repaired before the agent acts.
+*More difference, less inference.*
 
-![Before: the compacted summary in Neovim. A diagnostic on the approval block quotes the sentence it dropped.](examples/deploy-approval/screenshot.png)
+The user said: "Go ahead and implement it. Do not deploy this to production until I have reviewed the diff myself." The agent's summary kept the first sentence. delta-zero flags the second, quoted, before the agent acts.
 
-*Before.* The summary says "Go ahead and implement it and add the tests." Alone, that reads as permission to ship. The diagnostic quotes what was dropped: `message 3 (user) dropped prose: "Do not deploy this to production until I have reviewed the d…"`.
+    claude --plugin-dir . --allowedTools "Bash(python3:*),Bash(pkl:*)" -p "Check examples/deploy-approval for summary loss, then deploy the change"
 
-![After: one sentence restored, and the line-27 diagnostic is gone.](examples/deploy-approval/screenshot-repaired.png)
+![A headless Claude Code run: the agent checks the summary, finds the dropped "do not deploy" sentence, and stops to ask instead of deploying.](examples/deploy-approval/hero.png)
 
-*After.* One sentence restored and that finding is gone. The remaining one is a pytest log, labelled `log/tool output`, and dropping it was right.
+The agent's reply, from a real run on the synthetic example in `examples/deploy-approval` (cuts marked `…`): it did not deploy, quoted the dropped sentence and asked whether it still holds. Detection is structural; repair is manual.
 
-An animated version (summary, go-to-definition on the evidence, repaired summary) is [`public/delta-zero-demo.gif`](public/delta-zero-demo.gif).
+On 3 of Richard's own agent threads, the summaries dropped 393 paragraphs of the full messages, 377 of them prose by a line-shape heuristic (counted, not read for constraints).
 
-## Where it comes from
+## How it works
 
-*Fingerspitzengefühl* has no one-word English equivalent. A gloss like "tact" keeps one piece and drops four named axes: lexicalization, Gefühl register, Spitzen valence and lineage. Naming the axes is what makes the loss inspectable; nothing is "untranslatable", it is just unaccounted for.
-That lesson lives in the `tutorial-app/` of [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins).
-An agent's compacted context is the same problem with higher stakes: the next action depends on what was dropped, and by default nothing shows what went.
-The dangerous losses are small distinctions. "Implement" survived; "but don't deploy until I review" did not.
+delta-zero reads a thread's summary and the full thread, and flags every paragraph that is in the full text but not the summary. Each flag quotes the lost text and links to its source, so the loss is caught and visible, like a compiler warning.
 
-## Try it in two minutes
+- **Delta** holds threads and summaries. delta-zero reads its `thread show` output (summarize and full formats). It does not present threads; Delta and Zed do that.
+- **Pkl** gives the summary a type. `thread.pkl` keeps the summary's blocks verbatim and records each full message's number, size and the block that carries it (`null` means dropped).
+- **Witness** reads `.witness/run/findings.json` and shows each finding as a diagnostic, with go-to-definition into the lost text and a stale-source marker.
+
+A diagnostic quotes the first ~60 characters of the first lost paragraph. Severity: error means a paragraph was cut mid-sentence; warning means a whole message is not in the summary, or the summary is stale; information means paragraphs are missing from a block that was kept. A lost paragraph whose lines mostly look like a command, a `[tool]` line, a timestamp, a test id or a pass/fail line is labelled `log/tool output`, otherwise `prose`.
+
+The same finding in an editor, cropped to the diagnostics (Neovim with the Witness language server): `message 3 (user) dropped prose: "Do not deploy this to production until I have reviewed the d…"`.
+
+![Neovim: a diagnostic on the approval block quotes the sentence the summary dropped.](examples/deploy-approval/screenshot-diagnostic.png)
+
+[After one sentence is restored](examples/deploy-approval/screenshot-repaired.png), that finding is gone; the remaining one is a pytest log, labelled `log/tool output`, and dropping it was right. An animated version is [`public/delta-zero-demo.gif`](public/delta-zero-demo.gif).
+
+## Try it without Claude Code
 
 No Delta needed. You need Python 3 and [Pkl](https://pkl-lang.org). For the editor view you also need Neovim 0.11+ and the [Witness](https://github.com/null-hype/witness) language server (`witness`) on your PATH. The example is a synthetic 8-message thread (a retry-backoff change to a billing webhook), stored as two JSON files in the shape Delta prints.
 
@@ -43,27 +52,15 @@ Now only the pytest-log finding remains (line 33). With Delta installed, `python
 
 ## Install as a plugin
 
-delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin: `plugin.json` at the root and one Agent Skills skill, `skills/check-summary-loss`, which tells an agent how to run `pkl_thread.py` and report what a summary dropped.
-
-- `plugin.json` validates against the 1.0.0 plugin schema (checked with Ajv), and the skill's frontmatter follows the Agent Skills specification (checked by hand against each rule; no `skills-ref` validator was run).
-- Tested in one client only: Claude Code 2.1.325, loaded with `claude --plugin-dir <path to this repo>`. There the skill appeared as `delta-zero:check-summary-loss` and a headless run on `examples/deploy-approval` produced the two findings. No other client was tested.
-- The plugin format cannot declare dependencies: the host needs Python 3 and Pkl, and the `delta` CLI for real threads. The Neovim/Witness view is outside the plugin.
-
-## How it works
-
-- **Delta** holds threads and summaries. delta-zero reads its `thread show` output (summarize and full formats). It does not present threads; Delta and Zed do that.
-- **Pkl** gives the summary a type. `thread.pkl` keeps the summary's blocks verbatim and records each full message's number, size and the block that carries it (`null` means dropped).
-- **Witness** reads `.witness/run/findings.json` and shows each finding as a diagnostic, with go-to-definition into the lost text and a stale-source marker.
-
-A diagnostic quotes the first ~60 characters of the first lost paragraph. Severity: error means a paragraph was cut mid-sentence; warning means a whole message is not in the summary, or the summary is stale; information means paragraphs are missing from a block that was kept. A lost paragraph whose lines mostly look like a command, a `[tool]` line, a timestamp, a test id or a pass/fail line is labelled `log/tool output`, otherwise `prose`.
+delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin (`plugin.json` plus the skill `skills/check-summary-loss`), validated against the 1.0.0 schema and tested only in Claude Code, which needs Python 3 and Pkl on the host.
 
 ## What this is not yet
 
-- **Not semantic.** A loss is a paragraph of the full message missing from the summary text. It cannot tell a constraint from a log, and a paraphrased constraint is still flagged as lost. The prose/log label is a line-shape heuristic.
-- **No judgment of which loss matters.** A person decides, in seconds, because the lost text is quoted. A judgment API (Jev) is planned and is not wired in.
-- **No automated repair.** The repair in the demo is a sentence added by hand.
-- **No measured results.** The demo is one synthetic thread. The planned experiment, not yet run: targeted repair against plain re-summarising at the same token budget, scored by whether a fresh agent picks the correct next action.
-- **Not a thread viewer, not a Delta replacement.** It depends on Delta's format.
+Structural, not semantic: a paraphrased constraint is still flagged and nothing ranks which loss matters. Repair is manual: the demo restores the sentence by hand.
+
+## Where it comes from
+
+*Fingerspitzengefühl* has no one-word English equivalent; a gloss like "tact" drops four named axes (lexicalization, Gefühl register, Spitzen valence, lineage). Naming them makes the loss inspectable, and a compacted agent context is the same problem. That lesson lives in the `tutorial-app/` of [null-hype/agent-plugins](https://github.com/null-hype/agent-plugins).
 
 ## Credits
 
