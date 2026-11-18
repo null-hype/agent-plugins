@@ -6,7 +6,7 @@
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": { "username": "vscode" },
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": { "moby": false },
     "ghcr.io/devcontainers/features/sshd:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/null-hype/agent-plugins/pass-cli:1": {
