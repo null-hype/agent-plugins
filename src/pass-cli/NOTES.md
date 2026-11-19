@@ -2,10 +2,11 @@
 
 ## Installing an agent
 
-The feature installs `pass-cli`. A container logs in as a Pass agent with
-that agent's token in `PROTON_PASS_PERSONAL_ACCESS_TOKEN`. By convention the
-token reaches a container only through `remoteEnv`, never `containerEnv`
-(`docker inspect` shows that) and never piped in over SSH:
+The feature installs `pass-cli` and keeps its session in a file
+(`PROTON_PASS_KEY_PROVIDER=fs`). It never logs in. A container logs in as a
+Pass agent with that agent's token in `PROTON_PASS_PERSONAL_ACCESS_TOKEN`. By
+convention the token reaches a container only through `remoteEnv`, never
+`containerEnv` (`docker inspect` shows that) and never piped in over SSH:
 
 ```json
 "features": {
