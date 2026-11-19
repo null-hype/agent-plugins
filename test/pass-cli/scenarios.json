@@ -14,6 +14,15 @@
         },
         "remoteUser": "octocat"
     },
+    "login": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "pass-cli": {}
+        },
+        "remoteEnv": {
+            "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
+        }
+    },
     "gold": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {
