@@ -3,7 +3,9 @@
 ## Installing an agent
 
 The feature installs `pass-cli`. A container logs in as a Pass agent with
-that agent's token in `PROTON_PASS_PERSONAL_ACCESS_TOKEN`:
+that agent's token in `PROTON_PASS_PERSONAL_ACCESS_TOKEN`. By convention the
+token reaches a container only through `remoteEnv`, never `containerEnv`
+(`docker inspect` shows that) and never piped in over SSH:
 
 ```json
 "features": {
@@ -14,7 +16,9 @@ that agent's token in `PROTON_PASS_PERSONAL_ACCESS_TOKEN`:
 }
 ```
 
-then `pass-cli login`. Create the agent from your own session; its token is
+then `pass-cli login`. Whatever launches the container supplies the value:
+a Codespaces secret, the shell running `devcontainer up` or devpod, or a
+Tailscale SSH policy rule with `acceptEnv`. Create the agent from your own session; its token is
 printed once, so send it straight to where the container will read it:
 
 ```sh
