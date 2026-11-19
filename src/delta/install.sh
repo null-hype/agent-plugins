@@ -25,4 +25,5 @@ if [ -e "$home/.local/share/delta" ]; then
 fi
 ln -s /var/lib/delta "$home/.local/share/delta"
 printf '%s\n' "${RUNNER:-false}" > /usr/local/etc/delta-runner-enabled
+printf '%s\n' "${RUNNERNAME:-delta-workspace}" > /usr/local/etc/delta-runner-name
 install -m 755 "$(dirname "$0")/delta-runner-start" /usr/local/bin/delta-runner-start

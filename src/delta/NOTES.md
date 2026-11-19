@@ -4,6 +4,8 @@ Requires Debian 13 (or a system with the glibc version required by Delta).
 Installs the stable release using Delta's official installer.
 
 Set `runner` to `true` to enable startup. It defaults to `false`.
+Set `runnerName` to a distinct, stable workspace name (default:
+`delta-workspace`). The runner uses this name instead of the container hostname.
 The devcontainer CLI rejects `../../src/delta` from the internal config because
 local Feature paths must stay within `.devcontainer/`. The internal config
 therefore retains its existing installer until this Feature can be published

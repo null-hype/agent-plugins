@@ -16,7 +16,8 @@
                 "username": "vscode"
             },
             "delta": {
-                "runner": true
+                "runner": true,
+                "runnerName": "delta-feature-test"
             }
         },
         "remoteUser": "vscode"

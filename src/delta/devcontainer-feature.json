@@ -8,6 +8,11 @@
             "type": "boolean",
             "default": false,
             "description": "Serve this workspace as a Personal Runner when signed in."
+        },
+        "runnerName": {
+            "type": "string",
+            "default": "delta-workspace",
+            "description": "Stable name shown in Delta's runner picker. Choose a distinct name for each workspace."
         }
     },
     "mounts": [
