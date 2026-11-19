@@ -4,8 +4,8 @@ set -e
 echo "Activating feature 'color'"
 
 if ! command -v pass-cli >/dev/null 2>&1; then
-    if ! command -v curl >/dev/null 2>&1; then
-        apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+        apt-get update && apt-get install -y --no-install-recommends curl ca-certificates jq
     fi
     curl -fsSL https://proton.me/download/pass-cli/install.sh | PROTON_PASS_CLI_INSTALL_DIR=/usr/local/bin bash
 fi
