@@ -48,7 +48,7 @@
                 "tag": "restic-backup"
             }
         },
-        "containerEnv": {
+        "remoteEnv": {
             "PROTON_PASS_PERSONAL_ACCESS_TOKEN": "${localEnv:PROTON_PASS_PERSONAL_ACCESS_TOKEN}"
         }
     }
