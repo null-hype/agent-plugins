@@ -6,7 +6,10 @@ apt-get update
 apt-get install -y --no-install-recommends bash ca-certificates curl python3 tar util-linux
 
 user=${_REMOTE_USER:-root}
-home=${_REMOTE_USER_HOME:-/root}
+# common-utils may create the remote user after the CLI captures its built-in
+# home variable. Resolve the account now, after that Feature has run.
+home=$(getent passwd "$user" | cut -d: -f6)
+: "${home:?Remote user has no home directory}"
 installer=$(mktemp)
 trap 'rm -f "$installer"' EXIT
 curl -fsSL https://delta.dev/install.sh -o "$installer"
