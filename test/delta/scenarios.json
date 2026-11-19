@@ -1,0 +1,34 @@
+{
+    "install": {
+        "image": "debian:trixie",
+        "features": {
+            "ghcr.io/devcontainers/features/common-utils:2": {
+                "username": "vscode"
+            },
+            "delta": {}
+        },
+        "remoteUser": "vscode"
+    },
+    "runner-not-signed-in": {
+        "image": "debian:trixie",
+        "features": {
+            "ghcr.io/devcontainers/features/common-utils:2": {
+                "username": "vscode"
+            },
+            "delta": {
+                "runner": true
+            }
+        },
+        "remoteUser": "vscode"
+    },
+    "data-dir-persists": {
+        "image": "debian:trixie",
+        "features": {
+            "ghcr.io/devcontainers/features/common-utils:2": {
+                "username": "vscode"
+            },
+            "delta": {}
+        },
+        "remoteUser": "vscode"
+    }
+}
