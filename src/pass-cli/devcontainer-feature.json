@@ -1,7 +1,7 @@
 {
     "name": "My Favorite Color",
     "id": "pass-cli",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "A feature to remind you of your favorite color",
     "options": {
         "favorite": {
@@ -41,6 +41,9 @@
             "default": "",
             "description": "Claude session id that 'color start' (the postStartCommand) continues on container start, in acceptEdits mode with Remote Control, when /workspaces/.color-session does not name one. Leave it empty in a shared config; empty with no file does nothing."
         }
+    },
+    "containerEnv": {
+        "PROTON_PASS_KEY_PROVIDER": "fs"
     },
     "postStartCommand": "color start",
     "installsAfter": [

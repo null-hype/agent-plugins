@@ -77,6 +77,11 @@ jobs:
     if: needs.changes.outputs.features != '[]' && needs.changes.outputs.features != ''
     runs-on: ubuntu-latest
     continue-on-error: true
+    # Its PROTON_PASS_PERSONAL_ACCESS_TOKEN is the ci-login Pass agent's,
+    # which has no grants (src/pass-cli/NOTES.md).
+    environment: login-test
+    env:
+      PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ secrets.PROTON_PASS_PERSONAL_ACCESS_TOKEN }}
     strategy:
       matrix:
         features: ${{ fromJSON(needs.changes.outputs.features) }}
