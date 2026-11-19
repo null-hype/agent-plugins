@@ -22,4 +22,5 @@ esac
 
 # The lock is held by the runner, not the short-lived startup hook.
 # A second container start must not register a duplicate runner.
-setsid -f flock -n "$data/runner.lock" delta runner serve < /dev/null
+setsid -f flock -n "$data/runner.lock" delta runner serve \
+    --name "$(cat /usr/local/etc/delta-runner-name)" < /dev/null
