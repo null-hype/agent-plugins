@@ -4,6 +4,10 @@
     "dockerfile": "Dockerfile"
   },
   "features": {
+    "ghcr.io/null-hype/agent-plugins/delta:1": {
+      "runner": true,
+      "runnerName": "toolbox-host"
+    },
     "ghcr.io/devcontainers/features/common-utils:2": { "username": "vscode" },
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": { "moby": false },
@@ -25,7 +29,7 @@
     "7880": { "label": "Agent plugins Storybook", "onAutoForward": "silent" },
     "7881": { "label": "Tidelands Storybook", "onAutoForward": "openBrowser" }
   },
-  "postCreateCommand": "bash .devcontainer/internal/install-delta.sh && bash .dagger/internal/devenv-base/.devcontainer/install-tools.sh && bash .devcontainer/storybook/setup.sh",
+  "postCreateCommand": "bash .dagger/internal/devenv-base/.devcontainer/install-tools.sh && bash .devcontainer/storybook/setup.sh",
   "postStartCommand": "bash -lc 'bash .devcontainer/storybook/start.sh'",
   "postAttachCommand": "bash .dagger/internal/devenv-base/.devcontainer/verify-tools.sh",
   "remoteEnv": {
