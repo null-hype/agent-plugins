@@ -2,7 +2,12 @@
 set -euo pipefail
 
 data="$HOME/.local/share/delta"
-mkdir -p "$data"
+# The volume is mounted at a fixed path; link it into this user's home here,
+# at start, because the build does not reliably know the remote user.
+if [ ! -e "$data" ]; then
+    mkdir -p "$(dirname "$data")"
+    ln -s /var/lib/delta "$data"
+fi
 # Devcontainer tooling can remap the remote user's UID after image creation.
 # Fix the volume's copied ownership as that final user, not at build time.
 if [ ! -w "$data" ]; then

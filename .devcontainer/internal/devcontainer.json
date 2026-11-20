@@ -30,7 +30,7 @@
     "7881": { "label": "Tidelands Storybook", "onAutoForward": "openBrowser" }
   },
   "postCreateCommand": "bash .dagger/internal/devenv-base/.devcontainer/install-tools.sh && bash .devcontainer/storybook/setup.sh",
-  "postStartCommand": "bash -lc 'bash .devcontainer/storybook/start.sh'",
+  "postStartCommand": "bash -lc 'delta-runner-start; bash .devcontainer/storybook/start.sh'",
   "postAttachCommand": "bash .dagger/internal/devenv-base/.devcontainer/verify-tools.sh",
   "remoteEnv": {
     "PROTON_PASS_KEY_PROVIDER": "fs",
