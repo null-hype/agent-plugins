@@ -1,7 +1,7 @@
 {
     "id": "delta",
     "name": "Delta Personal Runner",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Install Delta on Debian 13 and optionally serve a Personal Runner after sign-in.",
     "options": {
         "runner": {
