@@ -1,0 +1,29 @@
+{
+    "id": "delta",
+    "name": "Delta Personal Runner",
+    "version": "1.0.0",
+    "description": "Install Delta on Debian 13 and optionally serve a Personal Runner after sign-in.",
+    "options": {
+        "runner": {
+            "type": "boolean",
+            "default": false,
+            "description": "Serve this workspace as a Personal Runner when signed in."
+        },
+        "runnerName": {
+            "type": "string",
+            "default": "delta-workspace",
+            "description": "Stable name shown in Delta's runner picker. Choose a distinct name for each workspace."
+        }
+    },
+    "mounts": [
+        {
+            "source": "delta-${devcontainerId}",
+            "target": "/var/lib/delta",
+            "type": "volume"
+        }
+    ],
+    "postStartCommand": "delta-runner-start",
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}

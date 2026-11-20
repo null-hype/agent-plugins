@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+
+data="$HOME/.local/share/delta"
+mkdir -p "$data"
+# Devcontainer tooling can remap the remote user's UID after image creation.
+# Fix the volume's copied ownership as that final user, not at build time.
+if [ ! -w "$data" ]; then
+    echo "Delta data ownership: user=$(id -u):$(id -g), volume=$(stat -c '%u:%g' "$data")"
+    sudo chown -R "$(id -u):$(id -g)" /var/lib/delta
+fi
+
+[ "$(cat /usr/local/etc/delta-runner-enabled)" = true ] || exit 0
+exec >> "$data/runner.log" 2>&1
+
+status=0
+delta auth status || status=$?
+case "$status" in
+    0) ;;
+    1)
+        echo "Delta runner: not signed in; run 'delta auth login', then 'delta-runner-start'."
+        exit 0
+        ;;
+    *)
+        echo "Delta runner: cannot determine sign-in status (exit $status)."
+        exit "$status"
+        ;;
+esac
+
+# The lock is held by the runner, not the short-lived startup hook.
+# A second container start must not register a duplicate runner.
+setsid -f flock -n "$data/runner.lock" delta runner serve \
+    --name "$(cat /usr/local/etc/delta-runner-name)" < /dev/null
