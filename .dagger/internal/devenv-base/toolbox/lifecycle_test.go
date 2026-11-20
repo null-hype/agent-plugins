@@ -18,7 +18,7 @@ type lifecycleHost struct {
 	t                     *testing.T
 	dir, state, jobs      string
 	idle, lease, ext, max int
-	agent                 bool
+	agent, delta          bool
 	// bootID is the kernel's boot id; a new one is a reboot.
 	bootID string
 	// hangList makes `devpod list` block, like a provider that never answers.
@@ -43,6 +43,13 @@ func newLifecycleHost(t *testing.T) *lifecycleHost {
 		// Only the agent's process can be found, and only when the test says so.
 		"pgrep": `[ "$1 $2" = "-f claude-agent-sdk|container-use stdio" ] && [ -f "$FAKE_DIR/agent" ]`,
 		// su - user -c CMD: run CMD here.
+		// A process table: the Delta runner (pid 100), its helper, a claude
+		// turn under it only when the test says so, and an unrelated claude.
+		"ps": `echo "  100     1 delta           delta runner serve --name toolbox-host"
+echo "  101   100 bash            bash -c helper"
+[ -f "$FAKE_DIR/delta" ] && echo "  102   101 claude          /home/vscode/.local/bin/claude -p"
+echo "  200     1 claude          claude"
+exit 0`,
 		"su": `shift 3; bash -c "$1"`,
 		"devpod": `echo "$*" >> "$FAKE_DIR/devpod.calls"
 [ "$1" = list ] && [ -f "$FAKE_DIR/hang" ] && exec sleep 600
@@ -55,7 +62,7 @@ func newLifecycleHost(t *testing.T) *lifecycleHost {
 
 func (h *lifecycleHost) run(at int, action string) string {
 	h.t.Helper()
-	for name, on := range map[string]bool{"agent": h.agent, "hang": h.hangList} {
+	for name, on := range map[string]bool{"agent": h.agent, "delta": h.delta, "hang": h.hangList} {
 		if on {
 			os.WriteFile(filepath.Join(h.dir, name), nil, 0o644)
 		} else {
@@ -144,6 +151,27 @@ func TestLifecycleWorkResetsTheIdleClock(t *testing.T) {
 	h.run(45, "tick")
 	if h.stopped() == "" {
 		t.Fatal("not stopped 15 minutes after the last work")
+	}
+}
+
+func TestLifecycleDeltaTurnCountsButIdleRunnerDoesNot(t *testing.T) {
+	h := newLifecycleHost(t)
+	h.run(0, "boot")
+	// The runner is up and idle (the fake table has an unrelated claude too).
+	h.run(10, "tick")
+	h.delta = true
+	h.run(20, "tick")
+	if !strings.Contains(h.run(20, "status"), `"delta"`) {
+		t.Fatal("a claude turn under the Delta runner is not reported busy")
+	}
+	h.delta = false
+	h.run(34, "tick")
+	if why := h.stopped(); why != "" {
+		t.Fatalf("stopped 14 minutes after a Delta turn: %s", why)
+	}
+	h.run(35, "tick")
+	if why := h.stopped(); !strings.HasPrefix(why, "idle for 15 min") {
+		t.Fatalf("idle runner kept the host up: stopped %q", why)
 	}
 }
 
