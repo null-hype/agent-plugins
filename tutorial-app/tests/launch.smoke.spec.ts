@@ -35,21 +35,41 @@ test.describe('Static claim reports', () => {
   }
 });
 
-test('logged-out journey: professional overview → proof, contact and demonstration', async ({ page }) => {
+test('logged-out journey: professional homepage → proof, research and contact', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'A green check should lead to evidence you can inspect.' })).toBeVisible();
-  await expect(page.getByText('Richard Anthony · Software engineer · Sydney', { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Inspect the Worlds proof ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/worlds#start-here-one-exact-world-proof');
-  const email = page.getByRole('link', { name: 'public.rant@pm.me', exact: true });
-  await expect(email).toBeVisible();
-  await expect(email).toHaveAttribute('href', 'mailto:public.rant@pm.me');
-  await expect(page.getByRole('link', { name: 'Witness ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/witness');
-  // The explanation should fit a phone without horizontal scrolling or a tutorial runtime.
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  // The 10-second test: who, what, credibility, evidence, contact.
+  await expect(page.getByRole('heading', { level: 1, name: 'Richard Anthony', exact: true })).toBeVisible();
+  await expect(page.getByText('Senior software & security engineer', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Sydney, Australia · Available for consulting and senior engineering roles/)).toBeVisible();
+  for (const area of ['AI & agent infrastructure', 'Security & verification', 'Developer infrastructure']) {
+    await expect(page.getByRole('heading', { level: 3, name: area, exact: true })).toBeVisible();
+  }
+  await expect(page.getByText('Bloomberg', { exact: true })).toBeVisible();
+  await expect(page.getByText('XO Group', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'LinkedIn ↗', exact: true }).first()).toHaveAttribute('href', 'https://www.linkedin.com/in/richardanthonydev/');
+  await expect(page.getByRole('link', { name: 'GitHub ↗', exact: true }).first()).toHaveAttribute('href', 'https://github.com/null-hype');
+  const discuss = page.getByRole('link', { name: 'Discuss a project', exact: true }).first();
+  await expect(discuss).toBeVisible();
+  await expect(discuss).toHaveAttribute('href', /^mailto:public\.rant@pm\.me\?subject=/);
+  await expect(page.getByRole('link', { name: 'See selected work', exact: true })).toHaveAttribute('href', '#work');
+  // Selected work links to source and the recorded review; no demo or tutorial runtime on the homepage.
+  await expect(page.locator('.pro-project')).toHaveCount(3);
+  await expect(page.getByRole('link', { name: 'Source and runnable example ↗' }).first()).toHaveAttribute('href', 'https://github.com/null-hype/worlds');
+  await expect(page.getByRole('button', { name: 'Evaluate integration' })).toHaveCount(0);
   await expect(page.locator('iframe')).toHaveCount(0);
-  // Exercise the same example visitors can now use on the homepage. A repaired
-  // input invalidates the prior result; passing never grants human approval.
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
+  // The offer does not depend on project vocabulary in the first screen.
+  const firstScreen = await page.locator('.pro-hero').innerText();
+  for (const jargon of ['Worlds', 'Witness', 'JEV', 'Dagger', 'Pkl']) expect(firstScreen).not.toContain(jargon);
+  expect(firstScreen).toContain('Bloomberg and XO Group');
+  // It fits a phone without horizontal scrolling.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  // Research keeps the interactive example. A repaired input invalidates the
+  // prior result; passing never grants human approval.
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Research', exact: true }).click();
+  await expect(page).toHaveURL(/\/research\/?$/);
   await page.getByRole('button', { name: 'Evaluate integration', exact: true }).click();
   await expect(page.getByText('Failed', { selector: '.ic-failed' })).toBeVisible();
   await page.getByRole('button', { name: 'Inspect disagreement', exact: true }).click();
@@ -60,8 +80,9 @@ test('logged-out journey: professional overview → proof, contact and demonstra
   await page.getByRole('button', { name: 'Re-evaluate integration', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Approve landing (simulated)', exact: true })).toBeVisible();
   await expect(page.getByText('Not approved', { exact: true })).toBeVisible();
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
-  await page.getByRole('link', { name: 'Challenge a check →', exact: true }).click();
+
+  // The tutorial routes still work from the research page.
+  await page.getByRole('link', { name: 'Challenge a check', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${DEMO}/?$`));
   await expect(page.getByRole('heading', { name: 'Can the check tell a real read of the private file from a forged one?', exact: true })).toBeVisible();
   await expect(page.locator('#gap-footer-band').getByRole('link', { name: 'Inspect the evidence', exact: true })).toHaveAttribute('href', EVIDENCE);
@@ -141,4 +162,26 @@ test.describe('Published preregistration', () => {
     await expect(page.getByText('prediction = 0.0', { exact: true })).toBeVisible();
     await context.close();
   });
+});
+
+test('professional pages share Richard’s hiring and consulting card', async ({ page }) => {
+  for (const path of ['/', '/research']) {
+    await page.goto(path);
+    const title = await page.title();
+    expect(title).toContain('Richard Anthony');
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', title);
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', title);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+    const image = (await page.locator('meta[property="og:image"]').getAttribute('content'))!;
+    expect(new URL(image).pathname).toBe('/professional-preview.png');
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', image);
+    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute('content', /Richard Anthony.*Senior software/);
+    await expect(page.locator('meta[name="twitter:image:alt"]')).toHaveAttribute('content', /Richard Anthony.*Senior software/);
+    const response = await page.request.get(new URL(new URL(image).pathname, page.url()).href);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['content-type']).toContain('image/png');
+    const png = await response.body();
+    expect(png.readUInt32BE(16)).toBe(1200);
+    expect(png.readUInt32BE(20)).toBe(630);
+  }
 });

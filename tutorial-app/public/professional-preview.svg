@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+<title id="title">Richard Anthony — Senior software &amp; security engineer</title>
+<desc id="description">AI and agent infrastructure, security and verification, developer tooling. Sydney. Available for consulting and senior engineering roles.</desc>
+<rect width="1200" height="630" fill="#ffffff"/>
+<rect x="80" y="65" width="72" height="8" fill="#a23924"/>
+<g font-family="Arial, Helvetica, sans-serif" fill="#1c1f24">
+<text x="80" y="180" font-size="76" font-weight="700" letter-spacing="-2">Richard Anthony</text>
+<text x="80" y="250" font-size="38" font-weight="600">Senior software &amp; security engineer</text>
+<g font-size="28" fill="#545c68">
+<text x="80" y="350">AI &amp; agent infrastructure</text>
+<text x="80" y="397">Security &amp; verification · Developer tooling</text>
+<text x="80" y="489" font-size="25">Sydney · Consulting &amp; senior engineering roles</text>
+</g>
+<path d="M80 535H1120" stroke="#d9dde3"/>
+<text x="80" y="583" font-size="26" font-weight="600">tidelands.dev</text>
+</g></svg>
