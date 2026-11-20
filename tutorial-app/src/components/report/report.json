@@ -1,0 +1,24 @@
+{
+  "title": "Checks",
+  "intro": [
+    "I'm a security researcher. My recent work is on checking what AI coding agents claim to have done.",
+    "Before an agent runs, I record what should happen. Afterwards, a check compares that record with what did happen. This page is generated from those records, so failed checks are listed alongside passed ones.",
+    "Based in Sydney. Available for senior engineering roles and consulting."
+  ],
+  "tampered": false,
+  "paragraphs": [
+    {
+      "id": "INF-6",
+      "text": "An agent's work is judged against predictions registered before its plan was approved.",
+      "href": "/checks/INF-6/",
+      "why": "The judgement runs on a frozen snapshot of the run, not on the repository as it is now, so nothing changed afterwards can affect the result. The check fails if the judgement reads live state.",
+      "registered": "2026-11-03T05:45:00Z",
+      "previously": "An earlier run passed on 2026-11-02, before the prediction was registered.",
+      "control": false,
+      "prediction": 1.0,
+      "requires": [],
+      "answers": [],
+      "status": "Not run"
+    }
+  ]
+}

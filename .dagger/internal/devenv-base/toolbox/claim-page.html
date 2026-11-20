@@ -2,100 +2,38 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{.Issue.Title}}</title>{{if not .Public}}<meta name="robots" content="noindex">{{end}}
-<meta name="referrer" content="no-referrer"><style>.td-page { --td-ink: #262722; --td-muted: #5e5f55; --td-line: #bcb9ac; --td-paper: #f4f0e7; --td-sheet: #eae5d8; --td-accent: #a23924; --td-serif: Georgia, "Times New Roman", serif; --td-mono: "Courier New", monospace; background: var(--td-paper); color: var(--td-ink); font: 16px/1.65 Arial, Helvetica, sans-serif; min-height: 100vh; }
-.td-page, .td-page * { box-sizing: border-box; }
-.td-page a { color: inherit; text-underline-offset: 4px; }
-.td-page a:hover { color: var(--td-accent); }
-.td-page :focus-visible { outline: 3px solid var(--td-accent); outline-offset: 5px; }
-.td-page h1, .td-page h2, .td-page h3, .td-page p { margin-top: 0; }
-.td-page h1 { font-size: clamp(2.4rem, 5.6vw, 4.7rem); line-height: 1.08; letter-spacing: -0.045em; font-weight: 550; text-wrap: balance; overflow-wrap: anywhere; }
-.td-page h2 { font-family: var(--td-serif); font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -0.025em; font-weight: 400; }
-.td-page h3 { line-height: 1.3; }
-.td-page code { overflow-wrap: anywhere; }
-.td-header, .td-footer, .td-main { width: min(1120px, 100%); margin: 0 auto; padding-left: 32px; padding-right: 32px; }
-.td-header { padding-top: 24px; padding-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--td-ink); }
-.td-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; letter-spacing: -0.025em; }
-.td-brand span { color: var(--td-muted); font-weight: 400; letter-spacing: 0; }
-.td-brand .td-logo { display: flex; flex: 0 0 34px; }
-.td-logo svg { width: 34px; height: 34px; }
-.td-header nav { display: flex; gap: 24px; font-size: 0.85rem; }
-.td-footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--td-line); padding-top: 24px; padding-bottom: 32px; color: var(--td-muted); font-size: 0.85rem; }
-.td-eyebrow { color: var(--td-muted); font: 0.75rem/1.5 var(--td-mono); text-transform: uppercase; letter-spacing: 0.12em; }
-.td-lead { font-size: clamp(1.1rem, 2vw, 1.35rem); max-width: 660px; }
-.td-muted { color: var(--td-muted); }
-.td-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin: 28px 0 0; }
-.td-button { display: inline-flex; align-items: center; padding: 12px 18px; background: var(--td-accent); border: 1px solid var(--td-accent); border-radius: 0; color: #fff !important; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-.td-button:hover { background: var(--td-ink); border-color: var(--td-ink); }
-.td-panel { min-width: 0; border: 1px solid var(--td-line); border-radius: 0; overflow: hidden; background: var(--td-sheet); }
-.td-panel-heading { padding: 15px 20px; border-bottom: 1px solid var(--td-line); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.td-panel-heading h2, .td-panel-heading h3 { font-size: 1rem; margin: 0; letter-spacing: 0; }
-.td-panel-heading span { color: var(--td-muted); font: 0.75rem var(--td-mono); }
-.td-panel-body { padding: 22px; }
-.td-section { padding: 52px 0; border-top: 1px solid var(--td-line); }
-.td-section-intro { max-width: 680px; margin-bottom: 28px; }
-.td-hero { padding: 72px 0 56px; }
-.td-hero h1 { max-width: 900px; margin-bottom: 28px; }
-.td-hero p:not(.td-eyebrow) { max-width: 660px; }
-.td-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; list-style: none; margin: 44px 0 0; padding: 0; }
-.td-steps li { padding: 20px 0; border-top: 1px solid var(--td-line); }
-.td-steps h2 { font-size: 1.1rem; margin-bottom: 10px; }
-.td-steps p { color: var(--td-muted); font-size: 0.9rem; margin-bottom: 0; }
-.td-step-number { display: block; margin-bottom: 12px; color: var(--td-muted); font: 0.75rem var(--td-mono); }
-.td-demo { padding: 24px; }
-.td-demo .ic { max-width: none; font-size: 0.92rem; }
-.td-projects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.td-project { padding: 24px; }
-.td-project h3 { margin-bottom: 12px; font-size: 1.25rem; }
-.td-project p { color: var(--td-muted); font-size: 0.9rem; }
-.td-report-hero { padding: 56px 0 32px; }
-.td-report-hero h1 { max-width: 900px; font-size: clamp(2rem, 4.8vw, 3.6rem); margin: 16px 0 24px; }
-.td-report-status { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
-.td-report-status .ic-badge { padding: 0.4em 1.1em; font-size: 1.05rem; letter-spacing: 0.01em; }
-.td-report-status p { margin: 0; font-size: 0.9rem; color: var(--td-muted); }
-.td-report-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr); align-items: start; gap: 24px; padding: 0 0 48px; }
-.td-report-side { display: grid; gap: 20px; min-width: 0; }
-.td-report-facts { margin: 0; }
-.td-report-facts dt { font-size: 0.78rem; color: var(--td-muted); margin-top: 20px; }
-.td-report-facts dt:first-child { margin-top: 0; }
-.td-report-facts dd { margin: 5px 0 0; font-size: 0.88rem; overflow-wrap: anywhere; }
-.td-report-note { font-size: 0.85rem; margin: 0; color: var(--td-muted); }
-.td-report-detail { margin-top: 24px; border-top: 1px solid var(--td-line); padding-top: 16px; }
-.td-report-detail summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; }
-.td-report-description-note { padding: 12px 20px; margin: 0; color: var(--td-muted); font-size: 0.78rem; }
-.td-report-visibility { font-size: 0.78rem; color: var(--td-muted); margin-top: 18px; max-width: 720px; }
-@media (max-width: 720px) { .td-header, .td-footer, .td-main { padding-left: 20px; padding-right: 20px; } .td-header { flex-wrap: wrap; } .td-brand > span:not(.td-logo) { display: none; } .td-header nav { gap: 16px; } .td-hero { padding-top: 44px; } .td-steps, .td-projects, .td-report-grid { grid-template-columns: 1fr; } .td-steps { gap: 0; margin-top: 32px; } .td-section { padding: 36px 0; } .td-demo { padding: 16px; } .td-report-hero { padding-top: 36px; } .td-panel-heading { flex-wrap: wrap; } .td-footer { flex-wrap: wrap; } }
-@media (prefers-reduced-motion: no-preference) { .td-page a { transition: color 120ms, background-color 120ms; } }
-/* Cut-paper identity, ported from the portfolio draft (#386): ink block, serif counterpoint, taped note. */
-.td-cut { display: inline-block; background: var(--td-ink); color: var(--td-paper); padding: 0 0.13em 0.08em 0.1em; transform: rotate(-1.3deg); }
-.td-page h1 em { font-family: var(--td-serif); font-weight: 400; color: var(--td-accent); letter-spacing: -0.04em; }
-.td-hero-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 40px; }
-.td-note { position: relative; flex: 0 0 230px; margin-top: 16px; padding: 30px 22px 34px; background: #e5dfcc; transform: rotate(4deg); border-top: 1px solid #d3cbb3; box-shadow: 4px 7px 0 #26272210; clip-path: polygon(0 0, 100% 0, 100% 96%, 93% 98%, 87% 96%, 81% 99%, 74% 97%, 67% 99%, 58% 97%, 49% 100%, 41% 97%, 33% 99%, 25% 97%, 17% 99%, 8% 97%, 0 99%); }
-.td-note::before { content: ''; position: absolute; top: 0; left: 76px; width: 76px; height: 11px; background: #b4ad91; opacity: 0.5; }
-.td-note span { display: block; font: 0.7rem/1.5 var(--td-mono); text-transform: uppercase; letter-spacing: 0.08em; }
-.td-note p { margin: 24px 0; font: italic 2.1rem/1.06 var(--td-serif); letter-spacing: -0.04em; }
-.td-note strong { font-style: normal; font-weight: 400; border-bottom: 2px solid var(--td-accent); }
-.td-project { counter-increment: td-project; }
-.td-projects { counter-reset: td-project; }
-.td-project h3 { font: 1.55rem/1.2 var(--td-serif); letter-spacing: -0.03em; }
-.td-project h3::before { content: "0" counter(td-project); display: block; margin-bottom: 8px; color: var(--td-accent); font: 0.75rem/1.5 var(--td-mono); letter-spacing: 0.08em; }
-.td-project h3 a { text-decoration: none; }
-.td-project h3 a:hover { text-decoration: underline; }
-.td-step-number { color: var(--td-accent); font-family: var(--td-mono); }
-.td-footer { font-family: var(--td-mono); font-size: 0.75rem; }
-@media (max-width: 720px) { .td-hero-row { display: block; } .td-note { display: none; } }
-@media (forced-colors: active) { .td-cut, .td-button, .td-note { border: 1px solid CanvasText; } }
-.td-page .ic-primary { border-radius: 0; border-color: var(--td-accent); background: var(--td-accent); }
-.td-page .ic-primary:hover { border-color: var(--td-ink); background: var(--td-ink); }
+<meta name="referrer" content="no-referrer"><style>.td-hero-bar { box-sizing: border-box; width: 100%; padding: 20px; border-bottom: 2px solid #000; background: #fff; color: #000; }
+.td-hero-bar h1 { margin: 0; font: 700 1.5rem/1.2 Arial, Helvetica, sans-serif; letter-spacing: -0.02em; }
+@media (min-width: 720px) { .td-hero-bar { padding: 28px 32px; } .td-hero-bar h1 { font-size: 2rem; } }
 
-.ic-badge { display: inline-block; padding: 0.15em 0.65em; border-radius: 1em; font-size: 0.85em; font-weight: 600; background: #e4e4e4; color: #222; }
-.ic-pass, .ic-passed, .ic-appr-granted { background: #d1f7d8; color: #0b3d17; }
-.ic-fail, .ic-failed, .ic-conflict { background: #ffd9d9; color: #6b0f0f; }
-.ic-stale, .ic-appr-stale { background: #fff1c2; color: #5c4300; }
-.ic-origin-A { background: #d6e4ff; color: #12295e; }
-.ic-origin-B { background: #f0dcff; color: #45185f; }
-.ic-origin-base { background: #e4e4e4; color: #222; }
-.ic-workflow-completed { background: #d1f7d8; color: #0b3d17; }
-.ic-workflow-started { background: #fff1c2; color: #5c4300; }
+.td-report { box-sizing: border-box; width: 100%; padding: 24px 20px; border-top: 2px solid #000; background: #fff; color: #000; font: 1rem/1.5 Arial, Helvetica, sans-serif; }
+.td-report h2 { margin: 0 0 16px; font-size: 1.25rem; line-height: 1.3; }
+.td-report-paragraph { display: grid; grid-template-columns: minmax(0, 34em) auto; gap: 4px 24px; align-items: end; }
+.td-report-paragraph + .td-report-paragraph { margin-top: 16px; }
+.td-report-paragraph p { margin: 0; }
+.td-report-paragraph span { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+@media (max-width: 719px) { .td-report-paragraph { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 720px) { .td-report { padding: 32px; } .td-report h2 { font-size: 1.5rem; } }
+.td-report-paragraph em { font-style: normal; font-size: 0.85em; color: #444; }
+.td-report-numbers { margin: 2px 0 0 !important; font-size: 0.85rem; color: #444; }
+.td-report-id { font-size: 0.75rem; letter-spacing: 0.08em; color: #444; }
+.td-report-paragraph a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
+.td-report-why { margin: 6px 0 0 !important; font-size: 0.9rem; color: #333; max-width: 34em; }
+
+.td-claim { background: #fff; color: #000; min-height: 100vh; }
+.td-hero-bar a { color: inherit; text-decoration: none; font: 700 1.5rem/1.2 Arial, Helvetica, sans-serif; letter-spacing: -0.02em; }
+.td-report h1 { margin: 4px 0 12px; font-size: 1.5rem; line-height: 1.25; font-weight: 400; overflow-wrap: anywhere; }
+.td-report a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
+.td-report > p { margin: 0 0 8px; }
+.td-claim-verdict { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+@media (min-width: 720px) { .td-hero-bar a { font-size: 2rem; } .td-report h1 { font-size: 2rem; } }
+.td-claim .td-report { border-top: 0; }
+.td-claim-summary { max-width: 34em; font-size: 1.05rem; line-height: 1.5; margin: 0 0 16px !important; }
+.td-claim-prediction { margin: 0 0 16px; }
+
+.td-contact { box-sizing: border-box; width: 100%; padding: 0 20px 24px; display: flex; flex-wrap: wrap; gap: 8px 24px; background: #fff; color: #000; font: 1rem/1.5 Arial, Helvetica, sans-serif; }
+.td-contact a { color: inherit; text-decoration: underline; text-underline-offset: 4px; overflow-wrap: anywhere; }
+@media (min-width: 720px) { .td-contact { padding: 0 32px 32px; } }
 
 .td-source-lines { margin: 0; padding: 16px 0; overflow-x: auto; background: #202722; color: #e8e8df; font: 13px/1.7 ui-monospace, Menlo, Consolas, monospace; tab-size: 2; }
 .td-source-lines > span { display: flex; min-height: 1.7em; padding-right: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -123,12 +61,5 @@
   [data-editor-ready="true"] .td-preregistration-static { display: none; }
 }
 </style></head>
-<body style="margin:0"><div class="td-page"><header class="td-header"><a class="td-brand" href="https://www.tidelands.dev/" aria-label="Tidelands home"><span class="td-logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="#172a31" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-  <title>Tidelands</title>
-  <circle cx="24" cy="24" r="21.5"/>
-  <path d="M13 14.8a1.6 1.6 0 0 1 0 3.2a3 3 0 0 1 0-6H35a3 3 0 0 1 0 6a1.6 1.6 0 0 1 0-3.2"/>
-  <path d="M17.5 15.4c2.8 0 3.7 1.4 3.7 4.2V31c0 5-2.1 8.6-5.7 8.6c3.6 0 6.5-0.9 8.5-3.1c2 2.2 4.9 3.1 8.5 3.1c-3.6 0-5.7-3.6-5.7-8.6V19.6c0-2.8 0.9-4.2 3.7-4.2"/>
-</svg>
-</span>Tidelands<span>/ Check report</span></a><nav aria-label="Main navigation"><a href="https://github.com/null-hype/worlds">Worlds ↗</a><a href="https://github.com/null-hype/agent-plugins">Source ↗</a></nav></header><main class="td-main"><header class="td-report-hero"><p class="td-eyebrow">Claim report / {{.Issue.Identifier}}</p><h1>{{.Issue.Title}}</h1><div class="td-report-status"><span class="ic-badge ic-{{.Outcome}}">{{.Verdict}}</span><p>Dagger exit {{.Exit}} · <code>{{.Check}}</code></p></div><p class="td-report-visibility">{{if .Public}}Public report. Later reruns replace the result at this URL.{{else}}Unlisted report · noindex. Anyone with this link can view it. Later reruns replace the result at this URL.{{end}}</p></header><div class="td-report-grid"><div class="td-report-primary">{{if .PreregistrationView}}<section class="td-panel td-preregistration" data-preregistration-file="{{.PreregistrationView.File}}" aria-labelledby="preregistration-heading"><div class="td-panel-heading"><h2 id="preregistration-heading">Preregistration</h2><span>{{.PreregistrationView.File}}</span></div><div data-static-preregistration=""><p class="td-editor-status" data-editor-status="">Read-only · Source and findings from this rerun</p><div data-claim-editor="" class="td-claim-editor"></div><div class="td-preregistration-static" aria-label="Preregistration source and findings">{{range .PreregistrationView.Lines}}<div class="td-prediction-line" data-highlighted="{{if .Diagnostics}}true{{end}}"><div class="td-prediction-source"><span aria-hidden="true">{{.Number}}</span><code>{{.Text}}</code></div>{{range .Diagnostics}}<div class="td-claim-diagnostic" data-claim-diagnostic="" data-line="{{.Line}}" data-column="{{.Column}}" data-severity="{{.Severity}}"><strong>{{.Severity}}</strong><p data-diagnostic-message="">{{.Message}}</p>{{if .Evidence}}<p class="td-finding-evidence">Evidence paths: {{range .Evidence}}{{.}}  {{end}}</p>{{end}}</div>{{end}}</div>{{end}}</div><p class="td-findings-notice">{{.PreregistrationView.Notice}}</p><pre data-preregistration-source="" hidden="">{{.PreregistrationView.Source}}</pre></div></section>{{else}}<section class="td-panel td-preregistration" data-preregistration-file="Not supplied" aria-labelledby="preregistration-heading"><div class="td-panel-heading"><h2 id="preregistration-heading">Preregistration</h2><span>Not supplied</span></div><p class="td-panel-body">Preregistration unavailable for this rerun.</p></section>{{end}}<section class="td-panel" aria-labelledby="claim-heading"><div class="td-panel-heading"><h2 id="claim-heading">The claim</h2><span>Linear issue description</span></div><pre class="td-source-lines">{{range .DescriptionLines}}<span><i aria-hidden="true">{{.Number}}</i><code>{{.Text}}</code>
-</span>{{end}}</pre><p class="td-report-description-note">Issue text as supplied for this rerun.</p></section></div><aside class="td-report-side" aria-label="Rerun evidence"><section class="td-panel" aria-labelledby="rerun-heading"><div class="td-panel-heading"><h2 id="rerun-heading">Latest rerun</h2><span>Evidence</span></div><div class="td-panel-body"><dl class="td-report-facts"><dt>Dagger trace</dt><dd>{{if .Trace}}<a href="{{.Trace}}" rel="noreferrer">Open trace ↗</a>{{else}}Unavailable{{end}}</dd><dt id="restic-snapshot">Restic snapshot</dt><dd>{{if .Snapshot.ID}}<code>{{.Snapshot.ID}}</code>{{if .Snapshot.URL}} · <a href="{{.Snapshot.URL}}" rel="noreferrer">Snapshot evidence ↗</a>{{end}}{{else}}Unavailable for this rerun{{end}}</dd><dt>Run key</dt><dd><code>{{.Snapshot.RunKey}}</code></dd></dl><details class="td-report-detail"><summary>Run details</summary><dl class="td-report-facts"><dt>Linear delivery</dt><dd><code>{{.Delivery}}</code></dd><dt>Check</dt><dd><code>{{.Check}}</code></dd></dl></details></div></section><section class="td-panel" id="xeno-status" data-status="{{.XenoType}}" aria-labelledby="xeno-heading"><div class="td-panel-heading"><h2 id="xeno-heading">Issue status</h2><span class="ic-badge ic-workflow-{{.XenoType}}">{{.XenoName}}</span></div><div class="td-panel-body"><p class="td-report-note">Linear issue status when this run completed. The check verdict above comes only from the Dagger exit code.</p></div></section></aside></div></main><footer class="td-footer"><span>A log of evidence.</span><a href="mailto:public.rant@pm.me">Work with Richard ↗</a></footer></div><script id="claim-data" type="application/json">{{.Data}}</script><script>"use strict";(()=>{function u(t,n,o,r={}){return t.editor.create(n,{model:o,readOnly:!0,domReadOnly:!0,renderValidationDecorations:"on",occurrencesHighlight:"off",minimap:{enabled:!1},scrollBeyondLastLine:!1,automaticLayout:!0,...r})}var f="https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs",h=0,b;function w(){return b??=new Promise((t,n)=>{let o=document.createElement("script");o.src=f+"/loader.js",o.referrerPolicy="no-referrer";let r=window.setTimeout(()=>n(new Error("Monaco timed out")),15e3),l=()=>{clearTimeout(r),n(new Error("Monaco unavailable"))};o.onerror=l,o.onload=()=>{let d=window.require;d.config({paths:{vs:f}}),d(["vs/editor/editor.main"],()=>{clearTimeout(r),t(window.monaco)},l)},document.head.append(o)})}function p(t){let n=window.matchMedia("(min-width: 900px)"),o=t.querySelector("[data-claim-editor]"),r=t.querySelector("[data-editor-status]"),l=t.querySelector("[data-preregistration-source]").textContent,d=!1,s,i,c=!1,m=async()=>{if(!(d||!n.matches||s||c)){c=!0,r.textContent="Loading read-only editor\u2026";try{let e=await w();if(d||!n.matches)return;e.languages.getLanguages().some(a=>a.id==="claim-pkl")||(e.languages.register({id:"claim-pkl"}),e.languages.setMonarchTokensProvider("claim-pkl",{tokenizer:{root:[[/\/\/.*$/,"comment"],[/"(?:[^"\\]|\\.)*"/,"string"],[/\b(amends|extends|new|import|local|hidden|fixed|const|true|false|null)\b/,"keyword"],[/\b\d+(?:\.\d+)?\b/,"number"]]}}));let y=t.closest("[data-preregistration-file]")?.dataset.preregistrationFile||"Preregistration.pkl";i=e.editor.createModel(l,"claim-pkl",e.Uri.from({scheme:"claim",path:"/"+y,query:String(++h)}));let M={error:e.MarkerSeverity.Error,warning:e.MarkerSeverity.Warning,information:e.MarkerSeverity.Info,hint:e.MarkerSeverity.Hint};e.editor.setModelMarkers(i,"witness",Array.from(t.querySelectorAll("[data-claim-diagnostic]"),a=>({startLineNumber:Number(a.dataset.line),endLineNumber:Number(a.dataset.line),startColumn:Number(a.dataset.column),endColumn:i.getLineMaxColumn(Number(a.dataset.line)),severity:M[a.dataset.severity]??e.MarkerSeverity.Info,message:a.querySelector("[data-diagnostic-message]").textContent,source:"witness"}))),t.dataset.editorReady="true",s=u(e,o,i,{ariaLabel:"Pkl preregistration, read only",fontSize:13,lineNumbers:"on",wordWrap:"on",padding:{top:16,bottom:16},links:!1,contextmenu:!1,lightbulb:{enabled:"off"}}),r.textContent="Read-only \xB7 Findings from this rerun"}catch{delete t.dataset.editorReady,s?.dispose(),i?.dispose(),s=void 0,i=void 0,r.textContent="Editor unavailable. Source and findings are shown below."}finally{c=!1}}};return n.addEventListener("change",m),m(),()=>{d=!0,n.removeEventListener("change",m),s?.dispose(),i?.dispose()}}var g=document.querySelector("[data-static-preregistration]");g&&p(g);})();
+<body style="margin:0"><div class="td-claim"><header class="td-hero-bar"><a href="https://www.tidelands.dev/">Richard Anthony</a></header><main><section class="td-report" aria-labelledby="claim-title"><p class="td-report-id">{{.Issue.Identifier}} · {{.Check}}</p><h1 id="claim-title">{{.Issue.Title}}</h1><p class="td-claim-verdict">{{.Verdict}}</p><p>{{if .Trace}}<a href="{{.Trace}}" rel="noreferrer">Trace ↗</a>{{else}}No trace{{end}}</p>{{if .PreregistrationView}}<section class="td-panel td-preregistration" data-preregistration-file="{{.PreregistrationView.File}}" aria-labelledby="preregistration-heading"><div class="td-panel-heading"><h2 id="preregistration-heading">Preregistration</h2><span>{{.PreregistrationView.File}}</span></div><div data-static-preregistration=""><p class="td-editor-status" data-editor-status="">Read-only · Source and findings from this rerun</p><div data-claim-editor="" class="td-claim-editor"></div><div class="td-preregistration-static" aria-label="Preregistration source and findings">{{range .PreregistrationView.Lines}}<div class="td-prediction-line" data-highlighted="{{if .Diagnostics}}true{{end}}"><div class="td-prediction-source"><span aria-hidden="true">{{.Number}}</span><code>{{.Text}}</code></div>{{range .Diagnostics}}<div class="td-claim-diagnostic" data-claim-diagnostic="" data-line="{{.Line}}" data-column="{{.Column}}" data-severity="{{.Severity}}"><strong>{{.Severity}}</strong><p data-diagnostic-message="">{{.Message}}</p>{{if .Evidence}}<p class="td-finding-evidence">Evidence paths: {{range .Evidence}}{{.}}  {{end}}</p>{{end}}</div>{{end}}</div>{{end}}</div><p class="td-findings-notice">{{.PreregistrationView.Notice}}</p><pre data-preregistration-source="" hidden="">{{.PreregistrationView.Source}}</pre></div></section>{{end}}</section><section class="td-contact" aria-label="Contact"><a href="mailto:richard@tidelands.dev">richard@tidelands.dev</a><a href="https://www.linkedin.com/in/richardanthonydev/">LinkedIn</a></section></main></div><script id="claim-data" type="application/json">{{.Data}}</script><script>"use strict";(()=>{function u(t,n,o,r={}){return t.editor.create(n,{model:o,readOnly:!0,domReadOnly:!0,renderValidationDecorations:"on",occurrencesHighlight:"off",minimap:{enabled:!1},scrollBeyondLastLine:!1,automaticLayout:!0,...r})}var f="https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs",h=0,b;function w(){return b??=new Promise((t,n)=>{let o=document.createElement("script");o.src=f+"/loader.js",o.referrerPolicy="no-referrer";let r=window.setTimeout(()=>n(new Error("Monaco timed out")),15e3),l=()=>{clearTimeout(r),n(new Error("Monaco unavailable"))};o.onerror=l,o.onload=()=>{let d=window.require;d.config({paths:{vs:f}}),d(["vs/editor/editor.main"],()=>{clearTimeout(r),t(window.monaco)},l)},document.head.append(o)})}function p(t){let n=window.matchMedia("(min-width: 900px)"),o=t.querySelector("[data-claim-editor]"),r=t.querySelector("[data-editor-status]"),l=t.querySelector("[data-preregistration-source]").textContent,d=!1,s,i,c=!1,m=async()=>{if(!(d||!n.matches||s||c)){c=!0,r.textContent="Loading read-only editor\u2026";try{let e=await w();if(d||!n.matches)return;e.languages.getLanguages().some(a=>a.id==="claim-pkl")||(e.languages.register({id:"claim-pkl"}),e.languages.setMonarchTokensProvider("claim-pkl",{tokenizer:{root:[[/\/\/.*$/,"comment"],[/"(?:[^"\\]|\\.)*"/,"string"],[/\b(amends|extends|new|import|local|hidden|fixed|const|true|false|null)\b/,"keyword"],[/\b\d+(?:\.\d+)?\b/,"number"]]}}));let y=t.closest("[data-preregistration-file]")?.dataset.preregistrationFile||"Preregistration.pkl";i=e.editor.createModel(l,"claim-pkl",e.Uri.from({scheme:"claim",path:"/"+y,query:String(++h)}));let M={error:e.MarkerSeverity.Error,warning:e.MarkerSeverity.Warning,information:e.MarkerSeverity.Info,hint:e.MarkerSeverity.Hint};e.editor.setModelMarkers(i,"witness",Array.from(t.querySelectorAll("[data-claim-diagnostic]"),a=>({startLineNumber:Number(a.dataset.line),endLineNumber:Number(a.dataset.line),startColumn:Number(a.dataset.column),endColumn:i.getLineMaxColumn(Number(a.dataset.line)),severity:M[a.dataset.severity]??e.MarkerSeverity.Info,message:a.querySelector("[data-diagnostic-message]").textContent,source:"witness"}))),t.dataset.editorReady="true",s=u(e,o,i,{ariaLabel:"Pkl preregistration, read only",fontSize:13,lineNumbers:"on",wordWrap:"on",padding:{top:16,bottom:16},links:!1,contextmenu:!1,lightbulb:{enabled:"off"}}),r.textContent="Read-only \xB7 Findings from this rerun"}catch{delete t.dataset.editorReady,s?.dispose(),i?.dispose(),s=void 0,i=void 0,r.textContent="Editor unavailable. Source and findings are shown below."}finally{c=!1}}};return n.addEventListener("change",m),m(),()=>{d=!0,n.removeEventListener("change",m),s?.dispose(),i?.dispose()}}var g=document.querySelector("[data-static-preregistration]");g&&p(g);})();
 </script></body></html>

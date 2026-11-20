@@ -1,7 +1,11 @@
 ---
-import TidelandsHome from '../components/TidelandsHome';
-const title = 'Richard Anthony — verification infrastructure for agent-produced software';
-const description = 'Capture the world, run the check, preserve the evidence. Richard Anthony builds verification infrastructure and developer tools. Based in Sydney; available for senior engineering roles and selected consulting.';
+import TidelandsHero from '../components/TidelandsHero';
+import TidelandsIntro from '../components/TidelandsIntro';
+import TidelandsContact from '../components/TidelandsContact';
+import TidelandsReport from '../components/TidelandsReport';
+import TidelandsArticles from '../components/TidelandsArticle';
+const title = 'Richard Anthony';
+const description = 'Richard Anthony, security researcher in Sydney. Published checks on what AI coding agents claim to have done.';
 const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
 ---
 
@@ -20,5 +24,5 @@ const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
     <meta property="og:url" content={canonical.href} />
     <meta name="twitter:card" content="summary" />
   </head>
-  <body style="margin: 0"><TidelandsHome client:load /></body>
+  <body style="margin: 0; background: #fff"><TidelandsHero /><main><TidelandsIntro /><TidelandsContact /><TidelandsArticles /><TidelandsReport /></main></body>
 </html>

@@ -14,7 +14,7 @@ Every public touchpoint maps directly to this triad:
    - *Target:* [`docs/launch/claims-evidence.md`](claims-evidence.md) & [`github.com/null-hype/agent-plugins`](https://github.com/null-hype/agent-plugins)
 3. **Talk about applying it to an agent system:** Initiate direct dialogue about capability governance or consulting.
    - *Public Channel:* [Open an Issue](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) (open discussions, reproductions, questions)
-   - *Private Channel:* [`public.rant@pm.me`](mailto:public.rant@pm.me) (consulting, research collaboration, funding, hiring, confidential agent systems)
+   - *Private Channel:* [`richard@tidelands.dev`](mailto:richard@tidelands.dev) (consulting, research collaboration, funding, hiring, confidential agent systems)
 
 ---
 
@@ -36,5 +36,5 @@ Every public touchpoint maps directly to this triad:
 1. **No "Thoughts?" or open-ended stalling:** End every post, section, or announcement with one of the three core CTAs above.
 2. **Clear Public vs. Private distinction:**
    - Public issue template for reproducible test cases and community questions.
-   - Direct email (`public.rant@pm.me`) for confidential engagements, client systems, or funding.
+   - Direct email (`richard@tidelands.dev`) for confidential engagements, client systems, or funding.
    - Mandatory notice: "Do not send secrets or credentials in initial message."

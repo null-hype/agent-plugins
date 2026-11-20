@@ -3,9 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 const LANDING = '/part-0/overview/start';
-const DEMO = '/part-5/can-an-upload-read-a-private-file/1-can-the-check-tell-a-real-read-of-the-private-file-from-a-forged-one';
-const EVIDENCE = 'https://github.com/null-hype/agent-plugins/blob/main/docs/launch/claims-evidence.md';
-const CONTACT = 'https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml';
 
 test.describe('Static claim reports', () => {
   test.use({ javaScriptEnabled: false });
@@ -16,56 +13,46 @@ test.describe('Static claim reports', () => {
       test.skip(!baseURL || !['127.0.0.1', 'localhost'].includes(new URL(baseURL).hostname), 'Local rendered fixture only');
       await page.goto(red ? '/red-claim-fixture.html' : '/claim-fixture.html');
       await expect(page.getByRole('heading', { level: 1, name: 'A completed claim fixture' })).toBeVisible();
-      await expect(page.getByText(red ? 'Red · Failed' : 'Green · Passed', { exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Open trace ↗' })).toHaveAttribute('href', 'https://dagger.cloud/example/traces/fixture');
-      await expect(page.getByText(/Anyone with this link can view it/)).toBeVisible();
+      await expect(page.getByText(red ? 'Failed' : 'Passed', { exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Trace ↗' })).toHaveAttribute('href', 'https://dagger.cloud/example/traces/fixture');
+      await expect(page.getByRole('link', { name: 'Richard Anthony' })).toHaveAttribute('href', 'https://www.tidelands.dev/');
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
-      if (red) {
-        await expect(page.getByText('Unavailable for this rerun', { exact: true })).toBeVisible();
-        await expect(page.getByRole('link', { name: 'Snapshot evidence ↗' })).toHaveCount(0);
-      } else {
-        await expect(page.getByRole('link', { name: 'Snapshot evidence ↗' })).toBeVisible();
-      }
-      await page.getByText('Run details', { exact: true }).click();
-      await expect(page.getByText('fixture-delivery-1', { exact: true })).toBeVisible();
-      await expect(page.locator('#xeno-status')).toHaveAttribute('data-status', red ? 'started' : 'completed');
-      await expect(page.locator('#xeno-status').getByText(red ? 'In Review' : 'Done', { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
   }
 });
 
-test('logged-out journey: professional overview → proof, contact and demonstration', async ({ page }) => {
+test('homepage is the name hero, the intro and checks from Home.pkl, and contact', async ({ page }) => {
+  const report = JSON.parse(await readFile(fileURLToPath(new URL('../src/components/report/report.json', import.meta.url)), 'utf8'));
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'A green check should lead to evidence you can inspect.' })).toBeVisible();
-  await expect(page.getByText('Richard Anthony · Software engineer · Sydney', { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Inspect the Worlds proof ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/worlds#start-here-one-exact-world-proof');
-  const email = page.getByRole('link', { name: 'public.rant@pm.me', exact: true });
-  await expect(email).toBeVisible();
-  await expect(email).toHaveAttribute('href', 'mailto:public.rant@pm.me');
-  await expect(page.getByRole('link', { name: 'Witness ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/witness');
-  // The explanation should fit a phone without horizontal scrolling or a tutorial runtime.
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await expect(page.locator('iframe')).toHaveCount(0);
-  // Exercise the same example visitors can now use on the homepage. A repaired
-  // input invalidates the prior result; passing never grants human approval.
-  await page.getByRole('button', { name: 'Evaluate integration', exact: true }).click();
-  await expect(page.getByText('Failed', { selector: '.ic-failed' })).toBeVisible();
-  await page.getByRole('button', { name: 'Inspect disagreement', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Governing rule', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Apply repair (revises candidate B)', exact: true }).click();
-  await expect(page.getByText('Stale: inputs changed')).toBeVisible();
-  await page.getByRole('button', { name: 'Re-evaluate integration', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Approve landing (simulated)', exact: true })).toBeVisible();
-  await expect(page.getByText('Not approved', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Richard Anthony', exact: true })).toBeVisible();
+  for (const text of report.intro) await expect(page.getByRole('main').getByText(text, { exact: true })).toBeVisible();
+  for (const p of report.paragraphs) if (p.why) await expect(page.getByRole('main').getByText(p.why, { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'richard@tidelands.dev', exact: true })).toHaveAttribute('href', 'mailto:richard@tidelands.dev');
+  await expect(page.getByRole('link', { name: 'LinkedIn', exact: true })).toHaveAttribute('href', 'https://www.linkedin.com/in/richardanthonydev/');
+  await expect(page.getByRole('link')).toHaveCount(3);
+  await expect(page.getByRole('heading', { level: 2, name: 'Checks', exact: true })).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
-  await page.getByRole('link', { name: 'Challenge a check →', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`${DEMO}/?$`));
-  await expect(page.getByRole('heading', { name: 'Can the check tell a real read of the private file from a forged one?', exact: true })).toBeVisible();
-  await expect(page.locator('#gap-footer-band').getByRole('link', { name: 'Inspect the evidence', exact: true })).toHaveAttribute('href', EVIDENCE);
-  await expect(page.locator('#gap-footer-band').getByRole('link', { name: 'Contact', exact: true })).toHaveAttribute('href', CONTACT);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('each check on the homepage opens its claim page on the same deploy, and comes back', async ({ page, baseURL }) => {
+  const report = JSON.parse(await readFile(fileURLToPath(new URL('../src/components/report/report.json', import.meta.url)), 'utf8'));
+  for (const p of report.paragraphs) {
+    const claim = JSON.parse(await readFile(fileURLToPath(new URL(`../src/components/report/checks/${p.id}.json`, import.meta.url)), 'utf8'));
+    await page.goto('/');
+    await page.getByRole('link', { name: p.text, exact: true }).click();
+    expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
+    await expect(page.getByRole('heading', { level: 1, name: claim.issue.title, exact: true })).toBeVisible();
+    if (p.why) await expect(page.getByText(p.why, { exact: true })).toBeVisible();
+    if (p.prediction !== undefined) await expect(page.locator('.td-claim-prediction')).toContainText('Predicted');
+    await expect(page.getByText(claim.exit === 0 ? 'Passed' : 'Failed', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Trace ↗' })).toHaveAttribute('href', claim.trace);
+    await page.getByRole('link', { name: 'Richard Anthony', exact: true }).click();
+    expect(new URL(page.url()).origin).toBe(new URL(baseURL!).origin);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
 });
 
 test('rendered metadata points to a canonical page and loadable preview assets', async ({ page }) => {
