@@ -34,6 +34,7 @@ jobs:
             shared:
               - '.github/workflows/test.yaml'
             pass-cli: ['src/pass-cli/**', 'test/pass-cli/**']
+            delta: ['src/delta/**', 'test/delta/**']
             playwright-cli: ['src/playwright-cli/**', 'test/playwright-cli/**']
             # A feature's scenarios also install the features they compose
             # (test/<feature>/scenarios.json), so those changes select it too.
@@ -43,7 +44,7 @@ jobs:
             protondrive: ['src/protondrive/**', 'test/protondrive/**']
       - id: set
         run: |
-          all='["pass-cli","playwright-cli","noteexpand","jev","cve-2026-66066","protondrive"]'
+          all='["pass-cli","delta","playwright-cli","noteexpand","jev","cve-2026-66066","protondrive"]'
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ steps.filter.outputs.shared }}" = "true" ]; then
             features=$all
           else
