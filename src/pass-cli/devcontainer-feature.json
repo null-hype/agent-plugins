@@ -1,7 +1,7 @@
 {
     "name": "My Favorite Color",
     "id": "pass-cli",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "A feature to remind you of your favorite color",
     "options": {
         "favorite": {
@@ -40,7 +40,15 @@
             "type": "string",
             "default": "",
             "description": "Claude session id that 'color start' (the postStartCommand) continues on container start, in acceptEdits mode with Remote Control, when /workspaces/.color-session does not name one. Leave it empty in a shared config; empty with no file does nothing."
+        },
+        "githubToken": {
+            "type": "string",
+            "default": "pass://infra/github.com/GITHUB_TOKEN",
+            "description": "Pass reference 'color start' logs gh in with on every container start, when gh is not logged in and the Pass session can read it. Empty skips it."
         }
+    },
+    "containerEnv": {
+        "PROTON_PASS_KEY_PROVIDER": "fs"
     },
     "postStartCommand": "color start",
     "installsAfter": [

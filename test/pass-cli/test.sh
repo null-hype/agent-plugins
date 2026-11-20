@@ -41,6 +41,11 @@ source dev-container-features-test-lib
 # The 'check' command comes from the dev-container-features-test-lib. Syntax is...
 # check <LABEL> <cmd> [args...]
 check "validate favorite color" color | grep 'my favorite color is red'
+# The Feature sets the file key provider: no keyring in a container.
+check "pass-cli uses the file key provider" bash -c '[ "$PROTON_PASS_KEY_PROVIDER" = fs ]'
+# With no Pass session, no token sent and no session to resume, the
+# postStartCommand still succeeds and leaves gh alone.
+check "color start without Pass succeeds" bash -c 'env -u PROTON_PASS_PERSONAL_ACCESS_TOKEN color start'
 
 # Report result
 # If any of the checks above exited with a non-zero exit code, the test will fail.

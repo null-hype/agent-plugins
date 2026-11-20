@@ -38,6 +38,29 @@ AGENT_ASSIGNMENT="${TAG}"
 # is never committed, so a shared devcontainer.json can leave the option
 # empty without every codespace built from it resuming the same session.
 if [ "\${1:-}" = "start" ]; then
+    # Every start, session or not: log in to Pass if a token was sent and the
+    # stored session is gone, then log gh in from Pass. The Pass token is an
+    # agent's (pass-cli agent create, no grants until someone grants items),
+    # so this reads only what was granted to it; anything not granted is
+    # skipped, never an error.
+    export PATH="\$HOME/.local/bin:\$PATH"
+    export PROTON_PASS_KEY_PROVIDER="\${PROTON_PASS_KEY_PROVIDER:-fs}"
+    if command -v pass-cli >/dev/null 2>&1; then
+        if ! pass-cli info >/dev/null 2>&1 && [ -n "\${PROTON_PASS_PERSONAL_ACCESS_TOKEN:-}" ]; then
+            pass-cli logout --force >/dev/null 2>&1 || true
+            timeout 2m pass-cli login >&2 || echo "color start: pass-cli login failed" >&2
+        fi
+        if [ -n "${GITHUBTOKEN}" ] && command -v gh >/dev/null 2>&1 && ! gh auth status >/dev/null 2>&1; then
+            export PROTON_PASS_AGENT_REASON="\${AGENT_ASSIGNMENT}: log gh in on container start"
+            if gh_token="\$(pass-cli item view "${GITHUBTOKEN}" 2>/dev/null)" && [ -n "\$gh_token" ]; then
+                printf '%s\n' "\$gh_token" | gh auth login --hostname github.com --git-protocol https --with-token &&
+                    gh auth setup-git || echo "color start: gh login failed" >&2
+            else
+                echo "color start: ${GITHUBTOKEN} is not readable (not granted to this Pass agent?); gh left logged out" >&2
+            fi
+            unset gh_token
+        fi
+    fi
     session="\$(cat /workspaces/.color-session 2>/dev/null || echo "${SESSION}")"
     [ -n "\$session" ] || exit 0
     exec "\$0" resume "\$session"
