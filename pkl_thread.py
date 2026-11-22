@@ -160,6 +160,8 @@ def main(thread, out, summarize=None, full=None):
     blocks, msgs = analyse(summ, full)
     src, where = render(summ, blocks, msgs)
     os.makedirs(out, exist_ok=True)
+    if "Thread.pkl" in os.listdir(out):  # legacy schema; would keep its case on macOS
+        os.remove(os.path.join(out, "Thread.pkl"))
     with open(os.path.join(out, "thread.pkl"), "w") as fh:
         fh.write(src)
     shutil.copy(os.path.join(HERE, "ThreadSchema.pkl"), out)
