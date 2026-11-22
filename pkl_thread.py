@@ -5,7 +5,7 @@ usage: python3 -I pkl_thread.py THREAD [OUT_DIR]
 
 Runs `delta thread show THREAD` in the summarize and full formats (or reads
 the two JSON documents from FILE, as delta prints them, without calling delta) and writes
-OUT_DIR/thread.pkl (amending Thread.pkl) and OUT_DIR/.witness/run/findings.json
+OUT_DIR/thread.pkl (amending ThreadSchema.pkl) and OUT_DIR/.witness/run/findings.json
 with one evidence file per finding. Open thread.pkl with the witness language
 server running and each loss is a diagnostic on the line where it happened.
 
@@ -85,7 +85,7 @@ def analyse(summ, full):
 
 
 def render(summ, blocks, msgs):
-    L = ['amends "Thread.pkl"', ""]
+    L = ['amends "ThreadSchema.pkl"', ""]
     where = {"block": {}, "omit": {}, "msg": {}}
     L += [f"id = {json.dumps(summ['id'])}", f"name = {json.dumps(summ['name'])}"]
     where["summary"] = len(L) + 1
@@ -162,7 +162,7 @@ def main(thread, out, summarize=None, full=None):
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "thread.pkl"), "w") as fh:
         fh.write(src)
-    shutil.copy(os.path.join(HERE, "Thread.pkl"), out)
+    shutil.copy(os.path.join(HERE, "ThreadSchema.pkl"), out)
     run = os.path.join(out, ".witness", "run")
     shutil.rmtree(run, ignore_errors=True)
     os.makedirs(os.path.join(run, "evidence"))

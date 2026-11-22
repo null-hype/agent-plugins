@@ -1,4 +1,4 @@
-amends "Thread.pkl"
+amends "ThreadSchema.pkl"
 
 id = "demo-deploy-approval"
 name = "Retry backoff for the billing webhook"

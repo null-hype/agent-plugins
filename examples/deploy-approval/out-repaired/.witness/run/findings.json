@@ -10,7 +10,7 @@
       },
       "severity": "information",
       "message": "message 4 (assistant) dropped log/tool output: \"$ pytest tests/test_retry.py -v tests/test_retry.py::test_fi\u2026\"",
-      "sourceHash": "sha256:abbc0373b6ed4abd9ff8804883df410d1eb748738af5ca494a7355665256edef",
+      "sourceHash": "sha256:9a1499f7c24ed0e7fd257f4587cf1e9c8d2e9ffe00643f4d6f51fdc7b3718ab4",
       "evidence": [
         "evidence/m4-partial.txt"
       ]

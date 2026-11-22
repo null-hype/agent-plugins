@@ -1,4 +1,4 @@
-amends "Thread.pkl"
+amends "ThreadSchema.pkl"
 
 id = "yoars-deepseek-flash-225035-5484"
 name = "yoars deepseek-flash-225035: backend ledger message 5484"
