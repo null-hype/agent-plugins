@@ -16,7 +16,7 @@ Automated changes can each pass the same policy check and still violate it when 
 
 ---
 
-### Research & Consulting Focus
+### Research Focus
 
 - **Pre-Merge Semantic Invariants:** Detecting multi-agent capability and authorization drift before PR acceptance.
 - **Supervisor Protocols & Scoped Exceptions:** Recording supervisor overrides without discarding or mutating the original violation record.
@@ -29,5 +29,5 @@ Automated changes can each pass the same policy check and still violate it when 
 ### Contact
 
 - **Public Collaboration:** [Open an issue](https://github.com/null-hype/agent-plugins/issues/new?template=apply-this.yml) to discuss open-source setups, reproduction, or test cases (public; do not include private credentials).
-- **Private Enquiries (Consulting, Research Collaboration, Advisory, Funding):** Email [`public.rant@pm.me`](mailto:public.rant@pm.me) for confidential discussions regarding production agent architectures. (Please describe workflow context; do not send secrets or API keys in initial outreach).
+- **Private Enquiries:** Email [`public.rant@pm.me`](mailto:public.rant@pm.me) for confidential discussions regarding production agent architectures. (Please describe workflow context; do not send secrets or API keys in initial outreach).
 
