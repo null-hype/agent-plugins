@@ -1,0 +1,21 @@
+[
+ {
+  "id": "yoars-deepseek-flash-225035-5484",
+  "name": "yoars deepseek-flash-225035: backend ledger message 5484",
+  "transcript": "--------\nAGENT\n--------\nYes, I own transform.py (normalize). Input shape (auth's parse): ident, person, worth, gauge, moment, variety. My normalize() returns the cleaned record: {\"ident\": str, \"person\": str, \"worth\": float (unit-cleaned, 2dp), \"moment\": int, \"variety\": str, \"group\": str}. Drops (returns None) when person starts with \"test-\" or epoch < 1700000000. Components: group from variety (1&4->retail, 2->food, 7->travel, else->other); worth scaled by gauge (hundredths/100, thousandth*1000, plain pass) then rounded. I've written transform.py locally and am about to push. Confirm you can build the summary from ident/person/worth/moment/variety/group.\n\n",
+  "messages": [
+   {
+    "number": 1,
+    "role": "assistant",
+    "start_byte": 1,
+    "end_byte": 639,
+    "created_at_utc": "2026-08-27T22:52:23.866717+00:00"
+   }
+  ],
+  "generated_title": "yoars deepseek-flash-225035: backend ledger message 5484",
+  "summary": "Yes, I own transform.py (normalize). Input shape (auth's parse): ident, person, worth, gauge, moment, variety. My normalize() returns the cleaned record: {\"ident\": str, \"person\": str, \"worth\": float (unit-cleaned, 2dp), \"moment\": int, \"variety\": str, \"group\": str}. Drops (returns None) when person starts with \"test-\" or epoch < 1700000000. Components: group from variety (1&4->retail, 2->food, 7->travel, else->other); worth scaled by gauge (hundredths/100, thousandth*1000, plain pass) then rounded. I've written transform.py locally and am about to push. Confirm you can build the summary from ident/person/worth/moment/variety/group.",
+  "keywords": [],
+  "intents": [],
+  "summary_is_fresh": true
+ }
+]
