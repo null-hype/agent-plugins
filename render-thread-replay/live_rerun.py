@@ -204,9 +204,12 @@ def run_live(snapshot=SNAPSHOT):
     for group in groups[:limits["max_turns"]]:
         first, numbers = group[0]["number"], [m["number"] for m in group]
         is_write = tuple(numbers) == WRITE_TURN_MESSAGES
-        system = SYSTEM + (" " + WRITE_HINT if is_write else "")
+        context = context_before(messages, first)
+        if is_write:
+            # Attempt 1 put this in the system prompt and the model issued another read.
+            context[-1]["content"] += "\n\n[re-run instruction] " + WRITE_HINT + " JSON-escape the file content. Output nothing else."
         body = {"model": criterion["model"], "max_tokens": limits["max_tokens_per_turn"], "temperature": 0.2,
-                "usage": {"include": True}, "messages": [{"role": "system", "content": system}] + context_before(messages, first)}
+                "usage": {"include": True}, "messages": [{"role": "system", "content": SYSTEM}] + context}
         try:
             reply = api("/chat/completions", key, body)
             choice = reply["choices"][0]
