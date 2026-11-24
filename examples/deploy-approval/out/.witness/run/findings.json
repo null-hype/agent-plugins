@@ -10,7 +10,7 @@
       },
       "severity": "information",
       "message": "message 3 (user) dropped prose: \"Do not deploy this to production until I have reviewed the d\u2026\"",
-      "sourceHash": "sha256:646cde89c38b42747b2ac41e55c30a052e6cd2b6b53526b350911c5b010ee281",
+      "sourceHash": "sha256:02d54c89c64bf3c2b3c32d8c19e9050e6387d68365d2741720ac64e0eec6868f",
       "evidence": [
         "evidence/m3-partial.txt"
       ]
@@ -24,7 +24,7 @@
       },
       "severity": "information",
       "message": "message 4 (assistant) dropped log/tool output: \"$ pytest tests/test_retry.py -v tests/test_retry.py::test_fi\u2026\"",
-      "sourceHash": "sha256:646cde89c38b42747b2ac41e55c30a052e6cd2b6b53526b350911c5b010ee281",
+      "sourceHash": "sha256:02d54c89c64bf3c2b3c32d8c19e9050e6387d68365d2741720ac64e0eec6868f",
       "evidence": [
         "evidence/m4-partial.txt"
       ]

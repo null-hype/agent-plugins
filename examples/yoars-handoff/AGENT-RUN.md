@@ -8,7 +8,7 @@ Receiver: Claude (`claude -p`), told it is the ui agent, given the handoff text.
 
 With the skill (the task tells the agent to use `check-summary-loss` before acting, and points at the pair):
 
-    claude --plugin-dir ~/projects/delta-zero --allowedTools "Bash(python3:*),Bash(pkl:*)" -p "$(cat agent-run/task1b-with.txt)"
+    claude --plugin-dir "$(git rev-parse --show-toplevel)" --allowedTools "Bash(python3:*),Bash(pkl:*)" -p "$(cat agent-run/task1b-with.txt)"
 
 Without (plain `claude -p`, the handoff text only, no tools, no plugin):
 

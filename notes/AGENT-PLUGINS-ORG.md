@@ -44,7 +44,7 @@ the only open channel is the spec repo's GitHub Discussions. A repo that validat
 delta-zero is a Python script plus a Neovim/Witness setup today, so it has none of these yet:
 
 - `plugin.json` at the repo root (or in a subdirectory shipped as the plugin), with `$schema` and `"name": "delta-zero"`.
-- At least one component, realistically `skills/delta-zero/SKILL.md` (frontmatter `name`, `description`) telling an agent to run `pkl_thread.py` on a thread and read the findings. `scripts/` inside the skill may hold `pkl_thread.py` and `Thread.pkl`.
+- At least one component, realistically `skills/delta-zero/SKILL.md` (frontmatter `name`, `description`) telling an agent to run `pkl_thread.py` on a thread and read the findings. `scripts/` inside the skill may hold `pkl_thread.py` and `ThreadSchema.pkl`.
 - Or an `mcp.json` with a stdio server, which does not exist and would be new work.
 - The skill needs Python 3 and Pkl on the host; the plugin format has no way to declare or install dependencies.
 - An editor-diagnostics view (Witness LSP) is not a skill or MCP server, so it stays outside the portable core.

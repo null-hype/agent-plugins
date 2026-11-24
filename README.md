@@ -52,7 +52,7 @@ Now only the pytest-log finding remains (line 33). With Delta installed, `python
 
 ## Install as a plugin
 
-delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin (`plugin.json` plus the skill `skills/check-summary-loss`), validated against the 1.0.0 schema and tested only in Claude Code, which needs Python 3 and Pkl on the host.
+delta-zero is an [Agent Plugins](https://agent-plugins.org) 1.0 plugin (`plugin.json` plus the skill `skills/check-summary-loss`), validated against the 1.0.0 schema. It runs in Claude Code and Codex and loads in VS Code, and needs Python 3 and Pkl on the host.
 
 ## What this is not yet
 

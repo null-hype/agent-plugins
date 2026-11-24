@@ -10,7 +10,7 @@
       },
       "severity": "warning",
       "message": "message 1 (user, 3.2 KB) dropped entirely, prose: \"Build a small data pipeline, together, in `/work/app/`. Thre\u2026\" (+16 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m1-dropped.txt"
       ]
@@ -24,7 +24,7 @@
       },
       "severity": "warning",
       "message": "message 2 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && ls -la && git statu\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m2-dropped.txt"
       ]
@@ -38,7 +38,7 @@
       },
       "severity": "warning",
       "message": "message 3 (assistant) dropped entirely, log/tool output: \"[tool] read {\"path\": \"/work/app/acceptance.py\", \"i\": \"Read a\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m3-dropped.txt"
       ]
@@ -52,7 +52,7 @@
       },
       "severity": "warning",
       "message": "message 4 (user, 1.5 KB) dropped entirely, prose: \"[result] [acceptance.py#3671] 1:#!/usr/bin/env python3 2:\"\"\"\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m4-dropped.txt"
       ]
@@ -66,7 +66,7 @@
       },
       "severity": "warning",
       "message": "message 5 (user) dropped entirely, prose: \"[result] total 24 drwxrwxr-x 3 bun bun 4096 Aug 27 22:50 . d\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m5-dropped.txt"
       ]
@@ -80,7 +80,7 @@
       },
       "severity": "warning",
       "message": "message 6 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read SPEC and acceptance details\", \"path\"\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m6-dropped.txt"
       ]
@@ -94,7 +94,7 @@
       },
       "severity": "warning",
       "message": "message 7 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read probes/digests\", \"path\": \"/work/app/\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m7-dropped.txt"
       ]
@@ -108,7 +108,7 @@
       },
       "severity": "warning",
       "message": "message 8 (user, 1.5 KB) dropped entirely, prose: \"[result] [SPEC.md#690C] 1:# The task (everyone gets this par\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m8-dropped.txt"
       ]
@@ -122,7 +122,7 @@
       },
       "severity": "warning",
       "message": "message 9 (user, 1.5 KB) dropped entirely, prose: \"[result] [acceptance.py#3671] 28: 29:PROBES: dict[str, list[\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m9-dropped.txt"
       ]
@@ -136,7 +136,7 @@
       },
       "severity": "warning",
       "message": "message 10 (assistant, 4.2 KB) dropped entirely, prose: \"I'm the planner. My example record: `{\"entry\": \"EV-101\", \"me\u2026\" (+24 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m10-dropped.txt"
       ]
@@ -150,7 +150,7 @@
       },
       "severity": "warning",
       "message": "message 11 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m11-dropped.txt"
       ]
@@ -164,7 +164,7 @@
       },
       "severity": "warning",
       "message": "message 13 (user) dropped entirely, prose: \"[result] h/experiment-457532 [human] a/experiment-457532/pla\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m13-dropped.txt"
       ]
@@ -178,7 +178,7 @@
       },
       "severity": "warning",
       "message": "message 14 (user) dropped entirely, prose: \"[result] fatal: detected dubious ownership in repository at\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m14-dropped.txt"
       ]
@@ -192,7 +192,7 @@
       },
       "severity": "warning",
       "message": "message 15 (assistant) dropped entirely, prose: \"I need to send the participation check first. Let me do that\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m15-dropped.txt"
       ]
@@ -206,7 +206,7 @@
       },
       "severity": "warning",
       "message": "message 16 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m16-dropped.txt"
       ]
@@ -220,7 +220,7 @@
       },
       "severity": "warning",
       "message": "message 18 (assistant) dropped entirely, prose: \"I've sent the participation check. Now let me start the work\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m18-dropped.txt"
       ]
@@ -234,7 +234,7 @@
       },
       "severity": "warning",
       "message": "message 19 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"git config --global --add safe.dire\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m19-dropped.txt"
       ]
@@ -248,7 +248,7 @@
       },
       "severity": "warning",
       "message": "message 20 (user) dropped entirely, prose: \"[result] ok (up-to-date) --- 35b8efd bootstrap: the shared t\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m20-dropped.txt"
       ]
@@ -262,7 +262,7 @@
       },
       "severity": "warning",
       "message": "message 21 (assistant) dropped entirely, prose: \"The channel context confirms roles: **ui owns report.py** (t\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m21-dropped.txt"
       ]
@@ -276,7 +276,7 @@
       },
       "severity": "warning",
       "message": "message 22 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Read channel history\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m22-dropped.txt"
       ]
@@ -290,7 +290,7 @@
       },
       "severity": "warning",
       "message": "message 23 (user, 1.5 KB) dropped entirely, prose: \"[result] [5467] p_01m12pp17njm3yckft1fyerc76 (artifact_updat\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m23-dropped.txt"
       ]
@@ -304,7 +304,7 @@
       },
       "severity": "warning",
       "message": "message 24 (assistant) dropped entirely, prose: \"I've sent the participation check. The channel context tells\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m24-dropped.txt"
       ]
@@ -318,7 +318,7 @@
       },
       "severity": "warning",
       "message": "message 25 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m25-dropped.txt"
       ]
@@ -332,7 +332,7 @@
       },
       "severity": "warning",
       "message": "message 26 (user) dropped entirely, prose: \"[result] ok 2 files +73 -0 --- 1b20109 parse: three source f\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m26-dropped.txt"
       ]
@@ -346,7 +346,7 @@
       },
       "severity": "warning",
       "message": "message 27 (assistant) dropped entirely, prose: \"I've already sent the participation check (message 5476 conf\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m27-dropped.txt"
       ]
@@ -360,7 +360,7 @@
       },
       "severity": "warning",
       "message": "message 28 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read auth's parse.py\", \"path\": \"/work/app\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m28-dropped.txt"
       ]
@@ -374,7 +374,7 @@
       },
       "severity": "warning",
       "message": "message 29 (user, 1.5 KB) dropped entirely, prose: \"[result] [parse.py#DBD2] 1:\"\"\"parse_line: one raw source lin\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m29-dropped.txt"
       ]
@@ -388,7 +388,7 @@
       },
       "severity": "warning",
       "message": "message 30 (assistant, 9.5 KB) dropped entirely, prose: \"I need to call `yoars_send` with `PARTICIPATION-OK-planner`.\u2026\" (+40 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m30-dropped.txt"
       ]
@@ -402,7 +402,7 @@
       },
       "severity": "warning",
       "message": "message 31 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Plan pipeline coordination\", \"op\": \"init\"\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m31-dropped.txt"
       ]
@@ -416,7 +416,7 @@
       },
       "severity": "warning",
       "message": "message 32 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check for new messages\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m32-dropped.txt"
       ]
@@ -430,7 +430,7 @@
       },
       "severity": "warning",
       "message": "message 33 (user) dropped entirely, prose: \"[result] Remaining items (6): - Review parse.py against chec\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m33-dropped.txt"
       ]
@@ -444,7 +444,7 @@
       },
       "severity": "warning",
       "message": "message 34 (user, 1.5 KB) dropped entirely, prose: \"[result] [5469] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m34-dropped.txt"
       ]
@@ -458,7 +458,7 @@
       },
       "severity": "warning",
       "message": "message 35 (assistant) dropped entirely, prose: \"I need to send the participation check to the channel with e\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m35-dropped.txt"
       ]
@@ -472,7 +472,7 @@
       },
       "severity": "warning",
       "message": "message 36 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m36-dropped.txt"
       ]
@@ -486,7 +486,7 @@
       },
       "severity": "warning",
       "message": "message 37 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m37-dropped.txt"
       ]
@@ -500,7 +500,7 @@
       },
       "severity": "warning",
       "message": "message 38 (assistant, 7.9 KB) dropped entirely, prose: \"The participation check was already sent (confirmed in room\u2026\" (+32 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m38-dropped.txt"
       ]
@@ -514,7 +514,7 @@
       },
       "severity": "warning",
       "message": "message 39 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m39-dropped.txt"
       ]
@@ -528,7 +528,7 @@
       },
       "severity": "warning",
       "message": "message 40 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check channel for updates\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m40-dropped.txt"
       ]
@@ -542,7 +542,7 @@
       },
       "severity": "warning",
       "message": "message 41 (user, 1.5 KB) dropped entirely, prose: \"[result] [5470] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m41-dropped.txt"
       ]
@@ -556,7 +556,7 @@
       },
       "severity": "warning",
       "message": "message 42 (user) dropped entirely, prose: \"[result] ok (up-to-date) --- 1b20109 parse: three source for\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m42-dropped.txt"
       ]
@@ -570,7 +570,7 @@
       },
       "severity": "warning",
       "message": "message 43 (assistant) dropped entirely, prose: \"The participation check is confirmed already sent (message 5\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m43-dropped.txt"
       ]
@@ -584,7 +584,7 @@
       },
       "severity": "warning",
       "message": "message 44 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Get latest room state\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m44-dropped.txt"
       ]
@@ -598,7 +598,7 @@
       },
       "severity": "warning",
       "message": "message 45 (user, 1.5 KB) dropped entirely, prose: \"[result] [5471] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m45-dropped.txt"
       ]
@@ -612,7 +612,7 @@
       },
       "severity": "warning",
       "message": "message 46 (assistant) dropped entirely, prose: \"The participation check was already sent (message 5476, outb\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m46-dropped.txt"
       ]
@@ -626,7 +626,7 @@
       },
       "severity": "warning",
       "message": "message 47 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m47-dropped.txt"
       ]
@@ -640,7 +640,7 @@
       },
       "severity": "warning",
       "message": "message 48 (user) dropped entirely, prose: \"[result] ok 3 files +71 -0 --- f0aeaa9 normalize: clean or d\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m48-dropped.txt"
       ]
@@ -654,7 +654,7 @@
       },
       "severity": "warning",
       "message": "message 49 (assistant) dropped entirely, prose: \"The participation check request came through with a fresh me\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m49-dropped.txt"
       ]
@@ -668,7 +668,7 @@
       },
       "severity": "warning",
       "message": "message 50 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m50-dropped.txt"
       ]
@@ -682,7 +682,7 @@
       },
       "severity": "warning",
       "message": "message 51 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m51-dropped.txt"
       ]
@@ -696,7 +696,7 @@
       },
       "severity": "warning",
       "message": "message 52 (assistant) dropped entirely, prose: \"The participation check was already sent and confirmed deliv\u2026\" (+3 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m52-dropped.txt"
       ]
@@ -710,7 +710,7 @@
       },
       "severity": "warning",
       "message": "message 53 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read backend's transform.py\", \"path\": \"/w\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m53-dropped.txt"
       ]
@@ -724,7 +724,7 @@
       },
       "severity": "warning",
       "message": "message 54 (user, 1.5 KB) dropped entirely, prose: \"[result] [transform.py#692B] 1:\"\"\"normalize: one record in,\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m54-dropped.txt"
       ]
@@ -738,7 +738,7 @@
       },
       "severity": "warning",
       "message": "message 55 (assistant, 6.2 KB) dropped entirely, prose: \"The participation check is already confirmed delivered \u2014 the\u2026\" (+25 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m55-dropped.txt"
       ]
@@ -752,7 +752,7 @@
       },
       "severity": "warning",
       "message": "message 56 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check for report.py status\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m56-dropped.txt"
       ]
@@ -766,7 +766,7 @@
       },
       "severity": "warning",
       "message": "message 57 (user, 1.5 KB) dropped entirely, prose: \"[result] [5471] p_01m12pp17njm3yckft1fyerc76 (request_execut\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m57-dropped.txt"
       ]
@@ -780,7 +780,7 @@
       },
       "severity": "warning",
       "message": "message 58 (assistant) dropped entirely, prose: \"The participation check has already been sent and confirmed\u2026\" (+4 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m58-dropped.txt"
       ]
@@ -794,7 +794,7 @@
       },
       "severity": "warning",
       "message": "message 59 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark review progress\", \"op\": \"done\", \"tas\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m59-dropped.txt"
       ]
@@ -808,7 +808,7 @@
       },
       "severity": "warning",
       "message": "message 60 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark transform reviewed\", \"op\": \"done\", \"\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m60-dropped.txt"
       ]
@@ -822,7 +822,7 @@
       },
       "severity": "warning",
       "message": "message 61 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"Planner here. parse.py (auth) an\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m61-dropped.txt"
       ]
@@ -836,7 +836,7 @@
       },
       "severity": "warning",
       "message": "message 62 (user) dropped entirely, prose: \"[result] Remaining items (5): - Review transform.py when lan\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m62-dropped.txt"
       ]
@@ -850,7 +850,7 @@
       },
       "severity": "warning",
       "message": "message 63 (user) dropped entirely, prose: \"[result] Remaining items (4): - Review report.py when landed\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m63-dropped.txt"
       ]
@@ -864,7 +864,7 @@
       },
       "severity": "warning",
       "message": "message 64 (user) dropped entirely, log/tool output: \"[result] yoars2 POST /channels/ch_01m12pp1fewnynnq0pg2bytnxj\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m64-dropped.txt"
       ]
@@ -878,7 +878,7 @@
       },
       "severity": "warning",
       "message": "message 65 (assistant) dropped entirely, prose: \"The participation check was already sent and confirmed deliv\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m65-dropped.txt"
       ]
@@ -892,7 +892,7 @@
       },
       "severity": "warning",
       "message": "message 66 (assistant) dropped entirely, log/tool output: \"[tool] yoars_roster {\"i\": \"Get exact agent handles\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m66-dropped.txt"
       ]
@@ -906,7 +906,7 @@
       },
       "severity": "warning",
       "message": "message 67 (user) dropped entirely, prose: \"[result] h/experiment-457532 [human] a/experiment-457532/pla\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m67-dropped.txt"
       ]
@@ -920,7 +920,7 @@
       },
       "severity": "warning",
       "message": "message 68 (assistant) dropped entirely, prose: \"The participation check: I already sent `PARTICIPATION-OK-pl\u2026\" (+3 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m68-dropped.txt"
       ]
@@ -934,7 +934,7 @@
       },
       "severity": "warning",
       "message": "message 69 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"Planner here. parse.py (auth) an\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m69-dropped.txt"
       ]
@@ -948,7 +948,7 @@
       },
       "severity": "warning",
       "message": "message 70 (user) dropped entirely, prose: \"[result] Sent to a/experiment-457532/ui.\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m70-dropped.txt"
       ]
@@ -962,7 +962,7 @@
       },
       "severity": "warning",
       "message": "message 71 (assistant, 1.2 KB) dropped entirely, prose: \"The participation check: I already sent the exact body `PART\u2026\" (+4 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m71-dropped.txt"
       ]
@@ -976,7 +976,7 @@
       },
       "severity": "warning",
       "message": "message 72 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m72-dropped.txt"
       ]
@@ -990,7 +990,7 @@
       },
       "severity": "warning",
       "message": "message 73 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check room for report updates\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m73-dropped.txt"
       ]
@@ -1004,7 +1004,7 @@
       },
       "severity": "warning",
       "message": "message 74 (user, 1.5 KB) dropped entirely, prose: \"[result] [5472] p_01m12pp1xwfx8g1sbw4e6azc1d (inform): PAR [\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m74-dropped.txt"
       ]
@@ -1018,7 +1018,7 @@
       },
       "severity": "warning",
       "message": "message 75 (user) dropped entirely, prose: \"[result] ok (up-to-date) --- f0aeaa9 normalize: clean or dro\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m75-dropped.txt"
       ]
@@ -1032,7 +1032,7 @@
       },
       "severity": "warning",
       "message": "message 76 (assistant, 1.3 KB) dropped entirely, prose: \"The participation check: I already sent `PARTICIPATION-OK-pl\u2026\" (+5 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m76-dropped.txt"
       ]
@@ -1046,7 +1046,7 @@
       },
       "severity": "warning",
       "message": "message 77 (assistant, 1.2 KB) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && python3 -c \\\"\\nimpo\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m77-dropped.txt"
       ]
@@ -1060,7 +1060,7 @@
       },
       "severity": "warning",
       "message": "message 78 (user, 1.5 KB) dropped entirely, prose: \"[result] P1 parse: {'ident': 'EV-101', 'person': 'mira', 'wo\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m78-dropped.txt"
       ]
@@ -1074,7 +1074,7 @@
       },
       "severity": "warning",
       "message": "message 79 (assistant, 2.2 KB) dropped entirely, prose: \"I already sent the participation check once, exactly as requ\u2026\" (+8 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m79-dropped.txt"
       ]
@@ -1088,7 +1088,7 @@
       },
       "severity": "warning",
       "message": "message 80 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git pull --rebase o\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m80-dropped.txt"
       ]
@@ -1102,7 +1102,7 @@
       },
       "severity": "warning",
       "message": "message 81 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"i\": \"Check channel for report status\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m81-dropped.txt"
       ]
@@ -1116,7 +1116,7 @@
       },
       "severity": "warning",
       "message": "message 82 (user, 1.5 KB) dropped entirely, prose: \"[result] [5472] p_01m12pp1xwfx8g1sbw4e6azc1d (inform): PAR [\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m82-dropped.txt"
       ]
@@ -1130,7 +1130,7 @@
       },
       "severity": "warning",
       "message": "message 83 (user) dropped entirely, prose: \"[result] error: cannot pull with rebase: You have unstaged c\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m83-dropped.txt"
       ]
@@ -1144,7 +1144,7 @@
       },
       "severity": "warning",
       "message": "message 84 (assistant) dropped entirely, prose: \"I've been trying to send the participation check, but the sy\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m84-dropped.txt"
       ]
@@ -1158,7 +1158,7 @@
       },
       "severity": "warning",
       "message": "message 85 (assistant) dropped entirely, log/tool output: \"[tool] yoars_receipts {\"i\": \"Confirm original participation\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m85-dropped.txt"
       ]
@@ -1172,7 +1172,7 @@
       },
       "severity": "warning",
       "message": "message 86 (user) dropped entirely, log/tool output: \"[result] yoars2 GET /messages/participation-planner/receipts\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m86-dropped.txt"
       ]
@@ -1186,7 +1186,7 @@
       },
       "severity": "warning",
       "message": "message 87 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with the\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m87-dropped.txt"
       ]
@@ -1200,7 +1200,7 @@
       },
       "severity": "warning",
       "message": "message 88 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m88-dropped.txt"
       ]
@@ -1214,7 +1214,7 @@
       },
       "severity": "warning",
       "message": "message 90 (assistant) dropped entirely, prose: \"The message tells me to send `PARTICIPATION-OK-planner` with\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m90-dropped.txt"
       ]
@@ -1228,7 +1228,7 @@
       },
       "severity": "warning",
       "message": "message 91 (assistant) dropped entirely, log/tool output: \"[tool] yoars_reply {\"body\": \"Participation confirmed: sent P\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m91-dropped.txt"
       ]
@@ -1242,7 +1242,7 @@
       },
       "severity": "warning",
       "message": "message 93 (assistant) dropped entirely, prose: \"I've already sent the participation check to the channel and\u2026\" (+3 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m93-dropped.txt"
       ]
@@ -1256,7 +1256,7 @@
       },
       "severity": "warning",
       "message": "message 94 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with no\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m94-dropped.txt"
       ]
@@ -1270,7 +1270,7 @@
       },
       "severity": "warning",
       "message": "message 95 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m95-dropped.txt"
       ]
@@ -1284,7 +1284,7 @@
       },
       "severity": "warning",
       "message": "message 96 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m96-dropped.txt"
       ]
@@ -1298,7 +1298,7 @@
       },
       "severity": "warning",
       "message": "message 97 (assistant) dropped entirely, prose: \"The participation check has already been sent and delivered\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m97-dropped.txt"
       ]
@@ -1312,7 +1312,7 @@
       },
       "severity": "warning",
       "message": "message 98 (user) dropped entirely, prose: \"<system-reminder> You stopped with 4 incomplete todo item(s)\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m98-dropped.txt"
       ]
@@ -1326,7 +1326,7 @@
       },
       "severity": "warning",
       "message": "message 99 (assistant) dropped entirely, prose: \"The participation check was already sent and delivered (room\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m99-dropped.txt"
       ]
@@ -1340,7 +1340,7 @@
       },
       "severity": "warning",
       "message": "message 100 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"View current todos\", \"op\": \"view\"}\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m100-dropped.txt"
       ]
@@ -1354,7 +1354,7 @@
       },
       "severity": "warning",
       "message": "message 101 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git status --short;\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m101-dropped.txt"
       ]
@@ -1368,7 +1368,7 @@
       },
       "severity": "warning",
       "message": "message 102 (user) dropped entirely, prose: \"[result] Remaining items (4): - Review report.py when landed\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m102-dropped.txt"
       ]
@@ -1382,7 +1382,7 @@
       },
       "severity": "warning",
       "message": "message 103 (user) dropped entirely, prose: \"[result] staged 0, unstaged 2, untracked 0 M __pycache__/par\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m103-dropped.txt"
       ]
@@ -1396,7 +1396,7 @@
       },
       "severity": "warning",
       "message": "message 104 (assistant) dropped entirely, prose: \"The participation check has already been sent with the exact\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m104-dropped.txt"
       ]
@@ -1410,7 +1410,7 @@
       },
       "severity": "warning",
       "message": "message 105 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m105-dropped.txt"
       ]
@@ -1424,7 +1424,7 @@
       },
       "severity": "warning",
       "message": "message 106 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m106-dropped.txt"
       ]
@@ -1438,7 +1438,7 @@
       },
       "severity": "warning",
       "message": "message 107 (assistant) dropped entirely, prose: \"The participation check has already been sent with the exact\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m107-dropped.txt"
       ]
@@ -1452,7 +1452,7 @@
       },
       "severity": "warning",
       "message": "message 108 (user) dropped entirely, prose: \"<system-reminder> You stopped with 4 incomplete todo item(s)\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m108-dropped.txt"
       ]
@@ -1466,7 +1466,7 @@
       },
       "severity": "warning",
       "message": "message 109 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with the\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m109-dropped.txt"
       ]
@@ -1480,7 +1480,7 @@
       },
       "severity": "warning",
       "message": "message 110 (assistant) dropped entirely, log/tool output: \"[tool] yoars_send {\"body\": \"PARTICIPATION-OK-planner\", \"i\":\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m110-dropped.txt"
       ]
@@ -1494,7 +1494,7 @@
       },
       "severity": "warning",
       "message": "message 111 (user) dropped entirely, prose: \"[result] Not sent: this is exactly the message you just sent\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m111-dropped.txt"
       ]
@@ -1508,7 +1508,7 @@
       },
       "severity": "warning",
       "message": "message 112 (assistant) dropped entirely, prose: \"The participation check has already been sent and delivered\u2026\" (+3 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m112-dropped.txt"
       ]
@@ -1522,7 +1522,7 @@
       },
       "severity": "warning",
       "message": "message 113 (user) dropped entirely, prose: \"<system-reminder> You stopped with 4 incomplete todo item(s)\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m113-dropped.txt"
       ]
@@ -1536,7 +1536,7 @@
       },
       "severity": "warning",
       "message": "message 114 (assistant) dropped entirely, prose: \"I need to send the participation check exactly once with the\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m114-dropped.txt"
       ]
@@ -1550,7 +1550,7 @@
       },
       "severity": "warning",
       "message": "message 115 (assistant) dropped entirely, prose: \"Now I have the real kickoff. My mission as planner: agree in\u2026\" (+3 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m115-dropped.txt"
       ]
@@ -1564,7 +1564,7 @@
       },
       "severity": "warning",
       "message": "message 116 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && git stash list; ech\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m116-dropped.txt"
       ]
@@ -1578,7 +1578,7 @@
       },
       "severity": "warning",
       "message": "message 117 (assistant) dropped entirely, log/tool output: \"[tool] yoars_room {\"limit\": 30, \"i\": \"Read full recent chann\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m117-dropped.txt"
       ]
@@ -1592,7 +1592,7 @@
       },
       "severity": "warning",
       "message": "message 118 (user, 1.5 KB) dropped entirely, prose: \"[result] [5467] p_01m12pp17njm3yckft1fyerc76 (artifact_updat\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m118-dropped.txt"
       ]
@@ -1606,7 +1606,7 @@
       },
       "severity": "warning",
       "message": "message 119 (user, 1.0 KB) dropped entirely, prose: \"[result] ---status--- staged 0, unstaged 2, untracked 0 M __\u2026\" (+2 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m119-dropped.txt"
       ]
@@ -1620,7 +1620,7 @@
       },
       "severity": "warning",
       "message": "message 120 (assistant) dropped entirely, prose: \"All three modules are now landed (parse, transform, report).\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m120-dropped.txt"
       ]
@@ -1634,7 +1634,7 @@
       },
       "severity": "warning",
       "message": "message 121 (assistant) dropped entirely, log/tool output: \"[tool] read {\"i\": \"Read ui's report.py\", \"path\": \"/work/app/\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m121-dropped.txt"
       ]
@@ -1648,7 +1648,7 @@
       },
       "severity": "warning",
       "message": "message 122 (assistant) dropped entirely, log/tool output: \"[tool] bash {\"command\": \"cd /work/app && python3 acceptance.\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m122-dropped.txt"
       ]
@@ -1662,7 +1662,7 @@
       },
       "severity": "warning",
       "message": "message 123 (user, 1.4 KB) dropped entirely, prose: \"[result] [report.py#95AB] 1:\"\"\"report.run: a list of raw lin\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m123-dropped.txt"
       ]
@@ -1676,7 +1676,7 @@
       },
       "severity": "warning",
       "message": "message 125 (assistant) dropped entirely, prose: \"The acceptance check passes 6/6. All three modules are lande\u2026\" (+1 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m125-dropped.txt"
       ]
@@ -1690,7 +1690,7 @@
       },
       "severity": "warning",
       "message": "message 126 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark report reviewed and acceptance run\",\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m126-dropped.txt"
       ]
@@ -1704,7 +1704,7 @@
       },
       "severity": "warning",
       "message": "message 127 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark acceptance run done\", \"op\": \"done\",\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m127-dropped.txt"
       ]
@@ -1718,7 +1718,7 @@
       },
       "severity": "warning",
       "message": "message 128 (user) dropped entirely, prose: \"[result] Remaining items (3): - Run acceptance.py [in_progre\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m128-dropped.txt"
       ]
@@ -1732,7 +1732,7 @@
       },
       "severity": "warning",
       "message": "message 129 (user) dropped entirely, prose: \"[result] Remaining items (2): - Catch shape/rule contradicti\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m129-dropped.txt"
       ]
@@ -1746,7 +1746,7 @@
       },
       "severity": "warning",
       "message": "message 130 (assistant, 1.7 KB) dropped entirely, prose: \"I've completed the review phase. All three modules landed, t\u2026\" (+5 more)",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m130-dropped.txt"
       ]
@@ -1760,7 +1760,7 @@
       },
       "severity": "warning",
       "message": "message 131 (assistant) dropped entirely, log/tool output: \"[tool] todo {\"i\": \"Mark resolve tasks done\", \"op\": \"done\", \"\u2026\"",
-      "sourceHash": "sha256:82469024f2fceb9a31ebb19eb04e69dbb5f2a135b2af405cc912f3e5cb84853a",
+      "sourceHash": "sha256:703be9c16d1dbb913497d860be18a927423ef590e0e979acbb1caa329d9b5293",
       "evidence": [
         "evidence/m131-dropped.txt"
       ]
