@@ -39,11 +39,11 @@ test('logged-out journey: professional overview → proof, contact and demonstra
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { level: 1, name: 'A green check should lead to evidence you can inspect.' })).toBeVisible();
-  await expect(page.getByText('Richard Anthony · Software engineer · Sydney', { exact: true })).toBeVisible();
+  await expect(page.getByText('Richard Anthony Massey · Software engineer · Sydney', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Inspect the Worlds proof ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/worlds#start-here-one-exact-world-proof');
-  const email = page.getByRole('link', { name: 'public.rant@pm.me', exact: true });
+  const email = page.getByRole('link', { name: 'richard@tidelands.dev', exact: true });
   await expect(email).toBeVisible();
-  await expect(email).toHaveAttribute('href', 'mailto:public.rant@pm.me');
+  await expect(email).toHaveAttribute('href', 'mailto:richard@tidelands.dev');
   await expect(page.getByRole('link', { name: 'Witness ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/witness');
   // The explanation should fit a phone without horizontal scrolling or a tutorial runtime.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
