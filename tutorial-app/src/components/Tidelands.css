@@ -113,3 +113,4 @@
 .td-prose p { margin: 0 0 1em; }
 .td-prose ol { list-style: decimal; } .td-prose ul { list-style: disc; }
 .td-prose a { text-decoration: underline; text-decoration-color: var(--td-accent); text-underline-offset: 3px; }
+.td-prose a { text-decoration: underline; text-decoration-color: var(--td-accent); text-underline-offset: 3px; }
