@@ -38,9 +38,9 @@ test.describe('Static claim reports', () => {
 test('logged-out journey: professional overview → proof, contact and demonstration', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'A green check should lead to evidence you can inspect.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'How I debug multi-agent work' })).toBeVisible();
   await expect(page.getByText('Richard Anthony Massey · Software engineer · Sydney', { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Inspect the Worlds proof ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/worlds#start-here-one-exact-world-proof');
+  await expect(page.getByRole('link', { name: 'Read the delta-zero code ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/agent-plugins/tree/delta-zero');
   const email = page.getByRole('link', { name: 'richard@tidelands.dev', exact: true });
   await expect(email).toBeVisible();
   await expect(email).toHaveAttribute('href', 'mailto:richard@tidelands.dev');

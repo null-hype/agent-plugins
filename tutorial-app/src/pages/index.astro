@@ -1,7 +1,8 @@
 ---
 import TidelandsHome from '../components/TidelandsHome';
-const title = 'delta-zero — Compiler warnings for context loss | Richard Anthony Massey';
-const description = 'More difference, less inference. Source-addressed diagnostics for omissions in agent handoffs. Explore delta-zero’s demo, code and public evidence. Built by Richard Anthony Massey, software engineer in Sydney.';
+import { Content as Essay } from '../home/drift-method.md';
+const title = 'How I debug multi-agent work | Richard Anthony Massey';
+const description = 'When one agent hands work to another, the summary can drop what the next agent needed. How I find what was dropped, with a worked example from a public four-agent run. Richard Anthony Massey, software engineer in Sydney.';
 const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
 ---
 
@@ -20,5 +21,5 @@ const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
     <meta property="og:url" content={canonical.href} />
     <meta name="twitter:card" content="summary" />
   </head>
-  <body style="margin: 0"><TidelandsHome client:load /></body>
+  <body style="margin: 0"><TidelandsHome client:load><Essay /></TidelandsHome></body>
 </html>

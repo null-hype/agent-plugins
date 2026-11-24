@@ -96,3 +96,20 @@
 }
 @media (prefers-reduced-motion: no-preference) { .td-page a { transition: color 120ms, background-color 120ms; } }
 @media (forced-colors: active) { .td-button { border: 1px solid CanvasText; } }
+
+/* The write-up on the homepage */
+.td-prose { max-width: var(--td-measure); }
+.td-prose h1 { margin-bottom: 36px; }
+.td-prose h2 { margin-top: 48px; }
+.td-prose ol, .td-prose ul { padding-left: 1.3em; max-width: var(--td-measure); }
+.td-prose li { margin-bottom: 0.5em; }
+.td-prose blockquote { margin: 20px 0; padding-left: 20px; border-left: 2px solid var(--td-accent); color: var(--td-muted); font-style: italic; }
+.td-prose img { display: block; max-width: 100%; height: auto; margin: 28px 0; }
+.td-prose table { width: 100%; border-collapse: collapse; margin: 24px 0; font: 0.88rem/1.5 var(--td-sans); }
+.td-prose th, .td-prose td { text-align: left; vertical-align: top; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--td-line); }
+.td-prose th { font-weight: 600; }
+.td-prose a { text-decoration-color: var(--td-accent); }
+@media (max-width: 720px) { .td-prose table { display: block; overflow-x: auto; } }
+.td-prose p { margin: 0 0 1em; }
+.td-prose ol { list-style: decimal; } .td-prose ul { list-style: disc; }
+.td-prose a { text-decoration: underline; text-decoration-color: var(--td-accent); text-underline-offset: 3px; }
