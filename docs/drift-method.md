@@ -16,7 +16,7 @@ I run the work, then watch where it drifts from the original.
 4. **Watch the drift.** I compare what came back with the original. delta-zero flags what each summary left out, and Witness shows those flags as editor diagnostics linked to the lost text.
 5. **Compile and replay.** I compile the useful exchange into a notebook: each message becomes a step with its exact words, beside the reply it originally got. Replaying its exact prompts and context lets me see which behavior survives and what context was missing.
 
-I have run this on a three-thread chain over five rounds, and recreated one round as a Render Workflow on the local dev server in 17 seconds with three model calls. The replay carried the prompts but not the repository context the original thread had, and it produced a near-copy of the chain's opening message. That missing context is the kind of gap the method is built to expose.
+I have run this on a three-thread chain over five rounds, and recreated one round as a Render Workflow on the local dev server in 17 seconds with three model calls. The replay carried the prompts but not the repository context the original thread had, and it produced a near-copy of the chain's opening message. That missing context is the kind of gap the method is built to expose. A [daily Render cron](https://github.com/null-hype/agent-plugins/tree/render-thread-replay/render-thread-replay) now rehydrates the saved thread and verifies the replay byte for byte.
 
 ## One worked example: a dropped decision
 
@@ -58,4 +58,4 @@ Delta, Pkl, Zed, and Render are third-party tools, used through their documented
 
 - **Larger runs:** the same loop across many more handoffs.
 - **Calibrated drift scoring:** delta-zero's detection is structural and does not rank its findings, so I am adding a calibrated score for which losses matter.
-- **Deploying the notebook replay:** verifying it cell by cell in Zed, carrying the full context, and deploying it on Render.
+- **Full-context replay:** verifying the notebook cell by cell in Zed and carrying the full repository context into the Render replay.

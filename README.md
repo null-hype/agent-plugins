@@ -12,7 +12,7 @@ The user wrote: "Go ahead and implement it and add the tests. Do not deploy this
 
 *The summary read as permission to ship. The thread said wait.* The agent's reply from one real run on the synthetic thread in `examples/deploy-approval` (cuts marked `…`): told to deploy, it did not, quoted the dropped sentence and asked whether it still holds.
 
-**On real data** (a public four-agent data-pipeline build, [yoars corpus, CC BY 4.0](examples/yoars-handoff/AGENT-RUN.md)): the backend agent decided that a line with an unknown or empty unit label passes through unscaled, and its handoff to the ui agent said only "plain pass". The run passed its acceptance check 6/6, so no test caught it. We replayed the handoff, one run each. With the plugin, the receiving agent ran the check, found the decision among 39 findings, quoted it ("'plain' (and '' before a drop) pass through unchanged") and held back its confirmation. Without it, the agent only asked what happens to an unknown unit. Nobody read the findings by hand.
+**On real data** (a public four-agent data-pipeline build, [yoars corpus, CC BY 4.0](examples/yoars-handoff/AGENT-RUN.md)): the backend agent decided that a line with an unknown or empty unit label passes through unscaled, and its handoff to the ui agent said only "plain pass". The run passed its acceptance check 6/6, so no test caught it. We replayed the handoff, one run each. With the plugin, the receiving agent ran the check, found the decision among 39 findings, quoted it ("'plain' (and '' before a drop) pass through unchanged") and held back its confirmation. Without it, the agent only asked what happens to an unknown unit. In the replay, nobody read the findings for the agent.
 
 ## How it works
 
