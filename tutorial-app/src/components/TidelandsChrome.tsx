@@ -3,7 +3,8 @@ import logo from '../../public/logo.svg?raw';
 export function TidelandsHeader({ report = false }: { report?: boolean }) {
   return <header className="td-header">
     <a className="td-brand" href="https://www.tidelands.dev/" aria-label="Tidelands home"><span className="td-logo" aria-hidden="true" dangerouslySetInnerHTML={{ __html: logo }} />Tidelands<span>/ {report ? 'Check report' : 'Null Hype'}</span></a>
-    <nav aria-label="Main navigation"><a href="/#thread">Delta thread ↓</a></nav>
+    {/* On the homepage a bare hash keeps ?r=, so the invite still greets the reader. */}
+    <nav aria-label="Main navigation"><a href={report ? "/#thread" : "#thread"}>Delta thread ↓</a></nav>
   </header>;
 }
 
