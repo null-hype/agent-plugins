@@ -154,7 +154,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
   }, [open]);
 
   const total = cards.length + (end ? 1 : 0);
-  const go = (index: number) => scroller.current?.children[Math.max(0, Math.min(total - 1, index))]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const go = (index: number) => scroller.current?.children[Math.max(0, Math.min(total - 1, index))]?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   const stepIn = () => { if (cards[active] && hasMore(cards[active])) setOpen(active); };
   const backOut = () => setOpen(null);
 
