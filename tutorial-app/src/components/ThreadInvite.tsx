@@ -7,6 +7,7 @@ export const INVITE_FORM = 'thread-invite';
 export default function ThreadInvite() {
   const [role, setRole] = useState('');
   const [contact, setContact] = useState('');
+  const [honey, setHoney] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
 
   useEffect(() => { setRole(new URLSearchParams(window.location.search).get('r') ?? ''); }, []);
@@ -15,7 +16,7 @@ export default function ThreadInvite() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setState('sending');
-    const body = new URLSearchParams({ 'form-name': INVITE_FORM, contact, source: role || 'direct' });
+    const body = new URLSearchParams({ 'form-name': INVITE_FORM, contact, source: role || 'direct', 'bot-field': honey });
     try {
       const res = await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
       setState(res.ok ? 'sent' : 'failed');
@@ -38,6 +39,7 @@ export default function ThreadInvite() {
         <form className="ti-form" onSubmit={submit}>
           <label htmlFor="ti-contact" className="ti-label">Email or Delta username</label>
           <input id="ti-contact" name="contact" required autoComplete="email" placeholder="you@company.com" value={contact} onChange={(e) => setContact(e.target.value)} />
+          <p hidden><label>Leave this empty <input name="bot-field" tabIndex={-1} autoComplete="off" value={honey} onChange={(e) => setHoney(e.target.value)} /></label></p>
           <button type="submit" className="td-button" disabled={state === 'sending'}>{state === 'sending' ? 'Sending…' : 'Send me the thread'}</button>
         </form>
       )}
