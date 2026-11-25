@@ -26,7 +26,7 @@ export const Homepage: Story = {
   args: { recording: homepage as ReplayRecording, end: <ThreadInvite /> },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getAllByRole('link', { name: 'Next ↓' }).at(-1)!);
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'See it on the whole run.' })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Want to inspect the rest of this run?' })).toBeVisible());
   },
 };
 

@@ -31,8 +31,8 @@ export default function ThreadInvite() {
     <div className="ti">
       <p className="df-speaker" style={{ color: 'var(--td-accent, #a23924)' }}>Richard</p>
       {company && <p className="ti-hello">Thanks for reading my {company} application.</p>}
-      <h2 className="ti-title">See it on the whole run.</h2>
-      <p>Join Delta and I'll share the YOARS run, rehydrated, with every delta-zero finding you can open in VS Code. Leave your email or Delta username.</p>
+      <h2 className="ti-title">Want to inspect the rest of this run?</h2>
+      <p>Leave your email or Delta username. I'll invite you to the four-agent run in Delta.</p>
       {/* The live region stays mounted so the confirmation is announced when it fills. */}
       <div role="status">{state === 'sent' && <p className="ti-done">Thanks. Your invite is on its way.</p>}</div>
       {state !== 'sent' && (
