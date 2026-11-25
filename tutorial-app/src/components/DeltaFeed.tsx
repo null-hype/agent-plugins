@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import { validateReplayRecording, type ReplayFrame, type ReplayRecording } from '../lib/acpReplayContract';
 import './DeltaFeed.css';
 
@@ -8,8 +8,8 @@ import './DeltaFeed.css';
  * share a step with the frame before them (side by side on wide screens).
  */
 
-type Update = { sessionUpdate: string; title?: string; content?: { text?: string }; _meta?: { beside?: boolean } };
-type Card = { id: string; frames: ReplayFrame[]; speaker: string; you: boolean; text: string; titles: string[]; beside?: boolean };
+type Update = { sessionUpdate: string; title?: string; content?: { text?: string }; _meta?: { beside?: boolean; under?: boolean; source?: string } };
+type Card = { id: string; frames: ReplayFrame[]; speaker: string; you: boolean; text: string; titles: string[]; beside?: boolean; under?: boolean; source?: string };
 
 const updateOf = (frame: ReplayFrame) => (frame.envelope.params as { update: Update }).update;
 
@@ -23,7 +23,7 @@ function toCards(frames: readonly ReplayFrame[]): Card[] {
       cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? 'Agent', you: false, text: '', titles: [update.title ?? ''] });
       continue;
     }
-    cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? '', you: frame.actor === 'client', text: update.content?.text ?? '', titles: [], beside: update._meta?.beside });
+    cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? '', you: frame.actor === 'client', text: update.content?.text ?? '', titles: [], beside: update._meta?.beside, under: update._meta?.under, source: update._meta?.source });
   }
   return cards;
 }
@@ -70,11 +70,22 @@ function Block({ source }: { source: string }) {
 
 const Markdown = ({ text }: { text: string }) => <>{blocks(text).map((b, i) => <Block key={i} source={b} />)}</>;
 
+/** Swipe left on an excerpt goes to its source, the same as the visible link; browser Back returns. */
 function Message({ card }: { card: Card }) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: TouchEvent) => { const t = e.touches[0]; start.current = { x: t.clientX, y: t.clientY }; };
+  const onTouchEnd = (e: TouchEvent) => {
+    const from = start.current; start.current = null;
+    const t = e.changedTouches[0];
+    if (!from || !t || !card.source) return;
+    const dx = t.clientX - from.x, dy = t.clientY - from.y;
+    if (dx < -55 && Math.abs(dx) > Math.abs(dy) * 1.5) window.location.assign(card.source);
+  };
   return (
-    <div className={`df-msg${card.you ? ' df-you' : ''}`}>
+    <div className={`df-msg${card.you ? ' df-you' : ''}`} onTouchStart={card.source ? onTouchStart : undefined} onTouchEnd={card.source ? onTouchEnd : undefined}>
       <p className="df-speaker">{card.speaker}</p>
       {card.titles.length ? <ol className="df-tools">{card.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={card.text} />}
+      {card.source && <a className="df-src" href={card.source}>View source ↗</a>}
     </div>
   );
 }
@@ -91,7 +102,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, end }: P
   const [recording, setRecording] = useState(initial);
   const steps = useMemo(() => {
     const out: Card[][] = [];
-    for (const card of toCards(recording.frames)) card.beside && out.length ? out[out.length - 1].push(card) : out.push([card]);
+    for (const card of toCards(recording.frames)) (card.beside || card.under) && out.length ? out[out.length - 1].push(card) : out.push([card]);
     return out;
   }, [recording]);
   const invalid = validateReplayRecording(recording);
@@ -121,7 +132,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, end }: P
   return (
     <div className="df" role="region" aria-label="Delta thread">
       {steps.map((step, i) => (
-        <section key={step[0].id} id={step[0].id} className={`df-step${step.length > 1 ? ' df-pair' : ''}`} aria-label={`Step ${i + 1} of ${ids.length}`}>
+        <section key={step[0].id} id={step[0].id} className={`df-step${step.some((c) => c.beside) ? ' df-pair' : ''}`} aria-label={`Step ${i + 1} of ${ids.length}`}>
           <div className="df-body">{step.map((card) => <Message key={card.id} card={card} />)}</div>
           {next(i)}
         </section>

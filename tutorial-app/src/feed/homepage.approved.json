@@ -5,16 +5,26 @@
   "items": [
     {
       "script": {
+        "actor": "agent",
+        "speaker": "Backend agent → UI agent",
+        "source": "https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-summarize.json#L16",
+        "text": "> worth scaled by gauge (hundredths/100, thousandth*1000, plain pass)"
+      }
+    },
+    {
+      "script": {
         "actor": "client",
         "speaker": "Richard",
-        "text": "Two agents handed off a task, and the run passed. What did the handoff leave out?\n\n> worth scaled by gauge (hundredths/100, thousandth*1000, plain pass)\n\nThat line is the whole handoff for scaling values, from a public four-agent run: message 5484, backend agent to UI agent. It names three cases. [Read the handoff ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-summarize.json#L16)"
+        "under": true,
+        "text": "You're writing the report. A row arrives with an amount but no unit. Do you count it?"
       }
     },
     {
       "script": {
         "actor": "agent",
         "speaker": "UI agent · handoff only",
-        "text": "> **Unknown gauge value:** is the row passed through unscaled, dropped, or does it raise an error?\n\nIt sensed a gap, but couldn't say which answer was right."
+        "source": "https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/agent-run/run1b-without.txt#L25",
+        "text": "> is the row passed through unscaled, dropped, or does it raise an error?"
       }
     },
     {
@@ -22,14 +32,16 @@
         "actor": "agent",
         "speaker": "UI agent · with delta-zero",
         "beside": true,
-        "text": "> The backend assumed this case \"will be dropped anyway since epoch/person empty\". The code doesn't do that. A line with a missing or unknown `u=` gets **kept, with `worth` not converted**.\n\nIt quoted the code, found that a non-numeric amount crashes `normalize()`, and held back its sign-off. [Both replies, verbatim ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/AGENT-RUN.md)"
+        "source": "https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/agent-run/run1b-with.txt#L11",
+        "text": "> The code in `transform.py` says `'plain' (and '' before a drop) pass through unchanged.` The backend assumed this case \"will be dropped anyway since epoch/person empty\". The code doesn't do that."
       }
     },
     {
       "script": {
         "actor": "client",
         "speaker": "Richard",
-        "text": "I built delta-zero to catch that. It checks each handoff against the conversation behind it and quotes what was dropped, right in the editor.\n\n![VS Code: delta-zero's finding m35-dropped in the Problems panel, with its evidence open at the backend's dropped note](/evidence/handoff-5484-vscode.png)\n\n[The source line ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-full.json) · [VS Code extension ↗](https://github.com/null-hype/agent-plugins/pull/427)"
+        "source": "https://github.com/null-hype/agent-plugins/pull/427",
+        "text": "I built delta-zero.\n\n![VS Code: delta-zero's finding on message 35, with the backend's dropped note open beside it](/evidence/handoff-5484-vscode.png)"
       }
     }
   ]

@@ -42,3 +42,6 @@
 .ti-form button:hover { background: var(--td-accent, #a23924); }
 .ti-done { font: 500 1.05rem/1.5 var(--td-sans, sans-serif); color: var(--td-accent, #a23924); }
 .ti-or { font: 0.85rem/1.5 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
+.df-src { display: inline-block; margin-top: 2px; font: 500 0.8rem/1 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58) !important; text-decoration: none !important; padding: 8px 0; }
+.df-src:hover { color: var(--td-accent, #a23924) !important; }
+.df-msg > blockquote:last-of-type { margin-bottom: 0.4em; }

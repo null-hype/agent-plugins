@@ -26,7 +26,7 @@ type Approved = {
   speakers?: Record<string, string>;
   items: Array<
     | { id: string; text?: string; speaker?: string }
-    | { script: { actor: 'client' | 'agent'; speaker: string; text: string; beside?: boolean } }
+    | { script: { actor: 'client' | 'agent'; speaker: string; text: string; beside?: boolean; under?: boolean; source?: string } }
   >;
 };
 
@@ -42,9 +42,11 @@ export function projectDeltaThread(jsonl: string, approved: Approved): ReplayRec
 
   const frames: ReplayFrame[] = approved.items.map((entry, order) => {
     if ('script' in entry) {
-      const { actor, speaker, text, beside } = entry.script;
-      // `beside`: shown next to the previous frame, in the same step (e.g. two replies compared).
-      const _meta = beside ? { beside: true } : undefined;
+      const { actor, speaker, text, beside, under, source } = entry.script;
+      // `beside`/`under`: in the same step as the previous frame, next to it or below it.
+      // `source`: where the excerpt comes from; a visible link, and swipe left follows it.
+      const meta = { ...(beside ? { beside: true } : {}), ...(under ? { under: true } : {}), ...(source ? { source } : {}) };
+      const _meta = Object.keys(meta).length ? meta : undefined;
       return {
         frameId: `f${order + 1}`,
         order,
