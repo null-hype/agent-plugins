@@ -38,6 +38,9 @@ test.describe('Static claim reports', () => {
 test('logged-out journey: three swipes from the hook to the invite', async ({ page }) => {
   await page.goto('/?r=openai');
   await expect(page.getByText('Richard Anthony Massey · Software engineer · Sydney', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Build tools people can trust and inspect.' })).toBeVisible();
+  await page.getByRole('link', { name: 'Delta thread ↓' }).click();
+  await expect(page).toHaveURL(/#thread$/);
   const feed = page.getByRole('region', { name: 'Delta thread' });
   await expect(feed.getByText('What did the handoff leave out?', { exact: false })).toBeVisible();
   for (let i = 0; i < 3; i++) await feed.getByRole('button', { name: 'Next' }).click();

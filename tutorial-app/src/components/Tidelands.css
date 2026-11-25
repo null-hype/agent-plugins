@@ -118,3 +118,5 @@
 .td-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .td-feed-hero { padding-top: 0; }
 .td-feed-hero .td-eyebrow { margin-bottom: 0; }
+.td-feed-hero { scroll-margin-top: 16px; }
+.td-feed-hero .td-eyebrow { margin-bottom: 14px; }
