@@ -165,6 +165,8 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
       aria-label="Delta thread"
       tabIndex={0}
       onKeyDown={(e) => {
+        // Typing in the invite form (or any field) is not feed navigation, and shortcuts keep their browser meaning.
+        if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
         if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); go(active + 1); }
         else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); go(active - 1); }
         else if (e.key === 'ArrowRight' || e.key === 'Enter') stepIn();
