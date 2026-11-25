@@ -23,7 +23,8 @@
     "storybook:tidelands": "storybook dev -c .storybook-tidelands -p 7881",
     "storybook:remote": "node scripts/start-storybooks.mjs",
     "build-storybook:tidelands": "storybook build -c .storybook-tidelands -o tidelands-storybook-static",
-    "feed:project": "node --import tsx scripts/delta-feed-project.ts"
+    "feed:project": "node --import tsx scripts/delta-feed-project.ts",
+    "feed:link": "node --import tsx scripts/delta-feed-link.ts"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
