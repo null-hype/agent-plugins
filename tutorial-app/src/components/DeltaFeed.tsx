@@ -127,7 +127,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
         if (!entry.isIntersecting) continue;
         const index = Number((entry.target as HTMLElement).dataset.index);
         setActive(index);
-        setOpen(null);
+        setOpen((o) => (o === index ? o : null));
         const id = cards[index]?.id ?? 'end';
         if (cards[index]) controller.seek(id);
         if (index > 0 || new URLSearchParams(window.location.search).has('frame')) {
