@@ -1,0 +1,27 @@
+{
+  "name": "witness-pkl",
+  "displayName": "Witness for Pkl",
+  "description": "Shows Witness findings for .pkl files in the Problems panel.",
+  "version": "0.0.1",
+  "publisher": "null-hype",
+  "private": true,
+  "engines": { "vscode": "^1.90.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:pkl"],
+  "contributes": {
+    "languages": [
+      { "id": "pkl", "extensions": [".pkl"], "aliases": ["Pkl"] }
+    ],
+    "configuration": {
+      "title": "Witness",
+      "properties": {
+        "witness.serverPath": {
+          "type": "string",
+          "default": "witness",
+          "description": "Path to the witness language server executable."
+        }
+      }
+    }
+  },
+  "dependencies": { "vscode-languageclient": "^9.0.1" }
+}
