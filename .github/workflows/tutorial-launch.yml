@@ -19,7 +19,8 @@ concurrency:
 
 jobs:
   branch-checks:
-    runs-on: ubuntu-latest
+    # Keep the runner on an Ubuntu release supported by the locked Playwright version.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: tutorial-app
@@ -73,7 +74,7 @@ jobs:
     # Dispatch after publication to verify the real public journey. A green
     # branch build alone must never be reported as deployed verification.
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: tutorial-app
