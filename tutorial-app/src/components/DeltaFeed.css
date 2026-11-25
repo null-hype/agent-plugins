@@ -27,3 +27,23 @@
 .df-nav button:disabled { opacity: 0.35; cursor: default; }
 @keyframes df-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .df-detail { animation: none; } }
+.df-reading .df-nav { display: none; }
+.df-hint { position: absolute; left: 0; bottom: 18px; margin: 0; font: 500 0.8rem/1 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); animation: df-nudge 1.6s ease-in-out 1s 3; }
+.df-hint::before { content: '↑ '; }
+@keyframes df-nudge { 50% { transform: translateY(-6px); } }
+.df-transcript { list-style: none; padding: 0; margin: 24px 0 0; border-top: 1px solid var(--td-line, #dedbd2); }
+.df-transcript li { padding: 16px 0; border-bottom: 1px solid var(--td-line, #dedbd2); }
+.df-transcript .df-speaker { margin-bottom: 6px; }
+.df-transcript p, .df-transcript ul, .df-transcript ol { font-size: 0.95rem; }
+.df-end { justify-content: center; }
+@media (prefers-reduced-motion: reduce) { .df-hint { animation: none; } }
+.ti .df-you-speaker { color: var(--td-accent, #a23924); }
+.ti-hello { font: 500 0.9rem/1.4 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
+.ti-title { font: 600 clamp(1.5rem, 5vw, 2rem)/1.15 var(--td-sans, sans-serif) !important; letter-spacing: -0.02em; margin: 0 0 12px; }
+.ti-form { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 14px; max-width: 520px; }
+.ti-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ti-form input { flex: 1 1 220px; min-width: 0; font: 16px/1.4 var(--td-sans, sans-serif); padding: 11px 12px; border: 1px solid var(--td-ink, #1c1c1a); border-radius: 2px; background: #fff; color: inherit; }
+.df .ti-form .td-button { padding: 12px 16px; font: 500 0.9rem/1 var(--td-sans, sans-serif); background: var(--td-ink, #1c1c1a); color: var(--td-paper, #fbfaf7) !important; border-radius: 2px; }
+.df .ti-form .td-button:hover { background: var(--td-accent, #a23924); }
+.ti-done { font: 500 1.05rem/1.5 var(--td-sans, sans-serif); color: var(--td-accent, #a23924); }
+.ti-or { font: 0.85rem/1.5 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }

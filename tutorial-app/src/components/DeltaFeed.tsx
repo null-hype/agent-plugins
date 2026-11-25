@@ -9,8 +9,8 @@ import './DeltaFeed.css';
  * only the horizontal gesture is ours.
  */
 
-type Update = { sessionUpdate: string; title?: string; content?: { text?: string } };
-type Card = { id: string; frames: ReplayFrame[]; speaker: string; you: boolean; text: string; titles: string[] };
+type Update = { sessionUpdate: string; title?: string; content?: { text?: string }; _meta?: { detail?: string; thread?: string } };
+type Card = { id: string; frames: ReplayFrame[]; speaker: string; you: boolean; text: string; titles: string[]; detail?: string; thread?: string };
 
 const updateOf = (frame: ReplayFrame) => (frame.envelope.params as { update: Update }).update;
 
@@ -24,7 +24,7 @@ function toCards(frames: readonly ReplayFrame[]): Card[] {
       cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? 'Agent', you: false, text: '', titles: [update.title ?? ''] });
       continue;
     }
-    cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? '', you: frame.actor === 'client', text: update.content?.text ?? '', titles: [] });
+    cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? '', you: frame.actor === 'client', text: update.content?.text ?? '', titles: [], detail: update._meta?.detail, thread: update._meta?.thread });
   }
   return cards;
 }
@@ -69,9 +69,29 @@ function Block({ source }: { source: string }) {
 
 const Markdown = ({ text }: { text: string }) => <>{blocks(text).map((b, i) => <Block key={i} source={b} />)}</>;
 
-const hasMore = (card: Card) => card.titles.length > 0 || blocks(card.text).length > 1;
+const scripted = (card: Card) => Boolean(card.detail || card.thread);
+const hasMore = (card: Card) => card.titles.length > 0 || scripted(card) || blocks(card.text).length > 1;
 
-export default function DeltaFeed({ recording: initial, initialFrameId }: { recording: ReplayRecording; initialFrameId?: string }) {
+/** A nested thread, read as a transcript: the "definition" behind a frame. */
+function Transcript({ recording }: { recording: ReplayRecording }) {
+  return <ol className="df-transcript">{toCards(recording.frames).map((card) => (
+    <li key={card.id} className={card.you ? 'df-you' : undefined}>
+      <p className="df-speaker">{card.speaker}</p>
+      {card.titles.length ? <p className="df-tools">{card.titles.join(' · ')}</p> : <Markdown text={card.text} />}
+    </li>
+  ))}</ol>;
+}
+
+type Props = {
+  recording: ReplayRecording;
+  initialFrameId?: string;
+  /** Recordings a frame can step into, by recordingId (`_meta.thread`). */
+  threads?: Record<string, ReplayRecording>;
+  /** A last card after the frames, e.g. the contact form. Its frame id is `end`. */
+  end?: ReactNode;
+};
+
+export default function DeltaFeed({ recording: initial, initialFrameId, threads = {}, end }: Props) {
   const [recording, setRecording] = useState(initial);
   const controller = useMemo(() => new AcpReplayController(recording), [recording]);
   const cards = useMemo(() => toCards(recording.frames), [recording]);
@@ -95,7 +115,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId }: { reco
   // Open at ?frame= (or the given frame), then keep the URL on the visible frame.
   useEffect(() => {
     const wanted = initialFrameId ?? new URLSearchParams(window.location.search).get('frame');
-    const index = wanted ? cards.findIndex((c) => c.frames.some((f) => f.frameId === wanted)) : -1;
+    const index = wanted === 'end' && end ? cards.length : wanted ? cards.findIndex((c) => c.frames.some((f) => f.frameId === wanted)) : -1;
     if (index > 0) scroller.current?.children[index]?.scrollIntoView({ block: 'start' });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -108,10 +128,11 @@ export default function DeltaFeed({ recording: initial, initialFrameId }: { reco
         const index = Number((entry.target as HTMLElement).dataset.index);
         setActive(index);
         setOpen(null);
-        controller.seek(cards[index].id);
+        const id = cards[index]?.id ?? 'end';
+        if (cards[index]) controller.seek(id);
         if (index > 0 || new URLSearchParams(window.location.search).has('frame')) {
           const url = new URL(window.location.href);
-          url.searchParams.set('frame', cards[index].id);
+          url.searchParams.set('frame', id);
           window.history.replaceState(window.history.state, '', url);
         }
       }
@@ -120,8 +141,9 @@ export default function DeltaFeed({ recording: initial, initialFrameId }: { reco
     return () => observer.disconnect();
   }, [cards, controller]);
 
-  const go = (index: number) => scroller.current?.children[Math.max(0, Math.min(cards.length - 1, index))]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const stepIn = () => { if (hasMore(cards[active])) setOpen(active); };
+  const total = cards.length + (end ? 1 : 0);
+  const go = (index: number) => scroller.current?.children[Math.max(0, Math.min(total - 1, index))]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const stepIn = () => { if (cards[active] && hasMore(cards[active])) setOpen(active); };
   const backOut = () => setOpen(null);
 
   const onTouchStart = (e: TouchEvent) => { const t = e.touches[0]; touch.current = { x: t.clientX, y: t.clientY }; };
@@ -139,7 +161,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId }: { reco
 
   return (
     <section
-      className="df"
+      className={`df${open !== null ? ' df-reading' : ''}`}
       aria-label="Delta thread"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -153,29 +175,33 @@ export default function DeltaFeed({ recording: initial, initialFrameId }: { reco
     >
       <div className="df-scroller" ref={scroller}>
         {cards.map((card, index) => {
-          const first = blocks(card.text)[0];
+          const face = scripted(card) ? card.text : blocks(card.text)[0];
+          const nested = card.thread ? threads[card.thread] : undefined;
           const isOpen = open === index;
           return (
-            <article key={card.id} data-index={index} className={`df-frame${card.you ? ' df-you' : ''}${isOpen ? ' df-open' : ''}`} aria-label={`${index + 1} of ${cards.length}`}>
+            <article key={card.id} data-index={index} className={`df-frame${card.you ? ' df-you' : ''}${isOpen ? ' df-open' : ''}`} aria-label={`${index + 1} of ${total}`}>
               <p className="df-speaker">{card.speaker}</p>
               <div className="df-face" aria-hidden={isOpen}>
-                {card.titles.length ? <p className="df-tools">{card.titles.length === 1 ? card.titles[0] : `${card.titles.length} steps`}</p> : <Markdown text={first ?? ''} />}
+                {card.titles.length ? <p className="df-tools">{card.titles.length === 1 ? card.titles[0] : `${card.titles.length} steps`}</p> : <Markdown text={face ?? ''} />}
                 {hasMore(card) && <button type="button" className="df-in" onClick={() => setOpen(index)}>Step in →</button>}
+                {index === 0 && <span className="df-hint" aria-hidden="true">Swipe up</span>}
               </div>
               {isOpen && (
                 <div className="df-detail">
                   <button type="button" className="df-out" onClick={backOut}>← Back</button>
-                  {card.titles.length ? <ol className="df-steps">{card.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={card.text} />}
+                  {card.titles.length ? <ol className="df-steps">{card.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={card.detail ?? card.text} />}
+                  {nested && <Transcript recording={nested} />}
                 </div>
               )}
             </article>
           );
         })}
+        {end && <article data-index={cards.length} className="df-frame df-end" aria-label={`${total} of ${total}`}>{end}</article>}
       </div>
       <nav className="df-nav" aria-label="Step through the thread">
         <button type="button" onClick={() => go(active - 1)} disabled={active === 0} aria-label="Previous">↑</button>
-        <span>{active + 1} / {cards.length}</span>
-        <button type="button" onClick={() => go(active + 1)} disabled={active === cards.length - 1} aria-label="Next">↓</button>
+        <span>{active + 1} / {total}</span>
+        <button type="button" onClick={() => go(active + 1)} disabled={active === total - 1} aria-label="Next">↓</button>
       </nav>
     </section>
   );

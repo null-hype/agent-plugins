@@ -1,0 +1,98 @@
+{
+  "recordingId": "homepage",
+  "runId": "funnel",
+  "frames": [
+    {
+      "frameId": "f1",
+      "order": 0,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "Two agents handed off a task, and the run passed. What did the handoff leave out?\n\n> worth scaled by gauge (hundredths/100, thousandth*1000, plain pass)"
+            },
+            "_meta": {
+              "detail": "That line is the entire handoff for scaling values, from a public four-agent run: message 5484, backend agent to UI agent. It names three cases.\n\n[Read the handoff ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-summarize.json#L16)"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/1",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f2",
+      "order": 1,
+      "actor": "agent",
+      "speaker": "delta-zero",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "A fourth case: a blank unit. The backend keeps the row and passes the value through unscaled. The handoff never says so.\n\n`# \"plain\" (and \"\" before a drop) pass through unchanged.`"
+            },
+            "_meta": {
+              "detail": "Two fresh agents got the same handoff.\n\nWith delta-zero's finding:\n\n> The backend assumed this case \"will be dropped anyway since epoch/person empty\". The code doesn't do that.\n\nWith the handoff text only:\n\n> is the row passed through unscaled, dropped, or does it raise an error?\n\nBoth paused. Only one could point at the line.\n\n[The source line ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-full.json) · [Both replies ↗](https://github.com/null-hype/agent-plugins/tree/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/agent-run)"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/2",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f3",
+      "order": 2,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "I built delta-zero to catch that. It checks each handoff against the conversation behind it and quotes what was dropped.\n\nI work with agents the same way on everything, and this page is a Delta thread too."
+            },
+            "_meta": {
+              "detail": "The thread where my agents and I designed this page, including the turn where I told them \"I see nothing like what I asked for\".",
+              "thread": "signal-hierarchy"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/3",
+        "disclosure": "homepage script"
+      }
+    }
+  ],
+  "evaluations": []
+}

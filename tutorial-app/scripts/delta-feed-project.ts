@@ -3,6 +3,7 @@
  *
  *   delta thread watch <thread> > thread.jsonl   # raw records: keep out of the repo
  *   npm run feed:project -- thread.jsonl src/feed/<slug>.approved.json
+ *   npm run feed:project -- - src/feed/homepage.approved.json   # scripted items only
  *
  * Only items listed in the approved file are published. Agent thoughts are
  * never published, even if listed, and tool calls keep only their title.
@@ -23,7 +24,10 @@ type Approved = {
   recordingId: string;
   runId: string;
   speakers?: Record<string, string>;
-  items: Array<{ id: string; text?: string; speaker?: string }>;
+  items: Array<
+    | { id: string; text?: string; speaker?: string }
+    | { script: { actor: 'client' | 'agent'; speaker: string; text: string; detail?: string; thread?: string } }
+  >;
 };
 
 const PUBLISHABLE = new Set(['user_message', 'agent_message', 'tool_call']);
@@ -37,6 +41,19 @@ export function projectDeltaThread(jsonl: string, approved: Approved): ReplayRec
   }
 
   const frames: ReplayFrame[] = approved.items.map((entry, order) => {
+    if ('script' in entry) {
+      const { actor, speaker, text, detail, thread } = entry.script;
+      const _meta = detail || thread ? { ...(detail ? { detail } : {}), ...(thread ? { thread } : {}) } : undefined;
+      return {
+        frameId: `f${order + 1}`,
+        order,
+        actor,
+        speaker,
+        action: actor === 'client' ? 'user_message' : 'agent_message',
+        envelope: { jsonrpc: '2.0', method: 'session/update', params: { sessionId: approved.thread, update: { sessionUpdate: actor === 'client' ? 'user_message_chunk' : 'agent_message_chunk', content: { type: 'text', text }, ...(_meta ? { _meta } : {}) } } },
+        provenance: { recordingId: approved.recordingId, kind: 'scripted', scriptId: `${approved.recordingId}/${order + 1}`, disclosure: 'homepage script' },
+      };
+    }
     const item = byId.get(entry.id);
     if (!item) throw new Error(`approved item ${entry.id} is not in the thread capture`);
     if (!PUBLISHABLE.has(item.kind)) throw new Error(`approved item ${entry.id} is a ${item.kind}, which is never published`);
@@ -72,8 +89,8 @@ export function projectDeltaThread(jsonl: string, approved: Approved): ReplayRec
 
 if (process.argv[1]?.endsWith('delta-feed-project.ts')) {
   const [capture, approvedPath] = process.argv.slice(2);
-  if (!capture || !approvedPath) throw new Error('usage: delta-feed-project <thread.jsonl> <slug.approved.json>');
-  const recording = projectDeltaThread(readFileSync(capture, 'utf8'), JSON.parse(readFileSync(approvedPath, 'utf8')));
+  if (!capture || !approvedPath) throw new Error('usage: delta-feed-project <thread.jsonl | -> <slug.approved.json>');
+  const recording = projectDeltaThread(capture === '-' ? '' : readFileSync(capture, 'utf8'), JSON.parse(readFileSync(approvedPath, 'utf8')));
   const out = approvedPath.replace(/\.approved\.json$/, '.recording.json');
   writeFileSync(out, `${JSON.stringify(recording, null, 2)}\n`);
   console.log(`wrote ${out}: ${recording.frames.length} frames`);

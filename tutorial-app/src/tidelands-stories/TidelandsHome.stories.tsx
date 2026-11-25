@@ -8,7 +8,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Overview: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent('How I work with agents.');
+    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent('How I work with agents');
     await expect(canvas.getByRole('region', { name: 'Delta thread' })).toBeVisible();
     await expect(canvas.getByRole('link', { name: 'richard@tidelands.dev' })).toHaveAttribute('href', 'mailto:richard@tidelands.dev');
   },

@@ -35,20 +35,17 @@ test.describe('Static claim reports', () => {
   }
 });
 
-test('logged-out journey: the homepage feed, then contact', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'How I work with agents.' })).toBeVisible();
+test('logged-out journey: three swipes from the hook to the invite', async ({ page }) => {
+  await page.goto('/?r=openai');
   await expect(page.getByText('Richard Anthony Massey · Software engineer · Sydney', { exact: true })).toBeVisible();
   const feed = page.getByRole('region', { name: 'Delta thread' });
-  await expect(feed.getByText('1 / ', { exact: false })).toBeVisible();
-  await feed.getByRole('button', { name: 'Next' }).click();
-  await expect(page).toHaveURL(/[?&]frame=f2/);
-  await feed.locator('.df-frame').nth(1).getByRole('button', { name: 'Step in →' }).click();
-  await expect(feed.locator('.df-detail')).toBeVisible();
-  await feed.getByRole('button', { name: '← Back' }).click();
-  await expect(feed.locator('.df-detail')).toHaveCount(0);
-  const email = page.getByRole('link', { name: 'richard@tidelands.dev', exact: true });
-  await expect(email).toHaveAttribute('href', 'mailto:richard@tidelands.dev');
+  await expect(feed.getByText('What did the handoff leave out?', { exact: false })).toBeVisible();
+  for (let i = 0; i < 3; i++) await feed.getByRole('button', { name: 'Next' }).click();
+  await expect(page).toHaveURL(/[?&]frame=end/);
+  await expect(feed.getByRole('heading', { name: 'Want the full thread?' })).toBeVisible();
+  await expect(feed.getByText('Thanks for reading my OpenAI application.')).toBeVisible();
+  await expect(feed.getByRole('textbox', { name: 'Email or Delta username' })).toBeVisible();
+  await expect(page.locator('form[name="thread-invite"][data-netlify="true"]')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
