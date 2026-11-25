@@ -35,37 +35,20 @@ test.describe('Static claim reports', () => {
   }
 });
 
-test('logged-out journey: professional overview → proof, contact and demonstration', async ({ page }) => {
-  await page.goto('/');
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'How I debug multi-agent work' })).toBeVisible();
+test('logged-out journey: three swipes from the hook to the invite', async ({ page }) => {
+  await page.goto('/?r=openai');
   await expect(page.getByText('Richard Anthony Massey · Software engineer · Sydney', { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Read the delta-zero code ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/agent-plugins/tree/delta-zero');
-  const email = page.getByRole('link', { name: 'richard@tidelands.dev', exact: true });
-  await expect(email).toBeVisible();
-  await expect(email).toHaveAttribute('href', 'mailto:richard@tidelands.dev');
-  await expect(page.getByRole('link', { name: 'Witness ↗', exact: true })).toHaveAttribute('href', 'https://github.com/null-hype/witness');
-  // The explanation should fit a phone without horizontal scrolling or a tutorial runtime.
+  await expect(page.getByRole('heading', { level: 1, name: 'Build tools people can trust and inspect.' })).toBeVisible();
+  await page.getByRole('link', { name: 'Delta thread ↓' }).click();
+  await expect(page).toHaveURL(/#thread$/);
+  const feed = page.getByRole('region', { name: 'Delta thread' });
+  await expect(feed.getByText('Do you count it?', { exact: false })).toBeVisible();
+  for (let i = 0; i < 3; i++) await feed.getByRole('link', { name: 'Next ↓' }).nth(i).click();
+  await expect(page).toHaveURL(/#end$/);
+  await expect(feed.getByRole('heading', { name: 'Want to inspect the rest of this run?' })).toBeVisible();
+  await expect(feed.getByText('Thanks for reading my OpenAI application.')).toBeVisible();
+  await expect(feed.getByRole('link', { name: 'Invite me' })).toHaveAttribute('href', /^mailto:richard@tidelands\.dev\?subject=Invite%20me%20to%20the%20run%20\(OpenAI%20application\)/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await expect(page.locator('iframe')).toHaveCount(0);
-  // Exercise the same example visitors can now use on the homepage. A repaired
-  // input invalidates the prior result; passing never grants human approval.
-  await page.getByRole('button', { name: 'Evaluate integration', exact: true }).click();
-  await expect(page.getByText('Failed', { selector: '.ic-failed' })).toBeVisible();
-  await page.getByRole('button', { name: 'Inspect disagreement', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Governing rule', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Apply repair (revises candidate B)', exact: true }).click();
-  await expect(page.getByText('Stale: inputs changed')).toBeVisible();
-  await page.getByRole('button', { name: 'Re-evaluate integration', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Approve landing (simulated)', exact: true })).toBeVisible();
-  await expect(page.getByText('Not approved', { exact: true })).toBeVisible();
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
-  await page.getByRole('link', { name: 'Challenge a check →', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`${DEMO}/?$`));
-  await expect(page.getByRole('heading', { name: 'Can the check tell a real read of the private file from a forged one?', exact: true })).toBeVisible();
-  await expect(page.locator('#gap-footer-band').getByRole('link', { name: 'Inspect the evidence', exact: true })).toHaveAttribute('href', EVIDENCE);
-  await expect(page.locator('#gap-footer-band').getByRole('link', { name: 'Contact', exact: true })).toHaveAttribute('href', CONTACT);
 });
 
 test('rendered metadata points to a canonical page and loadable preview assets', async ({ page }) => {

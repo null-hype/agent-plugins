@@ -1,0 +1,158 @@
+{
+  "recordingId": "homepage",
+  "runId": "funnel",
+  "frames": [
+    {
+      "frameId": "f1",
+      "order": 0,
+      "actor": "agent",
+      "speaker": "Backend agent → UI agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "> worth scaled by gauge (hundredths/100, thousandth*1000, plain pass)"
+            },
+            "_meta": {
+              "source": "https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-summarize.json#L16"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/1",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f2",
+      "order": 1,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "You're writing the report. A row arrives with an amount but no unit. Do you count it?"
+            },
+            "_meta": {
+              "under": true
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/2",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f3",
+      "order": 2,
+      "actor": "agent",
+      "speaker": "UI agent · handoff only",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "> is the row passed through unscaled, dropped, or does it raise an error?"
+            },
+            "_meta": {
+              "source": "https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/agent-run/run1b-without.txt#L25"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/3",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f4",
+      "order": 3,
+      "actor": "agent",
+      "speaker": "UI agent · with delta-zero",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "> A key=value line with a valid person and time but a missing or unknown `u=` gets **kept, with `worth` not converted**.\n\n> The empty-gauge question also goes to auth."
+            },
+            "_meta": {
+              "beside": true,
+              "source": "https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/agent-run/run1b-with.txt#L11"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/4",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f5",
+      "order": 4,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "tidelands-homepage",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "I built delta-zero.\n\n![VS Code: delta-zero's finding on message 35, with the backend's dropped note open beside it](/evidence/handoff-5484-vscode.png)\n\nGo to Definition opens the backend note the handoff left out. [VS Code extension ↗](https://github.com/null-hype/agent-plugins/pull/427)"
+            },
+            "_meta": {
+              "source": "https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/out-5484/.witness/run/evidence/m35-dropped.txt#L57"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "homepage",
+        "kind": "scripted",
+        "scriptId": "homepage/5",
+        "disclosure": "homepage script"
+      }
+    }
+  ],
+  "evaluations": []
+}

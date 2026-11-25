@@ -1,0 +1,62 @@
+{
+  "thread": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+  "recordingId": "signal-hierarchy",
+  "runId": "homepage-feed",
+  "speakers": {
+    "null-hype": "Richard"
+  },
+  "items": [
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFGGzkgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFGszkgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFGy8kgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFG0EkgHEEHdV30LSYEopg7tRJdoIbTHCAAE"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFG1ckgHEEHdV30LSYEopg7tRJdoIbTHCAAE"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFG27kgHEEHdV30LSYEopg7tRJdoIbTHCAAE"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFG2hkgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFHj5kgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFJBJkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFJHZkgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFJIvkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFKkTkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after",
+      "text": "Try the revised replay on your phone. It\u2019s now one decision, not a tour: **can you tell from the handoff what happens when the unit is blank?**\n\nSwipe **right** or tap **View source** to reveal the recorded line. Swipe **left** or tap **Back to handoff** to close it without advancing. Swipe **up** or tap **Step forward** to compare the two receiving-agent replies; swipe **down** to return. Both agents noticed the gap. The one with delta-zero could quote the omitted decision.\n\nI tested the gestures and buttons in a 360 px touch-enabled Chromium viewport. The horizontal round trip kept the highlighted phrase in place, and the step buttons returned to the top in a separate check. I haven\u2019t tested on a physical phone. This is a Cloud Runner preview only; I didn\u2019t push the revision or change production.\n\nAfter trying it: **would you forward this as-is to a hiring manager, or does the payoff still need explaining?**"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFLqFkgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFMBgkgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFMFokgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFMLjkgHEEGzoxczf90RxhvxQtIrS1IzCAAA"
+    },
+    {
+      "id": "kgKTkgCSAcQBAJKSks4AFMOZkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after"
+    }
+  ]
+}

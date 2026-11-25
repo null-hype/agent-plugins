@@ -114,3 +114,7 @@
 .td-prose ol { list-style: decimal; } .td-prose ul { list-style: disc; }
 .td-prose a { text-decoration: underline; text-decoration-color: var(--td-accent); text-underline-offset: 3px; }
 .td-prose a { text-decoration: underline; text-decoration-color: var(--td-accent); text-underline-offset: 3px; }
+
+.td-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.td-feed-hero { padding-top: 32px; scroll-margin-top: 0; }
+.td-feed-hero .td-eyebrow { margin-bottom: 0; }

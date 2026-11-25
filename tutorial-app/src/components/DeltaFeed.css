@@ -1,0 +1,44 @@
+/* A Delta thread as plain page sections. Nothing here scrolls on its own. */
+.df { font: 17px/1.6 var(--td-serif, Georgia, serif); color: var(--td-ink, #1c1c1a); overflow-wrap: break-word; }
+.df-step { display: flex; flex-direction: column; justify-content: center; min-height: 86svh; padding: 40px 0; border-top: 1px solid var(--td-line, #dedbd2); scroll-margin-top: 0; }
+.df-step:first-child { border-top: 0; }
+.df-body { max-width: 680px; }
+.df-msg + .df-msg { margin-top: 32px; }
+.df-speaker { margin: 0 0 14px; font: 600 0.75rem/1.5 var(--td-sans, sans-serif); letter-spacing: 0.08em; text-transform: uppercase; color: var(--td-muted, #5f5f58); }
+.df-you .df-speaker { color: var(--td-accent, #a23924); }
+.df-you > .df-speaker + p { font: 500 clamp(1.3rem, 4.6vw, 1.75rem)/1.3 var(--td-sans, sans-serif); letter-spacing: -0.015em; }
+.df p, .df ul, .df ol, .df blockquote { margin: 0 0 0.8em; }
+.df ul, .df ol { padding-left: 1.2em; }
+.df blockquote { border-left: 2px solid var(--td-accent, #a23924); padding-left: 14px; color: var(--td-ink, #1c1c1a); }
+.df code { font-family: var(--td-mono, monospace); font-size: 0.85em; overflow-wrap: anywhere; }
+.df h4 { font: 600 1rem/1.4 var(--td-sans, sans-serif); margin: 1em 0 0.4em; }
+.df a { text-decoration: underline; text-decoration-color: var(--td-accent, #a23924); text-underline-offset: 3px; }
+.df-tools { font: 0.9rem/1.5 var(--td-mono, monospace); color: var(--td-muted, #5f5f58); }
+.df table { width: 100%; border-collapse: collapse; table-layout: fixed; font: 0.85rem/1.45 var(--td-sans, sans-serif); }
+.df th, .df td { text-align: left; vertical-align: top; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--td-line, #dedbd2); }
+.df-shot { display: block; margin: 8px 0 0.8em; }
+.df-shot img { display: block; width: 100%; height: auto; border: 1px solid var(--td-line, #dedbd2); }
+.df-next { align-self: flex-start; margin-top: 24px; font: 500 0.85rem/1 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58) !important; text-decoration: none !important; padding: 10px 0; }
+.df-next:hover { color: var(--td-accent, #a23924) !important; }
+
+/* Wide screens: a readable column; a compared pair sits side by side; the screenshot gets room. */
+@media (min-width: 900px) {
+  .df { font-size: 18px; }
+  .df-step { min-height: 0; padding: 72px 0; }
+  .df-pair .df-body { max-width: none; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+  .df-pair .df-msg + .df-msg { margin-top: 0; padding-left: 48px; border-left: 1px solid var(--td-line, #dedbd2); margin-left: -48px; }
+  .df-body:has(.df-shot) { max-width: 920px; }
+}
+
+/* Phones: one step per screen, with gentle page-level snapping (never mandatory, so tall steps stay readable). */
+@media (max-width: 899px) { html:has(.df) { scroll-snap-type: y proximity; } .df-step { scroll-snap-align: start; } }
+
+.ti-hello { font: 500 0.9rem/1.4 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
+.ti-title { font: 600 clamp(1.5rem, 5vw, 2rem)/1.15 var(--td-sans, sans-serif) !important; letter-spacing: -0.02em; margin: 0 0 12px; }
+.ti-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 18px 0 14px; font: 500 0.95rem/1.4 var(--td-sans, sans-serif); }
+.df .ti-cta { display: inline-block; padding: 12px 18px; background: var(--td-ink, #1c1c1a); color: var(--td-paper, #fbfaf7) !important; text-decoration: none; border-radius: 2px; }
+.df .ti-cta:hover { background: var(--td-accent, #a23924); }
+.ti-or { font: 0.85rem/1.5 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
+.df-src { display: inline-block; margin-top: 2px; font: 500 0.8rem/1 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58) !important; text-decoration: none !important; padding: 8px 0; }
+.df-src:hover { color: var(--td-accent, #a23924) !important; }
+.df-msg > blockquote:last-of-type { margin-bottom: 0.4em; }
