@@ -141,6 +141,18 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
     return () => observer.disconnect();
   }, [cards, controller]);
 
+  // Focus follows the detail: into it on open, back to the frame's "Step in" (or the feed) on close.
+  const wasOpen = useRef<number | null>(null);
+  useEffect(() => {
+    const root = scroller.current;
+    if (open !== null) {
+      root?.children[open]?.querySelector<HTMLElement>('.df-out')?.focus({ preventScroll: true });
+    } else if (wasOpen.current !== null && wasOpen.current === active && (!document.activeElement || document.activeElement === document.body)) {
+      (root?.children[wasOpen.current]?.querySelector<HTMLElement>('.df-in') ?? root?.parentElement)?.focus({ preventScroll: true });
+    }
+    wasOpen.current = open;
+  }, [open]);
+
   const total = cards.length + (end ? 1 : 0);
   const go = (index: number) => scroller.current?.children[Math.max(0, Math.min(total - 1, index))]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const stepIn = () => { if (cards[active] && hasMore(cards[active])) setOpen(active); };
@@ -169,7 +181,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
         if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
         if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); go(active + 1); }
         else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); go(active - 1); }
-        else if (e.key === 'ArrowRight' || e.key === 'Enter') stepIn();
+        else if (e.key === 'ArrowRight' || (e.key === 'Enter' && e.target === e.currentTarget)) stepIn();
         else if (e.key === 'ArrowLeft' || e.key === 'Escape') backOut();
       }}
       onTouchStart={onTouchStart}
