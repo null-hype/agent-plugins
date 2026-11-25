@@ -32,9 +32,9 @@ export default function ThreadInvite() {
       {company && <p className="ti-hello">Thanks for reading my {company} application.</p>}
       <h2 className="ti-title">Want the full thread?</h2>
       <p>It's in Delta, with the forks, the subagents and the wrong turns. Leave your email or Delta username and I'll invite you.</p>
-      {state === 'sent' ? (
-        <p className="ti-done" role="status">Thanks. I'll send you the invite.</p>
-      ) : (
+      {/* The live region stays mounted so the confirmation is announced when it fills. */}
+      <div role="status">{state === 'sent' && <p className="ti-done">Thanks. I'll send you the invite.</p>}</div>
+      {state !== 'sent' && (
         <form className="ti-form" onSubmit={submit}>
           <label htmlFor="ti-contact" className="ti-label">Email or Delta username</label>
           <input id="ti-contact" name="contact" required autoComplete="email" placeholder="you@company.com" value={contact} onChange={(e) => setContact(e.target.value)} />
