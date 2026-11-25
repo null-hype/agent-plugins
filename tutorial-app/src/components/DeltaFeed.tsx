@@ -98,7 +98,20 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
+  // Wide screens show the detail beside the frame, so it can follow as you step through.
+  const [split, setSplit] = useState(false);
+  const [fine, setFine] = useState(false);
+  const splitRef = useRef(false);
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 900px)');
+    const pointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const sync = () => { splitRef.current = wide.matches; setSplit(wide.matches); setFine(pointer.matches); };
+    sync();
+    wide.addEventListener('change', sync); pointer.addEventListener('change', sync);
+    return () => { wide.removeEventListener('change', sync); pointer.removeEventListener('change', sync); };
+  }, []);
   const invalid = validateReplayRecording(recording);
 
   // Live preview: a driver (Storybook, a dev relay on `delta thread watch`) can append frames.
@@ -127,7 +140,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
         if (!entry.isIntersecting) continue;
         const index = Number((entry.target as HTMLElement).dataset.index);
         setActive(index);
-        setOpen((o) => (o === index ? o : null));
+        setOpen((prev) => (prev === index ? prev : prev !== null && splitRef.current && cards[index] && hasMore(cards[index]) ? index : null));
         const id = cards[index]?.id ?? 'end';
         if (cards[index]) controller.seek(id);
         if (index > 0 || new URLSearchParams(window.location.search).has('frame')) {
@@ -146,9 +159,9 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
   useEffect(() => {
     const root = scroller.current;
     if (open !== null) {
-      root?.children[open]?.querySelector<HTMLElement>('.df-out')?.focus({ preventScroll: true });
+      rootRef.current?.querySelector<HTMLElement>('.df-pane .df-out')?.focus({ preventScroll: true });
     } else if (wasOpen.current !== null && wasOpen.current === active && (!document.activeElement || document.activeElement === document.body)) {
-      (root?.children[wasOpen.current]?.querySelector<HTMLElement>('.df-in') ?? root?.parentElement)?.focus({ preventScroll: true });
+      (root?.children[wasOpen.current]?.querySelector<HTMLElement>('.df-in') ?? rootRef.current)?.focus({ preventScroll: true });
     }
     wasOpen.current = open;
   }, [open]);
@@ -169,54 +182,66 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
     if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) (dx > 0 ? stepIn : backOut)();
   };
 
+  const openCard = open !== null ? cards[open] : undefined;
+  const openNested = openCard?.thread ? threads[openCard.thread] : undefined;
+
   if (invalid) return <p role="alert">This feed could not be loaded: {invalid.reason}</p>;
 
   return (
     <section
-      className={`df${open !== null ? ' df-reading' : ''}`}
+      className={`df${open !== null ? ' df-reading' : ''}${active === total - 1 ? ' df-last' : ''}`}
       aria-label="Delta thread"
       tabIndex={0}
+      onMouseEnter={() => { if (fine && document.activeElement === document.body) rootRef.current?.focus({ preventScroll: true }); }}
+      ref={rootRef}
       onKeyDown={(e) => {
+        const target = e.target as HTMLElement;
         // Typing in the invite form (or any field) is not feed navigation, and shortcuts keep their browser meaning.
-        if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
-        if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); go(active + 1); }
-        else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); go(active - 1); }
+        if (e.metaKey || e.ctrlKey || e.altKey || target.closest('input, textarea, select, [contenteditable]')) return;
+        // At either end the arrows fall through to the page, so the feed is never a trap.
+        if (e.key === 'ArrowDown' || e.key === 'j') { if (active < total - 1) { e.preventDefault(); go(active + 1); } }
+        else if (e.key === 'ArrowUp' || e.key === 'k') { if (active > 0) { e.preventDefault(); go(active - 1); } }
         else if (e.key === 'ArrowRight' || (e.key === 'Enter' && e.target === e.currentTarget)) { e.preventDefault(); stepIn(); } // preventDefault: focus lands on "← Back", which would otherwise get the Enter's click
         else if (e.key === 'ArrowLeft' || e.key === 'Escape') backOut();
       }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="df-scroller" ref={scroller}>
-        {cards.map((card, index) => {
-          const face = scripted(card) ? card.text : blocks(card.text)[0];
-          const nested = card.thread ? threads[card.thread] : undefined;
-          const isOpen = open === index;
-          return (
-            <article key={card.id} data-index={index} className={`df-frame${card.you ? ' df-you' : ''}${isOpen ? ' df-open' : ''}`} aria-label={`${index + 1} of ${total}`}>
-              <p className="df-speaker">{card.speaker}</p>
-              <div className="df-face" aria-hidden={isOpen}>
-                {card.titles.length ? <p className="df-tools">{card.titles.length === 1 ? card.titles[0] : `${card.titles.length} steps`}</p> : <Markdown text={face ?? ''} />}
-                {hasMore(card) && <button type="button" className="df-in" onClick={() => setOpen(index)}>Step in →</button>}
-                {index === 0 && <span className="df-hint" aria-hidden="true">Swipe up</span>}
-              </div>
-              {isOpen && (
-                <div className="df-detail">
-                  <button type="button" className="df-out" onClick={backOut}>← Back</button>
-                  {card.titles.length ? <ol className="df-steps">{card.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={card.detail ?? card.text} />}
-                  {nested && <Transcript recording={nested} />}
+      <div className="df-main">
+        <div className="df-scroller" ref={scroller}>
+          {cards.map((card, index) => {
+            const face = scripted(card) ? card.text : blocks(card.text)[0];
+            const isOpen = open === index;
+            return (
+              <article key={card.id} data-index={index} className={`df-frame${card.you ? ' df-you' : ''}${isOpen ? ' df-open' : ''}`} aria-label={`${index + 1} of ${total}`}>
+                <p className="df-speaker">{card.speaker}</p>
+                <div className="df-face">
+                  {card.titles.length ? <p className="df-tools">{card.titles.length === 1 ? card.titles[0] : `${card.titles.length} steps`}</p> : <Markdown text={face ?? ''} />}
+                  {hasMore(card) && <button type="button" className="df-in" onClick={() => setOpen(index)}>Step in →</button>}
+                  {index === 0 && <span className="df-hint" aria-hidden="true">Swipe up</span>}
                 </div>
-              )}
-            </article>
-          );
-        })}
-        {end && <article data-index={cards.length} className="df-frame df-end" aria-label={`${total} of ${total}`}>{end}</article>}
+              </article>
+            );
+          })}
+          {end && <article data-index={cards.length} className="df-frame df-end" aria-label={`${total} of ${total}`}>{end}</article>}
+        </div>
+        <nav className="df-nav" aria-label="Step through the thread">
+          <button type="button" onClick={() => go(active - 1)} disabled={active === 0} aria-label="Previous">↑</button>
+          <span>{active + 1} / {total}</span>
+          <button type="button" onClick={() => go(active + 1)} disabled={active === total - 1} aria-label="Next">↓</button>
+        </nav>
       </div>
-      <nav className="df-nav" aria-label="Step through the thread">
-        <button type="button" onClick={() => go(active - 1)} disabled={active === 0} aria-label="Previous">↑</button>
-        <span>{active + 1} / {total}</span>
-        <button type="button" onClick={() => go(active + 1)} disabled={active === total - 1} aria-label="Next">↓</button>
-      </nav>
+      <div className="df-pane">
+        {openCard ? (
+          <div className="df-detail" key={open}>
+            <button type="button" className="df-out" onClick={backOut}>← Back</button>
+            {split && <p className="df-speaker">{openCard.speaker}</p>}
+            {openCard.titles.length ? <ol className="df-steps">{openCard.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={openCard.detail ?? openCard.text} />}
+            {openNested && <Transcript recording={openNested} />}
+          </div>
+        ) : <p className="df-pane-empty">Step in to read what is behind a card.</p>}
+      </div>
+      <p className="df-keys" aria-hidden="true"><span><kbd>j</kbd> <kbd>k</kbd> or <kbd>↑</kbd> <kbd>↓</kbd> step through</span><span><kbd>→</kbd> step in</span><span><kbd>←</kbd> back</span></p>
     </section>
   );
 }

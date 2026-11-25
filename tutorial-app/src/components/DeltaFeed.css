@@ -18,8 +18,12 @@
 .df th, .df td { text-align: left; vertical-align: top; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--td-line, #dedbd2); }
 .df button { font: 500 0.85rem/1 var(--td-sans, sans-serif); color: inherit; background: none; border: 0; padding: 10px 0; cursor: pointer; }
 .df-in { margin-top: 10px; color: var(--td-accent, #a23924) !important; }
-.df-detail { position: absolute; inset: 0; background: var(--td-paper, #fbfaf7); padding: 16px 0 64px; overflow-y: auto; overscroll-behavior: contain; animation: df-in 180ms ease-out; }
+.df-main { position: relative; }
+.df-pane { display: none; }
+.df-reading .df-pane { display: block; position: absolute; inset: 0; background: var(--td-paper, #fbfaf7); overflow-y: auto; overscroll-behavior: contain; }
+.df-detail { padding: 16px 0 64px; animation: df-in 180ms ease-out; }
 .df-detail .df-out { position: sticky; top: 0; display: block; width: 100%; text-align: left; background: var(--td-paper, #fbfaf7); margin-bottom: 8px; }
+.df-keys, .df-pane-empty { display: none; }
 .df-open .df-face { visibility: hidden; }
 .df-steps { font: 0.9rem/1.5 var(--td-mono, monospace); }
 .df-nav { position: absolute; right: 0; bottom: 12px; display: flex; align-items: center; gap: 10px; font: 0.8rem/1 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); background: var(--td-paper, #fbfaf7); padding-left: 8px; }
@@ -48,3 +52,31 @@
 .df .ti-form .td-button:hover { background: var(--td-accent, #a23924); }
 .ti-done { font: 500 1.05rem/1.5 var(--td-sans, sans-serif); color: var(--td-accent, #a23924); }
 .ti-or { font: 0.85rem/1.5 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
+
+/* Tablet landscape and desktop: the detail opens beside the frame (a peek), not over it. */
+@media (min-width: 900px) {
+  .df { --df-h: clamp(480px, calc(100vh - 200px), 720px); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 48px; font-size: 18px; }
+  .df-scroller { height: var(--df-h); }
+  .df-frame { padding-right: 8px; }
+  .df-open .df-face { visibility: visible; }
+  .df-open .df-speaker { color: var(--td-accent, #a23924); }
+  .df-reading .df-nav { display: flex; }
+  .df-reading .df-pane, .df-pane { display: block; position: static; height: var(--df-h); overflow-y: auto; overscroll-behavior: auto; background: none; border-left: 1px solid var(--td-line, #dedbd2); padding-left: 40px; scrollbar-width: thin; }
+  .df-pane .df-speaker { margin-top: 12px; }
+  .df-detail { padding: 28px 0 64px; animation: df-fade 160ms ease-out; }
+  .df-detail .df-out { top: 0; width: auto; padding-top: 0; margin: 0 0 10px; color: var(--td-muted, #5f5f58); }
+  .df-detail .df-out:hover { color: var(--td-accent, #a23924); }
+  .df-pane-empty { display: block; margin: 0; padding-top: 32px; font: 0.9rem/1.5 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
+  .df-keys { max-width: none !important; grid-column: 1 / -1; display: none; gap: 8px 24px; margin: 0; padding: 12px 0; border-top: 1px solid var(--td-line, #dedbd2); font: 0.78rem/1.4 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
+  .df-keys kbd { font: 500 0.72rem/1 var(--td-mono, monospace); padding: 2px 5px; border: 1px solid var(--td-line, #dedbd2); border-radius: 3px; color: var(--td-ink, #1c1c1a); }
+}
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) { .df-keys { display: flex; flex-wrap: wrap; } }
+@keyframes df-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (min-width: 900px) and (prefers-reduced-motion: reduce) { .df-detail { animation: none; } }
+
+/* Mouse and trackpad: the feed hands the wheel back to the page at its first and last card. */
+@media (hover: hover) and (pointer: fine) {
+  .df-scroller { overscroll-behavior-y: auto; scroll-snap-type: none; }
+  .df-hint { display: none; }
+  .df-last .df-pane-empty { visibility: hidden; }
+}
