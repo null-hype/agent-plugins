@@ -1,0 +1,88 @@
+{
+  "recordingId": "yoars-5484",
+  "runId": "run1b",
+  "frames": [
+    {
+      "frameId": "f1",
+      "order": 0,
+      "actor": "agent",
+      "speaker": "Backend agent → UI agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "yoars-5484",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "Ledger message 5484, on scaling amounts:\n\n> worth scaled by gauge (hundredths/100, thousandth*1000, plain pass)"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "yoars-5484",
+        "kind": "scripted",
+        "scriptId": "yoars-5484/1",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f2",
+      "order": 1,
+      "actor": "agent",
+      "speaker": "UI agent · handoff only",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "yoars-5484",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "> **Unknown gauge value:** is the row passed through unscaled, dropped, or does it raise an error?\n\nIt guessed there was a gap, but it couldn't say which answer was right."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "yoars-5484",
+        "kind": "scripted",
+        "scriptId": "yoars-5484/2",
+        "disclosure": "homepage script"
+      }
+    },
+    {
+      "frameId": "f3",
+      "order": 2,
+      "actor": "agent",
+      "speaker": "UI agent · with delta-zero",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "yoars-5484",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "> **What happens with an empty gauge.** The code in `transform.py` says *\"'plain' (and '' before a drop) pass through unchanged.\"* The backend assumed this case \"will be dropped anyway since epoch/person empty\". The code doesn't do that. A key=value line with a valid person and time but a missing or unknown `u=` gets **kept, with `worth` not converted**.\n\n> **Next step:** reply to the backend that I can build from those six fields, but only once the empty-gauge and non-numeric-amount cases are settled.\n\n[Both replies, verbatim ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/AGENT-RUN.md)"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "yoars-5484",
+        "kind": "scripted",
+        "scriptId": "yoars-5484/3",
+        "disclosure": "homepage script"
+      }
+    }
+  ],
+  "evaluations": []
+}

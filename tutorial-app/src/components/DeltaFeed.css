@@ -80,3 +80,6 @@
   .df-hint { display: none; }
   .df-last .df-pane-empty { visibility: hidden; }
 }
+.ti-more { margin-top: 18px; font: 0.85rem/1.5 var(--td-sans, sans-serif); }
+.ti-more summary { cursor: pointer; color: var(--td-muted, #5f5f58); }
+.ti-more .df-transcript { font-size: 0.95rem; }

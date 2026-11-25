@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Transcript } from './DeltaFeed';
+import type { ReplayRecording } from '../lib/acpReplayContract';
 
 /** Résumé links carry ?r=<role> so the card can greet the reader and tag the request. */
 const ROLES: Record<string, string> = { openai: 'OpenAI', cognition: 'Cognition', sierra: 'Sierra', relevance: 'Relevance AI' };
 export const INVITE_FORM = 'thread-invite';
 
-export default function ThreadInvite() {
+/** `thread`: an optional thread shown in a fold after the ask, e.g. how this page was built. */
+export default function ThreadInvite({ thread }: { thread?: ReplayRecording }) {
   const [role, setRole] = useState('');
   const [contact, setContact] = useState('');
   const [honey, setHoney] = useState('');
@@ -45,6 +48,12 @@ export default function ThreadInvite() {
       )}
       {state === 'failed' && <p role="alert">That didn't go through. <a href={mail}>Email me instead</a>.</p>}
       <p className="ti-or">Or write to <a href="mailto:richard@tidelands.dev">richard@tidelands.dev</a> · <a href="https://www.linkedin.com/in/richardanthonydev/">LinkedIn ↗</a></p>
+      {thread && (
+        <details className="ti-more">
+          <summary>How I built this page with agents</summary>
+          <Transcript recording={thread} />
+        </details>
+      )}
     </div>
   );
 }

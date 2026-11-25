@@ -3,6 +3,7 @@ import { expect, waitFor } from 'storybook/test';
 import DeltaFeed from '../components/DeltaFeed';
 import homepage from '../feed/homepage.recording.json';
 import signalHierarchy from '../feed/signal-hierarchy.recording.json';
+import yoars5484 from '../feed/yoars-5484.recording.json';
 import ThreadInvite from '../components/ThreadInvite';
 import type { ReplayRecording } from '../lib/acpReplayContract';
 import '../components/Tidelands.css';
@@ -23,7 +24,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Homepage: Story = {
-  args: { recording: homepage as ReplayRecording, threads: { 'signal-hierarchy': signalHierarchy as ReplayRecording }, end: <ThreadInvite /> },
+  args: { recording: homepage as ReplayRecording, threads: { 'yoars-5484': yoars5484 as ReplayRecording }, end: <ThreadInvite thread={signalHierarchy as ReplayRecording} /> },
   play: async ({ canvas, userEvent }) => {
     for (let i = 0; i < 3; i++) await userEvent.click(canvas.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Want the full thread?' })).toBeVisible());

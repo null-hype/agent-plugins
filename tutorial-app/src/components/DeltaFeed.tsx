@@ -73,7 +73,7 @@ const scripted = (card: Card) => Boolean(card.detail || card.thread);
 const hasMore = (card: Card) => card.titles.length > 0 || scripted(card) || blocks(card.text).length > 1;
 
 /** A nested thread, read as a transcript: the "definition" behind a frame. */
-function Transcript({ recording }: { recording: ReplayRecording }) {
+export function Transcript({ recording }: { recording: ReplayRecording }) {
   return <ol className="df-transcript">{toCards(recording.frames).map((card) => (
     <li key={card.id} className={card.you ? 'df-you' : undefined}>
       <p className="df-speaker">{card.speaker}</p>

@@ -50,7 +50,7 @@
               "text": "A fourth case: a blank unit. The backend keeps the row and passes the value through unscaled. The handoff never says so.\n\n`# \"plain\" (and \"\" before a drop) pass through unchanged.`"
             },
             "_meta": {
-              "detail": "Two fresh agents got the same handoff.\n\nWith delta-zero's finding:\n\n> The backend assumed this case \"will be dropped anyway since epoch/person empty\". The code doesn't do that.\n\nWith the handoff text only:\n\n> is the row passed through unscaled, dropped, or does it raise an error?\n\nBoth paused. Only one could point at the line.\n\n[The source line ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-full.json) · [Both replies ↗](https://github.com/null-hype/agent-plugins/tree/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/agent-run)"
+              "detail": "Two fresh agents got the same handoff.\n\nWith delta-zero:\n\n> The backend assumed this case \"will be dropped anyway since epoch/person empty\". The code doesn't do that.\n\nWith the handoff text only:\n\n> is the row passed through unscaled, dropped, or does it raise an error?\n\nBoth paused. Only the one with delta-zero could point at the line, and it also found that a non-numeric amount crashes `normalize()`.\n\n[The source line ↗](https://github.com/null-hype/agent-plugins/blob/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/pairs/msg5484-full.json) · [Both replies ↗](https://github.com/null-hype/agent-plugins/tree/39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff/agent-run)"
             }
           }
         }
@@ -77,11 +77,11 @@
             "sessionUpdate": "user_message_chunk",
             "content": {
               "type": "text",
-              "text": "I built delta-zero to catch that. It checks each handoff against the conversation behind it and quotes what was dropped.\n\nI work with agents the same way on everything, and this page is a Delta thread too."
+              "text": "I built delta-zero to catch that. It checks each handoff against the conversation behind it and quotes what was dropped."
             },
             "_meta": {
-              "detail": "The thread where my agents and I designed this page, including the turn where I told them \"I see nothing like what I asked for\".",
-              "thread": "signal-hierarchy"
+              "detail": "The receiving agent on handoff 5484, run twice: once with the handoff text only, once with delta-zero.",
+              "thread": "yoars-5484"
             }
           }
         }

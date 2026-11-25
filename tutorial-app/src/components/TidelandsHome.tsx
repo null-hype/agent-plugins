@@ -1,6 +1,7 @@
 import DeltaFeed from './DeltaFeed';
 import homepage from '../feed/homepage.recording.json';
 import signalHierarchy from '../feed/signal-hierarchy.recording.json';
+import yoars5484 from '../feed/yoars-5484.recording.json';
 import ThreadInvite from './ThreadInvite';
 import type { ReplayRecording } from '../lib/acpReplayContract';
 import { TidelandsFooter, TidelandsHeader } from './TidelandsChrome';
@@ -14,7 +15,7 @@ export default function TidelandsHome() {
       <section className="td-section td-feed-hero" id="thread">
         <p className="td-eyebrow">Delta thread</p>
         <h2 id="thread-title" className="td-visually-hidden">Delta thread</h2>
-        <DeltaFeed recording={homepage as ReplayRecording} threads={{ 'signal-hierarchy': signalHierarchy as ReplayRecording }} end={<ThreadInvite />} />
+        <DeltaFeed recording={homepage as ReplayRecording} threads={{ 'yoars-5484': yoars5484 as ReplayRecording }} end={<ThreadInvite thread={signalHierarchy as ReplayRecording} />} />
       </section>
     </main>
     <TidelandsFooter />
