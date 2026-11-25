@@ -1,0 +1,25 @@
+---
+import TidelandsHome from '../components/TidelandsHome';
+import { Content as Essay } from '../home/drift-method.md';
+const title = 'How I debug multi-agent work | Richard Anthony Massey';
+const description = 'When one agent hands work to another, the summary can drop what the next agent needed. How I find what was dropped, with a worked example from a public four-agent run. Richard Anthony Massey, software engineer in Sydney.';
+const canonical = new URL('/drift-method/', Astro.site ?? 'https://www.tidelands.dev');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical.href} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical.href} />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body style="margin: 0"><TidelandsHome client:load><Essay /></TidelandsHome></body>
+</html>
