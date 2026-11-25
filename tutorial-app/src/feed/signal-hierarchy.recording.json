@@ -1,0 +1,463 @@
+{
+  "recordingId": "signal-hierarchy",
+  "runId": "homepage-feed",
+  "frames": [
+    {
+      "frameId": "f1",
+      "order": 0,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "can you imagine a tik-tok swipe up style navigation of debugger frames?"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFGGzkgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T05:52:59.973Z"
+      }
+    },
+    {
+      "frameId": "f2",
+      "order": 1,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "Yes. I’d borrow **one frame per swipe**, not the infinite feed. The visitor scrolls through a short, recorded debugging session, and every swipe answers the question raised by the previous frame.\n\n| Frame | What’s on screen |\n|---|---|\n| **1 · Handoff** | The actual message one agent left for the next. “It explains how values are scaled. What happens when the unit is missing?” |\n| **2 · Jump to source** | The exact source lines delta-zero surfaced, with the missing decision highlighted: a blank unit passes through unscaled. Keep the handoff excerpt one tap away so the visitor can compare. |\n| **3 · Receiver’s reply** | The actual reply from the separate comparison: the receiving agent quoted the missing decision and held off confirming. A short note says the original run still passed. |\n| **4 · Inspect or get in touch** | **Open the full trace**, **View résumé**, **Email Richard**. No autoplay into another case. |\n\nThe interaction I’d make distinctive: **swipe to advance the story; tap a finding to jump to evidence.** The swipe is the pacing; the source jump is the thing you’re demonstrating. If you blur them together, it becomes a slideshow about a debugger instead of a debugger someone gets to use.\n\nOn mobile, I’d use native vertical scrolling with gentle snap between frames, not custom swipe capture. Give each frame a visible **Next** button and progress like **2 of 4**, let longer excerpts scroll naturally, and make the evidence frame directly linkable. On desktop, the same sequence could keep the handoff visible alongside the active frame.\n\nI’d put **Replay a handoff** beside résumé and contact at the top of the homepage. Visitors can opt into the swipe experience without having to swipe past it to find you."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFGszkgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T05:52:59.975Z"
+      }
+    },
+    {
+      "frameId": "f3",
+      "order": 2,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "can you spawn a team of agents to spike something up?"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFGy8kgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T05:54:13.136Z"
+      }
+    },
+    {
+      "frameId": "f4",
+      "order": 3,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "tool_call",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "call_f89f0c6ca6234fcd9a78285c2b54d54f",
+            "title": "Subagent created: Spike swipeable handoff replay (worker · GPT-6.2-Sol)",
+            "status": "completed"
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFG0EkgHEEHdV30LSYEopg7tRJdoIbTHCAAE",
+        "capturedAt": "2026-11-25T05:54:13.138Z"
+      }
+    },
+    {
+      "frameId": "f5",
+      "order": 4,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "tool_call",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "call_6eb9b1e514234ae4b9d2ec86f3034621",
+            "title": "Subagent created: Check replay evidence and framing (scout · GPT-5.6-Luna)",
+            "status": "completed"
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFG1ckgHEEHdV30LSYEopg7tRJdoIbTHCAAE",
+        "capturedAt": "2026-11-25T05:54:13.138Z"
+      }
+    },
+    {
+      "frameId": "f6",
+      "order": 5,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "tool_call",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "call_1af5996822d642fa814de1aed96f5dee",
+            "title": "Subagent created: Pressure-test mobile replay navigation (scout · GPT-5.6-Luna)",
+            "status": "completed"
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFG27kgHEEHdV30LSYEopg7tRJdoIbTHCAAE",
+        "capturedAt": "2026-11-25T05:54:13.138Z"
+      }
+    },
+    {
+      "frameId": "f7",
+      "order": 6,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "i might add that an actual editor might be redundant at this point, since it's just animation between text markup, like code-hike"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFG2hkgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T05:55:15.809Z"
+      }
+    },
+    {
+      "frameId": "f8",
+      "order": 7,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "The spike will use **read-only, Code Hike–style markup**, not a live editor. Swiping advances the replay; tapping a finding jumps to the exact source lines. That preserves the debugger interaction without adding editing controls or an editor dependency. I’ve passed that direction to the implementation agent."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFHj5kgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after",
+        "capturedAt": "2026-11-25T05:55:15.811Z"
+      }
+    },
+    {
+      "frameId": "f9",
+      "order": 8,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "The team built a [swipeable handoff replay](https://github.com/null-hype/agent-plugins/pull/425). [Open the Netlify preview at `/handoff-replay/`](https://deploy-preview-425--playwright-report-viewer.netlify.app/handoff-replay/) once the [build](https://app.netlify.com/projects/playwright-report-viewer/deploys/6b0679ad6438ac05db105fe3) finishes. It was still pending when I checked.\n\nThe spike uses four read-only frames, not an editor: **Handoff → Missing decision → Both agent replies → Full trace and contact**. Swipe to advance or use Back/Next. The excerpts link to the recorded evidence, and the replay distinguishes the original run, which passed, from the separate comparison. The page adds about **1 kB of JavaScript** and no editor library.\n\nThe team verified the Astro build, an emulated mobile swipe, desktop keyboard navigation, and reduced motion in Chromium. The standard build was blocked locally by missing `pkl`. A physical-phone cold read is still the next useful check: **Can someone say what Richard built and what difference it made without an introduction?**\n\nThe spike is independent of [#424](https://github.com/null-hype/agent-plugins/pull/424); neither was merged or deployed to production. Separately, the résumé’s write-up URL still returns **404**. Before sending the PDFs, either deploy #424 or use the [verified GitHub write-up](https://github.com/null-hype/agent-plugins/blob/delta-zero/docs/drift-method.md) as the fallback."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFJBJkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after",
+        "capturedAt": "2026-11-25T06:00:35.205Z"
+      }
+    },
+    {
+      "frameId": "f10",
+      "order": 9,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "sorry, what did you change? i see nothing like what i asked for"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFJHZkgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T06:04:58.947Z"
+      }
+    },
+    {
+      "frameId": "f11",
+      "order": 10,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "I changed **one standalone page**, not the homepage. The homepage and the preview for PR #424 won’t show it. I should have made that distinction clearer.\n\nThe [replay preview](https://deploy-preview-425--playwright-report-viewer.netlify.app/handoff-replay/) is now live at `/handoff-replay/`. On a phone, it scrolls through four read-only frames with gentle snapping. **It’s closer to a snap-scrolling article than to a TikTok-style debugger**: each step is a separate section, not a single persistent view that animates as you swipe. Nothing changed on the production site.\n\nI’d revise it into a compact replay embedded below **Work together**: the same evidence panel stays in place while each swipe changes what’s highlighted. Tapping a finding still jumps straight to the source, and Back/Next still work without gestures. No editor library needed."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFJIvkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after",
+        "capturedAt": "2026-11-25T06:04:58.955Z"
+      }
+    },
+    {
+      "frameId": "f12",
+      "order": 11,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "[Try the revised replay on your phone](https://p-agrayzptpd4kdzbvs3w2ytmap4-4412.delta.build/handoff-replay/). It’s now one decision, not a tour: **can you tell from the handoff what happens when the unit is blank?**\n\nSwipe **right** or tap **View source** to reveal the recorded line. Swipe **left** or tap **Back to handoff** to close it without advancing. Swipe **up** or tap **Step forward** to compare the two receiving-agent replies; swipe **down** to return. Both agents noticed the gap. The one with delta-zero could quote the omitted decision.\n\nI tested the gestures and buttons in a 360 px touch-enabled Chromium viewport. The horizontal round trip kept the highlighted phrase in place, and the step buttons returned to the top in a separate check. I haven’t tested on a physical phone. This is a Cloud Runner preview only; I didn’t push the revision or change production.\n\nAfter trying it: **would you forward this as-is to a hiring manager, or does the payoff still need explaining?**"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFKkTkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after",
+        "capturedAt": "2026-11-25T06:28:57.672Z"
+      }
+    },
+    {
+      "frameId": "f13",
+      "order": 12,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "I want to try having only sufficient information to entice them into viewing a public delta thread. then the thread can be hold all the state"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFLqFkgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T07:04:16.646Z"
+      }
+    },
+    {
+      "frameId": "f14",
+      "order": 13,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "it occurs to me that the delta ui is a lot like storybook, or could be. (nested) threads are just stories and groups... storybook as a trace replayer... and storybook is mobile friendly, plus you can always jjust deploy a story..."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFMBgkgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T07:57:31.770Z"
+      }
+    },
+    {
+      "frameId": "f15",
+      "order": 14,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "Yes. **Delta is where the work happens; Storybook is where you can publish a replay of it.** That gives you a way around the invite problem without rebuilding Delta as a public website.\n\nThe mapping I’d use:\n\n| Delta | Storybook |\n|---|---|\n| A project or thread tree | A group of related cases |\n| A thread worth showing | One shareable story |\n| A meaningful point in the conversation | A step *inside* the story |\n| A jump to source evidence | An inline reveal or a link to another story when the evidence deserves its own page |\n\nThe distinction I’d keep is **one thread per story, not one turn per story**. You want a hiring manager to open one link and follow the handoff in order, not learn a sidebar taxonomy. Link directly to the rendered story without the Storybook manager chrome; keep the grouped sidebar for people who want to browse. Storybook gives you the deployable shell and viewport tooling, but the replay itself still needs to work well on a phone.\n\nFor the first experiment, I’d turn **handoff `5484`** into one story using the existing read-only excerpts: **read the handoff → inspect what it left out → compare the two replies**. Tidelands only needs the hook and a **View the recorded handoff** link. No login, no editor, no trace-import machinery yet.\n\nThe boundary I’d be strict about: **publish a reviewed selection, not a private thread export**. A static Storybook build makes its bundled data public whether or not the UI shows it. Keep the full working state in Delta and build the story from explicitly approved excerpts. If that first story is something you’d forward, then it’s worth automating the projection for the next one."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFMFokgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after",
+        "capturedAt": "2026-11-25T07:57:31.771Z"
+      }
+    },
+    {
+      "frameId": "f16",
+      "order": 15,
+      "actor": "client",
+      "speaker": "Richard",
+      "action": "user_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "And how about using storybook to like... be an API for delta. intead of delta > export > storybook. like ?args=append.frame:[encoded_acp_frame]"
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFMLjkgHEEGzoxczf90RxhvxQtIrS1IzCAAA",
+        "capturedAt": "2026-11-25T08:04:20.343Z"
+      }
+    },
+    {
+      "frameId": "f17",
+      "order": 16,
+      "actor": "agent",
+      "speaker": "Agent",
+      "action": "agent_message",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+              "type": "text",
+              "text": "Yes. I’d make **the replay component accept ACP frames directly**, and let Storybook be one way to drive it. Then there’s no separate “turn this thread into a story” export step: one generic replay story renders whatever approved trace it’s given.\n\nI’d split it into two ways of feeding the same component:\n\n- **Share a replay:** `iframe.html?id=delta-replay--default&trace=handoff-5484&step=2`. The story fetches an approved trace and opens at step 2. A hiring manager can forward that exact moment.\n- **Drive a live preview from Delta:** load the same story in an iframe, then send it a message like `{ type: \"trace.append\", frame }`. The viewer validates the frame and updates in place, without reloading or writing a new story. If the frame carries a finding, the same viewer can show the jump to source.\n\nYour `?args=append.frame:[encoded_acp_frame]` idea is a good **smoke test**: can I feed one frame to a generic story and see it render? I wouldn’t make it the long-term interface. Storybook args describe what to render; `append` is an action. Refreshing a URL should restore a view, not replay a mutation. Raw frames also grow quickly and can leak into browser history or logs. Use the URL for **which trace and where to start**, and messages for **what just happened**.\n\nFor the spike, I’d build **one story, one approved frame sequence, and one small driver that appends a frame**. If the same story can open at a shareable step *and* accept the next frame live, you’ve proved the useful part: Storybook is a viewer Delta can drive, not a second place to author the trace."
+            }
+          }
+        }
+      },
+      "provenance": {
+        "recordingId": "signal-hierarchy",
+        "kind": "recorded",
+        "captureId": "ksQQ2q0r8MqLQNSobTWjaBFbOJLOABRciJIBxBBs6MXM3_dEcYb8ULSK0tSM/kgKTkgCSAcQBAJKSks4AFMOZkgHEEHdV30LSYEopg7tRJdoIbTHCAAE:after",
+        "capturedAt": "2026-11-25T08:04:20.345Z"
+      }
+    }
+  ],
+  "evaluations": []
+}
