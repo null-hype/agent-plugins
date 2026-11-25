@@ -1,8 +1,11 @@
 ---
+import HandoffSourceExcerpt from '../components/HandoffSourceExcerpt.astro';
+
 const revision = 'https://github.com/null-hype/agent-plugins';
 const path = '39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff';
 const source = `${revision}/blob/${path}`;
 const trace = `${revision}/tree/${path}`;
+const sourceExcerpt = `${source}/pairs/msg5484-full.json`;
 ---
 
 <!doctype html>
@@ -32,23 +35,24 @@ const trace = `${revision}/tree/${path}`;
         <div class="frame">
           <p class="label">01 / Handoff · Backend → UI</p>
           <h1 id="handoff">The message names three cases.</h1>
-          <p>The backend agent tells the UI agent how it normalized values in a data pipeline.</p>
+          <p>I built delta-zero to show what agent handoffs leave out. This one says how to scale a value by its unit. What happens when the unit is missing?</p>
           <figure>
             <blockquote>worth scaled by gauge (hundredths/100, thousandth*1000, plain pass)</blockquote>
             <figcaption><a href={`${source}/pairs/msg5484-summarize.json#L16`}>Backend · ledger message 5484</a></figcaption>
           </figure>
-          <p class="hint">Swipe up or scroll to see what the message left out.</p>
+          <details>
+            <summary>Peek source</summary>
+            <HandoffSourceExcerpt href={sourceExcerpt} />
+          </details>
+          <p class="hint">Swipe up or select Next to step into the source.</p>
         </div>
       </section>
 
       <section aria-labelledby="sender-source">
         <div class="frame">
           <p class="label">02 / Source · Backend session</p>
-          <h2 id="sender-source">The sender considered a fourth.</h2>
-          <figure>
-            <blockquote><mark>gauge <code>""</code> → ?</mark> (empty line case, will be dropped anyway since epoch/person empty)</blockquote>
-            <figcaption><a href={`${source}/out-5484/.witness/run/evidence/m35-dropped.txt#L53-L57`}>Backend · session excerpt, finding m35</a></figcaption>
-          </figure>
+          <h2 id="sender-source">A missing unit passes through unscaled.</h2>
+          <HandoffSourceExcerpt href={sourceExcerpt} />
           <p>Reading the code shows that a row with a valid person and time but a missing or unknown unit is kept, with its value unscaled. The handoff never says so.</p>
         </div>
       </section>
@@ -99,14 +103,14 @@ const trace = `${revision}/tree/${path}`;
     const index = frames.findIndex((frame) => frame.getBoundingClientRect().bottom > middle);
     if (index < 0 || index === current) return;
     current = index;
-    progress.textContent = `Frame ${current + 1} / ${frames.length}`;
+    progress.textContent = `Step ${current + 1} / ${frames.length}`;
     previous.setAttribute('aria-disabled', String(current === 0));
     next.textContent = current === frames.length - 1 ? 'Replay ↺' : 'Next ↓';
     // Tab from the sticky controls into the visible frame, not back to frame 1.
     frames.forEach((frame, i) => {
       frame.classList.toggle('current', i === current);
-      frame.querySelectorAll('a').forEach((link) => {
-        link.tabIndex = i === current ? 0 : -1;
+      frame.querySelectorAll<HTMLElement>('a, summary').forEach((control) => {
+        control.tabIndex = i === current ? 0 : -1;
       });
     });
   }
