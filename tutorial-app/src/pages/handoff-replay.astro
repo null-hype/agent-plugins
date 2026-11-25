@@ -1,0 +1,226 @@
+---
+import HandoffSourceExcerpt from '../components/HandoffSourceExcerpt.astro';
+
+const revision = 'https://github.com/null-hype/agent-plugins';
+const path = '39e328c5206642c1de53bca42f7014b93c9a3602/examples/yoars-handoff';
+const source = `${revision}/blob/${path}`;
+const trace = `${revision}/tree/${path}`;
+const sourceExcerpt = `${source}/pairs/msg5484-full.json`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Replay a missing decision in a public agent handoff, one frame at a time." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Handoff replay · Tidelands</title>
+  </head>
+  <body>
+    <header>
+      <div class="bar">
+        <a href="/">Tidelands</a>
+        <span>Handoff replay / #5484</span>
+      </div>
+      <nav class="bar" aria-label="Replay controls" hidden>
+        <button type="button" id="previous" aria-controls="replay">↑ Back</button>
+        <span id="progress" role="status"></span>
+        <button type="button" id="next" aria-controls="replay">Next ↓</button>
+      </nav>
+    </header>
+
+    <main id="replay">
+      <section aria-labelledby="handoff">
+        <div class="frame">
+          <p class="label">01 / Handoff · Backend → UI</p>
+          <h1 id="handoff">The message names three cases.</h1>
+          <p>I built delta-zero to show what agent handoffs leave out. This one says how to scale a value by its unit. What happens when the unit is missing?</p>
+          <figure>
+            <blockquote>worth scaled by gauge (hundredths/100, thousandth*1000, plain pass)</blockquote>
+            <figcaption><a href={`${source}/pairs/msg5484-summarize.json#L16`}>Backend · ledger message 5484</a></figcaption>
+          </figure>
+          <details>
+            <summary>Peek source</summary>
+            <HandoffSourceExcerpt href={sourceExcerpt} />
+          </details>
+          <p class="hint">Swipe up or select Next to step into the source.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="sender-source">
+        <div class="frame">
+          <p class="label">02 / Source · Backend session</p>
+          <h2 id="sender-source">A missing unit passes through unscaled.</h2>
+          <HandoffSourceExcerpt href={sourceExcerpt} />
+          <p>Reading the code shows that a row with a valid person and time but a missing or unknown unit is kept, with its value unscaled. The handoff never says so.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="receiver">
+        <div class="frame">
+          <p class="label">03 / Receiver reply · Separate comparison</p>
+          <h2 id="receiver">Both paused. Only one had the evidence.</h2>
+          <figure>
+            <blockquote>The backend assumed this case "will be dropped anyway since epoch/person empty". The code doesn't do that.</blockquote>
+            <figcaption><a href={`${source}/agent-run/run1b-with.txt#L11`}>Claude · with delta-zero and the sender session</a></figcaption>
+          </figure>
+          <figure>
+            <blockquote>is the row passed through unscaled, dropped, or does it raise an error?</blockquote>
+            <figcaption><a href={`${source}/agent-run/run1b-without.txt#L25`}>Claude · handoff text only</a></figcaption>
+          </figure>
+          <p class="hint">One run per condition. This was not the original UI agent’s reply.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="outcome">
+        <div class="frame">
+          <p class="label">04 / Outcome · Original YOARS run</p>
+          <h2 id="outcome">The original run passed 6/6.</h2>
+          <p>The acceptance checks didn’t exercise the empty-unit case. The missing decision was a latent gap, not a failure observed in the original run.</p>
+          <ul class="links">
+            <li><a href={trace}>Open the full case trace on GitHub ↗</a></li>
+            <li><a href={`${source}/AGENT-RUN.md`}>Read the separate receiver comparison ↗</a></li>
+            <li><a href="mailto:richard@tidelands.dev">Contact Richard</a></li>
+          </ul>
+          <p class="hint">Original excerpts: <a href="https://zenodo.org/records/23755352">YOARS corpus, run deepseek-flash-225035</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Source material was flattened and trimmed by the delta-zero example; the quotes here are selections.</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+
+<script>
+  const header = document.querySelector('header')!;
+  const frames = [...document.querySelectorAll('#replay section')];
+  const progress = document.querySelector<HTMLElement>('#progress')!;
+  const previous = document.querySelector<HTMLButtonElement>('#previous')!;
+  const next = document.querySelector<HTMLButtonElement>('#next')!;
+  let current = -1;
+
+  function updateProgress() {
+    const middle = (header.offsetHeight + window.innerHeight) / 2;
+    const index = frames.findIndex((frame) => frame.getBoundingClientRect().bottom > middle);
+    if (index < 0 || index === current) return;
+    current = index;
+    progress.textContent = `Step ${current + 1} / ${frames.length}`;
+    previous.setAttribute('aria-disabled', String(current === 0));
+    next.textContent = current === frames.length - 1 ? 'Replay ↺' : 'Next ↓';
+    // Tab from the sticky controls into the visible frame, not back to frame 1.
+    frames.forEach((frame, i) => {
+      frame.classList.toggle('current', i === current);
+      frame.querySelectorAll<HTMLElement>('a, summary').forEach((control) => {
+        control.tabIndex = i === current ? 0 : -1;
+      });
+    });
+  }
+
+  function goTo(index: number) {
+    frames[index]?.scrollIntoView({ block: 'start' });
+  }
+
+  function updateLayout() {
+    document.documentElement.style.setProperty('--replay-header', `${header.offsetHeight}px`);
+    updateProgress();
+  }
+
+  previous.addEventListener('click', () => goTo(current - 1));
+  next.addEventListener('click', () => goTo((current + 1) % frames.length));
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  window.addEventListener('resize', updateProgress);
+  new ResizeObserver(updateLayout).observe(header);
+  next.closest('nav')!.hidden = false;
+  updateLayout();
+</script>
+
+<style>
+  :global(html) {
+    scroll-snap-type: y proximity;
+    scroll-padding-top: var(--replay-header, 3rem);
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: 0;
+    background: #11161d;
+    color: #edf3f9;
+    font: 1rem/1.5 system-ui, sans-serif;
+  }
+  header { position: sticky; top: 0; z-index: 1; }
+  a { color: #a0e9d5; text-underline-offset: .2em; }
+  :focus-visible { outline: 2px solid #f9d77c; outline-offset: 3px; }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .5rem clamp(.8rem, 4vw, 3rem);
+    background: #1a222c;
+    color: #c1cede;
+    font: .8rem/1.4 ui-monospace, monospace;
+  }
+  .bar[hidden] { display: none; }
+  section {
+    min-height: calc(100vh - var(--replay-header, 3rem));
+    min-height: calc(100svh - var(--replay-header, 3rem));
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    padding: clamp(1rem, 4vw, 3rem);
+    scroll-snap-align: start;
+  }
+  section:nth-child(even) { background: #151e27; }
+  .frame { width: min(100%, 38rem); }
+  .label {
+    margin: 0;
+    color: #a0e9d5;
+    font: .8rem/1.4 ui-monospace, monospace;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+  h1, h2 {
+    margin: .45rem 0 .75rem;
+    font-size: clamp(1.9rem, 5vw, 3.6rem);
+    line-height: 1.06;
+    letter-spacing: -.035em;
+    text-wrap: balance;
+  }
+  p { margin: .75rem 0; }
+  figure {
+    margin: .75rem 0;
+    border-left: 3px solid #6fcfb6;
+    border-radius: 0 .5rem .5rem 0;
+    padding: .65rem .85rem;
+    background: #202b36;
+  }
+  blockquote { margin: 0; overflow-wrap: anywhere; }
+  figcaption, .hint { color: #c1cede; font-size: .85rem; }
+  figcaption { margin-top: .35rem; }
+  mark { background: #f9d77c; color: #211907; padding: .08em .2em; }
+  .current mark { animation: highlight-in .3s ease-out; }
+  @keyframes highlight-in {
+    from { background: #202b36; color: #f9d77c; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :global(html) { scroll-behavior: auto; scroll-snap-type: none; }
+    .current mark { animation: none; }
+  }
+  .links {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: .65rem;
+  }
+  button {
+    min-height: 44px;
+    min-width: 5.5rem;
+    border: 1px solid #899caf;
+    border-radius: .45rem;
+    padding: .45rem .7rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  button[aria-disabled="true"] { opacity: .55; cursor: default; }
+  #next { background: #a0e9d5; color: #11161d; border-color: transparent; }
+</style>
