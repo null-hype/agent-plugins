@@ -27,7 +27,7 @@ export const Homepage: Story = {
   args: { recording: homepage as ReplayRecording, threads: { 'yoars-5484': yoars5484 as ReplayRecording }, end: <ThreadInvite thread={signalHierarchy as ReplayRecording} /> },
   play: async ({ canvas, userEvent }) => {
     for (let i = 0; i < 3; i++) await userEvent.click(canvas.getByRole('button', { name: 'Next' }));
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Want the full thread?' })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'See it on the whole run.' })).toBeVisible());
   },
 };
 

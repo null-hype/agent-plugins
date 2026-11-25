@@ -45,7 +45,7 @@ test('logged-out journey: three swipes from the hook to the invite', async ({ pa
   await expect(feed.getByText('What did the handoff leave out?', { exact: false })).toBeVisible();
   for (let i = 0; i < 3; i++) await feed.getByRole('button', { name: 'Next' }).click();
   await expect(page).toHaveURL(/[?&]frame=end/);
-  await expect(feed.getByRole('heading', { name: 'Want the full thread?' })).toBeVisible();
+  await expect(feed.getByRole('heading', { name: 'See it on the whole run.' })).toBeVisible();
   await expect(feed.getByText('Thanks for reading my OpenAI application.')).toBeVisible();
   await expect(feed.getByRole('textbox', { name: 'Email or Delta username' })).toBeVisible();
   await expect(page.locator('form[name="thread-invite"][data-netlify="true"]')).toHaveCount(1);

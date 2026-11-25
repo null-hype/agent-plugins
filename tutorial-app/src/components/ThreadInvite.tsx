@@ -34,16 +34,16 @@ export default function ThreadInvite({ thread }: { thread?: ReplayRecording }) {
     <div className="ti">
       <p className="df-speaker df-you-speaker">Richard</p>
       {company && <p className="ti-hello">Thanks for reading my {company} application.</p>}
-      <h2 className="ti-title">Want the full thread?</h2>
-      <p>It's in Delta, with the forks, the subagents and the wrong turns. Leave your email or Delta username and I'll invite you.</p>
+      <h2 className="ti-title">See it on the whole run.</h2>
+      <p>Join Delta and I'll share the YOARS run, rehydrated, with every delta-zero finding you can open in VS Code. Leave your email or Delta username.</p>
       {/* The live region stays mounted so the confirmation is announced when it fills. */}
-      <div role="status">{state === 'sent' && <p className="ti-done">Thanks. I'll send you the invite.</p>}</div>
+      <div role="status">{state === 'sent' && <p className="ti-done">Thanks. Your invite is on its way.</p>}</div>
       {state !== 'sent' && (
         <form className="ti-form" onSubmit={submit}>
           <label htmlFor="ti-contact" className="ti-label">Email or Delta username</label>
           <input id="ti-contact" name="contact" required autoComplete="email" placeholder="you@company.com" value={contact} onChange={(e) => setContact(e.target.value)} />
           <p hidden><label>Leave this empty <input name="bot-field" tabIndex={-1} autoComplete="off" value={honey} onChange={(e) => setHoney(e.target.value)} /></label></p>
-          <button type="submit" className="td-button" disabled={state === 'sending'}>{state === 'sending' ? 'Sending…' : 'Send me the thread'}</button>
+          <button type="submit" className="td-button" disabled={state === 'sending'}>{state === 'sending' ? 'Sending…' : 'Invite me'}</button>
         </form>
       )}
       {state === 'failed' && <p role="alert">That didn't go through. <a href={mail}>Email me instead</a>.</p>}

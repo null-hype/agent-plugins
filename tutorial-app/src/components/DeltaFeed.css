@@ -64,7 +64,7 @@
   .df-reading .df-pane, .df-pane { display: block; position: static; height: var(--df-h); overflow-y: auto; overscroll-behavior: auto; background: none; border-left: 1px solid var(--td-line, #dedbd2); padding-left: 40px; scrollbar-width: thin; }
   .df-pane .df-speaker { margin-top: 12px; }
   .df-detail { padding: 28px 0 64px; animation: df-fade 160ms ease-out; }
-  .df-detail .df-out { top: 0; width: auto; padding-top: 0; margin: 0 0 10px; color: var(--td-muted, #5f5f58); }
+  .df-detail .df-out { top: 0; z-index: 1; width: 100%; padding-top: 4px; padding-bottom: 8px; background: var(--td-paper, #fbfaf7); margin: 0 0 10px; color: var(--td-muted, #5f5f58); }
   .df-detail .df-out:hover { color: var(--td-accent, #a23924); }
   .df-pane-empty { display: block; margin: 0; padding-top: 32px; font: 0.9rem/1.5 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
   .df-keys { max-width: none !important; grid-column: 1 / -1; display: none; gap: 8px 24px; margin: 0; padding: 12px 0; border-top: 1px solid var(--td-line, #dedbd2); font: 0.78rem/1.4 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
@@ -83,3 +83,5 @@
 .ti-more { margin-top: 18px; font: 0.85rem/1.5 var(--td-sans, sans-serif); }
 .ti-more summary { cursor: pointer; color: var(--td-muted, #5f5f58); }
 .ti-more .df-transcript { font-size: 0.95rem; }
+.df-shot { display: block; margin: 0 0 0.8em; }
+.df-shot img { display: block; width: 100%; height: auto; border: 1px solid var(--td-line, #dedbd2); }

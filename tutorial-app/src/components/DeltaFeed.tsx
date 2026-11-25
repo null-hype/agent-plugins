@@ -33,13 +33,14 @@ function toCards(frames: readonly ReplayFrame[]): Card[] {
 
 function inline(text: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const pattern = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)/g;
+  const pattern = /!\[([^\]]*)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)/g;
   let at = 0;
   for (const m of text.matchAll(pattern)) {
     if (m.index! > at) out.push(text.slice(at, m.index));
-    if (m[1]) out.push(<strong key={m.index}>{inline(m[1])}</strong>);
-    else if (m[2]) out.push(<code key={m.index}>{m[2]}</code>);
-    else out.push(/^https?:/.test(m[4]) ? <a key={m.index} href={m[4]} target="_blank" rel="noreferrer">{inline(m[3])}</a> : <span key={m.index}>{inline(m[3])}</span>);
+    if (m[2]) out.push(<a key={m.index} className="df-shot" href={m[2]} target="_blank" rel="noreferrer"><img src={m[2]} alt={m[1]} loading="lazy" /></a>);
+    else if (m[3]) out.push(<strong key={m.index}>{inline(m[3])}</strong>);
+    else if (m[4]) out.push(<code key={m.index}>{m[4]}</code>);
+    else out.push(/^(https?:|\/)/.test(m[6]) ? <a key={m.index} href={m[6]} target="_blank" rel="noreferrer">{inline(m[5])}</a> : <span key={m.index}>{inline(m[5])}</span>);
     at = m.index! + m[0].length;
   }
   if (at < text.length) out.push(text.slice(at));
