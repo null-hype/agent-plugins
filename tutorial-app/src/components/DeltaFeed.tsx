@@ -1,16 +1,15 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode, type TouchEvent } from 'react';
-import { AcpReplayController } from '../lib/acpReplayController';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { validateReplayRecording, type ReplayFrame, type ReplayRecording } from '../lib/acpReplayContract';
 import './DeltaFeed.css';
 
 /**
- * A Delta thread as a feed: swipe up/down to step through it, right to step
- * into a frame, left to back out. Native scroll does the vertical motion;
- * only the horizontal gesture is ours.
+ * A Delta thread as a page: each step is a section in normal document flow,
+ * so the page is the only thing that scrolls. Frames marked `_meta.beside`
+ * share a step with the frame before them (side by side on wide screens).
  */
 
-type Update = { sessionUpdate: string; title?: string; content?: { text?: string }; _meta?: { detail?: string; thread?: string } };
-type Card = { id: string; frames: ReplayFrame[]; speaker: string; you: boolean; text: string; titles: string[]; detail?: string; thread?: string };
+type Update = { sessionUpdate: string; title?: string; content?: { text?: string }; _meta?: { beside?: boolean } };
+type Card = { id: string; frames: ReplayFrame[]; speaker: string; you: boolean; text: string; titles: string[]; beside?: boolean };
 
 const updateOf = (frame: ReplayFrame) => (frame.envelope.params as { update: Update }).update;
 
@@ -24,7 +23,7 @@ function toCards(frames: readonly ReplayFrame[]): Card[] {
       cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? 'Agent', you: false, text: '', titles: [update.title ?? ''] });
       continue;
     }
-    cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? '', you: frame.actor === 'client', text: update.content?.text ?? '', titles: [], detail: update._meta?.detail, thread: update._meta?.thread });
+    cards.push({ id: frame.frameId, frames: [frame], speaker: frame.speaker ?? '', you: frame.actor === 'client', text: update.content?.text ?? '', titles: [], beside: update._meta?.beside });
   }
   return cards;
 }
@@ -56,7 +55,7 @@ function Block({ source }: { source: string }) {
   if (lines.every((l) => l.trim().startsWith('|'))) {
     const rows = lines.filter((l) => !/^\|[\s|:-]+\|$/.test(l.trim())).map((l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()));
     const [head, ...body] = rows;
-    return <div className="df-table"><table><thead><tr>{head.map((c, i) => <th key={i}>{inline(c)}</th>)}</tr></thead><tbody>{body.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{inline(c)}</td>)}</tr>)}</tbody></table></div>;
+    return <table><thead><tr>{head.map((c, i) => <th key={i}>{inline(c)}</th>)}</tr></thead><tbody>{body.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{inline(c)}</td>)}</tr>)}</tbody></table>;
   }
   if (lines.every((l) => /^(\s*[-*]|\s*\d+\.)\s/.test(l))) {
     const ordered = /^\s*\d+\./.test(lines[0]);
@@ -68,51 +67,33 @@ function Block({ source }: { source: string }) {
   return <p>{lines.map((l, i) => <Fragment key={i}>{i > 0 && ' '}{inline(l)}</Fragment>)}</p>;
 }
 
+
 const Markdown = ({ text }: { text: string }) => <>{blocks(text).map((b, i) => <Block key={i} source={b} />)}</>;
 
-const scripted = (card: Card) => Boolean(card.detail || card.thread);
-const hasMore = (card: Card) => card.titles.length > 0 || scripted(card) || blocks(card.text).length > 1;
-
-/** A nested thread, read as a transcript: the "definition" behind a frame. */
-export function Transcript({ recording }: { recording: ReplayRecording }) {
-  return <ol className="df-transcript">{toCards(recording.frames).map((card) => (
-    <li key={card.id} className={card.you ? 'df-you' : undefined}>
+function Message({ card }: { card: Card }) {
+  return (
+    <div className={`df-msg${card.you ? ' df-you' : ''}`}>
       <p className="df-speaker">{card.speaker}</p>
-      {card.titles.length ? <p className="df-tools">{card.titles.join(' · ')}</p> : <Markdown text={card.text} />}
-    </li>
-  ))}</ol>;
+      {card.titles.length ? <ol className="df-tools">{card.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={card.text} />}
+    </div>
+  );
 }
 
 type Props = {
   recording: ReplayRecording;
+  /** Scroll to this frame on load; defaults to `?frame=` (or `end`). */
   initialFrameId?: string;
-  /** Recordings a frame can step into, by recordingId (`_meta.thread`). */
-  threads?: Record<string, ReplayRecording>;
-  /** A last card after the frames, e.g. the contact form. Its frame id is `end`. */
+  /** A last step after the frames, e.g. the contact form. Its id is `end`. */
   end?: ReactNode;
 };
 
-export default function DeltaFeed({ recording: initial, initialFrameId, threads = {}, end }: Props) {
+export default function DeltaFeed({ recording: initial, initialFrameId, end }: Props) {
   const [recording, setRecording] = useState(initial);
-  const controller = useMemo(() => new AcpReplayController(recording), [recording]);
-  const cards = useMemo(() => toCards(recording.frames), [recording]);
-  const [active, setActive] = useState(0);
-  const [open, setOpen] = useState<number | null>(null);
-  const scroller = useRef<HTMLDivElement>(null);
-  const rootRef = useRef<HTMLElement>(null);
-  const touch = useRef<{ x: number; y: number } | null>(null);
-  // Wide screens show the detail beside the frame, so it can follow as you step through.
-  const [split, setSplit] = useState(false);
-  const [fine, setFine] = useState(false);
-  const splitRef = useRef(false);
-  useEffect(() => {
-    const wide = window.matchMedia('(min-width: 900px)');
-    const pointer = window.matchMedia('(hover: hover) and (pointer: fine)');
-    const sync = () => { splitRef.current = wide.matches; setSplit(wide.matches); setFine(pointer.matches); };
-    sync();
-    wide.addEventListener('change', sync); pointer.addEventListener('change', sync);
-    return () => { wide.removeEventListener('change', sync); pointer.removeEventListener('change', sync); };
-  }, []);
+  const steps = useMemo(() => {
+    const out: Card[][] = [];
+    for (const card of toCards(recording.frames)) card.beside && out.length ? out[out.length - 1].push(card) : out.push([card]);
+    return out;
+  }, [recording]);
   const invalid = validateReplayRecording(recording);
 
   // Live preview: a driver (Storybook, a dev relay on `delta thread watch`) can append frames.
@@ -126,123 +107,26 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
     return () => window.removeEventListener('message', onMessage);
   }, []);
 
-  // Open at ?frame= (or the given frame), then keep the URL on the visible frame.
+  // Deep links: ?frame=<id> (and #<id>) open at that step.
   useEffect(() => {
     const wanted = initialFrameId ?? new URLSearchParams(window.location.search).get('frame');
-    const index = wanted === 'end' && end ? cards.length : wanted ? cards.findIndex((c) => c.frames.some((f) => f.frameId === wanted)) : -1;
-    if (index > 0) scroller.current?.children[index]?.scrollIntoView({ block: 'start' });
+    if (wanted) document.getElementById(wanted)?.scrollIntoView({ block: 'start' });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const root = scroller.current;
-    if (!root) return;
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        const index = Number((entry.target as HTMLElement).dataset.index);
-        setActive(index);
-        setOpen((prev) => (prev === index ? prev : prev !== null && splitRef.current && cards[index] && hasMore(cards[index]) ? index : null));
-        const id = cards[index]?.id ?? 'end';
-        if (cards[index]) controller.seek(id);
-        if (index > 0 || new URLSearchParams(window.location.search).has('frame')) {
-          const url = new URL(window.location.href);
-          url.searchParams.set('frame', id);
-          window.history.replaceState(window.history.state, '', url);
-        }
-      }
-    }, { root, threshold: 0.6 });
-    for (const child of Array.from(root.children)) observer.observe(child);
-    return () => observer.disconnect();
-  }, [cards, controller]);
-
-  // Focus follows the detail: into it on open, back to the frame's "Step in" (or the feed) on close.
-  const wasOpen = useRef<number | null>(null);
-  useEffect(() => {
-    const root = scroller.current;
-    if (open !== null) {
-      rootRef.current?.querySelector<HTMLElement>('.df-pane .df-out')?.focus({ preventScroll: true });
-    } else if (wasOpen.current !== null && wasOpen.current === active && (!document.activeElement || document.activeElement === document.body)) {
-      (root?.children[wasOpen.current]?.querySelector<HTMLElement>('.df-in') ?? rootRef.current)?.focus({ preventScroll: true });
-    }
-    wasOpen.current = open;
-  }, [open]);
-
-  const total = cards.length + (end ? 1 : 0);
-  const go = (index: number) => scroller.current?.children[Math.max(0, Math.min(total - 1, index))]?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-  const stepIn = () => { if (cards[active] && hasMore(cards[active])) setOpen(active); };
-  const backOut = () => setOpen(null);
-
-  const onTouchStart = (e: TouchEvent) => { const t = e.touches[0]; touch.current = { x: t.clientX, y: t.clientY }; };
-  const onTouchEnd = (e: TouchEvent) => {
-    const start = touch.current;
-    touch.current = null;
-    const t = e.changedTouches[0];
-    if (!start || !t) return;
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) (dx > 0 ? stepIn : backOut)();
-  };
-
-  const openCard = open !== null ? cards[open] : undefined;
-  const openNested = openCard?.thread ? threads[openCard.thread] : undefined;
 
   if (invalid) return <p role="alert">This feed could not be loaded: {invalid.reason}</p>;
 
+  const ids = [...steps.map((s) => s[0].id), ...(end ? ['end'] : [])];
+  const next = (i: number) => ids[i + 1] && <a className="df-next" href={`#${ids[i + 1]}`}>Next ↓</a>;
+
   return (
-    <section
-      className={`df${open !== null ? ' df-reading' : ''}${active === total - 1 ? ' df-last' : ''}`}
-      aria-label="Delta thread"
-      tabIndex={0}
-      onMouseEnter={() => { if (fine && document.activeElement === document.body) rootRef.current?.focus({ preventScroll: true }); }}
-      ref={rootRef}
-      onKeyDown={(e) => {
-        const target = e.target as HTMLElement;
-        // Typing in the invite form (or any field) is not feed navigation, and shortcuts keep their browser meaning.
-        if (e.metaKey || e.ctrlKey || e.altKey || target.closest('input, textarea, select, [contenteditable]')) return;
-        // At either end the arrows fall through to the page, so the feed is never a trap.
-        if (e.key === 'ArrowDown' || e.key === 'j') { if (active < total - 1) { e.preventDefault(); go(active + 1); } }
-        else if (e.key === 'ArrowUp' || e.key === 'k') { if (active > 0) { e.preventDefault(); go(active - 1); } }
-        else if (e.key === 'ArrowRight' || (e.key === 'Enter' && e.target === e.currentTarget)) { e.preventDefault(); stepIn(); } // preventDefault: focus lands on "← Back", which would otherwise get the Enter's click
-        else if (e.key === 'ArrowLeft' || e.key === 'Escape') backOut();
-      }}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      <div className="df-main">
-        <div className="df-scroller" ref={scroller}>
-          {cards.map((card, index) => {
-            const face = scripted(card) ? card.text : blocks(card.text)[0];
-            const isOpen = open === index;
-            return (
-              <article key={card.id} data-index={index} className={`df-frame${card.you ? ' df-you' : ''}${isOpen ? ' df-open' : ''}`} aria-label={`${index + 1} of ${total}`}>
-                <p className="df-speaker">{card.speaker}</p>
-                <div className="df-face">
-                  {card.titles.length ? <p className="df-tools">{card.titles.length === 1 ? card.titles[0] : `${card.titles.length} steps`}</p> : <Markdown text={face ?? ''} />}
-                  {hasMore(card) && <button type="button" className="df-in" onClick={() => setOpen(index)}>Step in →</button>}
-                  {index === 0 && <span className="df-hint" aria-hidden="true">Swipe up</span>}
-                </div>
-              </article>
-            );
-          })}
-          {end && <article data-index={cards.length} className="df-frame df-end" aria-label={`${total} of ${total}`}>{end}</article>}
-        </div>
-        <nav className="df-nav" aria-label="Step through the thread">
-          <button type="button" onClick={() => go(active - 1)} disabled={active === 0} aria-label="Previous">↑</button>
-          <span>{active + 1} / {total}</span>
-          <button type="button" onClick={() => go(active + 1)} disabled={active === total - 1} aria-label="Next">↓</button>
-        </nav>
-      </div>
-      <div className="df-pane">
-        {openCard ? (
-          <div className="df-detail" key={open}>
-            <button type="button" className="df-out" onClick={backOut}>← Back</button>
-            {split && <p className="df-speaker">{openCard.speaker}</p>}
-            {openCard.titles.length ? <ol className="df-steps">{openCard.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={openCard.detail ?? openCard.text} />}
-            {openNested && <Transcript recording={openNested} />}
-          </div>
-        ) : <p className="df-pane-empty">Step in to read what is behind a card.</p>}
-      </div>
-      <p className="df-keys" aria-hidden="true"><span><kbd>j</kbd> <kbd>k</kbd> or <kbd>↑</kbd> <kbd>↓</kbd> step through</span><span><kbd>→</kbd> step in</span><span><kbd>←</kbd> back</span></p>
-    </section>
+    <div className="df" role="region" aria-label="Delta thread">
+      {steps.map((step, i) => (
+        <section key={step[0].id} id={step[0].id} className={`df-step${step.length > 1 ? ' df-pair' : ''}`} aria-label={`Step ${i + 1} of ${ids.length}`}>
+          <div className="df-body">{step.map((card) => <Message key={card.id} card={card} />)}</div>
+          {next(i)}
+        </section>
+      ))}
+      {end && <section id="end" className="df-step df-end" aria-label={`Step ${ids.length} of ${ids.length}`}><div className="df-body">{end}</div></section>}
+    </div>
   );
 }

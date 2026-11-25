@@ -116,25 +116,5 @@
 .td-prose a { text-decoration: underline; text-decoration-color: var(--td-accent); text-underline-offset: 3px; }
 
 .td-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.td-feed-hero { padding-top: 0; }
+.td-feed-hero { padding-top: 32px; scroll-margin-top: 0; }
 .td-feed-hero .td-eyebrow { margin-bottom: 0; }
-.td-feed-hero { scroll-margin-top: 16px; }
-.td-feed-hero .td-eyebrow { margin-bottom: 14px; }
-
-/* Tablet and desktop home. Mobile (<= 720px) is untouched. */
-@media (min-width: 721px) and (max-width: 1199px) {
-  .td-home .td-hero { padding: 48px 0 44px; }
-  .td-home .td-feed-hero { padding-bottom: 48px; }
-}
-/* Wide: the landing and the thread sit side by side, so the hook card is in the first screen. */
-@media (min-width: 1200px) {
-  .td-header, .td-footer, .td-main { width: min(1320px, 100%); padding-left: 48px; padding-right: 48px; }
-  .td-home { display: grid; grid-template-columns: minmax(340px, 4fr) minmax(0, 8fr); column-gap: 72px; align-items: start; padding-bottom: 48px; }
-  .td-home .td-hero { padding: 28px 0 0; }
-  .td-home .td-hero h1 { font-size: clamp(2.2rem, 3.2vw, 3rem); margin-bottom: 24px; }
-  .td-home .td-lead { font-size: 1.15rem; }
-  .td-home .td-actions { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .td-home .td-feed-hero { border-top: 0; padding: 0; scroll-margin-top: 0; }
-  .td-home .td-feed-hero > .td-eyebrow { display: none; }
-}
-@media (min-width: 1200px) and (min-height: 760px) { .td-home .td-hero { position: sticky; top: 24px; } }

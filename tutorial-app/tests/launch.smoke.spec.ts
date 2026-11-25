@@ -43,8 +43,8 @@ test('logged-out journey: three swipes from the hook to the invite', async ({ pa
   await expect(page).toHaveURL(/#thread$/);
   const feed = page.getByRole('region', { name: 'Delta thread' });
   await expect(feed.getByText('What did the handoff leave out?', { exact: false })).toBeVisible();
-  for (let i = 0; i < 3; i++) await feed.getByRole('button', { name: 'Next' }).click();
-  await expect(page).toHaveURL(/[?&]frame=end/);
+  for (let i = 0; i < 3; i++) await feed.getByRole('link', { name: 'Next ↓' }).nth(i).click();
+  await expect(page).toHaveURL(/#end$/);
   await expect(feed.getByRole('heading', { name: 'See it on the whole run.' })).toBeVisible();
   await expect(feed.getByText('Thanks for reading my OpenAI application.')).toBeVisible();
   await expect(feed.getByRole('textbox', { name: 'Email or Delta username' })).toBeVisible();
