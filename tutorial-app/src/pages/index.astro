@@ -22,9 +22,5 @@ const canonical = new URL('/', Astro.site ?? 'https://www.tidelands.dev');
   </head>
   <body style="margin: 0">
     <TidelandsHome client:load />
-    <!-- Netlify Forms detects the invite form from this static copy; the feed posts to it. -->
-    <form name="thread-invite" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input name="contact" /><input name="source" /><input name="bot-field" />
-    </form>
   </body>
 </html>

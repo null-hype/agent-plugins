@@ -47,8 +47,7 @@ test('logged-out journey: three swipes from the hook to the invite', async ({ pa
   await expect(page).toHaveURL(/#end$/);
   await expect(feed.getByRole('heading', { name: 'Want to inspect the rest of this run?' })).toBeVisible();
   await expect(feed.getByText('Thanks for reading my OpenAI application.')).toBeVisible();
-  await expect(feed.getByRole('textbox', { name: 'Email or Delta username' })).toBeVisible();
-  await expect(page.locator('form[name="thread-invite"][data-netlify="true"]')).toHaveCount(1);
+  await expect(feed.getByRole('link', { name: 'Invite me' })).toHaveAttribute('href', /^mailto:richard@tidelands\.dev\?subject=Invite%20me%20to%20the%20run%20\(OpenAI%20application\)/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
