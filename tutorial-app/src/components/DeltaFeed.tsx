@@ -181,7 +181,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, threads 
         if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
         if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); go(active + 1); }
         else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); go(active - 1); }
-        else if (e.key === 'ArrowRight' || (e.key === 'Enter' && e.target === e.currentTarget)) stepIn();
+        else if (e.key === 'ArrowRight' || (e.key === 'Enter' && e.target === e.currentTarget)) { e.preventDefault(); stepIn(); } // preventDefault: focus lands on "← Back", which would otherwise get the Enter's click
         else if (e.key === 'ArrowLeft' || e.key === 'Escape') backOut();
       }}
       onTouchStart={onTouchStart}
