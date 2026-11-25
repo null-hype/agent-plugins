@@ -1,5 +1,5 @@
-.df { position: relative; border-top: 1px solid var(--td-ink, #1c1c1a); font: 17px/1.6 var(--td-serif, Georgia, serif); color: var(--td-ink, #1c1c1a); outline: none; }
-.df-scroller { height: min(72vh, 620px); overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; }
+.df { position: relative; border-top: 1px solid var(--td-ink, #1c1c1a); font: 17px/1.6 var(--td-serif, Georgia, serif); color: var(--td-ink, #1c1c1a); outline: none; overflow-wrap: break-word; }
+.df-scroller { height: min(72vh, 620px); height: min(72svh, 620px); overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; }
 .df-scroller::-webkit-scrollbar { display: none; }
 .df-frame { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; padding: 28px 0 64px; overflow: hidden; display: flex; flex-direction: column; }
 .df-speaker { margin: 0 0 14px; font: 600 0.75rem/1.5 var(--td-sans, sans-serif); letter-spacing: 0.08em; text-transform: uppercase; color: var(--td-muted, #5f5f58); }
@@ -35,7 +35,8 @@
 .df-transcript li { padding: 16px 0; border-bottom: 1px solid var(--td-line, #dedbd2); }
 .df-transcript .df-speaker { margin-bottom: 6px; }
 .df-transcript p, .df-transcript ul, .df-transcript ol { font-size: 0.95rem; }
-.df-end { justify-content: center; }
+.df-end { overflow-y: auto; }
+.df-end > .ti { margin: auto 0; }
 @media (prefers-reduced-motion: reduce) { .df-hint { animation: none; } }
 .ti .df-you-speaker { color: var(--td-accent, #a23924); }
 .ti-hello { font: 500 0.9rem/1.4 var(--td-sans, sans-serif); color: var(--td-muted, #5f5f58); }
