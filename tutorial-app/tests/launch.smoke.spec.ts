@@ -126,3 +126,11 @@ test.describe('Published preregistration', () => {
     await context.close();
   });
 });
+
+test('a résumé link can open a published thread; unknown and encoded links fall back', async ({ page }) => {
+  await page.goto('/?thread=yoars-5484&r=openai');
+  const feed = page.getByRole('region', { name: 'Delta thread' });
+  await expect(feed.getByText('UI agent · with delta-zero')).toBeAttached();
+  await page.goto('/?thread=nope#t=v1-AAAA');
+  await expect(page.getByRole('region', { name: 'Delta thread' }).getByText(/Two agents handed off a task/)).toBeAttached();
+});
