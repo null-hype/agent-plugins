@@ -26,13 +26,13 @@ export const Homepage: Story = {
   args: { recording: homepage as ReplayRecording, end: <ThreadInvite /> },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getAllByRole('link', { name: 'Next ↓' }).at(-1)!);
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Want to inspect the rest of this run?' })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Want the replay and source notes?' })).toBeVisible());
   },
 };
 
 export const SignalHierarchy: Story = {
   play: async ({ canvas }) => {
-    const feed = canvas.getByRole('region', { name: 'Delta thread' });
+    const feed = canvas.getByRole('region', { name: 'Handoff replay' });
     await expect(feed.querySelectorAll('.df-step').length).toBeGreaterThan(1);
   },
 };
@@ -41,7 +41,7 @@ export const OpenAtFrame: Story = { args: { initialFrameId: 'f10' } };
 
 export const LiveAppend: Story = {
   play: async ({ canvas }) => {
-    const feed = canvas.getByRole('region', { name: 'Delta thread' });
+    const feed = canvas.getByRole('region', { name: 'Handoff replay' });
     const cards = feed.querySelectorAll('.df-msg').length;
     const recording = signalHierarchy as ReplayRecording;
     const frame = { ...recording.frames[0], frameId: 'live-1', order: recording.frames.length };
