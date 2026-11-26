@@ -13,7 +13,7 @@ export default function TidelandsHome() {
       <p><a href="https://null-hype.tidelands.dev/part-3/proposal-p-against-the-budget/1-jev-types-the-answer/">Walk through Budget Authority ↗</a></p>
       <section className="td-section td-feed-hero" id="thread">
         <h2 id="thread-title">The handoff</h2>
-        <DeltaFeed recording={homepage as ReplayRecording} end={<ThreadInvite />} />
+        <DeltaFeed recording={homepage as ReplayRecording} end={<ThreadInvite />} showSpeakerAvatars />
       </section>
     </main>
     <TidelandsFooter />
