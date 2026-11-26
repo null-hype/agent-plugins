@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import { validateReplayRecording, type ReplayFrame, type ReplayRecording } from '../lib/acpReplayContract';
+import ThreadSpeaker from './ThreadSpeaker';
 import './DeltaFeed.css';
 
 /**
@@ -71,7 +72,7 @@ function Block({ source }: { source: string }) {
 const Markdown = ({ text }: { text: string }) => <>{blocks(text).map((b, i) => <Block key={i} source={b} />)}</>;
 
 /** Swipe left on an excerpt goes to its source, the same as the visible link; browser Back returns. */
-function Message({ card }: { card: Card }) {
+function Message({ card, showSpeakerAvatars }: { card: Card; showSpeakerAvatars: boolean }) {
   const start = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: TouchEvent) => { const t = e.touches[0]; start.current = { x: t.clientX, y: t.clientY }; };
   const onTouchEnd = (e: TouchEvent) => {
@@ -83,7 +84,7 @@ function Message({ card }: { card: Card }) {
   };
   return (
     <div className={`df-msg${card.you ? ' df-you' : ''}`} onTouchStart={card.source ? onTouchStart : undefined} onTouchEnd={card.source ? onTouchEnd : undefined}>
-      <p className="df-speaker">{card.speaker}</p>
+      {showSpeakerAvatars ? <ThreadSpeaker name={card.speaker} human={card.you} /> : <p className="df-speaker">{card.speaker}</p>}
       {card.titles.length ? <ol className="df-tools">{card.titles.map((t, i) => <li key={i}>{t}</li>)}</ol> : <Markdown text={card.text} />}
       {card.source && <a className="df-src" href={card.source}>View source ↗</a>}
     </div>
@@ -92,13 +93,14 @@ function Message({ card }: { card: Card }) {
 
 type Props = {
   recording: ReplayRecording;
+  showSpeakerAvatars?: boolean;
   /** Scroll to this frame on load; defaults to `?frame=` (or `end`). */
   initialFrameId?: string;
   /** A last step after the frames, e.g. the contact form. Its id is `end`. */
   end?: ReactNode;
 };
 
-export default function DeltaFeed({ recording: initial, initialFrameId, end }: Props) {
+export default function DeltaFeed({ recording: initial, initialFrameId, end, showSpeakerAvatars = false }: Props) {
   const [recording, setRecording] = useState(initial);
   const steps = useMemo(() => {
     const out: Card[][] = [];
@@ -133,7 +135,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, end }: P
     <div className="df" role="region" aria-label="Handoff replay">
       {steps.map((step, i) => (
         <section key={step[0].id} id={step[0].id} className={`df-step${step.some((c) => c.beside) ? ' df-pair' : ''}`} aria-label={`Step ${i + 1} of ${ids.length}`}>
-          <div className="df-body">{step.map((card) => <Message key={card.id} card={card} />)}</div>
+          <div className="df-body">{step.map((card) => <Message key={card.id} card={card} showSpeakerAvatars={showSpeakerAvatars} />)}</div>
           {next(i)}
         </section>
       ))}

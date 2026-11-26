@@ -23,7 +23,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Homepage: Story = {
-  args: { recording: homepage as ReplayRecording, end: <ThreadInvite /> },
+  args: { recording: homepage as ReplayRecording, end: <ThreadInvite />, showSpeakerAvatars: true },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getAllByRole('link', { name: 'Next ↓' }).at(-1)!);
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Want the replay and source notes?' })).toBeVisible());

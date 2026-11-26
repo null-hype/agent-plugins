@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ThreadSpeaker from './ThreadSpeaker';
 
 /** Résumé links carry ?r=<role> so the card can greet the reader and name the role in the email. */
 const ROLES: Record<string, string> = { openai: 'OpenAI', cognition: 'Cognition', sierra: 'Sierra', relevance: 'Relevance AI' };
@@ -16,7 +17,7 @@ export default function ThreadInvite() {
 
   return (
     <div className="ti">
-      <p className="df-speaker" style={{ color: 'var(--td-accent, #a23924)' }}>Richard</p>
+      <ThreadSpeaker name="Richard" human />
       {company && <p className="ti-hello">Thanks for reading my {company} application.</p>}
       <h2 className="ti-title">Want the replay and source notes?</h2>
       <p>Email me and I’ll send them.</p>
