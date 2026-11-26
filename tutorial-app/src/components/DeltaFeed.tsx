@@ -130,7 +130,7 @@ export default function DeltaFeed({ recording: initial, initialFrameId, end }: P
   const next = (i: number) => ids[i + 1] && <a className="df-next" href={`#${ids[i + 1]}`}>Next ↓</a>;
 
   return (
-    <div className="df" role="region" aria-label="Delta thread">
+    <div className="df" role="region" aria-label="Handoff replay">
       {steps.map((step, i) => (
         <section key={step[0].id} id={step[0].id} className={`df-step${step.some((c) => c.beside) ? ' df-pair' : ''}`} aria-label={`Step ${i + 1} of ${ids.length}`}>
           <div className="df-body">{step.map((card) => <Message key={card.id} card={card} />)}</div>

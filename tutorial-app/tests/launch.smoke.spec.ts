@@ -39,15 +39,15 @@ test('logged-out journey: three swipes from the hook to the invite', async ({ pa
   await page.goto('/?r=openai');
   await expect(page.getByText('Richard Anthony Massey · Software engineer · Sydney', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'Build tools people can trust and inspect.' })).toBeVisible();
-  await page.getByRole('link', { name: 'Delta thread ↓' }).click();
+  await page.getByRole('link', { name: 'The handoff ↓' }).click();
   await expect(page).toHaveURL(/#thread$/);
-  const feed = page.getByRole('region', { name: 'Delta thread' });
+  const feed = page.getByRole('region', { name: 'Handoff replay' });
   await expect(feed.getByText('Do you count it?', { exact: false })).toBeVisible();
   for (let i = 0; i < 3; i++) await feed.getByRole('link', { name: 'Next ↓' }).nth(i).click();
   await expect(page).toHaveURL(/#end$/);
-  await expect(feed.getByRole('heading', { name: 'Want to inspect the rest of this run?' })).toBeVisible();
+  await expect(feed.getByRole('heading', { name: 'Want the replay and source notes?' })).toBeVisible();
   await expect(feed.getByText('Thanks for reading my OpenAI application.')).toBeVisible();
-  await expect(feed.getByRole('link', { name: 'Invite me' })).toHaveAttribute('href', /^mailto:richard@tidelands\.dev\?subject=Invite%20me%20to%20the%20run%20\(OpenAI%20application\)/);
+  await expect(feed.getByRole('link', { name: 'Send me the replay' })).toHaveAttribute('href', /^mailto:richard@tidelands\.dev\?subject=Send%20me%20the%20replay%20\(OpenAI%20application\)/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
