@@ -318,8 +318,12 @@ so no agent or LLM has to remember to stop it:
 - **Productive work** is a running toolbox job (workspace up, ship,
   review, whose last step is the restic backup), a Linear agent working an
   issue (the Claude agent's `claude-agent-sdk` process, or the `container-use
-  stdio` MCP server either agent runs during a turn), or a `restic` or
-  `codex` process.
+  stdio` MCP server either agent runs during a turn), a `restic` or
+  `codex` process, or a Delta runner turn: a `claude` or `codex` process
+  under `delta runner serve` (in the `delta-runner` container, visible from
+  the host). The runner running idle does not count, or the host would never
+  idle out; `delta runner` has no status command, so the child process is the
+  signal.
   A poll, an SSH session or any other tool call is not, so it does not keep
   the host up.
 - **Idle shutdown** after 15 minutes without productive work.

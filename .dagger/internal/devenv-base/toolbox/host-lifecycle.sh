@@ -19,8 +19,10 @@
 # review ends with the restic backup), a Linear agent working an issue (the
 # Claude agent's claude-agent-sdk process, or the container-use MCP server
 # either agent runs during a turn, visible from the host), or a restic or
-# codex process. A poll, an SSH session or a tool call starts none of those, so it
-# does not keep the host up.
+# codex process, or a turn of the Delta Personal Runner (a claude or codex
+# process under `delta runner serve` in the delta-runner container; the idle
+# runner alone does not count). A poll, an SSH session or a tool call starts
+# none of those, so it does not keep the host up.
 #
 # The lease starts at LIFECYCLE_LEASE_MIN. A tick with work in progress at or
 # after the deadline moves it LIFECYCLE_EXTEND_MIN later, never past the hard
@@ -63,6 +65,25 @@ running_jobs() {
   return 0
 }
 
+# A Delta runner turn in progress. The runner (`delta runner serve`) lives in
+# the DevPod container, but its processes show in the host's process table. It
+# is up all day, so only a claude or codex process under it is a turn; the
+# runner with no child agent is idle and must not hold the host up.
+delta_turn() {
+  ps -eo pid=,ppid=,comm=,args= 2>/dev/null | awk '
+    { pid = $1; ppid[pid] = $2; comm[pid] = $3
+      split($4, a, "/"); base[pid] = a[length(a)] }
+    $3 == "delta" && /runner serve/ { root[$1] = 1 }
+    END {
+      do { n = 0
+        for (p in ppid) if (!(p in root) && (ppid[p] in root)) { root[p] = 1; n++ }
+      } while (n)
+      for (p in root)
+        if (comm[p] ~ /^(claude|codex)$/ || base[p] ~ /^(claude|codex)$/) found = 1
+      exit !found
+    }'
+}
+
 # Why the host is busy, one reason per line; nothing when idle.
 activity() {
   local j
@@ -74,6 +95,7 @@ activity() {
   pgrep -f 'claude-agent-sdk|container-use stdio' >/dev/null 2>&1 && echo "agent"
   pgrep -x restic >/dev/null 2>&1 && echo "restic"
   pgrep -x codex >/dev/null 2>&1 && echo "codex"
+  delta_turn && echo "delta"
   return 0
 }
 
